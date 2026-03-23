@@ -19,7 +19,6 @@ type MemberSnapshot struct {
 	Environments   []SnapshotEnvironment
 	GitRepo        *SnapshotGitRepo // nil means not set
 	Relations      MemberRelations
-	ComposedPrompt string
 }
 
 type SnapshotPrompt struct {
