@@ -96,13 +96,13 @@ func (s *Settings) CheckAuth(binary domain.CliBinary) error {
 
 	authDir := s.AuthDir(binary)
 	if _, err := os.Stat(authDir); err != nil {
-		return fmt.Errorf("auth not configured for %s — run: clier login %s", binary, binary)
+		return fmt.Errorf("auth not configured for %s — run: clier %s login", binary, binary)
 	}
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Env = append(os.Environ(), "HOME="+authDir)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("auth invalid for %s — run: clier login %s", binary, binary)
+		return fmt.Errorf("auth invalid for %s — run: clier %s login", binary, binary)
 	}
 	return nil
 }
@@ -133,7 +133,7 @@ func (s *Settings) LoginAuth(binary domain.CliBinary) error {
 func (s *Settings) CopyAuthTo(binary domain.CliBinary, destHome string) error {
 	authDir := s.AuthDir(binary)
 	if _, err := os.Stat(authDir); err != nil {
-		return fmt.Errorf("auth not configured for %s — run: clier login %s", binary, binary)
+		return fmt.Errorf("auth not configured for %s — run: clier %s login", binary, binary)
 	}
 
 	return filepath.WalkDir(authDir, func(path string, d fs.DirEntry, err error) error {
