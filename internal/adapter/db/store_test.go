@@ -10,11 +10,11 @@ func TestNewStore(t *testing.T) {
 		}
 		defer store.Close()
 
-		if store.DB == nil {
-			t.Fatal("expected non-nil DB")
+		if store.db == nil {
+			t.Fatal("expected non-nil db")
 		}
-		if store.Queries == nil {
-			t.Fatal("expected non-nil Queries")
+		if store.queries == nil {
+			t.Fatal("expected non-nil queries")
 		}
 	})
 
@@ -26,7 +26,7 @@ func TestNewStore(t *testing.T) {
 		defer store.Close()
 
 		var fkEnabled int
-		err = store.DB.QueryRow("PRAGMA foreign_keys").Scan(&fkEnabled)
+		err = store.db.QueryRow("PRAGMA foreign_keys").Scan(&fkEnabled)
 		if err != nil {
 			t.Fatalf("query pragma: %v", err)
 		}
