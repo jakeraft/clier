@@ -22,9 +22,8 @@ main.go               ← entry point (cmd.Execute() only)
 cmd/                   ← Cobra commands (parse args → call internal/)
 internal/
   domain/              ← entities
-  sprint/              ← sprint execution engine
-  process/             ← agent process management (terminal multiplexer abstraction)
-  clispawn/            ← agent spawn (Claude, Codex)
+  sprint/              ← sprint execution engine (orchestration + command building)
+  terminal/            ← terminal session management (cmux implementation)
   db/                  ← SQLite
   settings/            ← local config/credentials
 ```
