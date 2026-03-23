@@ -184,9 +184,10 @@ func buildEnvCommand(command string, env []string) string {
 	if len(env) == 0 {
 		return command
 	}
-	parts := make([]string, 0, len(env)+2)
-	parts = append(parts, "env")
-	parts = append(parts, env...)
+	parts := make([]string, 0, len(env)+1)
+	for _, e := range env {
+		parts = append(parts, "export "+e)
+	}
 	parts = append(parts, command)
-	return strings.Join(parts, " ")
+	return strings.Join(parts, " && ")
 }
