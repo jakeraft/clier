@@ -1,0 +1,157 @@
+package settings
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
+const (
+	configDirName   = ".clier"
+	dbFileName      = "data.db"
+	credentialsFile = "credentials.json"
+	authDirName     = "auth"
+	sprintWorkBase  = "/tmp/clier/sprints"
+)
+
+type Credential struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+type Settings struct {
+	configDir string
+}
+
+func New() (*Settings, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("get home dir: %w", err)
+	}
+	return &Settings{
+		configDir: filepath.Join(home, configDirName),
+	}, nil
+}
+
+func newWithConfigDir(configDir string) *Settings {
+	return &Settings{configDir: configDir}
+}
+
+func (s *Settings) ConfigDir() string {
+	return s.configDir
+}
+
+func (s *Settings) DBPath() string {
+	return filepath.Join(s.configDir, dbFileName)
+}
+
+func (s *Settings) credentialsPath() string {
+	return filepath.Join(s.configDir, credentialsFile)
+}
+
+func (s *Settings) AuthDir(binary string) string {
+	return filepath.Join(s.configDir, authDirName, binary)
+}
+
+func (s *Settings) HasAuth(binary string) bool {
+	info, err := os.Stat(s.AuthDir(binary))
+	return err == nil && info.IsDir()
+}
+
+func (s *Settings) SprintWorkBase() string {
+	return sprintWorkBase
+}
+
+func (s *Settings) SprintMemberDir(sprintID, memberID string) string {
+	return filepath.Join(sprintWorkBase, sprintID, memberID)
+}
+
+func (s *Settings) EnsureDirs() error {
+	dirs := []string{
+		s.configDir,
+		filepath.Join(s.configDir, authDirName),
+	}
+	for _, d := range dirs {
+		if err := os.MkdirAll(d, 0755); err != nil {
+			return fmt.Errorf("create dir %s: %w", d, err)
+		}
+	}
+	return nil
+}
+
+// Credential management
+
+func (s *Settings) GetCredential(host string) (string, error) {
+	creds, err := s.loadCredentials()
+	if err != nil {
+		return "", err
+	}
+	cred, ok := creds[host]
+	if !ok {
+		return "", fmt.Errorf("no credential for host: %s", host)
+	}
+	return cred.Value, nil
+}
+
+func (s *Settings) SetCredential(host, token string) error {
+	creds, err := s.loadCredentials()
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if creds == nil {
+		creds = make(map[string]Credential)
+	}
+	creds[host] = Credential{Type: "git", Value: token}
+	return s.saveCredentials(creds)
+}
+
+func (s *Settings) RemoveCredential(host string) error {
+	creds, err := s.loadCredentials()
+	if err != nil {
+		return err
+	}
+	delete(creds, host)
+	return s.saveCredentials(creds)
+}
+
+func (s *Settings) ListCredentialHosts() ([]string, error) {
+	creds, err := s.loadCredentials()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	hosts := make([]string, 0, len(creds))
+	for h := range creds {
+		hosts = append(hosts, h)
+	}
+	return hosts, nil
+}
+
+func (s *Settings) loadCredentials() (map[string]Credential, error) {
+	data, err := os.ReadFile(s.credentialsPath())
+	if err != nil {
+		return nil, err
+	}
+	var creds map[string]Credential
+	if err := json.Unmarshal(data, &creds); err != nil {
+		return nil, fmt.Errorf("parse credentials: %w", err)
+	}
+	return creds, nil
+}
+
+func (s *Settings) saveCredentials(creds map[string]Credential) error {
+	data, err := json.MarshalIndent(creds, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal credentials: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(s.credentialsPath()), 0755); err != nil {
+		return fmt.Errorf("create credentials dir: %w", err)
+	}
+	if err := os.WriteFile(s.credentialsPath(), data, 0600); err != nil {
+		return fmt.Errorf("write credentials: %w", err)
+	}
+	return nil
+}
