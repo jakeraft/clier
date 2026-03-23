@@ -93,7 +93,7 @@ func (t *Team) RemoveMember(memberID string) error {
 	t.MemberIDs = append(t.MemberIDs[:idx], t.MemberIDs[idx+1:]...)
 
 	// Remove all relations involving this member.
-	filtered := t.Relations[:0]
+	filtered := make([]Relation, 0, len(t.Relations))
 	for _, r := range t.Relations {
 		if r.From != memberID && r.To != memberID {
 			filtered = append(filtered, r)

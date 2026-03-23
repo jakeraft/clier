@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -100,7 +102,7 @@ func TestTeam(t *testing.T) {
 			if err := team.AddMember("member-2"); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if !containsString(team.MemberIDs, "member-2") {
+			if !slices.Contains(team.MemberIDs, "member-2") {
 				t.Errorf("MemberIDs %v does not contain member-2", team.MemberIDs)
 			}
 		})
@@ -120,7 +122,7 @@ func TestTeam(t *testing.T) {
 			if err := team.RemoveMember("member-2"); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if containsString(team.MemberIDs, "member-2") {
+			if slices.Contains(team.MemberIDs, "member-2") {
 				t.Error("MemberIDs still contains member-2")
 			}
 			if len(team.Relations) != 0 {
@@ -273,7 +275,7 @@ func TestTeam(t *testing.T) {
 			if len(warnings) != 1 {
 				t.Fatalf("warnings length = %d, want 1", len(warnings))
 			}
-			if !hasPrefix(warnings[0], "Member member-3") {
+			if !strings.HasPrefix(warnings[0], "Member member-3") {
 				t.Errorf("warning = %q, want prefix 'Member member-3'", warnings[0])
 			}
 		})
