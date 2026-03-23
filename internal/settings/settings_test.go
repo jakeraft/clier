@@ -10,20 +10,17 @@ import (
 )
 
 func TestSettings(t *testing.T) {
-	t.Run("HasAuth_NonexistentDir_ReturnsFalse", func(t *testing.T) {
+	t.Run("CheckAuth_NoAuthDir_ReturnsError", func(t *testing.T) {
 		s := newWithConfigDir(t.TempDir())
-		if s.HasAuth(domain.BinaryClaude) {
-			t.Error("HasAuth(BinaryClaude) = true, want false for nonexistent dir")
+		if err := s.CheckAuth(domain.BinaryClaude); err == nil {
+			t.Error("CheckAuth() should return error when auth dir missing")
 		}
 	})
 
-	t.Run("HasAuth_ExistingDir_ReturnsTrue", func(t *testing.T) {
+	t.Run("CheckAuth_UnknownBinary_ReturnsError", func(t *testing.T) {
 		s := newWithConfigDir(t.TempDir())
-		if err := os.MkdirAll(s.AuthDir(domain.BinaryClaude), 0755); err != nil {
-			t.Fatalf("failed to create auth dir: %v", err)
-		}
-		if !s.HasAuth(domain.BinaryClaude) {
-			t.Error("HasAuth(BinaryClaude) = false, want true for existing dir")
+		if err := s.CheckAuth(domain.CliBinary("unknown")); err == nil {
+			t.Error("CheckAuth() should return error for unknown binary")
 		}
 	})
 
