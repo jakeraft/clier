@@ -15,17 +15,19 @@ Compose teams of agents (Claude, Codex), define roles and relations, and run spr
 
 ## Project Structure
 
-gh (GitHub CLI) style. `cmd/` is thin, `internal/` has all logic.
+gh (GitHub CLI) style + hexagonal architecture (ports & adapters).
 
 ```
 main.go               ← entry point (cmd.Execute() only)
-cmd/                   ← Cobra commands (parse args → call internal/)
+cmd/                   ← driving adapter (cobra commands, 의존성 조립)
 internal/
-  domain/              ← entities
-  sprint/              ← sprint execution engine (orchestration + command building)
-  terminal/            ← terminal session management (cmux implementation)
-  db/                  ← SQLite
-  settings/            ← local config/credentials
+  domain/              ← entities + business rules (no external deps)
+  app/
+    sprint/            ← sprint use case (port definitions + orchestration)
+  adapter/
+    db/                ← driven adapter (sqlc generated → domain conversion)
+    terminal/          ← driven adapter (cmux CLI)
+    settings/          ← driven adapter (local config/credentials)
 ```
 
 ## Test Conventions
