@@ -9,7 +9,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "clier",
-	Short: "Multi-agent CLI orchestrator",
+	Short: "Multi-agent CLI orchestrator with team composition and isolated environments",
 }
 
 func Execute() {
