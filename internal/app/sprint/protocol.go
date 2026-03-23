@@ -8,13 +8,18 @@ import (
 )
 
 // BuildProtocol generates the team protocol prompt for a member.
-func BuildProtocol(memberName, teamName string, isRoot bool, relations domain.MemberRelations, memberNames map[string]string) string {
+func BuildProtocol(team domain.TeamSnapshot, member domain.MemberSnapshot) string {
+	memberNames := make(map[string]string, len(team.Members))
+	for _, m := range team.Members {
+		memberNames[m.MemberID] = m.MemberName
+	}
+
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "## Team Protocol\n\nYou are %q, part of team %q.\n", memberName, teamName)
+	fmt.Fprintf(&b, "## Team Protocol\n\nYou are %q, part of team %q.\n", member.MemberName, team.TeamName)
 
 	// Relation table
-	rows := buildRelationRows(relations, memberNames)
+	rows := buildRelationRows(member.Relations, memberNames)
 	if len(rows) > 0 {
 		b.WriteString("\n| Role | Name | ID |\n|------|------|----|")
 		for _, row := range rows {
@@ -24,25 +29,25 @@ func BuildProtocol(memberName, teamName string, isRoot bool, relations domain.Me
 	}
 
 	// Role guidance
+	isRoot := member.MemberID == team.RootMemberID
 	b.WriteString("\n")
-	if isRoot && len(relations.Workers) > 0 {
+	if isRoot && len(member.Relations.Workers) > 0 {
 		b.WriteString("You are the root member. Coordinate your workers and synthesize their results.\n")
-	} else if len(relations.Leaders) > 0 {
-		leaderName := memberNames[relations.Leaders[0]]
+	} else if len(member.Relations.Leaders) > 0 {
+		leaderName := memberNames[member.Relations.Leaders[0]]
 		fmt.Fprintf(&b, "Your leader is %s. When you complete a task, send the results back to them. If you get stuck or need more context, ask them.\n", leaderName)
 	}
 
-	if len(relations.Workers) > 0 {
+	if len(member.Relations.Workers) > 0 {
 		b.WriteString("\nYou have workers who handle tasks better than doing them yourself. Delegate sub-tasks to them and wait for all responses before wrapping up.\n")
 	}
 
-	if len(relations.Peers) > 0 {
+	if len(member.Relations.Peers) > 0 {
 		b.WriteString("\nCoordinate with your peers when tasks overlap.\n")
 	}
 
 	// Communication section
-	hasRelations := len(rows) > 0
-	if hasRelations {
+	if len(rows) > 0 {
 		fmt.Fprintf(&b, "\nMessages from teammates appear directly in your conversation.\n\nTo message a teammate:\n\n```bash\nclier message send <id> \"<message>\"\n```\n")
 	}
 
@@ -70,9 +75,9 @@ func buildRelationRows(relations domain.MemberRelations, memberNames map[string]
 }
 
 // ComposePrompt combines system prompts and team protocol into a single prompt.
-func ComposePrompt(systemPrompts []domain.SnapshotPrompt, protocol string) string {
+func ComposePrompt(prompts []domain.SnapshotPrompt, protocol string) string {
 	var parts []string
-	for _, sp := range systemPrompts {
+	for _, sp := range prompts {
 		parts = append(parts, sp.Prompt)
 	}
 	parts = append(parts, protocol)

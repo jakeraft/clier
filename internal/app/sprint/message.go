@@ -51,9 +51,9 @@ func loadSurfaces(sprintsDir, sprintID string) (*SurfaceMap, error) {
 }
 
 // DeliverMessage validates the relation, persists the message, and delivers it to the recipient's terminal.
-func (e *Engine) DeliverMessage(ctx context.Context, sprintID, fromMemberID, toMemberID, content string) error {
+func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, toMemberID, content string) error {
 	// Load sprint and validate state
-	sprint, err := e.store.GetSprint(ctx, sprintID)
+	sprint, err := s.store.GetSprint(ctx, sprintID)
 	if err != nil {
 		return fmt.Errorf("get sprint: %w", err)
 	}
@@ -69,12 +69,12 @@ func (e *Engine) DeliverMessage(ctx context.Context, sprintID, fromMemberID, toM
 	}
 
 	// Persist message
-	if err := e.store.CreateMessage(ctx, sprintID, fromMemberID, toMemberID, content); err != nil {
+	if err := s.store.CreateMessage(ctx, sprintID, fromMemberID, toMemberID, content); err != nil {
 		return fmt.Errorf("save message: %w", err)
 	}
 
 	// Load surface ref and deliver
-	surfaces, err := loadSurfaces(e.settings.SprintsDir(), sprintID)
+	surfaces, err := loadSurfaces(s.settings.SprintsDir(), sprintID)
 	if err != nil {
 		return fmt.Errorf("load surfaces: %w", err)
 	}
@@ -85,7 +85,7 @@ func (e *Engine) DeliverMessage(ctx context.Context, sprintID, fromMemberID, toM
 	}
 
 	text := fmt.Sprintf("[Message from %s] %s", fromName, content)
-	return e.terminal.Send(surfaceRef, text)
+	return s.terminal.Send(surfaceRef, text)
 }
 
 func validateMessageRoute(snapshot domain.TeamSnapshot, fromID, toID string) (string, error) {

@@ -13,14 +13,13 @@ import (
 func TestBuildCommand(t *testing.T) {
 	t.Run("Claude/IncludesAllArgs", func(t *testing.T) {
 		m := domain.MemberSnapshot{
-			MemberID:       "m1",
-			Binary:         domain.BinaryClaude,
-			Model:          "claude-sonnet-4-6",
-			SystemArgs:     []string{"--dangerously-skip-permissions"},
-			CustomArgs:     []string{"--verbose"},
-			ComposedPrompt: "you are a coder",
+			MemberID:   "m1",
+			Binary:     domain.BinaryClaude,
+			Model:      "claude-sonnet-4-6",
+			SystemArgs: []string{"--dangerously-skip-permissions"},
+			CustomArgs: []string{"--verbose"},
 		}
-		cmd, tempFiles, err := BuildCommand(m, "/work", nil)
+		cmd, tempFiles, err := BuildCommand(m, "you are a coder", "/work", nil)
 		if err != nil {
 			t.Fatalf("BuildCommand: %v", err)
 		}
@@ -52,14 +51,13 @@ func TestBuildCommand(t *testing.T) {
 
 	t.Run("Codex/WritesInstructionsFile", func(t *testing.T) {
 		m := domain.MemberSnapshot{
-			MemberID:       "m2",
-			Binary:         domain.BinaryCodex,
-			Model:          "gpt-5.4",
-			SystemArgs:     []string{},
-			CustomArgs:     []string{},
-			ComposedPrompt: "you are a coder",
+			MemberID:   "m2",
+			Binary:     domain.BinaryCodex,
+			Model:      "gpt-5.4",
+			SystemArgs: []string{},
+			CustomArgs: []string{},
 		}
-		cmd, tempFiles, err := BuildCommand(m, "/work", nil)
+		cmd, tempFiles, err := BuildCommand(m, "you are a coder", "/work", nil)
 		if err != nil {
 			t.Fatalf("BuildCommand: %v", err)
 		}
@@ -139,7 +137,7 @@ func TestBuildCommand_WithEnv(t *testing.T) {
 			Model:    "claude-sonnet-4-6",
 		}
 		env := []string{"HOME=/tmp/sprint", "FOO=bar"}
-		cmd, _, err := BuildCommand(m, "/work", env)
+		cmd, _, err := BuildCommand(m, "", "/work", env)
 		if err != nil {
 			t.Fatalf("BuildCommand: %v", err)
 		}

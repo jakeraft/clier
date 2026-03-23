@@ -34,63 +34,63 @@ type Terminal interface {
 	Send(surfaceRef, text string) error
 }
 
-// Engine orchestrates sprint lifecycle.
-type Engine struct {
+// Service orchestrates sprint lifecycle.
+type Service struct {
 	store    Store
 	terminal Terminal
 	settings *settings.Settings
 }
 
-func NewEngine(store Store, term Terminal, s *settings.Settings) *Engine {
-	return &Engine{store: store, terminal: term, settings: s}
+func New(store Store, term Terminal, s *settings.Settings) *Service {
+	return &Service{store: store, terminal: term, settings: s}
 }
 
-func (e *Engine) Start(ctx context.Context, teamID string) (*domain.Sprint, error) {
-	snapshot, err := e.buildSnapshot(ctx, teamID)
+func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, error) {
+	snapshot, err := s.buildSnapshot(ctx, teamID)
 	if err != nil {
 		return nil, fmt.Errorf("build snapshot: %w", err)
 	}
 
 	sprint := domain.NewSprint(snapshot)
 
-	specs, tempFiles, err := e.prepareMembers(ctx, sprint.ID, snapshot)
+	specs, tempFiles, err := s.prepareMembers(ctx, sprint.ID, snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("prepare members: %w", err)
 	}
 
-	if err := e.store.CreateSprint(ctx, sprint); err != nil {
+	if err := s.store.CreateSprint(ctx, sprint); err != nil {
 		return nil, fmt.Errorf("save sprint: %w", err)
 	}
 
-	result, err := e.terminal.Launch(sprint.Name, specs)
+	result, err := s.terminal.Launch(sprint.Name, specs)
 	if err != nil {
-		e.failSprint(ctx, sprint.ID, err.Error())
+		s.failSprint(ctx, sprint.ID, err.Error())
 		cleanupTempFiles(tempFiles)
 		return nil, fmt.Errorf("launch terminal: %w", err)
 	}
 
-	if err := saveSurfaces(e.settings.SprintsDir(), sprint.ID, snapshot, result); err != nil {
+	if err := saveSurfaces(s.settings.SprintsDir(), sprint.ID, snapshot, result); err != nil {
 		return nil, fmt.Errorf("save surfaces: %w", err)
 	}
 
 	return sprint, nil
 }
 
-func (e *Engine) Stop(ctx context.Context, sprintID string) error {
-	surfaces, err := loadSurfaces(e.settings.SprintsDir(), sprintID)
+func (s *Service) Stop(ctx context.Context, sprintID string) error {
+	surfaces, err := loadSurfaces(s.settings.SprintsDir(), sprintID)
 	if err != nil {
 		return fmt.Errorf("load surfaces: %w", err)
 	}
 
-	if err := e.terminal.Terminate(surfaces.WorkspaceRef); err != nil {
+	if err := s.terminal.Terminate(surfaces.WorkspaceRef); err != nil {
 		return fmt.Errorf("terminate terminal: %w", err)
 	}
 
-	if err := e.store.UpdateSprintState(ctx, sprintID, domain.SprintCompleted, ""); err != nil {
+	if err := s.store.UpdateSprintState(ctx, sprintID, domain.SprintCompleted, ""); err != nil {
 		return fmt.Errorf("update sprint state: %w", err)
 	}
 
-	sprintDir := filepath.Join(e.settings.SprintsDir(), sprintID)
+	sprintDir := filepath.Join(s.settings.SprintsDir(), sprintID)
 	_ = os.RemoveAll(sprintDir)
 
 	return nil
@@ -98,19 +98,19 @@ func (e *Engine) Stop(ctx context.Context, sprintID string) error {
 
 // prepareMembers creates workspace directories, copies auth, writes configs,
 // sets up git repos, and builds launch specs for all members.
-func (e *Engine) prepareMembers(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) ([]terminal.SurfaceSpec, []string, error) {
+func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) ([]terminal.SurfaceSpec, []string, error) {
 	var specs []terminal.SurfaceSpec
 	var tempFiles []string
 
 	for _, m := range snapshot.Members {
-		memberHome := filepath.Join(e.settings.SprintsDir(), sprintID, m.MemberID)
+		memberHome := filepath.Join(s.settings.SprintsDir(), sprintID, m.MemberID)
 		workDir := filepath.Join(memberHome, "project")
 
 		if err := os.MkdirAll(workDir, 0755); err != nil {
 			return nil, nil, fmt.Errorf("create workspace for %s: %w", m.MemberName, err)
 		}
 
-		if err := e.settings.CopyAuthTo(m.Binary, memberHome); err != nil {
+		if err := s.settings.CopyAuthTo(m.Binary, memberHome); err != nil {
 			return nil, nil, fmt.Errorf("copy auth for %s: %w", m.MemberName, err)
 		}
 
@@ -118,7 +118,7 @@ func (e *Engine) prepareMembers(ctx context.Context, sprintID string, snapshot d
 			return nil, nil, fmt.Errorf("write configs for %s: %w", m.MemberName, err)
 		}
 
-		if err := e.setupGit(ctx, m, workDir); err != nil {
+		if err := s.setupGit(ctx, m, workDir); err != nil {
 			return nil, nil, fmt.Errorf("setup git for %s: %w", m.MemberName, err)
 		}
 
@@ -139,14 +139,14 @@ func (e *Engine) prepareMembers(ctx context.Context, sprintID string, snapshot d
 	return specs, tempFiles, nil
 }
 
-func (e *Engine) setupGit(ctx context.Context, m domain.MemberSnapshot, workDir string) error {
+func (s *Service) setupGit(ctx context.Context, m domain.MemberSnapshot, workDir string) error {
 	if m.GitRepo == nil {
 		return exec.CommandContext(ctx, "git", "init", workDir).Run()
 	}
 
 	cloneURL := m.GitRepo.URL
 	if host := extractHost(cloneURL); host != "" {
-		if token, err := e.settings.GetCredential(host); err == nil {
+		if token, err := s.settings.GetCredential(host); err == nil {
 			cloneURL = injectCredential(cloneURL, token)
 		}
 	}
@@ -158,15 +158,15 @@ func (e *Engine) setupGit(ctx context.Context, m domain.MemberSnapshot, workDir 
 }
 
 // buildSnapshot loads all team data from DB and creates a TeamSnapshot.
-func (e *Engine) buildSnapshot(ctx context.Context, teamID string) (domain.TeamSnapshot, error) {
-	team, err := e.store.GetTeam(ctx, teamID)
+func (s *Service) buildSnapshot(ctx context.Context, teamID string) (domain.TeamSnapshot, error) {
+	team, err := s.store.GetTeam(ctx, teamID)
 	if err != nil {
 		return domain.TeamSnapshot{}, fmt.Errorf("get team: %w", err)
 	}
 
 	snapshots := make([]domain.MemberSnapshot, 0, len(team.MemberIDs))
 	for _, id := range team.MemberIDs {
-		ms, err := e.loadMemberSnapshot(ctx, id)
+		ms, err := s.loadMemberSnapshot(ctx, id)
 		if err != nil {
 			return domain.TeamSnapshot{}, fmt.Errorf("load member %s: %w", id, err)
 		}
@@ -181,20 +181,20 @@ func (e *Engine) buildSnapshot(ctx context.Context, teamID string) (domain.TeamS
 	}, nil
 }
 
-func (e *Engine) loadMemberSnapshot(ctx context.Context, memberID string) (domain.MemberSnapshot, error) {
-	member, err := e.store.GetMember(ctx, memberID)
+func (s *Service) loadMemberSnapshot(ctx context.Context, memberID string) (domain.MemberSnapshot, error) {
+	member, err := s.store.GetMember(ctx, memberID)
 	if err != nil {
 		return domain.MemberSnapshot{}, fmt.Errorf("get member: %w", err)
 	}
 
-	profile, err := e.store.GetCliProfile(ctx, member.CliProfileID)
+	profile, err := s.store.GetCliProfile(ctx, member.CliProfileID)
 	if err != nil {
 		return domain.MemberSnapshot{}, fmt.Errorf("get cli profile: %w", err)
 	}
 
 	prompts := make([]domain.SnapshotPrompt, 0, len(member.SystemPromptIDs))
 	for _, id := range member.SystemPromptIDs {
-		sp, err := e.store.GetSystemPrompt(ctx, id)
+		sp, err := s.store.GetSystemPrompt(ctx, id)
 		if err != nil {
 			return domain.MemberSnapshot{}, fmt.Errorf("get prompt %s: %w", id, err)
 		}
@@ -203,7 +203,7 @@ func (e *Engine) loadMemberSnapshot(ctx context.Context, memberID string) (domai
 
 	envs := make([]domain.SnapshotEnvironment, 0, len(member.EnvironmentIDs))
 	for _, id := range member.EnvironmentIDs {
-		env, err := e.store.GetEnvironment(ctx, id)
+		env, err := s.store.GetEnvironment(ctx, id)
 		if err != nil {
 			return domain.MemberSnapshot{}, fmt.Errorf("get environment %s: %w", id, err)
 		}
@@ -212,7 +212,7 @@ func (e *Engine) loadMemberSnapshot(ctx context.Context, memberID string) (domai
 
 	var gitRepo *domain.SnapshotGitRepo
 	if member.GitRepoID != "" {
-		repo, err := e.store.GetGitRepo(ctx, member.GitRepoID)
+		repo, err := s.store.GetGitRepo(ctx, member.GitRepoID)
 		if err != nil {
 			return domain.MemberSnapshot{}, fmt.Errorf("get git repo: %w", err)
 		}
@@ -234,8 +234,8 @@ func (e *Engine) loadMemberSnapshot(ctx context.Context, memberID string) (domai
 	}, nil
 }
 
-func (e *Engine) failSprint(ctx context.Context, sprintID, errMsg string) {
-	_ = e.store.UpdateSprintState(ctx, sprintID, domain.SprintErrored, errMsg)
+func (s *Service) failSprint(ctx context.Context, sprintID, errMsg string) {
+	_ = s.store.UpdateSprintState(ctx, sprintID, domain.SprintErrored, errMsg)
 }
 
 // helpers

@@ -7,18 +7,21 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func TestBuildProtocol(t *testing.T) {
-	names := map[string]string{
-		"leader-1": "Editor",
-		"worker-1": "Writer",
-		"peer-1":   "Reviewer",
+func newTestTeam(rootID string, members []domain.MemberSnapshot) domain.TeamSnapshot {
+	return domain.TeamSnapshot{
+		TeamName:     "MyTeam",
+		RootMemberID: rootID,
+		Members:      members,
 	}
+}
 
+func TestBuildProtocol(t *testing.T) {
 	t.Run("RootMember/CoordinatesWorkers", func(t *testing.T) {
-		relations := domain.MemberRelations{
-			Workers: []string{"worker-1"},
-		}
-		got := BuildProtocol("Boss", "MyTeam", true, relations, names)
+		team := newTestTeam("boss-1", []domain.MemberSnapshot{
+			{MemberID: "boss-1", MemberName: "Boss", Relations: domain.MemberRelations{Workers: []string{"worker-1"}}},
+			{MemberID: "worker-1", MemberName: "Writer"},
+		})
+		got := BuildProtocol(team, team.Members[0])
 
 		if !strings.Contains(got, `"Boss"`) {
 			t.Errorf("should contain member name: %s", got)
@@ -35,11 +38,12 @@ func TestBuildProtocol(t *testing.T) {
 	})
 
 	t.Run("NonRoot/MentionsLeader", func(t *testing.T) {
-		relations := domain.MemberRelations{
-			Leaders: []string{"leader-1"},
-			Peers:   []string{"peer-1"},
-		}
-		got := BuildProtocol("Writer", "MyTeam", false, relations, names)
+		team := newTestTeam("leader-1", []domain.MemberSnapshot{
+			{MemberID: "leader-1", MemberName: "Editor"},
+			{MemberID: "writer-1", MemberName: "Writer", Relations: domain.MemberRelations{Leaders: []string{"leader-1"}, Peers: []string{"peer-1"}}},
+			{MemberID: "peer-1", MemberName: "Reviewer"},
+		})
+		got := BuildProtocol(team, team.Members[1])
 
 		if !strings.Contains(got, "Editor") {
 			t.Errorf("should mention leader name: %s", got)
@@ -50,8 +54,10 @@ func TestBuildProtocol(t *testing.T) {
 	})
 
 	t.Run("NoRelations/RootNoMessageSection", func(t *testing.T) {
-		relations := domain.MemberRelations{}
-		got := BuildProtocol("Solo", "MyTeam", true, relations, names)
+		team := newTestTeam("solo-1", []domain.MemberSnapshot{
+			{MemberID: "solo-1", MemberName: "Solo"},
+		})
+		got := BuildProtocol(team, team.Members[0])
 
 		if strings.Contains(got, "message send") {
 			t.Errorf("solo root with no relations should not have message section: %s", got)
@@ -59,12 +65,17 @@ func TestBuildProtocol(t *testing.T) {
 	})
 
 	t.Run("RelationTable/ShowsAllRoles", func(t *testing.T) {
-		relations := domain.MemberRelations{
-			Leaders: []string{"leader-1"},
-			Workers: []string{"worker-1"},
-			Peers:   []string{"peer-1"},
-		}
-		got := BuildProtocol("Agent", "MyTeam", false, relations, names)
+		team := newTestTeam("leader-1", []domain.MemberSnapshot{
+			{MemberID: "leader-1", MemberName: "Editor"},
+			{MemberID: "agent-1", MemberName: "Agent", Relations: domain.MemberRelations{
+				Leaders: []string{"leader-1"},
+				Workers: []string{"worker-1"},
+				Peers:   []string{"peer-1"},
+			}},
+			{MemberID: "worker-1", MemberName: "Writer"},
+			{MemberID: "peer-1", MemberName: "Reviewer"},
+		})
+		got := BuildProtocol(team, team.Members[1])
 
 		if !strings.Contains(got, "| Leader | Editor | leader-1 |") {
 			t.Errorf("should show leader row: %s", got)
