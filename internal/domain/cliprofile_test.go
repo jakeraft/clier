@@ -160,4 +160,3 @@ func TestCliProfile(t *testing.T) {
 		})
 	})
 }
-

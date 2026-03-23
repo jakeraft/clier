@@ -5,7 +5,12 @@ Multi-agent CLI orchestrator — spawns and manages multiple AI coding agents (C
 
 ## Tech Stack
 
-- Go 1.25, Cobra (CLI framework), SQLite
+- Go 1.25, Cobra (CLI framework)
+
+### DB
+
+- SQLite driver: modernc.org/sqlite — CGO-free, easy cross-compilation, ideal for CLI distribution
+- SQL codegen: sqlc — write SQL directly, generate type-safe Go code (idiomatic Go)
 
 ## Project Structure
 
@@ -23,12 +28,8 @@ internal/
   settings/            ← local config/credentials
 ```
 
-- No port/adapter layer. Interfaces only where genuinely needed.
-- Each `internal/` package has one clear responsibility.
-
 ## Test Conventions
 
-- Standard `testing` package only. No testify.
 - Naming: `TestEntity/Method/StateUnderTest_ExpectedBehavior`
 - Nested `t.Run` for grouping by method.
 - Test helpers in `helpers_test.go` within the same package.
