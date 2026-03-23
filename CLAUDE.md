@@ -2,7 +2,7 @@
 
 CLI-first project.
 Orchestrate AI coding agent teams in isolated workspaces.
-Compose teams of agents (Claude, Codex), define roles and relations, and run sprints in isolated environments via tmux.
+Compose teams of agents (Claude, Codex), define roles and relations, and run sprints in isolated environments.
 
 ## Tech Stack
 
@@ -23,7 +23,7 @@ cmd/                   ← Cobra commands (parse args → call internal/)
 internal/
   domain/              ← entities
   sprint/              ← sprint execution engine
-  tmux/                ← tmux session management
+  process/             ← agent process management (terminal multiplexer abstraction)
   clispawn/            ← agent spawn (Claude, Codex)
   db/                  ← SQLite
   settings/            ← local config/credentials
