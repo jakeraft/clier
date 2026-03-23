@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -106,14 +105,10 @@ func TestTeam(t *testing.T) {
 			}
 		})
 
-		t.Run("DuplicateMember_ReturnsConflict", func(t *testing.T) {
+		t.Run("DuplicateMember_ReturnsError", func(t *testing.T) {
 			team, _ := NewTeam("team", rootID)
-			err := team.AddMember(rootID)
-			if err == nil {
+			if err := team.AddMember(rootID); err == nil {
 				t.Fatal("expected error, got nil")
-			}
-			if !errors.Is(err, ErrConflict) {
-				t.Errorf("error = %v, want ErrConflict", err)
 			}
 		})
 	})
@@ -140,14 +135,10 @@ func TestTeam(t *testing.T) {
 			}
 		})
 
-		t.Run("NonexistentMember_ReturnsNotFound", func(t *testing.T) {
+		t.Run("NonexistentMember_ReturnsError", func(t *testing.T) {
 			team, _ := NewTeam("team", rootID)
-			err := team.RemoveMember("nonexistent")
-			if err == nil {
+			if err := team.RemoveMember("nonexistent"); err == nil {
 				t.Fatal("expected error, got nil")
-			}
-			if !errors.Is(err, ErrNotFound) {
-				t.Errorf("error = %v, want ErrNotFound", err)
 			}
 		})
 	})
@@ -203,27 +194,19 @@ func TestTeam(t *testing.T) {
 			}
 		})
 
-		t.Run("Duplicate_ReturnsConflict", func(t *testing.T) {
+		t.Run("Duplicate_ReturnsError", func(t *testing.T) {
 			team := createTeamWithMembers(t, "member-2")
 			_ = team.AddRelation(Relation{From: rootID, To: "member-2", Type: RelationLeader})
-			err := team.AddRelation(Relation{From: rootID, To: "member-2", Type: RelationLeader})
-			if err == nil {
+			if err := team.AddRelation(Relation{From: rootID, To: "member-2", Type: RelationLeader}); err == nil {
 				t.Fatal("expected error, got nil")
-			}
-			if !errors.Is(err, ErrConflict) {
-				t.Errorf("error = %v, want ErrConflict", err)
 			}
 		})
 
-		t.Run("LeaderUniqueness_SecondLeader_ReturnsConflict", func(t *testing.T) {
+		t.Run("LeaderUniqueness_SecondLeader_ReturnsError", func(t *testing.T) {
 			team := createTeamWithMembers(t, "member-2", "member-3")
 			_ = team.AddRelation(Relation{From: rootID, To: "member-2", Type: RelationLeader})
-			err := team.AddRelation(Relation{From: "member-3", To: "member-2", Type: RelationLeader})
-			if err == nil {
+			if err := team.AddRelation(Relation{From: "member-3", To: "member-2", Type: RelationLeader}); err == nil {
 				t.Fatal("expected error for second leader, got nil")
-			}
-			if !errors.Is(err, ErrConflict) {
-				t.Errorf("error = %v, want ErrConflict", err)
 			}
 		})
 	})
@@ -240,14 +223,10 @@ func TestTeam(t *testing.T) {
 			}
 		})
 
-		t.Run("Nonexistent_ReturnsNotFound", func(t *testing.T) {
+		t.Run("Nonexistent_ReturnsError", func(t *testing.T) {
 			team, _ := NewTeam("team", rootID)
-			err := team.RemoveRelation(rootID, "x", RelationLeader)
-			if err == nil {
+			if err := team.RemoveRelation(rootID, "x", RelationLeader); err == nil {
 				t.Fatal("expected error, got nil")
-			}
-			if !errors.Is(err, ErrNotFound) {
-				t.Errorf("error = %v, want ErrNotFound", err)
 			}
 		})
 	})

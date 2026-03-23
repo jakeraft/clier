@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -44,27 +43,19 @@ func TestSprint(t *testing.T) {
 			}
 		})
 
-		t.Run("AlreadyCompleted_ReturnsInvalidTransition", func(t *testing.T) {
+		t.Run("AlreadyCompleted_ReturnsError", func(t *testing.T) {
 			s := NewSprint(testSnapshot)
 			_ = s.Complete()
-			err := s.Complete()
-			if err == nil {
+			if err := s.Complete(); err == nil {
 				t.Fatal("expected error, got nil")
-			}
-			if !errors.Is(err, ErrInvalidTransition) {
-				t.Errorf("error = %v, want ErrInvalidTransition", err)
 			}
 		})
 
-		t.Run("Errored_ReturnsInvalidTransition", func(t *testing.T) {
+		t.Run("Errored_ReturnsError", func(t *testing.T) {
 			s := NewSprint(testSnapshot)
 			_ = s.Fail("boom")
-			err := s.Complete()
-			if err == nil {
+			if err := s.Complete(); err == nil {
 				t.Fatal("expected error, got nil")
-			}
-			if !errors.Is(err, ErrInvalidTransition) {
-				t.Errorf("error = %v, want ErrInvalidTransition", err)
 			}
 		})
 	})
@@ -83,27 +74,19 @@ func TestSprint(t *testing.T) {
 			}
 		})
 
-		t.Run("AlreadyCompleted_ReturnsInvalidTransition", func(t *testing.T) {
+		t.Run("AlreadyCompleted_ReturnsError", func(t *testing.T) {
 			s := NewSprint(testSnapshot)
 			_ = s.Complete()
-			err := s.Fail("too late")
-			if err == nil {
+			if err := s.Fail("too late"); err == nil {
 				t.Fatal("expected error, got nil")
-			}
-			if !errors.Is(err, ErrInvalidTransition) {
-				t.Errorf("error = %v, want ErrInvalidTransition", err)
 			}
 		})
 
-		t.Run("AlreadyErrored_ReturnsInvalidTransition", func(t *testing.T) {
+		t.Run("AlreadyErrored_ReturnsError", func(t *testing.T) {
 			s := NewSprint(testSnapshot)
 			_ = s.Fail("first")
-			err := s.Fail("second")
-			if err == nil {
+			if err := s.Fail("second"); err == nil {
 				t.Fatal("expected error, got nil")
-			}
-			if !errors.Is(err, ErrInvalidTransition) {
-				t.Errorf("error = %v, want ErrInvalidTransition", err)
 			}
 		})
 	})

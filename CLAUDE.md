@@ -1,13 +1,11 @@
 # Clier
 
+CLI-first project.
 Multi-agent CLI orchestrator — spawns and manages multiple AI coding agents (Claude, Codex) via tmux.
-
-CLI-first project. No HTTP server. Dashboard is a separate project if needed.
 
 ## Tech Stack
 
 - Go 1.25, Cobra (CLI framework), SQLite
-- Legacy TypeScript reference: `~/jakeraft/clier-legacy/`
 
 ## Project Structure
 
@@ -27,16 +25,6 @@ internal/
 
 - No port/adapter layer. Interfaces only where genuinely needed.
 - Each `internal/` package has one clear responsibility.
-
-## Domain Conventions
-
-- Exported struct fields, `NewXxx()` factory functions for creation.
-- DB restore uses struct literal directly (no separate Restore function).
-- ID generated in domain: `uuid.NewString()`.
-- Timestamps: `CreatedAt`, `UpdatedAt` (`time.Time`).
-- Errors: sentinel errors (`ErrNotFound`, `ErrConflict`, `ErrInvalidTransition`) wrapped with `fmt.Errorf("context: %w", err)`.
-- Update methods take pointer args (`*string`, `*[]string`). nil means no change.
-- Slice/map fields must be deep copied in factories (no reference sharing with caller).
 
 ## Test Conventions
 

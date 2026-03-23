@@ -65,7 +65,7 @@ func (t *Team) Update(name *string, rootMemberID *string) error {
 	}
 	if rootMemberID != nil {
 		if !t.hasMember(*rootMemberID) {
-			return fmt.Errorf("root member must be in team: %s: %w", *rootMemberID, ErrNotFound)
+			return fmt.Errorf("root member must be in team: %s", *rootMemberID)
 		}
 		t.RootMemberID = *rootMemberID
 	}
@@ -75,7 +75,7 @@ func (t *Team) Update(name *string, rootMemberID *string) error {
 
 func (t *Team) AddMember(memberID string) error {
 	if t.hasMember(memberID) {
-		return fmt.Errorf("member already in team: %s: %w", memberID, ErrConflict)
+		return fmt.Errorf("member already in team: %s", memberID)
 	}
 	t.MemberIDs = append(t.MemberIDs, memberID)
 	t.UpdatedAt = time.Now()
@@ -88,7 +88,7 @@ func (t *Team) RemoveMember(memberID string) error {
 	}
 	idx := t.memberIndex(memberID)
 	if idx == -1 {
-		return fmt.Errorf("member not in team: %s: %w", memberID, ErrNotFound)
+		return fmt.Errorf("member not in team: %s", memberID)
 	}
 	t.MemberIDs = append(t.MemberIDs[:idx], t.MemberIDs[idx+1:]...)
 
@@ -109,16 +109,16 @@ func (t *Team) AddRelation(r Relation) error {
 		return fmt.Errorf("cannot create relation to self")
 	}
 	if !t.hasMember(r.From) {
-		return fmt.Errorf("member not in team: %s: %w", r.From, ErrNotFound)
+		return fmt.Errorf("member not in team: %s", r.From)
 	}
 	if !t.hasMember(r.To) {
-		return fmt.Errorf("member not in team: %s: %w", r.To, ErrNotFound)
+		return fmt.Errorf("member not in team: %s", r.To)
 	}
 
 	// Check duplicate.
 	for _, existing := range t.Relations {
 		if existing.From == r.From && existing.To == r.To && existing.Type == r.Type {
-			return fmt.Errorf("duplicate relation: %s → %s (%s): %w", r.From, r.To, r.Type, ErrConflict)
+			return fmt.Errorf("duplicate relation: %s → %s (%s)", r.From, r.To, r.Type)
 		}
 	}
 
@@ -126,7 +126,7 @@ func (t *Team) AddRelation(r Relation) error {
 	if r.Type == RelationLeader {
 		for _, existing := range t.Relations {
 			if existing.To == r.To && existing.Type == RelationLeader {
-				return fmt.Errorf("member %s already has a leader: %w", r.To, ErrConflict)
+				return fmt.Errorf("member %s already has a leader", r.To)
 			}
 		}
 	}
@@ -144,7 +144,7 @@ func (t *Team) RemoveRelation(from, to string, relType RelationType) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("relation not found: %w", ErrNotFound)
+	return fmt.Errorf("relation not found")
 }
 
 func (t *Team) GetMemberRelations(memberID string) MemberRelations {

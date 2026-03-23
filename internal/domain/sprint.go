@@ -40,7 +40,7 @@ func NewSprint(snapshot TeamSnapshot) *Sprint {
 
 func (s *Sprint) Complete() error {
 	if s.State != SprintRunning {
-		return fmt.Errorf("cannot complete sprint in state %q: %w", s.State, ErrInvalidTransition)
+		return fmt.Errorf("cannot complete sprint in state %q", s.State)
 	}
 	s.State = SprintCompleted
 	s.UpdatedAt = time.Now()
@@ -49,7 +49,7 @@ func (s *Sprint) Complete() error {
 
 func (s *Sprint) Fail(errMsg string) error {
 	if s.State != SprintRunning {
-		return fmt.Errorf("cannot fail sprint in state %q: %w", s.State, ErrInvalidTransition)
+		return fmt.Errorf("cannot fail sprint in state %q", s.State)
 	}
 	s.State = SprintErrored
 	s.Error = errMsg
