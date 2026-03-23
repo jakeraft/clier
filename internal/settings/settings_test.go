@@ -75,13 +75,13 @@ func TestSettings(t *testing.T) {
 		}
 	})
 
-	t.Run("SprintMemberDir_ReturnsCorrectPath", func(t *testing.T) {
+	t.Run("SprintsDir_ReturnsCorrectPath", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		s := newWithConfigDir(tmpDir)
-		got := s.SprintMemberDir("sprint-1", "member-2")
-		want := filepath.Join(tmpDir, "sprints", "sprint-1", "member-2")
+		got := s.SprintsDir()
+		want := filepath.Join(tmpDir, "sprints")
 		if got != want {
-			t.Errorf("SprintMemberDir() = %q, want %q", got, want)
+			t.Errorf("SprintsDir() = %q, want %q", got, want)
 		}
 	})
 }

@@ -61,12 +61,8 @@ func (s *Settings) HasAuth(binary string) bool {
 	return err == nil && info.IsDir()
 }
 
-func (s *Settings) SprintWorkBase() string {
+func (s *Settings) SprintsDir() string {
 	return filepath.Join(s.configDir, sprintsDirName)
-}
-
-func (s *Settings) SprintMemberDir(sprintID, memberID string) string {
-	return filepath.Join(s.configDir, sprintsDirName, sprintID, memberID)
 }
 
 func (s *Settings) EnsureDirs() error {
