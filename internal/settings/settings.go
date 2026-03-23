@@ -109,7 +109,7 @@ func (s *Settings) CheckAuth(binary domain.CliBinary) (AuthStatus, error) {
 	}
 
 	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Env = append(os.Environ(), "HOME="+authDir)
+	cmd.Env = append(systemEnv(), "HOME="+authDir)
 	if err := cmd.Run(); err != nil {
 		return AuthInvalid, nil
 	}

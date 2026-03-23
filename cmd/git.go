@@ -8,19 +8,16 @@ import (
 )
 
 func init() {
+	gitCmd.AddCommand(gitSetCmd)
+	gitCmd.AddCommand(gitGetCmd)
+	gitCmd.AddCommand(gitRemoveCmd)
+	gitCmd.AddCommand(gitListCmd)
 	rootCmd.AddCommand(gitCmd)
 }
 
 var gitCmd = &cobra.Command{
 	Use:   "git",
 	Short: "Manage git credentials",
-}
-
-func init() {
-	gitCmd.AddCommand(gitSetCmd)
-	gitCmd.AddCommand(gitGetCmd)
-	gitCmd.AddCommand(gitRemoveCmd)
-	gitCmd.AddCommand(gitListCmd)
 }
 
 var gitSetCmd = &cobra.Command{
