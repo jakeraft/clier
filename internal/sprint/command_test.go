@@ -20,7 +20,7 @@ func TestBuildCommand(t *testing.T) {
 			CustomArgs:     []string{"--verbose"},
 			ComposedPrompt: "you are a coder",
 		}
-		cmd, tempFiles, err := BuildCommand(m, "/work")
+		cmd, tempFiles, err := BuildCommand(m, "/work", nil)
 		if err != nil {
 			t.Fatalf("BuildCommand: %v", err)
 		}
@@ -59,7 +59,7 @@ func TestBuildCommand(t *testing.T) {
 			CustomArgs:     []string{},
 			ComposedPrompt: "you are a coder",
 		}
-		cmd, tempFiles, err := BuildCommand(m, "/work")
+		cmd, tempFiles, err := BuildCommand(m, "/work", nil)
 		if err != nil {
 			t.Fatalf("BuildCommand: %v", err)
 		}
@@ -78,6 +78,79 @@ func TestBuildCommand(t *testing.T) {
 		}
 		if string(data) != "you are a coder" {
 			t.Errorf("instructions content = %q, want %q", string(data), "you are a coder")
+		}
+	})
+}
+
+func TestBuildEnvCommand(t *testing.T) {
+	t.Run("NoEnv_ReturnsCommandOnly", func(t *testing.T) {
+		got := buildEnvCommand("claude --model opus", nil)
+		if got != "claude --model opus" {
+			t.Errorf("got %q, want %q", got, "claude --model opus")
+		}
+	})
+
+	t.Run("SingleEnv_PrependsExport", func(t *testing.T) {
+		got := buildEnvCommand("claude", []string{"HOME=/tmp/sprint"})
+		want := "export HOME='/tmp/sprint' && claude"
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("MultipleEnv_ChainsExports", func(t *testing.T) {
+		got := buildEnvCommand("claude", []string{"HOME=/tmp/sprint", "FOO=bar"})
+		want := "export HOME='/tmp/sprint' && export FOO='bar' && claude"
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("ValueWithSingleQuote_EscapesQuote", func(t *testing.T) {
+		got := buildEnvCommand("claude", []string{"MSG=it's fine"})
+		want := `export MSG='it'\''s fine' && claude`
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("ValueWithEquals_SplitsOnFirstEquals", func(t *testing.T) {
+		got := buildEnvCommand("claude", []string{"OPTS=key=value"})
+		want := "export OPTS='key=value' && claude"
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("EmptyValue_ExportsEmptyString", func(t *testing.T) {
+		got := buildEnvCommand("claude", []string{"EMPTY="})
+		want := "export EMPTY='' && claude"
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+}
+
+func TestBuildCommand_WithEnv(t *testing.T) {
+	t.Run("EnvIncludedInCommand", func(t *testing.T) {
+		m := domain.MemberSnapshot{
+			MemberID: "m1",
+			Binary:   domain.BinaryClaude,
+			Model:    "claude-sonnet-4-6",
+		}
+		env := []string{"HOME=/tmp/sprint", "FOO=bar"}
+		cmd, _, err := BuildCommand(m, "/work", env)
+		if err != nil {
+			t.Fatalf("BuildCommand: %v", err)
+		}
+		if !strings.HasPrefix(cmd, "export HOME=") {
+			t.Errorf("command should start with env exports: %s", cmd)
+		}
+		if !strings.Contains(cmd, "export FOO='bar'") {
+			t.Errorf("command should contain FOO export: %s", cmd)
+		}
+		if !strings.Contains(cmd, "cd '/work'") {
+			t.Errorf("command should contain cd: %s", cmd)
 		}
 	})
 }

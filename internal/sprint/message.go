@@ -23,10 +23,14 @@ type SurfaceMap struct {
 	Surfaces     map[string]string `json:"surfaces"` // memberID → surface ref
 }
 
-func saveSurfaces(sprintsDir, sprintID string, result *terminal.LaunchResult) error {
+func saveSurfaces(sprintsDir, sprintID string, members []domain.MemberSnapshot, result *terminal.LaunchResult) error {
+	surfaces := make(map[string]string, len(members))
+	for i, m := range members {
+		surfaces[m.MemberID] = result.Surfaces[i]
+	}
 	m := SurfaceMap{
 		WorkspaceRef: result.WorkspaceRef,
-		Surfaces:     result.Surfaces,
+		Surfaces:     surfaces,
 	}
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
@@ -96,7 +100,7 @@ func (e *Engine) DeliverMessage(ctx context.Context, sprintID, fromMemberID, toM
 	}
 
 	text := fmt.Sprintf("[Message from %s] %s", fromName, content)
-	return terminal.CmuxSend(surfaceRef, text)
+	return e.terminal.Send(surfaceRef, text)
 }
 
 func validateMessageRoute(snapshot domain.TeamSnapshot, fromID, toID string) (string, error) {

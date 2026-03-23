@@ -36,8 +36,9 @@ type Store interface {
 
 // Terminal defines the terminal operations needed by the sprint engine.
 type Terminal interface {
-	Launch(sprintID, sprintName string, members []terminal.MemberLaunch) (*terminal.LaunchResult, error)
-	Terminate(sprintID string) error
+	Launch(workspaceName string, specs []terminal.SurfaceSpec) (*terminal.LaunchResult, error)
+	Terminate(workspaceRef string) error
+	Send(surfaceRef, text string) error
 }
 
 // Engine orchestrates sprint lifecycle.
@@ -59,7 +60,7 @@ func (e *Engine) Start(ctx context.Context, teamID string) (*domain.Sprint, erro
 
 	sprint := domain.NewSprint(snapshot)
 
-	launches, tempFiles, err := e.prepareMembers(ctx, sprint.ID, snapshot.Members)
+	specs, tempFiles, err := e.prepareMembers(ctx, sprint.ID, snapshot.Members)
 	if err != nil {
 		return nil, fmt.Errorf("prepare members: %w", err)
 	}
@@ -68,14 +69,14 @@ func (e *Engine) Start(ctx context.Context, teamID string) (*domain.Sprint, erro
 		return nil, fmt.Errorf("save sprint: %w", err)
 	}
 
-	result, err := e.terminal.Launch(sprint.ID, sprint.Name, launches)
+	result, err := e.terminal.Launch(sprint.Name, specs)
 	if err != nil {
 		e.failSprint(ctx, sprint.ID, err.Error())
 		cleanupTempFiles(tempFiles)
 		return nil, fmt.Errorf("launch terminal: %w", err)
 	}
 
-	if err := saveSurfaces(e.settings.SprintsDir(), sprint.ID, result); err != nil {
+	if err := saveSurfaces(e.settings.SprintsDir(), sprint.ID, snapshot.Members, result); err != nil {
 		return nil, fmt.Errorf("save surfaces: %w", err)
 	}
 
@@ -83,7 +84,12 @@ func (e *Engine) Start(ctx context.Context, teamID string) (*domain.Sprint, erro
 }
 
 func (e *Engine) Stop(ctx context.Context, sprintID string) error {
-	if err := e.terminal.Terminate(sprintID); err != nil {
+	surfaces, err := loadSurfaces(e.settings.SprintsDir(), sprintID)
+	if err != nil {
+		return fmt.Errorf("load surfaces: %w", err)
+	}
+
+	if err := e.terminal.Terminate(surfaces.WorkspaceRef); err != nil {
 		return fmt.Errorf("terminate terminal: %w", err)
 	}
 
@@ -104,8 +110,8 @@ func (e *Engine) Stop(ctx context.Context, sprintID string) error {
 
 // prepareMembers creates workspace directories, copies auth, writes configs,
 // sets up git repos, and builds launch specs for all members.
-func (e *Engine) prepareMembers(ctx context.Context, sprintID string, members []domain.MemberSnapshot) ([]terminal.MemberLaunch, []string, error) {
-	var launches []terminal.MemberLaunch
+func (e *Engine) prepareMembers(ctx context.Context, sprintID string, members []domain.MemberSnapshot) ([]terminal.SurfaceSpec, []string, error) {
+	var specs []terminal.SurfaceSpec
 	var tempFiles []string
 
 	for _, m := range members {
@@ -128,21 +134,20 @@ func (e *Engine) prepareMembers(ctx context.Context, sprintID string, members []
 			return nil, nil, fmt.Errorf("setup git for %s: %w", m.MemberName, err)
 		}
 
-		cmd, tf, err := BuildCommand(m, workDir)
+		env := BuildEnv(m, sprintID, memberHome)
+		cmd, tf, err := BuildCommand(m, workDir, env)
 		if err != nil {
 			return nil, nil, fmt.Errorf("build command for %s: %w", m.MemberName, err)
 		}
 		tempFiles = append(tempFiles, tf...)
 
-		launches = append(launches, terminal.MemberLaunch{
-			MemberID:   m.MemberID,
-			MemberName: m.MemberName,
-			Command:    cmd,
-			Env:        BuildEnv(m, sprintID, memberHome),
+		specs = append(specs, terminal.SurfaceSpec{
+			Name:    m.MemberName,
+			Command: cmd,
 		})
 	}
 
-	return launches, tempFiles, nil
+	return specs, tempFiles, nil
 }
 
 func (e *Engine) setupGit(ctx context.Context, m domain.MemberSnapshot, workDir string) error {

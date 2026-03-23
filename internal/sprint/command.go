@@ -12,17 +12,26 @@ import (
 	"github.com/jakeraft/clier/internal/terminal"
 )
 
-// BuildCommand returns the shell command to launch an agent.
-// Result format: "cd <workDir> && <binary> <args...>"
-func BuildCommand(m domain.MemberSnapshot, workDir string) (command string, tempFiles []string, err error) {
+// BuildCommand returns the full shell command to launch an agent,
+// including environment variable exports.
+// Result format: "export K='V' && ... && cd <workDir> && <binary> <args...>"
+func BuildCommand(m domain.MemberSnapshot, workDir string, env []string) (command string, tempFiles []string, err error) {
+	var cmd string
+	var tf []string
+
 	switch m.Binary {
 	case domain.BinaryClaude:
-		return buildClaudeCommand(m, workDir), nil, nil
+		cmd = buildClaudeCommand(m, workDir)
 	case domain.BinaryCodex:
-		return buildCodexCommand(m, workDir)
+		cmd, tf, err = buildCodexCommand(m, workDir)
+		if err != nil {
+			return "", nil, err
+		}
 	default:
 		return "", nil, fmt.Errorf("unknown binary: %s", m.Binary)
 	}
+
+	return buildEnvCommand(cmd, env), tf, nil
 }
 
 func buildClaudeCommand(m domain.MemberSnapshot, workDir string) string {
@@ -51,6 +60,20 @@ func buildCodexCommand(m domain.MemberSnapshot, workDir string) (string, []strin
 	args = append(args, "-c", fmt.Sprintf("model_instructions_file=%s", q(instructionsFile)))
 	args = append(args, quoteArgs(m.CustomArgs)...)
 	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " ")), []string{instructionsFile}, nil
+}
+
+func buildEnvCommand(command string, env []string) string {
+	if len(env) == 0 {
+		return command
+	}
+	q := terminal.ShellQuote
+	parts := make([]string, 0, len(env)+1)
+	for _, e := range env {
+		k, v, _ := strings.Cut(e, "=")
+		parts = append(parts, fmt.Sprintf("export %s=%s", k, q(v)))
+	}
+	parts = append(parts, command)
+	return strings.Join(parts, " && ")
 }
 
 func quoteArgs(args []string) []string {
