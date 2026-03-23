@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 const (
@@ -52,11 +54,11 @@ func (s *Settings) credentialsPath() string {
 	return filepath.Join(s.configDir, credentialsFile)
 }
 
-func (s *Settings) AuthDir(binary string) string {
-	return filepath.Join(s.configDir, authDirName, binary)
+func (s *Settings) AuthDir(binary domain.CliBinary) string {
+	return filepath.Join(s.configDir, authDirName, string(binary))
 }
 
-func (s *Settings) HasAuth(binary string) bool {
+func (s *Settings) HasAuth(binary domain.CliBinary) bool {
 	info, err := os.Stat(s.AuthDir(binary))
 	return err == nil && info.IsDir()
 }
@@ -69,6 +71,7 @@ func (s *Settings) EnsureDirs() error {
 	dirs := []string{
 		s.configDir,
 		filepath.Join(s.configDir, authDirName),
+		filepath.Join(s.configDir, sprintsDirName),
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {
@@ -80,12 +83,12 @@ func (s *Settings) EnsureDirs() error {
 
 // Auth management
 
-var loginCommands = map[string][]string{
-	"claude": {"claude", "auth", "login"},
-	"codex":  {"codex", "auth", "login"},
+var loginCommands = map[domain.CliBinary][]string{
+	domain.BinaryClaude: {"claude", "auth", "login"},
+	domain.BinaryCodex:  {"codex", "login"},
 }
 
-func (s *Settings) LoginAuth(binary string) error {
+func (s *Settings) LoginAuth(binary domain.CliBinary) error {
 	args, ok := loginCommands[binary]
 	if !ok {
 		return fmt.Errorf("unknown binary: %s", binary)
@@ -108,7 +111,7 @@ func (s *Settings) LoginAuth(binary string) error {
 	return nil
 }
 
-func (s *Settings) CopyAuthTo(binary, destHome string) error {
+func (s *Settings) CopyAuthTo(binary domain.CliBinary, destHome string) error {
 	authDir := s.AuthDir(binary)
 	if !s.HasAuth(binary) {
 		return fmt.Errorf("auth not configured for %s — run: clier login %s", binary, binary)
@@ -129,11 +132,15 @@ func (s *Settings) CopyAuthTo(binary, destHome string) error {
 			return os.MkdirAll(dest, 0755)
 		}
 
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
 		}
-		return os.WriteFile(dest, data, 0644)
+		return os.WriteFile(dest, data, info.Mode().Perm())
 	})
 }
 

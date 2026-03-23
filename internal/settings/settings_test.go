@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 func TestSettings(t *testing.T) {
@@ -35,26 +37,26 @@ func TestSettings(t *testing.T) {
 
 	t.Run("AuthDir_ReturnsCorrectPath", func(t *testing.T) {
 		s := newWithConfigDir(t.TempDir())
-		got := s.AuthDir("claude")
+		got := s.AuthDir(domain.BinaryClaude)
 		if !strings.HasSuffix(got, filepath.Join("auth", "claude")) {
-			t.Errorf("AuthDir(\"claude\") = %q, want suffix \"auth/claude\"", got)
+			t.Errorf("AuthDir(BinaryClaude) = %q, want suffix \"auth/claude\"", got)
 		}
 	})
 
 	t.Run("HasAuth_NonexistentDir_ReturnsFalse", func(t *testing.T) {
 		s := newWithConfigDir(t.TempDir())
-		if s.HasAuth("claude") {
-			t.Error("HasAuth(\"claude\") = true, want false for nonexistent dir")
+		if s.HasAuth(domain.BinaryClaude) {
+			t.Error("HasAuth(BinaryClaude) = true, want false for nonexistent dir")
 		}
 	})
 
 	t.Run("HasAuth_ExistingDir_ReturnsTrue", func(t *testing.T) {
 		s := newWithConfigDir(t.TempDir())
-		if err := os.MkdirAll(s.AuthDir("claude"), 0755); err != nil {
+		if err := os.MkdirAll(s.AuthDir(domain.BinaryClaude), 0755); err != nil {
 			t.Fatalf("failed to create auth dir: %v", err)
 		}
-		if !s.HasAuth("claude") {
-			t.Error("HasAuth(\"claude\") = false, want true for existing dir")
+		if !s.HasAuth(domain.BinaryClaude) {
+			t.Error("HasAuth(BinaryClaude) = false, want true for existing dir")
 		}
 	})
 
@@ -89,7 +91,7 @@ func TestSettings(t *testing.T) {
 func TestAuth(t *testing.T) {
 	t.Run("CopyAuthTo_CopiesFiles", func(t *testing.T) {
 		s := newWithConfigDir(t.TempDir())
-		authDir := s.AuthDir("claude")
+		authDir := s.AuthDir(domain.BinaryClaude)
 		if err := os.MkdirAll(filepath.Join(authDir, ".claude"), 0755); err != nil {
 			t.Fatalf("create auth dir: %v", err)
 		}
@@ -98,7 +100,7 @@ func TestAuth(t *testing.T) {
 		}
 
 		destHome := t.TempDir()
-		if err := s.CopyAuthTo("claude", destHome); err != nil {
+		if err := s.CopyAuthTo(domain.BinaryClaude, destHome); err != nil {
 			t.Fatalf("CopyAuthTo() error = %v", err)
 		}
 
@@ -113,14 +115,14 @@ func TestAuth(t *testing.T) {
 
 	t.Run("CopyAuthTo_NoAuth_ReturnsError", func(t *testing.T) {
 		s := newWithConfigDir(t.TempDir())
-		if err := s.CopyAuthTo("claude", t.TempDir()); err == nil {
+		if err := s.CopyAuthTo(domain.BinaryClaude, t.TempDir()); err == nil {
 			t.Error("CopyAuthTo() should return error when auth not configured")
 		}
 	})
 
 	t.Run("LoginAuth_UnknownBinary_ReturnsError", func(t *testing.T) {
 		s := newWithConfigDir(t.TempDir())
-		if err := s.LoginAuth("unknown"); err == nil {
+		if err := s.LoginAuth(domain.CliBinary("unknown")); err == nil {
 			t.Error("LoginAuth() should return error for unknown binary")
 		}
 	})
