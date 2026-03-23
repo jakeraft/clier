@@ -76,11 +76,52 @@ func TestSettings(t *testing.T) {
 	})
 
 	t.Run("SprintMemberDir_ReturnsCorrectPath", func(t *testing.T) {
-		s := newWithConfigDir(t.TempDir())
+		tmpDir := t.TempDir()
+		s := newWithConfigDir(tmpDir)
 		got := s.SprintMemberDir("sprint-1", "member-2")
-		want := filepath.Join(sprintWorkBase, "sprint-1", "member-2")
+		want := filepath.Join(tmpDir, "sprints", "sprint-1", "member-2")
 		if got != want {
 			t.Errorf("SprintMemberDir() = %q, want %q", got, want)
+		}
+	})
+}
+
+func TestAuth(t *testing.T) {
+	t.Run("CopyAuthTo_CopiesFiles", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		authDir := s.AuthDir("claude")
+		if err := os.MkdirAll(filepath.Join(authDir, ".claude"), 0755); err != nil {
+			t.Fatalf("create auth dir: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(authDir, ".claude", "credentials.json"), []byte(`{"token":"abc"}`), 0644); err != nil {
+			t.Fatalf("write auth file: %v", err)
+		}
+
+		destHome := t.TempDir()
+		if err := s.CopyAuthTo("claude", destHome); err != nil {
+			t.Fatalf("CopyAuthTo() error = %v", err)
+		}
+
+		data, err := os.ReadFile(filepath.Join(destHome, ".claude", "credentials.json"))
+		if err != nil {
+			t.Fatalf("read copied file: %v", err)
+		}
+		if string(data) != `{"token":"abc"}` {
+			t.Errorf("copied content = %q, want %q", string(data), `{"token":"abc"}`)
+		}
+	})
+
+	t.Run("CopyAuthTo_NoAuth_ReturnsError", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		if err := s.CopyAuthTo("claude", t.TempDir()); err == nil {
+			t.Error("CopyAuthTo() should return error when auth not configured")
+		}
+	})
+
+	t.Run("LoginAuth_UnknownBinary_ReturnsError", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		if err := s.LoginAuth("unknown"); err == nil {
+			t.Error("LoginAuth() should return error for unknown binary")
 		}
 	})
 }

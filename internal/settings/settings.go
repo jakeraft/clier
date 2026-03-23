@@ -3,7 +3,9 @@ package settings
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -12,7 +14,7 @@ const (
 	dbFileName      = "data.db"
 	credentialsFile = "credentials.json"
 	authDirName     = "auth"
-	sprintWorkBase  = "/tmp/clier/sprints"
+	sprintsDirName  = "sprints"
 )
 
 type Credential struct {
@@ -60,11 +62,11 @@ func (s *Settings) HasAuth(binary string) bool {
 }
 
 func (s *Settings) SprintWorkBase() string {
-	return sprintWorkBase
+	return filepath.Join(s.configDir, sprintsDirName)
 }
 
 func (s *Settings) SprintMemberDir(sprintID, memberID string) string {
-	return filepath.Join(sprintWorkBase, sprintID, memberID)
+	return filepath.Join(s.configDir, sprintsDirName, sprintID, memberID)
 }
 
 func (s *Settings) EnsureDirs() error {
@@ -78,6 +80,65 @@ func (s *Settings) EnsureDirs() error {
 		}
 	}
 	return nil
+}
+
+// Auth management
+
+var loginCommands = map[string][]string{
+	"claude": {"claude", "auth", "login"},
+	"codex":  {"codex", "auth", "login"},
+}
+
+func (s *Settings) LoginAuth(binary string) error {
+	args, ok := loginCommands[binary]
+	if !ok {
+		return fmt.Errorf("unknown binary: %s", binary)
+	}
+
+	authDir := s.AuthDir(binary)
+	if err := os.MkdirAll(authDir, 0755); err != nil {
+		return fmt.Errorf("create auth dir: %w", err)
+	}
+
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Env = append(os.Environ(), "HOME="+authDir)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("login %s: %w", binary, err)
+	}
+	return nil
+}
+
+func (s *Settings) CopyAuthTo(binary, destHome string) error {
+	authDir := s.AuthDir(binary)
+	if !s.HasAuth(binary) {
+		return fmt.Errorf("auth not configured for %s — run: clier login %s", binary, binary)
+	}
+
+	return filepath.WalkDir(authDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		rel, err := filepath.Rel(authDir, path)
+		if err != nil {
+			return err
+		}
+		dest := filepath.Join(destHome, rel)
+
+		if d.IsDir() {
+			return os.MkdirAll(dest, 0755)
+		}
+
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(dest, data, 0644)
+	})
 }
 
 // Credential management
