@@ -25,7 +25,14 @@ type Sprint struct {
 	UpdatedAt    time.Time
 }
 
-func NewSprint(snapshot TeamSnapshot) *Sprint {
+func NewSprint(snapshot TeamSnapshot) (*Sprint, error) {
+	if snapshot.TeamName == "" {
+		return nil, fmt.Errorf("snapshot team name must not be empty")
+	}
+	if snapshot.RootMemberID == "" {
+		return nil, fmt.Errorf("snapshot root member id must not be empty")
+	}
+
 	id := uuid.NewString()
 	now := time.Now()
 	return &Sprint{
@@ -35,7 +42,7 @@ func NewSprint(snapshot TeamSnapshot) *Sprint {
 		State:        SprintRunning,
 		CreatedAt:    now,
 		UpdatedAt:    now,
-	}
+	}, nil
 }
 
 func (s *Sprint) Complete() error {

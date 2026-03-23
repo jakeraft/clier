@@ -204,6 +204,14 @@ func TestTeam(t *testing.T) {
 			}
 		})
 
+		t.Run("ReversePeerDuplicate_ReturnsError", func(t *testing.T) {
+			team := createTeamWithMembers(t, "member-2")
+			_ = team.AddRelation(Relation{From: rootID, To: "member-2", Type: RelationPeer})
+			if err := team.AddRelation(Relation{From: "member-2", To: rootID, Type: RelationPeer}); err == nil {
+				t.Fatal("expected error for reverse peer duplicate, got nil")
+			}
+		})
+
 		t.Run("LeaderUniqueness_SecondLeader_ReturnsError", func(t *testing.T) {
 			team := createTeamWithMembers(t, "member-2", "member-3")
 			_ = team.AddRelation(Relation{From: rootID, To: "member-2", Type: RelationLeader})

@@ -51,7 +51,10 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		return nil, fmt.Errorf("build snapshot: %w", err)
 	}
 
-	sprint := domain.NewSprint(snapshot)
+	sprint, err := domain.NewSprint(snapshot)
+	if err != nil {
+		return nil, fmt.Errorf("new sprint: %w", err)
+	}
 
 	specs, tempFiles, err := s.prepareMembers(ctx, sprint.ID, snapshot)
 	if err != nil {

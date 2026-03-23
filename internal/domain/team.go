@@ -115,9 +115,13 @@ func (t *Team) AddRelation(r Relation) error {
 		return fmt.Errorf("member not in team: %s", r.To)
 	}
 
-	// Check duplicate.
+	// Check duplicate (peer relations are bidirectional).
 	for _, existing := range t.Relations {
 		if existing.From == r.From && existing.To == r.To && existing.Type == r.Type {
+			return fmt.Errorf("duplicate relation: %s → %s (%s)", r.From, r.To, r.Type)
+		}
+		if r.Type == RelationPeer && existing.Type == RelationPeer &&
+			existing.From == r.To && existing.To == r.From {
 			return fmt.Errorf("duplicate relation: %s → %s (%s)", r.From, r.To, r.Type)
 		}
 	}
