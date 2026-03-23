@@ -45,7 +45,7 @@ func NewMember(name, cliProfileID string, systemPromptIDs, environmentIDs []stri
 		EnvironmentIDs:  environmentIDs,
 		GitRepoID:       gitRepoID,
 		CreatedAt:       now,
-		UpdatedAt:        now,
+		UpdatedAt:       now,
 	}, nil
 }
 

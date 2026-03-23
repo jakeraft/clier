@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -162,17 +161,3 @@ func TestCliProfile(t *testing.T) {
 	})
 }
 
-func ptr(s string) *string { return &s }
-
-func containsString(slice []string, s string) bool {
-	for _, v := range slice {
-		if v == s {
-			return true
-		}
-	}
-	return false
-}
-
-func hasPrefix(s, prefix string) bool {
-	return strings.HasPrefix(s, prefix)
-}

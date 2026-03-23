@@ -7,18 +7,18 @@ type TeamSnapshot struct {
 }
 
 type MemberSnapshot struct {
-	MemberID      string
-	MemberName    string
-	Binary        CliBinary
-	Model         string
+	MemberID       string
+	MemberName     string
+	Binary         CliBinary
+	Model          string
 	CliProfileName string
-	SystemArgs    []string
-	CustomArgs    []string
-	DotConfig     DotConfig
-	SystemPrompts []SnapshotPrompt
-	Environments  []SnapshotEnvironment
-	GitRepo       *SnapshotGitRepo // nil means not set
-	Relations     MemberRelations
+	SystemArgs     []string
+	CustomArgs     []string
+	DotConfig      DotConfig
+	SystemPrompts  []SnapshotPrompt
+	Environments   []SnapshotEnvironment
+	GitRepo        *SnapshotGitRepo // nil means not set
+	Relations      MemberRelations
 	ComposedPrompt string
 }
 

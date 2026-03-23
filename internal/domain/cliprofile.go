@@ -56,13 +56,6 @@ var CliProfilePresets = []CliProfilePreset{
 		DotConfig:  DotConfig{"sandbox_mode": "danger-full-access"},
 	},
 	{
-		Key:        "codex-5.3",
-		Binary:     BinaryCodex,
-		Model:      "gpt-5.3-codex",
-		SystemArgs: []string{},
-		DotConfig:  DotConfig{"sandbox_mode": "danger-full-access"},
-	},
-	{
 		Key:        "codex-mini",
 		Binary:     BinaryCodex,
 		Model:      "gpt-5.1-codex-mini",
@@ -106,19 +99,19 @@ func NewCliProfile(name, presetKey string, customArgs []string) (*CliProfile, er
 		Binary:     preset.Binary,
 		SystemArgs: append([]string{}, preset.SystemArgs...),
 		CustomArgs: customArgs,
-		DotConfig:  preset.DotConfig,
+		DotConfig:  copyDotConfig(preset.DotConfig),
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}, nil
 }
 
-func ResolvePreset(key string) (*CliProfilePreset, error) {
-	for i := range CliProfilePresets {
-		if CliProfilePresets[i].Key == key {
-			return &CliProfilePresets[i], nil
+func ResolvePreset(key string) (CliProfilePreset, error) {
+	for _, p := range CliProfilePresets {
+		if p.Key == key {
+			return p, nil
 		}
 	}
-	return nil, fmt.Errorf("unknown preset: %s", key)
+	return CliProfilePreset{}, fmt.Errorf("unknown preset: %s", key)
 }
 
 var dateSuffixRe = regexp.MustCompile(`-\d{8}$`)
@@ -144,4 +137,15 @@ func (p *CliProfile) Update(name *string, customArgs *[]string) error {
 	}
 	p.UpdatedAt = time.Now()
 	return nil
+}
+
+func copyDotConfig(src DotConfig) DotConfig {
+	if src == nil {
+		return nil
+	}
+	dst := make(DotConfig, len(src))
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
 }
