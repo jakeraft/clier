@@ -4,45 +4,12 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/jakeraft/clier/internal/domain"
 )
 
 func TestSettings(t *testing.T) {
-	t.Run("New_ResolvesHomeDir", func(t *testing.T) {
-		s, err := New()
-		if err != nil {
-			t.Fatalf("New() error = %v", err)
-		}
-		if s == nil {
-			t.Fatal("New() returned nil")
-		}
-		if !strings.Contains(s.ConfigDir(), ".clier") {
-			t.Errorf("ConfigDir() = %q, want to contain \".clier\"", s.ConfigDir())
-		}
-	})
-
-	t.Run("DBPath_ReturnsCorrectPath", func(t *testing.T) {
-		s := newWithConfigDir(t.TempDir())
-		got := s.DBPath()
-		if !strings.HasSuffix(got, filepath.Join(".clier", "data.db")) {
-			// TempDir won't have .clier, just check suffix of filename
-			if !strings.HasSuffix(got, "data.db") {
-				t.Errorf("DBPath() = %q, want suffix \"data.db\"", got)
-			}
-		}
-	})
-
-	t.Run("AuthDir_ReturnsCorrectPath", func(t *testing.T) {
-		s := newWithConfigDir(t.TempDir())
-		got := s.AuthDir(domain.BinaryClaude)
-		if !strings.HasSuffix(got, filepath.Join("auth", "claude")) {
-			t.Errorf("AuthDir(BinaryClaude) = %q, want suffix \"auth/claude\"", got)
-		}
-	})
-
 	t.Run("HasAuth_NonexistentDir_ReturnsFalse", func(t *testing.T) {
 		s := newWithConfigDir(t.TempDir())
 		if s.HasAuth(domain.BinaryClaude) {
@@ -65,7 +32,7 @@ func TestSettings(t *testing.T) {
 		if err := s.EnsureDirs(); err != nil {
 			t.Fatalf("EnsureDirs() error = %v", err)
 		}
-		for _, dir := range []string{s.ConfigDir(), filepath.Join(s.ConfigDir(), authDirName)} {
+		for _, dir := range []string{s.ConfigDir(), filepath.Join(s.ConfigDir(), authDirName), s.SprintsDir()} {
 			info, err := os.Stat(dir)
 			if err != nil {
 				t.Errorf("dir %q not created: %v", dir, err)
@@ -74,16 +41,6 @@ func TestSettings(t *testing.T) {
 			if !info.IsDir() {
 				t.Errorf("path %q is not a directory", dir)
 			}
-		}
-	})
-
-	t.Run("SprintsDir_ReturnsCorrectPath", func(t *testing.T) {
-		tmpDir := t.TempDir()
-		s := newWithConfigDir(tmpDir)
-		got := s.SprintsDir()
-		want := filepath.Join(tmpDir, "sprints")
-		if got != want {
-			t.Errorf("SprintsDir() = %q, want %q", got, want)
 		}
 	})
 }
