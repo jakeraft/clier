@@ -9,43 +9,57 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/terminal"
 )
 
 // BuildCommand returns the shell command to launch an agent.
 // Result format: "cd <workDir> && <binary> <args...>"
-func BuildCommand(m domain.MemberSnapshot, workDir string) (command string, tempFiles []string) {
+func BuildCommand(m domain.MemberSnapshot, workDir string) (command string, tempFiles []string, err error) {
 	switch m.Binary {
 	case domain.BinaryClaude:
-		return buildClaudeCommand(m, workDir), nil
+		return buildClaudeCommand(m, workDir), nil, nil
 	case domain.BinaryCodex:
 		return buildCodexCommand(m, workDir)
 	default:
-		return "", nil
+		return "", nil, fmt.Errorf("unknown binary: %s", m.Binary)
 	}
 }
 
 func buildClaudeCommand(m domain.MemberSnapshot, workDir string) string {
+	q := terminal.ShellQuote
 	args := []string{string(m.Binary)}
-	args = append(args, m.SystemArgs...)
-	args = append(args, "--model", m.Model)
-	args = append(args, "--session-id", m.MemberID)
+	args = append(args, quoteArgs(m.SystemArgs)...)
+	args = append(args, "--model", q(m.Model))
+	args = append(args, "--session-id", q(m.MemberID))
 	if m.ComposedPrompt != "" {
-		args = append(args, "--append-system-prompt", shellQuote(m.ComposedPrompt))
+		args = append(args, "--append-system-prompt", q(m.ComposedPrompt))
 	}
-	args = append(args, m.CustomArgs...)
-	return fmt.Sprintf("cd %s && %s", shellQuote(workDir), strings.Join(args, " "))
+	args = append(args, quoteArgs(m.CustomArgs)...)
+	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " "))
 }
 
-func buildCodexCommand(m domain.MemberSnapshot, workDir string) (string, []string) {
+func buildCodexCommand(m domain.MemberSnapshot, workDir string) (string, []string, error) {
+	q := terminal.ShellQuote
 	instructionsFile := filepath.Join(os.TempDir(), fmt.Sprintf("clier-codex-instructions-%s.md", uuid.NewString()))
-	_ = os.WriteFile(instructionsFile, []byte(m.ComposedPrompt), 0644)
+	if err := os.WriteFile(instructionsFile, []byte(m.ComposedPrompt), 0644); err != nil {
+		return "", nil, fmt.Errorf("write codex instructions: %w", err)
+	}
 
 	args := []string{string(m.Binary)}
-	args = append(args, m.SystemArgs...)
-	args = append(args, "--model", m.Model)
-	args = append(args, "-c", fmt.Sprintf("model_instructions_file=%s", instructionsFile))
-	args = append(args, m.CustomArgs...)
-	return fmt.Sprintf("cd %s && %s", shellQuote(workDir), strings.Join(args, " ")), []string{instructionsFile}
+	args = append(args, quoteArgs(m.SystemArgs)...)
+	args = append(args, "--model", q(m.Model))
+	args = append(args, "-c", fmt.Sprintf("model_instructions_file=%s", q(instructionsFile)))
+	args = append(args, quoteArgs(m.CustomArgs)...)
+	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " ")), []string{instructionsFile}, nil
+}
+
+func quoteArgs(args []string) []string {
+	q := terminal.ShellQuote
+	quoted := make([]string, len(args))
+	for i, a := range args {
+		quoted[i] = q(a)
+	}
+	return quoted
 }
 
 // BuildEnv returns environment variables for the agent process.
@@ -74,7 +88,6 @@ func WriteConfigs(m domain.MemberSnapshot, memberHome, workDir string) error {
 }
 
 func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) error {
-	// .claude/settings.json — dotConfig
 	if len(m.DotConfig) > 0 {
 		claudeDir := filepath.Join(memberHome, ".claude")
 		if err := os.MkdirAll(claudeDir, 0755); err != nil {
@@ -89,7 +102,6 @@ func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) err
 		}
 	}
 
-	// .claude.json — trust config
 	trust := map[string]any{
 		"projects": map[string]any{
 			workDir: map[string]any{
@@ -102,15 +114,10 @@ func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) err
 	if err != nil {
 		return fmt.Errorf("marshal trust config: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(memberHome, ".claude.json"), data, 0644); err != nil {
-		return fmt.Errorf("write .claude.json: %w", err)
-	}
-
-	return nil
+	return os.WriteFile(filepath.Join(memberHome, ".claude.json"), data, 0644)
 }
 
 func writeCodexConfigs(m domain.MemberSnapshot, memberHome, workDir string) error {
-	// .codex/config.toml — dotConfig + trust
 	codexDir := filepath.Join(memberHome, ".codex")
 	if err := os.MkdirAll(codexDir, 0755); err != nil {
 		return fmt.Errorf("create .codex dir: %w", err)
@@ -124,13 +131,5 @@ func writeCodexConfigs(m domain.MemberSnapshot, memberHome, workDir string) erro
 	fmt.Fprintf(&b, "[projects.%q]\n", workDir)
 	b.WriteString("trust_level = \"trusted\"\n")
 
-	if err := os.WriteFile(filepath.Join(codexDir, "config.toml"), []byte(b.String()), 0644); err != nil {
-		return fmt.Errorf("write config.toml: %w", err)
-	}
-
-	return nil
-}
-
-func shellQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+	return os.WriteFile(filepath.Join(codexDir, "config.toml"), []byte(b.String()), 0644)
 }

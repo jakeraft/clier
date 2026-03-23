@@ -20,17 +20,20 @@ func TestBuildCommand(t *testing.T) {
 			CustomArgs:     []string{"--verbose"},
 			ComposedPrompt: "you are a coder",
 		}
-		cmd, tempFiles := BuildCommand(m, "/work")
+		cmd, tempFiles, err := BuildCommand(m, "/work")
+		if err != nil {
+			t.Fatalf("BuildCommand: %v", err)
+		}
 		if len(tempFiles) != 0 {
 			t.Errorf("claude should have no temp files, got %v", tempFiles)
 		}
 		if !strings.Contains(cmd, "claude") {
 			t.Errorf("command should contain binary: %s", cmd)
 		}
-		if !strings.Contains(cmd, "--model claude-sonnet-4-6") {
+		if !strings.Contains(cmd, "--model 'claude-sonnet-4-6'") {
 			t.Errorf("command should contain model: %s", cmd)
 		}
-		if !strings.Contains(cmd, "--session-id m1") {
+		if !strings.Contains(cmd, "--session-id 'm1'") {
 			t.Errorf("command should contain session-id: %s", cmd)
 		}
 		if !strings.Contains(cmd, "--dangerously-skip-permissions") {
@@ -56,7 +59,10 @@ func TestBuildCommand(t *testing.T) {
 			CustomArgs:     []string{},
 			ComposedPrompt: "you are a coder",
 		}
-		cmd, tempFiles := BuildCommand(m, "/work")
+		cmd, tempFiles, err := BuildCommand(m, "/work")
+		if err != nil {
+			t.Fatalf("BuildCommand: %v", err)
+		}
 		if len(tempFiles) != 1 {
 			t.Fatalf("codex should have 1 temp file, got %d", len(tempFiles))
 		}

@@ -128,7 +128,10 @@ func (e *Engine) prepareMembers(ctx context.Context, sprintID string, members []
 			return nil, nil, fmt.Errorf("setup git for %s: %w", m.MemberName, err)
 		}
 
-		cmd, tf := BuildCommand(m, workDir)
+		cmd, tf, err := BuildCommand(m, workDir)
+		if err != nil {
+			return nil, nil, fmt.Errorf("build command for %s: %w", m.MemberName, err)
+		}
 		tempFiles = append(tempFiles, tf...)
 
 		launches = append(launches, terminal.MemberLaunch{
@@ -190,13 +193,19 @@ func (e *Engine) buildSnapshot(ctx context.Context, teamID string) (domain.TeamS
 		snapshots = append(snapshots, ms)
 	}
 
+	// Convert DB relations to domain relations
+	relations := make([]domain.Relation, len(relRows))
+	for i, r := range relRows {
+		relations[i] = domain.Relation{From: r.FromMemberID, To: r.ToMemberID, Type: domain.RelationType(r.Type)}
+	}
+
 	// Build relations and compose prompts
 	for i := range snapshots {
 		ms := &snapshots[i]
-		ms.Relations = buildRelations(ms.MemberID, relRows)
+		ms.Relations = domain.ClassifyRelations(ms.MemberID, relations)
 
 		isRoot := ms.MemberID == team.RootMemberID
-		protocol := BuildProtocol(ms.MemberName, team.Name, ms.Binary, isRoot, ms.Relations, memberNames)
+		protocol := BuildProtocol(ms.MemberName, team.Name, isRoot, ms.Relations, memberNames)
 		ms.ComposedPrompt = ComposePrompt(ms.SystemPrompts, protocol)
 	}
 
@@ -317,28 +326,6 @@ func (e *Engine) failSprint(ctx context.Context, sprintID, errMsg string) {
 }
 
 // helpers
-
-func buildRelations(memberID string, rows []generated.ListTeamRelationsRow) domain.MemberRelations {
-	var leaders, workers, peers []string
-	for _, r := range rows {
-		switch domain.RelationType(r.Type) {
-		case domain.RelationLeader:
-			if r.ToMemberID == memberID {
-				leaders = append(leaders, r.FromMemberID)
-			}
-			if r.FromMemberID == memberID {
-				workers = append(workers, r.ToMemberID)
-			}
-		case domain.RelationPeer:
-			if r.FromMemberID == memberID {
-				peers = append(peers, r.ToMemberID)
-			} else if r.ToMemberID == memberID {
-				peers = append(peers, r.FromMemberID)
-			}
-		}
-	}
-	return domain.MemberRelations{Leaders: leaders, Workers: workers, Peers: peers}
-}
 
 func extractHost(gitURL string) string {
 	u, err := url.Parse(gitURL)

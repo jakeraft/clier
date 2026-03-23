@@ -8,7 +8,7 @@ import (
 )
 
 // BuildProtocol generates the team protocol prompt for a member.
-func BuildProtocol(memberName, teamName string, binary domain.CliBinary, isRoot bool, relations domain.MemberRelations, memberNames map[string]string) string {
+func BuildProtocol(memberName, teamName string, isRoot bool, relations domain.MemberRelations, memberNames map[string]string) string {
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "## Team Protocol\n\nYou are %q, part of team %q.\n", memberName, teamName)
@@ -25,8 +25,8 @@ func BuildProtocol(memberName, teamName string, binary domain.CliBinary, isRoot 
 
 	// Role guidance
 	b.WriteString("\n")
-	if isRoot {
-		b.WriteString("Your leader is the Operator. When you complete a task, send the results to them. If you get stuck or need context, ask them.\n")
+	if isRoot && len(relations.Workers) > 0 {
+		b.WriteString("You are the root member. Coordinate your workers and synthesize their results.\n")
 	} else if len(relations.Leaders) > 0 {
 		leaderName := memberNames[relations.Leaders[0]]
 		fmt.Fprintf(&b, "Your leader is %s. When you complete a task, send the results back to them. If you get stuck or need more context, ask them.\n", leaderName)
@@ -42,17 +42,8 @@ func BuildProtocol(memberName, teamName string, binary domain.CliBinary, isRoot 
 
 	// Communication section
 	hasRelations := len(rows) > 0
-	if hasRelations || isRoot {
-		sendTarget := "a teammate"
-		if isRoot {
-			sendTarget = "a teammate or the Operator"
-		}
-
-		fmt.Fprintf(&b, "\nMessages from teammates appear directly in your conversation.\n\nTo message %s:\n\n```bash\n%s message send <id> \"<message>\"\n```\n", sendTarget, binary)
-
-		if isRoot && !hasRelations {
-			fmt.Fprintf(&b, "\nTo send results to the Operator:\n\n```bash\n%s message send operator \"<message>\"\n```\n", binary)
-		}
+	if hasRelations {
+		fmt.Fprintf(&b, "\nMessages from teammates appear directly in your conversation.\n\nTo message a teammate:\n\n```bash\nclier message send <id> \"<message>\"\n```\n")
 	}
 
 	return b.String()

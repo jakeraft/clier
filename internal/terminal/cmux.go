@@ -36,7 +36,14 @@ func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []MemberLaunc
 	if err != nil {
 		return nil, fmt.Errorf("create workspace: %w", err)
 	}
-	c.workspaces[sprintID] = wsRef
+
+	// Cleanup workspace on any subsequent failure
+	success := false
+	defer func() {
+		if !success {
+			_ = cmuxRun("close-workspace", "--workspace", wsRef)
+		}
+	}()
 
 	if err := renameWorkspace(wsRef, sprintName); err != nil {
 		return nil, fmt.Errorf("rename workspace: %w", err)
@@ -71,6 +78,8 @@ func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []MemberLaunc
 		}
 	}
 
+	success = true
+	c.workspaces[sprintID] = wsRef
 	return result, nil
 }
 
@@ -173,8 +182,14 @@ func buildEnvCommand(command string, env []string) string {
 	}
 	parts := make([]string, 0, len(env)+1)
 	for _, e := range env {
-		parts = append(parts, "export "+e)
+		k, v, _ := strings.Cut(e, "=")
+		parts = append(parts, fmt.Sprintf("export %s=%s", k, ShellQuote(v)))
 	}
 	parts = append(parts, command)
 	return strings.Join(parts, " && ")
+}
+
+// ShellQuote wraps a string in single quotes, escaping embedded single quotes.
+func ShellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }

@@ -14,11 +14,11 @@ func TestBuildProtocol(t *testing.T) {
 		"peer-1":   "Reviewer",
 	}
 
-	t.Run("RootMember/MentionsOperator", func(t *testing.T) {
+	t.Run("RootMember/CoordinatesWorkers", func(t *testing.T) {
 		relations := domain.MemberRelations{
 			Workers: []string{"worker-1"},
 		}
-		got := BuildProtocol("Boss", "MyTeam", domain.BinaryClaude, true, relations, names)
+		got := BuildProtocol("Boss", "MyTeam", true, relations, names)
 
 		if !strings.Contains(got, `"Boss"`) {
 			t.Errorf("should contain member name: %s", got)
@@ -26,10 +26,10 @@ func TestBuildProtocol(t *testing.T) {
 		if !strings.Contains(got, `"MyTeam"`) {
 			t.Errorf("should contain team name: %s", got)
 		}
-		if !strings.Contains(got, "Operator") {
-			t.Errorf("root should mention Operator: %s", got)
+		if !strings.Contains(got, "root member") {
+			t.Errorf("root should mention root role: %s", got)
 		}
-		if !strings.Contains(got, "claude message send") {
+		if !strings.Contains(got, "clier message send") {
 			t.Errorf("should contain send command: %s", got)
 		}
 	})
@@ -39,25 +39,22 @@ func TestBuildProtocol(t *testing.T) {
 			Leaders: []string{"leader-1"},
 			Peers:   []string{"peer-1"},
 		}
-		got := BuildProtocol("Writer", "MyTeam", domain.BinaryCodex, false, relations, names)
+		got := BuildProtocol("Writer", "MyTeam", false, relations, names)
 
 		if !strings.Contains(got, "Editor") {
 			t.Errorf("should mention leader name: %s", got)
 		}
-		if !strings.Contains(got, "codex message send") {
-			t.Errorf("should use codex binary in command: %s", got)
-		}
-		if strings.Contains(got, "Operator") {
-			t.Errorf("non-root should not mention Operator: %s", got)
+		if !strings.Contains(got, "clier message send") {
+			t.Errorf("should contain clier send command: %s", got)
 		}
 	})
 
-	t.Run("NoRelations/RootGetsOperatorHint", func(t *testing.T) {
+	t.Run("NoRelations/RootNoMessageSection", func(t *testing.T) {
 		relations := domain.MemberRelations{}
-		got := BuildProtocol("Solo", "MyTeam", domain.BinaryClaude, true, relations, names)
+		got := BuildProtocol("Solo", "MyTeam", true, relations, names)
 
-		if !strings.Contains(got, "message send operator") {
-			t.Errorf("solo root should get operator send hint: %s", got)
+		if strings.Contains(got, "message send") {
+			t.Errorf("solo root with no relations should not have message section: %s", got)
 		}
 	})
 
@@ -67,7 +64,7 @@ func TestBuildProtocol(t *testing.T) {
 			Workers: []string{"worker-1"},
 			Peers:   []string{"peer-1"},
 		}
-		got := BuildProtocol("Agent", "MyTeam", domain.BinaryClaude, false, relations, names)
+		got := BuildProtocol("Agent", "MyTeam", false, relations, names)
 
 		if !strings.Contains(got, "| Leader | Editor | leader-1 |") {
 			t.Errorf("should show leader row: %s", got)

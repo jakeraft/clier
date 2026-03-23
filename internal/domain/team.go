@@ -148,9 +148,14 @@ func (t *Team) RemoveRelation(from, to string, relType RelationType) error {
 }
 
 func (t *Team) GetMemberRelations(memberID string) MemberRelations {
+	return ClassifyRelations(memberID, t.Relations)
+}
+
+// ClassifyRelations classifies relations for a member into leaders, workers, and peers.
+func ClassifyRelations(memberID string, relations []Relation) MemberRelations {
 	var leaders, workers, peers []string
 
-	for _, r := range t.Relations {
+	for _, r := range relations {
 		switch r.Type {
 		case RelationLeader:
 			if r.To == memberID {
