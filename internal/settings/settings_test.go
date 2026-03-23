@@ -1,0 +1,163 @@
+package settings
+
+import (
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"testing"
+)
+
+func TestSettings(t *testing.T) {
+	t.Run("New_ResolvesHomeDir", func(t *testing.T) {
+		s, err := New()
+		if err != nil {
+			t.Fatalf("New() error = %v", err)
+		}
+		if s == nil {
+			t.Fatal("New() returned nil")
+		}
+		if !strings.Contains(s.ConfigDir(), ".clier") {
+			t.Errorf("ConfigDir() = %q, want to contain \".clier\"", s.ConfigDir())
+		}
+	})
+
+	t.Run("DBPath_ReturnsCorrectPath", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		got := s.DBPath()
+		if !strings.HasSuffix(got, filepath.Join(".clier", "data.db")) {
+			// TempDir won't have .clier, just check suffix of filename
+			if !strings.HasSuffix(got, "data.db") {
+				t.Errorf("DBPath() = %q, want suffix \"data.db\"", got)
+			}
+		}
+	})
+
+	t.Run("AuthDir_ReturnsCorrectPath", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		got := s.AuthDir("claude")
+		if !strings.HasSuffix(got, filepath.Join("auth", "claude")) {
+			t.Errorf("AuthDir(\"claude\") = %q, want suffix \"auth/claude\"", got)
+		}
+	})
+
+	t.Run("HasAuth_NonexistentDir_ReturnsFalse", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		if s.HasAuth("claude") {
+			t.Error("HasAuth(\"claude\") = true, want false for nonexistent dir")
+		}
+	})
+
+	t.Run("HasAuth_ExistingDir_ReturnsTrue", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		if err := os.MkdirAll(s.AuthDir("claude"), 0755); err != nil {
+			t.Fatalf("failed to create auth dir: %v", err)
+		}
+		if !s.HasAuth("claude") {
+			t.Error("HasAuth(\"claude\") = false, want true for existing dir")
+		}
+	})
+
+	t.Run("EnsureDirs_CreatesDirectories", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		if err := s.EnsureDirs(); err != nil {
+			t.Fatalf("EnsureDirs() error = %v", err)
+		}
+		for _, dir := range []string{s.ConfigDir(), filepath.Join(s.ConfigDir(), authDirName)} {
+			info, err := os.Stat(dir)
+			if err != nil {
+				t.Errorf("dir %q not created: %v", dir, err)
+				continue
+			}
+			if !info.IsDir() {
+				t.Errorf("path %q is not a directory", dir)
+			}
+		}
+	})
+
+	t.Run("SprintMemberDir_ReturnsCorrectPath", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		got := s.SprintMemberDir("sprint-1", "member-2")
+		want := filepath.Join(sprintWorkBase, "sprint-1", "member-2")
+		if got != want {
+			t.Errorf("SprintMemberDir() = %q, want %q", got, want)
+		}
+	})
+}
+
+func TestCredential(t *testing.T) {
+	t.Run("SetAndGet_ReturnsToken", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		if err := s.SetCredential("github.com", "tok123"); err != nil {
+			t.Fatalf("SetCredential() error = %v", err)
+		}
+		got, err := s.GetCredential("github.com")
+		if err != nil {
+			t.Fatalf("GetCredential() error = %v", err)
+		}
+		if got != "tok123" {
+			t.Errorf("GetCredential() = %q, want %q", got, "tok123")
+		}
+	})
+
+	t.Run("Get_NonexistentHost_ReturnsError", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		_, err := s.GetCredential("missing.example.com")
+		if err == nil {
+			t.Error("GetCredential() for nonexistent host should return error")
+		}
+	})
+
+	t.Run("Remove_DeletesCredential", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		if err := s.SetCredential("gitlab.com", "tok456"); err != nil {
+			t.Fatalf("SetCredential() error = %v", err)
+		}
+		if err := s.RemoveCredential("gitlab.com"); err != nil {
+			t.Fatalf("RemoveCredential() error = %v", err)
+		}
+		_, err := s.GetCredential("gitlab.com")
+		if err == nil {
+			t.Error("GetCredential() after remove should return error")
+		}
+	})
+
+	t.Run("ListHosts_ReturnsAllHosts", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		hosts := []string{"host-a.com", "host-b.com", "host-c.com"}
+		for _, h := range hosts {
+			if err := s.SetCredential(h, "token"); err != nil {
+				t.Fatalf("SetCredential(%q) error = %v", h, err)
+			}
+		}
+		got, err := s.ListCredentialHosts()
+		if err != nil {
+			t.Fatalf("ListCredentialHosts() error = %v", err)
+		}
+		if len(got) != len(hosts) {
+			t.Fatalf("ListCredentialHosts() returned %d hosts, want %d", len(got), len(hosts))
+		}
+		sort.Strings(got)
+		sort.Strings(hosts)
+		for i := range hosts {
+			if got[i] != hosts[i] {
+				t.Errorf("hosts[%d] = %q, want %q", i, got[i], hosts[i])
+			}
+		}
+	})
+
+	t.Run("FilePermission_Is0600", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		if err := s.SetCredential("example.com", "secret"); err != nil {
+			t.Fatalf("SetCredential() error = %v", err)
+		}
+		info, err := os.Stat(s.credentialsPath())
+		if err != nil {
+			t.Fatalf("Stat credentials file error = %v", err)
+		}
+		got := info.Mode().Perm()
+		if got != 0600 {
+			t.Errorf("credentials file mode = %04o, want 0600", got)
+		}
+	})
+}
