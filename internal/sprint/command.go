@@ -9,21 +9,21 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/terminal"
+	"github.com/jakeraft/clier/internal/adapter/terminal"
 )
 
 // BuildCommand returns the full shell command to launch an agent,
 // including environment variable exports.
 // Result format: "export K='V' && ... && cd <workDir> && <binary> <args...>"
-func BuildCommand(m domain.MemberSnapshot, workDir string, env []string) (command string, tempFiles []string, err error) {
+func BuildCommand(m domain.MemberSnapshot, prompt, workDir string, env []string) (command string, tempFiles []string, err error) {
 	var cmd string
 	var tf []string
 
 	switch m.Binary {
 	case domain.BinaryClaude:
-		cmd = buildClaudeCommand(m, workDir)
+		cmd = buildClaudeCommand(m, prompt, workDir)
 	case domain.BinaryCodex:
-		cmd, tf, err = buildCodexCommand(m, workDir)
+		cmd, tf, err = buildCodexCommand(m, prompt, workDir)
 		if err != nil {
 			return "", nil, err
 		}
@@ -34,23 +34,23 @@ func BuildCommand(m domain.MemberSnapshot, workDir string, env []string) (comman
 	return buildEnvCommand(cmd, env), tf, nil
 }
 
-func buildClaudeCommand(m domain.MemberSnapshot, workDir string) string {
+func buildClaudeCommand(m domain.MemberSnapshot, prompt, workDir string) string {
 	q := terminal.ShellQuote
 	args := []string{string(m.Binary)}
 	args = append(args, quoteArgs(m.SystemArgs)...)
 	args = append(args, "--model", q(m.Model))
 	args = append(args, "--session-id", q(m.MemberID))
-	if m.ComposedPrompt != "" {
-		args = append(args, "--append-system-prompt", q(m.ComposedPrompt))
+	if prompt != "" {
+		args = append(args, "--append-system-prompt", q(prompt))
 	}
 	args = append(args, quoteArgs(m.CustomArgs)...)
 	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " "))
 }
 
-func buildCodexCommand(m domain.MemberSnapshot, workDir string) (string, []string, error) {
+func buildCodexCommand(m domain.MemberSnapshot, prompt, workDir string) (string, []string, error) {
 	q := terminal.ShellQuote
 	instructionsFile := filepath.Join(os.TempDir(), fmt.Sprintf("clier-codex-instructions-%s.md", uuid.NewString()))
-	if err := os.WriteFile(instructionsFile, []byte(m.ComposedPrompt), 0644); err != nil {
+	if err := os.WriteFile(instructionsFile, []byte(prompt), 0644); err != nil {
 		return "", nil, fmt.Errorf("write codex instructions: %w", err)
 	}
 

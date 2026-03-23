@@ -7,12 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"time"
 
-	"github.com/google/uuid"
-	"github.com/jakeraft/clier/internal/db/generated"
 	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/terminal"
+	"github.com/jakeraft/clier/internal/adapter/terminal"
 )
 
 const surfacesFileName = "surfaces.json"
@@ -23,9 +20,9 @@ type SurfaceMap struct {
 	Surfaces     map[string]string `json:"surfaces"` // memberID → surface ref
 }
 
-func saveSurfaces(sprintsDir, sprintID string, members []domain.MemberSnapshot, result *terminal.LaunchResult) error {
-	surfaces := make(map[string]string, len(members))
-	for i, m := range members {
+func saveSurfaces(sprintsDir, sprintID string, snapshot domain.TeamSnapshot, result *terminal.LaunchResult) error {
+	surfaces := make(map[string]string, len(snapshot.Members))
+	for i, m := range snapshot.Members {
 		surfaces[m.MemberID] = result.Surfaces[i]
 	}
 	m := SurfaceMap{
@@ -56,19 +53,15 @@ func loadSurfaces(sprintsDir, sprintID string) (*SurfaceMap, error) {
 // DeliverMessage validates the relation, persists the message, and delivers it to the recipient's terminal.
 func (e *Engine) DeliverMessage(ctx context.Context, sprintID, fromMemberID, toMemberID, content string) error {
 	// Load sprint and validate state
-	sprintRow, err := e.store.GetSprint(ctx, sprintID)
+	sprint, err := e.store.GetSprint(ctx, sprintID)
 	if err != nil {
 		return fmt.Errorf("get sprint: %w", err)
 	}
-	if domain.SprintState(sprintRow.State) != domain.SprintRunning {
-		return fmt.Errorf("sprint is not running (state: %s)", sprintRow.State)
+	if sprint.State != domain.SprintRunning {
+		return fmt.Errorf("sprint is not running (state: %s)", sprint.State)
 	}
 
-	// Parse snapshot for relation validation and sender name
-	var snapshot domain.TeamSnapshot
-	if err := json.Unmarshal([]byte(sprintRow.TeamSnapshot), &snapshot); err != nil {
-		return fmt.Errorf("parse snapshot: %w", err)
-	}
+	snapshot := sprint.TeamSnapshot
 
 	fromName, err := validateMessageRoute(snapshot, fromMemberID, toMemberID)
 	if err != nil {
@@ -76,15 +69,7 @@ func (e *Engine) DeliverMessage(ctx context.Context, sprintID, fromMemberID, toM
 	}
 
 	// Persist message
-	now := time.Now().Unix()
-	if err := e.store.CreateMessage(ctx, generated.CreateMessageParams{
-		ID:           uuid.NewString(),
-		SprintID:     sprintID,
-		FromMemberID: fromMemberID,
-		ToMemberID:   toMemberID,
-		Content:      content,
-		CreatedAt:    now,
-	}); err != nil {
+	if err := e.store.CreateMessage(ctx, sprintID, fromMemberID, toMemberID, content); err != nil {
 		return fmt.Errorf("save message: %w", err)
 	}
 
