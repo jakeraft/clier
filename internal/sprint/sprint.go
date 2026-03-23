@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/settings"
+	"github.com/jakeraft/clier/internal/adapter/settings"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 )
 
