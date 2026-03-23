@@ -9,7 +9,10 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "clier",
-	Short: "Multi-agent CLI orchestrator with team composition and isolated environments",
+	Short: "Orchestrate AI coding agent teams in isolated workspaces",
+	CompletionOptions: cobra.CompletionOptions{
+		DisableDefaultCmd: true,
+	},
 }
 
 func Execute() {

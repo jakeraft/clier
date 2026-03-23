@@ -1,7 +1,8 @@
 # Clier
 
 CLI-first project.
-Multi-agent CLI orchestrator — spawns and manages multiple AI coding agents (Claude, Codex) via tmux.
+Orchestrate AI coding agent teams in isolated workspaces.
+Compose teams of agents (Claude, Codex), define roles and relations, and run sprints in isolated environments via tmux.
 
 ## Tech Stack
 
