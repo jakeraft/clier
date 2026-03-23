@@ -1,0 +1,232 @@
+{
+  "team_name": "story-team",
+  "root_member_name": "chief",
+  "members": [
+    {
+      "name": "chief",
+      "cli_profile": {
+        "name": "claude-sonnet",
+        "model": "claude-sonnet-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "skipDangerousModePermissionPrompt": true,
+          "claudeMdExcludes": ["~/.claude/**"]
+        }
+      },
+      "system_prompts": [
+        {
+          "name": "Team Protocol",
+          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
+        },
+        {
+          "name": "editor-in-chief",
+          "prompt": "You are the Editor in Chief. Plan a short story and delegate chapters to your workers.\n\nRules:\n- Every sentence must be short — max 10 words.\n- The entire story should fit in one screen.\n\nProcess:\n1. Plan a 2-chapter story arc: genre, protagonist, conflict, resolution.\n2. Send chapter briefs to your workers in parallel (Chapter 1: setup + rising action; Chapter 2: climax + resolution).\n3. Wait for ALL workers to report back before continuing.\n4. Combine all chapters into the final story and send the complete result back."
+        }
+      ],
+      "git_repo": {
+        "name": "story-repo",
+        "url": "https://github.com/jakeraft/clier_hello.git"
+      }
+    },
+    {
+      "name": "se-1",
+      "cli_profile": {
+        "name": "claude-sonnet",
+        "model": "claude-sonnet-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "skipDangerousModePermissionPrompt": true,
+          "claudeMdExcludes": ["~/.claude/**"]
+        }
+      },
+      "system_prompts": [
+        {
+          "name": "Team Protocol",
+          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
+        },
+        {
+          "name": "section-editor",
+          "prompt": "You are a Section Editor. You receive a chapter brief and delegate scenes to your workers.\n\nRules:\n- Every sentence must be short — max 10 words.\n\nProcess:\n1. Plan 2 scenes from the chapter brief (1 sentence each).\n2. Send scene briefs to your workers in parallel.\n3. Wait for ALL workers to report back before continuing.\n4. Combine all scenes into a single cohesive chapter and send the full chapter text to your leader."
+        }
+      ],
+      "git_repo": {
+        "name": "story-repo",
+        "url": "https://github.com/jakeraft/clier_hello.git"
+      }
+    },
+    {
+      "name": "se-2",
+      "cli_profile": {
+        "name": "claude-sonnet",
+        "model": "claude-sonnet-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "skipDangerousModePermissionPrompt": true,
+          "claudeMdExcludes": ["~/.claude/**"]
+        }
+      },
+      "system_prompts": [
+        {
+          "name": "Team Protocol",
+          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
+        },
+        {
+          "name": "section-editor",
+          "prompt": "You are a Section Editor. You receive a chapter brief and delegate scenes to your workers.\n\nRules:\n- Every sentence must be short — max 10 words.\n\nProcess:\n1. Plan 2 scenes from the chapter brief (1 sentence each).\n2. Send scene briefs to your workers in parallel.\n3. Wait for ALL workers to report back before continuing.\n4. Combine all scenes into a single cohesive chapter and send the full chapter text to your leader."
+        }
+      ],
+      "git_repo": {
+        "name": "story-repo",
+        "url": "https://github.com/jakeraft/clier_hello.git"
+      }
+    },
+    {
+      "name": "writer-1",
+      "cli_profile": {
+        "name": "claude-sonnet",
+        "model": "claude-sonnet-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "skipDangerousModePermissionPrompt": true,
+          "claudeMdExcludes": ["~/.claude/**"]
+        }
+      },
+      "system_prompts": [
+        {
+          "name": "Team Protocol",
+          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
+        },
+        {
+          "name": "writer",
+          "prompt": "You are a Writer. Write a single scene from the brief you receive.\n\nRules:\n- Write exactly 2-3 sentences. Each sentence max 10 words.\n- Be vivid but concise.\n\nWhen finished, send the full scene text to your leader."
+        }
+      ],
+      "git_repo": {
+        "name": "story-repo",
+        "url": "https://github.com/jakeraft/clier_hello.git"
+      }
+    },
+    {
+      "name": "writer-2",
+      "cli_profile": {
+        "name": "claude-sonnet",
+        "model": "claude-sonnet-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "skipDangerousModePermissionPrompt": true,
+          "claudeMdExcludes": ["~/.claude/**"]
+        }
+      },
+      "system_prompts": [
+        {
+          "name": "Team Protocol",
+          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
+        },
+        {
+          "name": "writer",
+          "prompt": "You are a Writer. Write a single scene from the brief you receive.\n\nRules:\n- Write exactly 2-3 sentences. Each sentence max 10 words.\n- Be vivid but concise.\n\nWhen finished, send the full scene text to your leader."
+        }
+      ],
+      "git_repo": {
+        "name": "story-repo",
+        "url": "https://github.com/jakeraft/clier_hello.git"
+      }
+    },
+    {
+      "name": "writer-3",
+      "cli_profile": {
+        "name": "codex",
+        "model": "gpt-5.4",
+        "binary": "codex",
+        "system_args": [],
+        "custom_args": [],
+        "dot_config": {
+          "sandbox_mode": "danger-full-access",
+          "notice": {
+            "model_migrations": {}
+          }
+        }
+      },
+      "system_prompts": [
+        {
+          "name": "Team Protocol",
+          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
+        },
+        {
+          "name": "writer",
+          "prompt": "You are a Writer. Write a single scene from the brief you receive.\n\nRules:\n- Write exactly 2-3 sentences. Each sentence max 10 words.\n- Be vivid but concise.\n\nWhen finished, send the full scene text to your leader."
+        }
+      ],
+      "git_repo": null
+    },
+    {
+      "name": "writer-4",
+      "cli_profile": {
+        "name": "codex",
+        "model": "gpt-5.4",
+        "binary": "codex",
+        "system_args": [],
+        "custom_args": [],
+        "dot_config": {
+          "sandbox_mode": "danger-full-access",
+          "notice": {
+            "model_migrations": {}
+          }
+        }
+      },
+      "system_prompts": [
+        {
+          "name": "Team Protocol",
+          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
+        },
+        {
+          "name": "writer",
+          "prompt": "You are a Writer. Write a single scene from the brief you receive.\n\nRules:\n- Write exactly 2-3 sentences. Each sentence max 10 words.\n- Be vivid but concise.\n\nWhen finished, send the full scene text to your leader."
+        }
+      ],
+      "git_repo": null
+    }
+  ],
+  "relations": [
+    {
+      "from": "chief",
+      "to": "se-1",
+      "type": "leader"
+    },
+    {
+      "from": "chief",
+      "to": "se-2",
+      "type": "leader"
+    },
+    {
+      "from": "se-1",
+      "to": "writer-1",
+      "type": "leader"
+    },
+    {
+      "from": "se-1",
+      "to": "writer-2",
+      "type": "leader"
+    },
+    {
+      "from": "se-2",
+      "to": "writer-3",
+      "type": "leader"
+    },
+    {
+      "from": "se-2",
+      "to": "writer-4",
+      "type": "leader"
+    }
+  ]
+}

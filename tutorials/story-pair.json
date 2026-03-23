@@ -1,0 +1,83 @@
+{
+  "team_name": "story-pair",
+  "root_member_name": "editor",
+  "members": [
+    {
+      "name": "editor",
+      "cli_profile": {
+        "name": "pair-sonnet",
+        "model": "claude-sonnet-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "skipDangerousModePermissionPrompt": true,
+          "claudeMdExcludes": ["~/.claude/**"]
+        }
+      },
+      "system_prompts": [
+        {
+          "name": "Team Protocol",
+          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
+        },
+        {
+          "name": "pair-editor",
+          "prompt": "You are an Editor. Plan a very short story (3-5 sentences) and collaborate with your peer to write it.\n\nProcess:\n1. Plan a brief story premise (genre, character, conflict).\n2. Send the premise to your peer and ask them to write it.\n3. Wait for the completed story from your peer.\n4. Review and send the final result back."
+        }
+      ],
+      "envs": [
+        {
+          "name": "greeting",
+          "key": "GREETING",
+          "value": "hello from clier"
+        }
+      ],
+      "git_repo": {
+        "name": "pair-repo",
+        "url": "https://github.com/jakeraft/clier_hello.git"
+      }
+    },
+    {
+      "name": "writer",
+      "cli_profile": {
+        "name": "pair-sonnet",
+        "model": "claude-sonnet-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "skipDangerousModePermissionPrompt": true,
+          "claudeMdExcludes": ["~/.claude/**"]
+        }
+      },
+      "system_prompts": [
+        {
+          "name": "Team Protocol",
+          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
+        },
+        {
+          "name": "pair-writer",
+          "prompt": "You are a Writer. Write a very short story from the brief you receive.\n\nRules:\n- Write exactly 3-5 sentences.\n- Each sentence max 10 words.\n- Be vivid but concise.\n\nWhen finished, send the full story text to your peer."
+        }
+      ],
+      "envs": [
+        {
+          "name": "greeting",
+          "key": "GREETING",
+          "value": "hello from clier"
+        }
+      ],
+      "git_repo": {
+        "name": "pair-repo",
+        "url": "https://github.com/jakeraft/clier_hello.git"
+      }
+    }
+  ],
+  "relations": [
+    {
+      "from": "editor",
+      "to": "writer",
+      "type": "peer"
+    }
+  ]
+}
