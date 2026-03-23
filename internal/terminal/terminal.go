@@ -7,8 +7,12 @@ type MemberLaunch struct {
 	Env        []string
 }
 
+type LaunchResult struct {
+	WorkspaceRef string
+	Surfaces     map[string]string // memberID → surface ref
+}
+
 type SprintTerminal interface {
-	Launch(sprintID, sprintName string, members []MemberLaunch) error
-	DeliverText(sprintID, memberID, text string) error
+	Launch(sprintID, sprintName string, members []MemberLaunch) (*LaunchResult, error)
 	Terminate(sprintID string) error
 }

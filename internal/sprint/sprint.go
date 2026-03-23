@@ -36,8 +36,7 @@ type Store interface {
 
 // Terminal defines the terminal operations needed by the sprint engine.
 type Terminal interface {
-	Launch(sprintID, sprintName string, members []terminal.MemberLaunch) error
-	DeliverText(sprintID, memberID, text string) error
+	Launch(sprintID, sprintName string, members []terminal.MemberLaunch) (*terminal.LaunchResult, error)
 	Terminate(sprintID string) error
 }
 
@@ -69,10 +68,15 @@ func (e *Engine) Start(ctx context.Context, teamID string) (*domain.Sprint, erro
 		return nil, fmt.Errorf("save sprint: %w", err)
 	}
 
-	if err := e.terminal.Launch(sprint.ID, sprint.Name, launches); err != nil {
+	result, err := e.terminal.Launch(sprint.ID, sprint.Name, launches)
+	if err != nil {
 		e.failSprint(ctx, sprint.ID, err.Error())
 		cleanupTempFiles(tempFiles)
 		return nil, fmt.Errorf("launch terminal: %w", err)
+	}
+
+	if err := saveSurfaces(e.settings.SprintsDir(), sprint.ID, result); err != nil {
+		return nil, fmt.Errorf("save surfaces: %w", err)
 	}
 
 	return sprint, nil

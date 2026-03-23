@@ -9,80 +9,69 @@ import (
 
 type CmuxTerminal struct {
 	mu         sync.Mutex
-	workspaces map[string]string            // sprintID → workspace ref
-	surfaces   map[string]map[string]string // sprintID → memberID → surface ref
+	workspaces map[string]string // sprintID → workspace ref
 }
 
 func NewCmuxTerminal() *CmuxTerminal {
 	return &CmuxTerminal{
 		workspaces: make(map[string]string),
-		surfaces:   make(map[string]map[string]string),
 	}
 }
 
-func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []MemberLaunch) error {
+func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []MemberLaunch) (*LaunchResult, error) {
 	if len(members) == 0 {
-		return fmt.Errorf("no members to launch")
+		return nil, fmt.Errorf("no members to launch")
 	}
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if _, exists := c.workspaces[sprintID]; exists {
-		return fmt.Errorf("sprint already launched: %s", sprintID)
+		return nil, fmt.Errorf("sprint already launched: %s", sprintID)
 	}
 
 	first := members[0]
 
-	// Create workspace with first member's command
-	wsRef, err := c.createWorkspace(first.Command, first.Env)
+	wsRef, err := createWorkspace(first.Command, first.Env)
 	if err != nil {
-		return fmt.Errorf("create workspace: %w", err)
+		return nil, fmt.Errorf("create workspace: %w", err)
 	}
 	c.workspaces[sprintID] = wsRef
-	c.surfaces[sprintID] = make(map[string]string)
 
-	if err := c.renameWorkspace(wsRef, sprintName); err != nil {
-		return fmt.Errorf("rename workspace: %w", err)
+	if err := renameWorkspace(wsRef, sprintName); err != nil {
+		return nil, fmt.Errorf("rename workspace: %w", err)
 	}
 
-	// First surface is created with the workspace — find it
-	firstSurfaceRef, err := c.findFirstSurface(wsRef)
+	result := &LaunchResult{
+		WorkspaceRef: wsRef,
+		Surfaces:     make(map[string]string, len(members)),
+	}
+
+	// First surface is created with the workspace
+	firstSurfaceRef, err := findFirstSurface(wsRef)
 	if err != nil {
-		return fmt.Errorf("find first surface: %w", err)
+		return nil, fmt.Errorf("find first surface: %w", err)
 	}
-	c.surfaces[sprintID][first.MemberID] = firstSurfaceRef
+	result.Surfaces[first.MemberID] = firstSurfaceRef
 
-	if err := c.renameTab(firstSurfaceRef, first.MemberName); err != nil {
-		return fmt.Errorf("rename tab: %w", err)
+	if err := renameTab(firstSurfaceRef, first.MemberName); err != nil {
+		return nil, fmt.Errorf("rename tab: %w", err)
 	}
 
 	// Launch remaining members
 	for _, m := range members[1:] {
-		surfaceRef, err := c.addSurface(wsRef, m.Command, m.Env)
+		surfaceRef, err := addSurface(wsRef, m.Command, m.Env)
 		if err != nil {
-			return fmt.Errorf("add surface for %s: %w", m.MemberID, err)
+			return nil, fmt.Errorf("add surface for %s: %w", m.MemberID, err)
 		}
-		c.surfaces[sprintID][m.MemberID] = surfaceRef
+		result.Surfaces[m.MemberID] = surfaceRef
 
-		if err := c.renameTab(surfaceRef, m.MemberName); err != nil {
-			return fmt.Errorf("rename tab for %s: %w", m.MemberID, err)
+		if err := renameTab(surfaceRef, m.MemberName); err != nil {
+			return nil, fmt.Errorf("rename tab for %s: %w", m.MemberID, err)
 		}
 	}
 
-	return nil
-}
-
-func (c *CmuxTerminal) DeliverText(sprintID, memberID, text string) error {
-	c.mu.Lock()
-	surfaceRef, ok := c.surfaces[sprintID][memberID]
-	c.mu.Unlock()
-
-	if !ok {
-		return fmt.Errorf("surface not found: sprint=%s member=%s", sprintID, memberID)
-	}
-
-	return cmuxRun("send", "--surface", surfaceRef, text+"\n")
+	return result, nil
 }
 
 func (c *CmuxTerminal) Terminate(sprintID string) error {
@@ -93,62 +82,60 @@ func (c *CmuxTerminal) Terminate(sprintID string) error {
 		return fmt.Errorf("sprint not found: %s", sprintID)
 	}
 	delete(c.workspaces, sprintID)
-	delete(c.surfaces, sprintID)
 	c.mu.Unlock()
 
 	return cmuxRun("close-workspace", "--workspace", wsRef)
 }
 
+// CmuxSend sends text to a surface. Exported for use by message routing.
+func CmuxSend(surfaceRef, text string) error {
+	return cmuxRun("send", "--surface", surfaceRef, text+"\n")
+}
+
 // cmux command helpers
 
-func (c *CmuxTerminal) createWorkspace(command string, env []string) (string, error) {
+func createWorkspace(command string, env []string) (string, error) {
 	args := []string{"new-workspace"}
 	if command != "" {
 		args = append(args, "--command", buildEnvCommand(command, env))
 	}
-
 	out, err := cmuxOutput(args...)
 	if err != nil {
 		return "", err
 	}
-	// Output: "OK workspace:N"
 	return parseRef(out, "workspace:")
 }
 
-func (c *CmuxTerminal) findFirstSurface(wsRef string) (string, error) {
+func findFirstSurface(wsRef string) (string, error) {
 	out, err := cmuxOutput("list-pane-surfaces", "--workspace", wsRef)
 	if err != nil {
 		return "", err
 	}
-	// Output: "* surface:N  title  [selected]"
 	return parseRef(out, "surface:")
 }
 
-func (c *CmuxTerminal) addSurface(wsRef, command string, env []string) (string, error) {
+func addSurface(wsRef, command string, env []string) (string, error) {
 	out, err := cmuxOutput("new-surface", "--workspace", wsRef)
 	if err != nil {
 		return "", err
 	}
-	// Output: "OK surface:N pane:N workspace:N"
 	surfaceRef, err := parseRef(out, "surface:")
 	if err != nil {
 		return "", err
 	}
-
 	if command != "" {
 		if err := cmuxRun("send", "--surface", surfaceRef, buildEnvCommand(command, env)+"\n"); err != nil {
 			return "", err
 		}
 	}
-
 	return surfaceRef, nil
 }
 
-func (c *CmuxTerminal) renameWorkspace(wsRef, name string) error {
+func renameWorkspace(wsRef, name string) error {
 	return cmuxRun("rename-workspace", "--workspace", wsRef, name)
 }
 
-func (c *CmuxTerminal) renameTab(surfaceRef, name string) error {
+func renameTab(surfaceRef, name string) error {
 	return cmuxRun("rename-tab", "--surface", surfaceRef, name)
 }
 
