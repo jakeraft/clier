@@ -10,16 +10,21 @@ import (
 )
 
 func TestSettings(t *testing.T) {
-	t.Run("CheckAuth_NoAuthDir_ReturnsError", func(t *testing.T) {
+	t.Run("CheckAuth_NoAuthDir_ReturnsNotConfigured", func(t *testing.T) {
 		s := newWithConfigDir(t.TempDir())
-		if err := s.CheckAuth(domain.BinaryClaude); err == nil {
-			t.Error("CheckAuth() should return error when auth dir missing")
+		status, err := s.CheckAuth(domain.BinaryClaude)
+		if err != nil {
+			t.Fatalf("CheckAuth() error = %v", err)
+		}
+		if status != AuthNotConfigured {
+			t.Errorf("CheckAuth() = %d, want AuthNotConfigured", status)
 		}
 	})
 
 	t.Run("CheckAuth_UnknownBinary_ReturnsError", func(t *testing.T) {
 		s := newWithConfigDir(t.TempDir())
-		if err := s.CheckAuth(domain.CliBinary("unknown")); err == nil {
+		_, err := s.CheckAuth(domain.CliBinary("unknown"))
+		if err == nil {
 			t.Error("CheckAuth() should return error for unknown binary")
 		}
 	})

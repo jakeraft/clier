@@ -48,10 +48,18 @@ func newAgentCheckCmd(binary domain.CliBinary) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := s.CheckAuth(binary); err != nil {
+			status, err := s.CheckAuth(binary)
+			if err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "%s auth is valid\n", binary)
+			switch status {
+			case settings.AuthNotConfigured:
+				fmt.Fprintf(cmd.OutOrStdout(), "%s auth not configured. Run: clier %s login\n", binary, binary)
+			case settings.AuthInvalid:
+				fmt.Fprintf(cmd.OutOrStdout(), "%s auth is invalid. Run: clier %s login\n", binary, binary)
+			case settings.AuthOK:
+				fmt.Fprintf(cmd.OutOrStdout(), "%s auth is valid\n", binary)
+			}
 			return nil
 		},
 	}

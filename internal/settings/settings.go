@@ -88,23 +88,31 @@ var statusCommands = map[domain.CliBinary][]string{
 	domain.BinaryCodex:  {"codex", "login", "status"},
 }
 
-func (s *Settings) CheckAuth(binary domain.CliBinary) error {
+type AuthStatus int
+
+const (
+	AuthOK AuthStatus = iota
+	AuthNotConfigured
+	AuthInvalid
+)
+
+func (s *Settings) CheckAuth(binary domain.CliBinary) (AuthStatus, error) {
 	args, ok := statusCommands[binary]
 	if !ok {
-		return fmt.Errorf("unknown binary: %s", binary)
+		return 0, fmt.Errorf("unknown binary: %s", binary)
 	}
 
 	authDir := s.AuthDir(binary)
 	if _, err := os.Stat(authDir); err != nil {
-		return fmt.Errorf("auth not configured for %s — run: clier %s login", binary, binary)
+		return AuthNotConfigured, nil
 	}
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Env = append(os.Environ(), "HOME="+authDir)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("auth invalid for %s — run: clier %s login", binary, binary)
+		return AuthInvalid, nil
 	}
-	return nil
+	return AuthOK, nil
 }
 
 func (s *Settings) LoginAuth(binary domain.CliBinary) error {
