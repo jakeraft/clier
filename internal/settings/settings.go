@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/jakeraft/clier/internal/domain"
 )
@@ -127,7 +128,7 @@ func (s *Settings) LoginAuth(binary domain.CliBinary) error {
 	}
 
 	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Env = append(os.Environ(), "HOME="+authDir)
+	cmd.Env = append(systemEnv(), "HOME="+authDir)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -245,4 +246,26 @@ func (s *Settings) saveCredentials(creds map[string]Credential) error {
 		return fmt.Errorf("write credentials: %w", err)
 	}
 	return nil
+}
+
+func systemEnv() []string {
+	var env []string
+	for _, e := range os.Environ() {
+		if strings.HasPrefix(e, "PATH=") {
+			env = append(env, "PATH="+systemPath())
+			continue
+		}
+		env = append(env, e)
+	}
+	return env
+}
+
+func systemPath() string {
+	var dirs []string
+	for _, d := range filepath.SplitList(os.Getenv("PATH")) {
+		if !strings.Contains(d, "cmux") {
+			dirs = append(dirs, d)
+		}
+	}
+	return strings.Join(dirs, string(filepath.ListSeparator))
 }
