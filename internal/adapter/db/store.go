@@ -617,31 +617,31 @@ func (s *Store) getMemberSnapshot(ctx context.Context, memberID string) (domain.
 		return domain.MemberSnapshot{}, fmt.Errorf("get cli profile: %w", err)
 	}
 
-	prompts := make([]domain.SnapshotPrompt, 0, len(member.SystemPromptIDs))
+	prompts := make([]domain.PromptSnapshot, 0, len(member.SystemPromptIDs))
 	for _, id := range member.SystemPromptIDs {
 		sp, err := s.GetSystemPrompt(ctx, id)
 		if err != nil {
 			return domain.MemberSnapshot{}, fmt.Errorf("get prompt %s: %w", id, err)
 		}
-		prompts = append(prompts, domain.SnapshotPrompt{Name: sp.Name, Prompt: sp.Prompt})
+		prompts = append(prompts, domain.PromptSnapshot{Name: sp.Name, Prompt: sp.Prompt})
 	}
 
-	envs := make([]domain.SnapshotEnvironment, 0, len(member.EnvironmentIDs))
+	envs := make([]domain.EnvironmentSnapshot, 0, len(member.EnvironmentIDs))
 	for _, id := range member.EnvironmentIDs {
 		env, err := s.GetEnvironment(ctx, id)
 		if err != nil {
 			return domain.MemberSnapshot{}, fmt.Errorf("get environment %s: %w", id, err)
 		}
-		envs = append(envs, domain.SnapshotEnvironment{Name: env.Name, Key: env.Key, Value: env.Value})
+		envs = append(envs, domain.EnvironmentSnapshot{Name: env.Name, Key: env.Key, Value: env.Value})
 	}
 
-	var gitRepo *domain.SnapshotGitRepo
+	var gitRepo *domain.GitRepoSnapshot
 	if member.GitRepoID != "" {
 		repo, err := s.GetGitRepo(ctx, member.GitRepoID)
 		if err != nil {
 			return domain.MemberSnapshot{}, fmt.Errorf("get git repo: %w", err)
 		}
-		gitRepo = &domain.SnapshotGitRepo{Name: repo.Name, URL: repo.URL}
+		gitRepo = &domain.GitRepoSnapshot{Name: repo.Name, URL: repo.URL}
 	}
 
 	return domain.MemberSnapshot{

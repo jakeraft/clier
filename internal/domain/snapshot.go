@@ -15,24 +15,24 @@ type MemberSnapshot struct {
 	SystemArgs     []string
 	CustomArgs     []string
 	DotConfig      DotConfig
-	SystemPrompts  []SnapshotPrompt
-	Environments   []SnapshotEnvironment
-	GitRepo        *SnapshotGitRepo // nil means not set
+	SystemPrompts  []PromptSnapshot
+	Environments   []EnvironmentSnapshot
+	GitRepo        *GitRepoSnapshot // nil means not set
 	Relations      MemberRelations
 }
 
-type SnapshotPrompt struct {
+type PromptSnapshot struct {
 	Name   string
 	Prompt string
 }
 
-type SnapshotEnvironment struct {
+type EnvironmentSnapshot struct {
 	Name  string
 	Key   string
 	Value string
 }
 
-type SnapshotGitRepo struct {
+type GitRepoSnapshot struct {
 	Name string
 	URL  string
 }

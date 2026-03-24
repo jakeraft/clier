@@ -217,7 +217,7 @@ func TestBuildEnv(t *testing.T) {
 	t.Run("WithCustomEnv_IncludesAllVars", func(t *testing.T) {
 		m := domain.MemberSnapshot{
 			MemberID: "m1",
-			Environments: []domain.SnapshotEnvironment{
+			Environments: []domain.EnvironmentSnapshot{
 				{Key: "API_KEY", Value: "secret"},
 			},
 		}

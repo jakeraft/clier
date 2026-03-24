@@ -174,7 +174,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 			{
 				MemberID:   "m-1",
 				MemberName: "Agent",
-				SystemPrompts: []domain.SnapshotPrompt{
+				SystemPrompts: []domain.PromptSnapshot{
 					{Name: "style", Prompt: "Be concise."},
 					{Name: "testing", Prompt: "Write tests."},
 				},
