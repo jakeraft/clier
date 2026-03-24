@@ -32,21 +32,30 @@ var CliProfilePresets = []CliProfilePreset{
 		Binary:     BinaryClaude,
 		Model:      "claude-haiku-4-5-20251001",
 		SystemArgs: []string{"--dangerously-skip-permissions"},
-		DotConfig:  DotConfig{"skipDangerousModePermissionPrompt": true},
+		DotConfig: DotConfig{
+			"skipDangerousModePermissionPrompt": true,
+			"claudeMdExcludes":                  []string{"~/.claude/**"},
+		},
 	},
 	{
 		Key:        "claude-sonnet",
 		Binary:     BinaryClaude,
 		Model:      "claude-sonnet-4-6",
 		SystemArgs: []string{"--dangerously-skip-permissions"},
-		DotConfig:  DotConfig{"skipDangerousModePermissionPrompt": true},
+		DotConfig: DotConfig{
+			"skipDangerousModePermissionPrompt": true,
+			"claudeMdExcludes":                  []string{"~/.claude/**"},
+		},
 	},
 	{
 		Key:        "claude-opus",
 		Binary:     BinaryClaude,
 		Model:      "claude-opus-4-6",
 		SystemArgs: []string{"--dangerously-skip-permissions"},
-		DotConfig:  DotConfig{"skipDangerousModePermissionPrompt": true},
+		DotConfig: DotConfig{
+			"skipDangerousModePermissionPrompt": true,
+			"claudeMdExcludes":                  []string{"~/.claude/**"},
+		},
 	},
 	{
 		Key:        "codex-5.4",

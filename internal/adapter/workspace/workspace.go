@@ -112,11 +112,11 @@ func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) err
 		return fmt.Errorf("create .claude dir: %w", err)
 	}
 
-	settings := resolveClaudeSettings(m.DotConfig)
-	data, err := json.MarshalIndent(settings, "", "  ")
+	data, err := json.MarshalIndent(m.DotConfig, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal settings: %w", err)
 	}
+	data = expandTildePaths(data)
 	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644); err != nil {
 		return fmt.Errorf("write settings.json: %w", err)
 	}
@@ -137,43 +137,12 @@ func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) err
 	return os.WriteFile(filepath.Join(memberHome, ".claude.json"), data, 0644)
 }
 
-// resolveClaudeSettings expands ~ in claudeMdExcludes to the real user home.
-func resolveClaudeSettings(dotConfig domain.DotConfig) domain.DotConfig {
-	excludes, ok := dotConfig["claudeMdExcludes"]
-	if !ok {
-		return dotConfig
-	}
-	var patterns []string
-	switch v := excludes.(type) {
-	case []string:
-		patterns = v
-	case []any:
-		for _, item := range v {
-			if s, ok := item.(string); ok {
-				patterns = append(patterns, s)
-			}
-		}
-	default:
-		return dotConfig
-	}
+func expandTildePaths(data []byte) []byte {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return dotConfig
+		return data
 	}
-	resolved := make([]string, len(patterns))
-	for i, p := range patterns {
-		if strings.HasPrefix(p, "~/") {
-			resolved[i] = filepath.Join(home, p[2:])
-		} else {
-			resolved[i] = p
-		}
-	}
-	out := make(domain.DotConfig, len(dotConfig))
-	for k, v := range dotConfig {
-		out[k] = v
-	}
-	out["claudeMdExcludes"] = resolved
-	return out
+	return []byte(strings.ReplaceAll(string(data), "~/", home+"/"))
 }
 
 func writeCodexConfigs(m domain.MemberSnapshot, memberHome, workDir string) error {
