@@ -43,7 +43,7 @@ func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.Memb
 			return fmt.Errorf("ensure surface: %w", err)
 		}
 
-		if err := c.setupSurface(surfaceRef, m); err != nil {
+		if err := c.setupSurface(wsRef, surfaceRef, m); err != nil {
 			return err
 		}
 
@@ -79,8 +79,8 @@ func (c *CmuxTerminal) Terminate(sprintID string) error {
 }
 
 // setupSurface renames the tab and sends the launch command.
-func (c *CmuxTerminal) setupSurface(surfaceRef string, m sprint.MemberSpec) error {
-	if err := c.renameTab(surfaceRef, m.Name); err != nil {
+func (c *CmuxTerminal) setupSurface(wsRef, surfaceRef string, m sprint.MemberSpec) error {
+	if err := c.renameTab(wsRef, surfaceRef, m.Name); err != nil {
 		return fmt.Errorf("rename tab: %w", err)
 	}
 	if m.Command != "" {
@@ -163,8 +163,8 @@ func (c *CmuxTerminal) renameWorkspace(wsRef, name string) error {
 	return err
 }
 
-func (c *CmuxTerminal) renameTab(surfaceRef, name string) error {
-	_, err := c.run("rename-tab", "--surface", surfaceRef, name)
+func (c *CmuxTerminal) renameTab(wsRef, surfaceRef, name string) error {
+	_, err := c.run("tab-action", "--action", "rename", "--surface", surfaceRef, "--workspace", wsRef, "--title", name)
 	return err
 }
 
