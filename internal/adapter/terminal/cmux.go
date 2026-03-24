@@ -57,11 +57,15 @@ func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.Memb
 }
 
 func (c *CmuxTerminal) Send(sprintID, memberID, text string) error {
+	wsRef, err := c.getWorkspaceRef(sprintID)
+	if err != nil {
+		return fmt.Errorf("get workspace ref: %w", err)
+	}
 	surfaceRef, err := c.getSurfaceRef(sprintID, memberID)
 	if err != nil {
 		return fmt.Errorf("get surface ref for %s: %w", memberID, err)
 	}
-	return c.sendAndEnter(surfaceRef, text)
+	return c.sendAndEnter(wsRef, surfaceRef, text)
 }
 
 func (c *CmuxTerminal) Terminate(sprintID string) error {
@@ -77,16 +81,14 @@ func (c *CmuxTerminal) Terminate(sprintID string) error {
 	return c.deleteSurfaces(sprintID)
 }
 
-// setupSurface renames the tab and launches the command via respawn-pane.
-// Using respawn-pane --command avoids the lazy-init issue where cmux
-// terminals in non-visible workspaces reject send commands.
+// setupSurface renames the tab and sends the launch command.
 func (c *CmuxTerminal) setupSurface(wsRef, surfaceRef string, m sprint.MemberSpec) error {
 	if err := c.renameTab(wsRef, surfaceRef, m.Name); err != nil {
 		return fmt.Errorf("rename tab: %w", err)
 	}
 	if m.Command != "" {
-		if _, err := c.run("respawn-pane", "--workspace", wsRef, "--surface", surfaceRef, "--command", m.Command); err != nil {
-			return fmt.Errorf("launch command: %w", err)
+		if err := c.sendAndEnter(wsRef, surfaceRef, m.Command); err != nil {
+			return fmt.Errorf("send command: %w", err)
 		}
 	}
 	return nil
@@ -169,11 +171,11 @@ func (c *CmuxTerminal) renameTab(wsRef, surfaceRef, name string) error {
 	return err
 }
 
-func (c *CmuxTerminal) sendAndEnter(surfaceRef, text string) error {
-	if _, err := c.run("send", "--surface", surfaceRef, text); err != nil {
+func (c *CmuxTerminal) sendAndEnter(wsRef, surfaceRef, text string) error {
+	if _, err := c.run("send", "--workspace", wsRef, "--surface", surfaceRef, text); err != nil {
 		return err
 	}
-	_, err := c.run("send-key", "--surface", surfaceRef, "Enter")
+	_, err := c.run("send-key", "--workspace", wsRef, "--surface", surfaceRef, "Enter")
 	return err
 }
 
