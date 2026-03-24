@@ -16,6 +16,7 @@ import (
 
 // AuthCopier copies CLI auth files to a destination home directory.
 type AuthCopier interface {
+	CheckAuthReady(binary domain.CliBinary) error
 	CopyAuthTo(binary domain.CliBinary, destHome string) error
 }
 
@@ -43,6 +44,17 @@ func (w *Workspace) Prepare(ctx context.Context, sprintID string, snapshot domai
 			os.RemoveAll(sprintDir)
 		}
 	}()
+
+	// Preflight: check auth for all required binaries before creating anything.
+	checked := make(map[domain.CliBinary]bool)
+	for _, m := range snapshot.Members {
+		if !checked[m.Binary] {
+			checked[m.Binary] = true
+			if err := w.auth.CheckAuthReady(m.Binary); err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	dirs := make(map[string]sprint.MemberDir, len(snapshot.Members))
 	for _, m := range snapshot.Members {

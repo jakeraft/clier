@@ -62,14 +62,26 @@ var CliProfilePresets = []CliProfilePreset{
 		Binary:     BinaryCodex,
 		Model:      "gpt-5.4",
 		SystemArgs: []string{},
-		DotConfig:  DotConfig{"sandbox_mode": "danger-full-access"},
+		DotConfig: DotConfig{
+			"sandbox_mode": "danger-full-access",
+			"notice": map[string]any{
+				"model_migrations": map[string]any{},
+			},
+		},
 	},
 	{
 		Key:        "codex-mini",
 		Binary:     BinaryCodex,
 		Model:      "gpt-5.1-codex-mini",
 		SystemArgs: []string{},
-		DotConfig:  DotConfig{"sandbox_mode": "danger-full-access"},
+		DotConfig: DotConfig{
+			"sandbox_mode": "danger-full-access",
+			"notice": map[string]any{
+				"model_migrations": map[string]any{
+					"gpt-5.1-codex-mini": "gpt-5.4",
+				},
+			},
+		},
 	},
 }
 

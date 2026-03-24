@@ -16,6 +16,10 @@ type stubAuth struct {
 	err error
 }
 
+func (s *stubAuth) CheckAuthReady(_ domain.CliBinary) error {
+	return s.err
+}
+
 func (s *stubAuth) CopyAuthTo(_ domain.CliBinary, _ string) error {
 	return s.err
 }

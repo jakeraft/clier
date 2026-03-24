@@ -36,6 +36,9 @@ func newStore() (*db.Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, fmt.Errorf("create data dir: %w", err)
+	}
 	return db.NewStore(filepath.Join(dir, "clier.db"))
 }
 

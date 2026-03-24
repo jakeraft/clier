@@ -63,6 +63,7 @@ When finished, send the FULL scene text to your leader in a single message. Do N
 
 	CliProfiles: []CliProfileDef{
 		{Name: "tut-claude-sonnet", PresetKey: "claude-sonnet"},
+		{Name: "tut-codex", PresetKey: "codex-5.4"},
 	},
 
 	Members: []MemberDef{
@@ -71,8 +72,8 @@ When finished, send the FULL scene text to your leader in a single message. Do N
 		{Name: "tut-se-2", CliProfileName: "tut-claude-sonnet", SystemPromptNames: []string{"tut-section-editor"}, EnvNames: []string{"tut-se-env"}, GitRepoName: "tut-story-repo"},
 		{Name: "tut-writer-1", CliProfileName: "tut-claude-sonnet", SystemPromptNames: []string{"tut-writer"}, EnvNames: []string{"tut-writer-env"}, GitRepoName: "tut-story-repo"},
 		{Name: "tut-writer-2", CliProfileName: "tut-claude-sonnet", SystemPromptNames: []string{"tut-writer"}, EnvNames: []string{"tut-writer-env"}, GitRepoName: "tut-story-repo"},
-		{Name: "tut-writer-3", CliProfileName: "tut-claude-sonnet", SystemPromptNames: []string{"tut-writer"}, EnvNames: []string{"tut-writer-env"}},
-		{Name: "tut-writer-4", CliProfileName: "tut-claude-sonnet", SystemPromptNames: []string{"tut-writer"}, EnvNames: []string{"tut-writer-env"}},
+		{Name: "tut-writer-3", CliProfileName: "tut-codex", SystemPromptNames: []string{"tut-writer"}, EnvNames: []string{"tut-writer-env"}},
+		{Name: "tut-writer-4", CliProfileName: "tut-codex", SystemPromptNames: []string{"tut-writer"}, EnvNames: []string{"tut-writer-env"}},
 	},
 
 	Team: TeamDef{

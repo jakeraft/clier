@@ -69,6 +69,20 @@ const (
 	AuthInvalid
 )
 
+func (s *Settings) CheckAuthReady(binary domain.CliBinary) error {
+	status, err := s.CheckAuth(binary)
+	if err != nil {
+		return err
+	}
+	switch status {
+	case AuthNotConfigured:
+		return fmt.Errorf("%s auth not configured — run: clier %s login", binary, binary)
+	case AuthInvalid:
+		return fmt.Errorf("%s auth is invalid — run: clier %s login", binary, binary)
+	}
+	return nil
+}
+
 func (s *Settings) CheckAuth(binary domain.CliBinary) (AuthStatus, error) {
 	args, ok := statusCommands[binary]
 	if !ok {
