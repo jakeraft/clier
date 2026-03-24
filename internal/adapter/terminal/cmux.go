@@ -74,7 +74,6 @@ func (c *CmuxTerminal) Send(sprintID, memberID, text string) error {
 func (c *CmuxTerminal) Terminate(sprintID string) error {
 	wsRef, err := c.getWorkspaceRef(sprintID)
 	if err == nil {
-		// Best-effort: workspace may already be closed.
 		_, _ = c.run("close-workspace", "--workspace", wsRef)
 	}
 	return c.deleteSurfaces(sprintID)
