@@ -81,7 +81,7 @@ func TestBuildCommand(t *testing.T) {
 			}
 
 			// when
-			cmd, tempFiles, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", "/home/m1")
+			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", "/home/m1")
 			if err != nil {
 				t.Fatalf("BuildCommand: %v", err)
 			}
@@ -90,9 +90,6 @@ func TestBuildCommand(t *testing.T) {
 			//   export HOME='/home/m1' && export CLIER_SPRINT_ID='sprint-1' && export CLIER_MEMBER_ID='m1' &&
 			//   cd '/work' && claude '--dangerously-skip-permissions' --model 'claude-sonnet-4-6'
 			//     --session-id 'm1' --append-system-prompt '...' '--verbose'
-			if len(tempFiles) != 0 {
-				t.Errorf("claude should have no temp files, got %v", tempFiles)
-			}
 			for _, want := range []string{
 				"claude",
 				"--model 'claude-sonnet-4-6'",
@@ -122,7 +119,7 @@ func TestBuildCommand(t *testing.T) {
 			}
 
 			// when
-			cmd, _, err := BuildCommand(m, "", "/work", "sprint-1", "/home/m1")
+			cmd, err := BuildCommand(m, "", "/work", "sprint-1", "/home/m1")
 			if err != nil {
 				t.Fatalf("BuildCommand: %v", err)
 			}
@@ -135,8 +132,9 @@ func TestBuildCommand(t *testing.T) {
 	})
 
 	t.Run("Codex", func(t *testing.T) {
-		t.Run("WithPrompt_WritesInstructionsFile", func(t *testing.T) {
-			// given: Codex member
+		t.Run("WithPrompt_WritesInstructionsInMemberHome", func(t *testing.T) {
+			// given: Codex member with temp home dir
+			memberHome := t.TempDir()
 			m := domain.MemberSnapshot{
 				MemberID:   "m2",
 				Binary:     domain.BinaryCodex,
@@ -146,22 +144,18 @@ func TestBuildCommand(t *testing.T) {
 			}
 
 			// when
-			cmd, tempFiles, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", "/home/m2")
+			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", memberHome)
 			if err != nil {
 				t.Fatalf("BuildCommand: %v", err)
 			}
 
-			// then: creates temp instructions file
-			if len(tempFiles) != 1 {
-				t.Fatalf("codex should have 1 temp file, got %d", len(tempFiles))
-			}
-			defer os.Remove(tempFiles[0])
-
+			// then: instructions file is in member home
+			instructionsFile := memberHome + "/codex-instructions.md"
 			if !strings.Contains(cmd, "model_instructions_file=") {
 				t.Errorf("command should contain instructions file: %s", cmd)
 			}
 
-			data, err := os.ReadFile(tempFiles[0])
+			data, err := os.ReadFile(instructionsFile)
 			if err != nil {
 				t.Fatalf("read instructions file: %v", err)
 			}
@@ -242,10 +236,10 @@ func TestBuildEnv(t *testing.T) {
 		}
 
 		for k, want := range map[string]string{
-			"HOME":             "/home/m1",
-			"CLIER_SPRINT_ID":  "sprint-1",
-			"CLIER_MEMBER_ID":  "m1",
-			"API_KEY":          "secret",
+			"HOME":            "/home/m1",
+			"CLIER_SPRINT_ID": "sprint-1",
+			"CLIER_MEMBER_ID": "m1",
+			"API_KEY":         "secret",
 		} {
 			if envMap[k] != want {
 				t.Errorf("%s = %q, want %q", k, envMap[k], want)

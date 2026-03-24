@@ -64,7 +64,7 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		return nil, fmt.Errorf("new sprint: %w", err)
 	}
 
-	members, tempFiles, err := s.prepareMembers(ctx, sprint.ID, snapshot)
+	members, err := s.prepareMembers(ctx, sprint.ID, snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("prepare members: %w", err)
 	}
@@ -75,7 +75,7 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 
 	if err := s.terminal.Launch(sprint.ID, sprint.Name, members); err != nil {
 		s.failSprint(ctx, sprint.ID, err.Error())
-		cleanupTempFiles(tempFiles)
+		_ = s.workspace.Cleanup(sprint.ID)
 		return nil, fmt.Errorf("launch terminal: %w", err)
 	}
 
@@ -97,26 +97,24 @@ func (s *Service) Stop(ctx context.Context, sprintID string) error {
 }
 
 // prepareMembers sets up the workspace and builds launch commands for all members.
-func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) ([]MemberSpec, []string, error) {
+func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) ([]MemberSpec, error) {
 	dirs, err := s.workspace.Prepare(ctx, sprintID, snapshot)
 	if err != nil {
-		return nil, nil, fmt.Errorf("prepare workspace: %w", err)
+		return nil, fmt.Errorf("prepare workspace: %w", err)
 	}
 
 	var members []MemberSpec
-	var tempFiles []string
 
 	for _, m := range snapshot.Members {
 		dir := dirs[m.MemberID]
 		prompt, err := BuildMemberPrompt(snapshot, m.MemberID)
 		if err != nil {
-			return nil, nil, fmt.Errorf("build prompt for %s: %w", m.MemberName, err)
+			return nil, fmt.Errorf("build prompt for %s: %w", m.MemberName, err)
 		}
-		cmd, tf, err := BuildCommand(m, prompt, dir.WorkDir, sprintID, dir.Home)
+		cmd, err := BuildCommand(m, prompt, dir.WorkDir, sprintID, dir.Home)
 		if err != nil {
-			return nil, nil, fmt.Errorf("build command for %s: %w", m.MemberName, err)
+			return nil, fmt.Errorf("build command for %s: %w", m.MemberName, err)
 		}
-		tempFiles = append(tempFiles, tf...)
 
 		members = append(members, MemberSpec{
 			ID:      m.MemberID,
@@ -125,7 +123,7 @@ func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot 
 		})
 	}
 
-	return members, tempFiles, nil
+	return members, nil
 }
 
 func (s *Service) failSprint(ctx context.Context, sprintID, errMsg string) {

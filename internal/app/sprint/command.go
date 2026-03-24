@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
@@ -20,24 +19,24 @@ func shellQuote(s string) string {
 // BuildCommand returns the full shell command to launch an agent,
 // including environment variable exports.
 // Result format: "export K='V' && ... && cd <workDir> && <binary> <args...>"
-func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome string) (command string, tempFiles []string, err error) {
+func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome string) (string, error) {
 	var cmd string
-	var tf []string
 
 	switch m.Binary {
 	case domain.BinaryClaude:
 		cmd = buildClaudeCommand(m, prompt, workDir)
 	case domain.BinaryCodex:
-		cmd, tf, err = buildCodexCommand(m, prompt, workDir)
+		var err error
+		cmd, err = buildCodexCommand(m, prompt, workDir, memberHome)
 		if err != nil {
-			return "", nil, err
+			return "", err
 		}
 	default:
-		return "", nil, fmt.Errorf("unknown binary: %s", m.Binary)
+		return "", fmt.Errorf("unknown binary: %s", m.Binary)
 	}
 
 	env := buildEnv(m, sprintID, memberHome)
-	return buildEnvCommand(cmd, env), tf, nil
+	return buildEnvCommand(cmd, env), nil
 }
 
 func buildClaudeCommand(m domain.MemberSnapshot, prompt, workDir string) string {
@@ -52,10 +51,10 @@ func buildClaudeCommand(m domain.MemberSnapshot, prompt, workDir string) string 
 	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " "))
 }
 
-func buildCodexCommand(m domain.MemberSnapshot, prompt, workDir string) (string, []string, error) {
-	instructionsFile := filepath.Join(os.TempDir(), fmt.Sprintf("clier-codex-instructions-%s.md", uuid.NewString()))
+func buildCodexCommand(m domain.MemberSnapshot, prompt, workDir, memberHome string) (string, error) {
+	instructionsFile := filepath.Join(memberHome, "codex-instructions.md")
 	if err := os.WriteFile(instructionsFile, []byte(prompt), 0644); err != nil {
-		return "", nil, fmt.Errorf("write codex instructions: %w", err)
+		return "", fmt.Errorf("write codex instructions: %w", err)
 	}
 
 	args := []string{string(m.Binary)}
@@ -63,7 +62,7 @@ func buildCodexCommand(m domain.MemberSnapshot, prompt, workDir string) (string,
 	args = append(args, "--model", q(m.Model))
 	args = append(args, "-c", fmt.Sprintf("model_instructions_file=%s", q(instructionsFile)))
 	args = append(args, quoteArgs(m.CustomArgs)...)
-	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " ")), []string{instructionsFile}, nil
+	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " ")), nil
 }
 
 func buildEnvCommand(command string, env []string) string {
@@ -85,12 +84,6 @@ func quoteArgs(args []string) []string {
 		quoted[i] = q(a)
 	}
 	return quoted
-}
-
-func cleanupTempFiles(files []string) {
-	for _, f := range files {
-		_ = os.Remove(f)
-	}
 }
 
 func buildEnv(m domain.MemberSnapshot, sprintID, memberHome string) []string {
