@@ -112,8 +112,7 @@ func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot 
 		if err != nil {
 			return nil, nil, fmt.Errorf("build prompt for %s: %w", m.MemberName, err)
 		}
-		env := BuildEnv(m, sprintID, dir.Home)
-		cmd, tf, err := BuildCommand(m, prompt, dir.WorkDir, env)
+		cmd, tf, err := BuildCommand(m, prompt, dir.WorkDir, sprintID, dir.Home)
 		if err != nil {
 			return nil, nil, fmt.Errorf("build command for %s: %w", m.MemberName, err)
 		}
