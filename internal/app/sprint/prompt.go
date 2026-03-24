@@ -14,7 +14,7 @@ const (
 	promptWorkerGuidance = "Delegate sub-tasks to workers. Wait for all responses before wrapping up.\n"
 	promptPeerGuidance   = "Coordinate with peers when tasks overlap.\n"
 
-	promptMessaging = "To message a teammate:\n\n```bash\nclier message send <id> \"<message>\"\n```\n"
+	promptMessaging = "To message a teammate:\n\n```bash\nclier message send --to <id> \"<message>\"\n```\n"
 )
 
 // BuildMemberPrompt generates the full prompt for a member by combining
