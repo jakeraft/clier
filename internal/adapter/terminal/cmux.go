@@ -61,8 +61,7 @@ func (c *CmuxTerminal) Send(sprintID, memberID, text string) error {
 	if err != nil {
 		return fmt.Errorf("get surface ref for %s: %w", memberID, err)
 	}
-	_, err = c.run("send", "--surface", surfaceRef, text+"\n")
-	return err
+	return c.sendAndEnter(surfaceRef, text)
 }
 
 func (c *CmuxTerminal) Terminate(sprintID string) error {
@@ -78,14 +77,16 @@ func (c *CmuxTerminal) Terminate(sprintID string) error {
 	return c.deleteSurfaces(sprintID)
 }
 
-// setupSurface renames the tab and sends the launch command.
+// setupSurface renames the tab and launches the command via respawn-pane.
+// Using respawn-pane --command avoids the lazy-init issue where cmux
+// terminals in non-visible workspaces reject send commands.
 func (c *CmuxTerminal) setupSurface(wsRef, surfaceRef string, m sprint.MemberSpec) error {
 	if err := c.renameTab(wsRef, surfaceRef, m.Name); err != nil {
 		return fmt.Errorf("rename tab: %w", err)
 	}
 	if m.Command != "" {
-		if _, err := c.run("send", "--surface", surfaceRef, m.Command+"\n"); err != nil {
-			return fmt.Errorf("send command: %w", err)
+		if _, err := c.run("respawn-pane", "--workspace", wsRef, "--surface", surfaceRef, "--command", m.Command); err != nil {
+			return fmt.Errorf("launch command: %w", err)
 		}
 	}
 	return nil
@@ -165,6 +166,14 @@ func (c *CmuxTerminal) renameWorkspace(wsRef, name string) error {
 
 func (c *CmuxTerminal) renameTab(wsRef, surfaceRef, name string) error {
 	_, err := c.run("tab-action", "--action", "rename", "--surface", surfaceRef, "--workspace", wsRef, "--title", name)
+	return err
+}
+
+func (c *CmuxTerminal) sendAndEnter(surfaceRef, text string) error {
+	if _, err := c.run("send", "--surface", surfaceRef, text); err != nil {
+		return err
+	}
+	_, err := c.run("send-key", "--surface", surfaceRef, "Enter")
 	return err
 }
 

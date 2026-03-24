@@ -71,8 +71,14 @@ func newSprintStopCmd() *cobra.Command {
 			}
 			defer store.Close()
 
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+
 			term := terminal.NewCmuxTerminal(store.DB())
-			svc := sprint.New(store, term, nil)
+			ws := workspace.New(filepath.Join(cfg.ConfigDir(), "workspaces"), cfg)
+			svc := sprint.New(store, term, ws)
 
 			if err := svc.Stop(cmd.Context(), args[0]); err != nil {
 				return err

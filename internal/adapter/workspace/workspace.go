@@ -120,6 +120,7 @@ func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) err
 	}
 
 	trust := map[string]any{
+		"hasCompletedOnboarding": true,
 		"projects": map[string]any{
 			workDir: map[string]any{
 				"hasTrustDialogAccepted":        true,
