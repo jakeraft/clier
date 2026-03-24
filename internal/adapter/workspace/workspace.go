@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/jakeraft/clier/internal/app/sprint"
 	"github.com/jakeraft/clier/internal/domain"
@@ -111,9 +112,10 @@ func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) err
 		return fmt.Errorf("create .claude dir: %w", err)
 	}
 
-	data, err := json.MarshalIndent(m.DotConfig, "", "  ")
+	settings := resolveClaudeSettings(m.DotConfig)
+	data, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
-		return fmt.Errorf("marshal dotconfig: %w", err)
+		return fmt.Errorf("marshal settings: %w", err)
 	}
 	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644); err != nil {
 		return fmt.Errorf("write settings.json: %w", err)
@@ -133,6 +135,45 @@ func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) err
 		return fmt.Errorf("marshal trust config: %w", err)
 	}
 	return os.WriteFile(filepath.Join(memberHome, ".claude.json"), data, 0644)
+}
+
+// resolveClaudeSettings expands ~ in claudeMdExcludes to the real user home.
+func resolveClaudeSettings(dotConfig domain.DotConfig) domain.DotConfig {
+	excludes, ok := dotConfig["claudeMdExcludes"]
+	if !ok {
+		return dotConfig
+	}
+	var patterns []string
+	switch v := excludes.(type) {
+	case []string:
+		patterns = v
+	case []any:
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				patterns = append(patterns, s)
+			}
+		}
+	default:
+		return dotConfig
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return dotConfig
+	}
+	resolved := make([]string, len(patterns))
+	for i, p := range patterns {
+		if strings.HasPrefix(p, "~/") {
+			resolved[i] = filepath.Join(home, p[2:])
+		} else {
+			resolved[i] = p
+		}
+	}
+	out := make(domain.DotConfig, len(dotConfig))
+	for k, v := range dotConfig {
+		out[k] = v
+	}
+	out["claudeMdExcludes"] = resolved
+	return out
 }
 
 func writeCodexConfigs(m domain.MemberSnapshot, memberHome, workDir string) error {
