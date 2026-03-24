@@ -13,6 +13,9 @@ const (
 	SprintRunning   SprintState = "running"
 	SprintCompleted SprintState = "completed"
 	SprintErrored   SprintState = "errored"
+
+	// UserMemberID is the reserved member ID for the human user who started the sprint.
+	UserMemberID = "user"
 )
 
 type Sprint struct {

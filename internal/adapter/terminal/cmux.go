@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jakeraft/clier/internal/app/sprint"
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 type CmuxTerminal struct {
@@ -124,15 +125,13 @@ func (c *CmuxTerminal) deleteSurfaces(sprintID string) error {
 	return err
 }
 
-const userMemberID = "user"
-
 func (c *CmuxTerminal) saveCallerSurface(sprintID string) error {
 	wsRef := os.Getenv("CMUX_WORKSPACE_ID")
 	surfaceRef := os.Getenv("CMUX_SURFACE_ID")
 	if wsRef == "" || surfaceRef == "" {
 		return nil
 	}
-	return c.saveSurface(sprintID, userMemberID, wsRef, surfaceRef)
+	return c.saveSurface(sprintID, domain.UserMemberID, wsRef, surfaceRef)
 }
 
 // cmux command helpers
