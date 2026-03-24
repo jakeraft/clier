@@ -114,8 +114,8 @@ func (c *CmuxTerminal) getRefs(sprintID, memberID string) (wsRef, surfaceRef str
 func (c *CmuxTerminal) getWorkspaceRef(sprintID string) (string, error) {
 	var ref string
 	err := c.db.QueryRow(
-		"SELECT workspace_ref FROM sprint_surfaces WHERE sprint_id = ? LIMIT 1",
-		sprintID,
+		"SELECT workspace_ref FROM sprint_surfaces WHERE sprint_id = ? AND member_id != ? LIMIT 1",
+		sprintID, domain.UserMemberID,
 	).Scan(&ref)
 	return ref, err
 }
