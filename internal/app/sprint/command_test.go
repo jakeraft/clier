@@ -8,6 +8,66 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
+func TestShellQuote(t *testing.T) {
+	t.Run("Empty_ReturnsSingleQuotes", func(t *testing.T) {
+		got := shellQuote("")
+		if got != "''" {
+			t.Errorf("got %q, want %q", got, "''")
+		}
+	})
+
+	t.Run("Simple_WrapsInSingleQuotes", func(t *testing.T) {
+		got := shellQuote("hello")
+		if got != "'hello'" {
+			t.Errorf("got %q, want %q", got, "'hello'")
+		}
+	})
+
+	t.Run("WithSpaces_PreservesSpaces", func(t *testing.T) {
+		got := shellQuote("hello world")
+		if got != "'hello world'" {
+			t.Errorf("got %q, want %q", got, "'hello world'")
+		}
+	})
+
+	t.Run("WithSingleQuote_EscapesQuote", func(t *testing.T) {
+		got := shellQuote("it's")
+		want := `'it'\''s'`
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("WithMultipleSingleQuotes_EscapesAll", func(t *testing.T) {
+		got := shellQuote("a'b'c")
+		want := `'a'\''b'\''c'`
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+
+	t.Run("WithSpecialChars_NoEscaping", func(t *testing.T) {
+		for _, tc := range []struct {
+			name string
+			in   string
+			want string
+		}{
+			{"DoubleQuote", `say "hi"`, `'say "hi"'`},
+			{"Dollar", "$HOME", "'$HOME'"},
+			{"Backtick", "`cmd`", "'`cmd`'"},
+			{"Backslash", `a\b`, `'a\b'`},
+			{"Newline", "a\nb", "'a\nb'"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				got := shellQuote(tc.in)
+				if got != tc.want {
+					t.Errorf("shellQuote(%q) = %q, want %q", tc.in, got, tc.want)
+				}
+			})
+		}
+	})
+}
+
 func TestBuildCommand(t *testing.T) {
 	t.Run("Claude/IncludesAllArgs", func(t *testing.T) {
 		m := domain.MemberSnapshot{
@@ -181,4 +241,3 @@ func TestBuildEnv(t *testing.T) {
 		}
 	})
 }
-

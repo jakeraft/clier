@@ -1,129 +1,157 @@
 package terminal
 
 import (
+	"database/sql"
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/jakeraft/clier/internal/app/sprint"
 )
-
-type SurfaceSpec struct {
-	Name    string
-	Command string
-}
-
-type LaunchResult struct {
-	WorkspaceRef string
-	Surfaces     []string // surface refs in same order as input specs
-}
 
 type CmuxTerminal struct {
 	binary string
+	db     *sql.DB
 }
 
-func NewCmuxTerminal() *CmuxTerminal {
-	return &CmuxTerminal{binary: "cmux"}
+func NewCmuxTerminal(db *sql.DB) *CmuxTerminal {
+	return &CmuxTerminal{binary: "cmux", db: db}
 }
 
-func (c *CmuxTerminal) Launch(workspaceName string, specs []SurfaceSpec) (*LaunchResult, error) {
-	if len(specs) == 0 {
-		return nil, fmt.Errorf("no surfaces to launch")
+func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.LaunchMember) error {
+	if len(members) == 0 {
+		return fmt.Errorf("no members to launch")
 	}
 
-	wsRef, err := c.createWorkspace()
+	wsRef, err := c.createWorkspace(sprintName)
 	if err != nil {
-		return nil, fmt.Errorf("create workspace: %w", err)
+		return fmt.Errorf("create workspace: %w", err)
 	}
 
-	// Cleanup workspace on any subsequent failure
+	// Cleanup workspace and saved surfaces on any subsequent failure
 	success := false
 	defer func() {
 		if !success {
 			_, _ = c.run("close-workspace", "--workspace", wsRef)
+			_ = c.deleteSurfaces(sprintID)
 		}
 	}()
 
-	if err := c.renameWorkspace(wsRef, workspaceName); err != nil {
-		return nil, fmt.Errorf("rename workspace: %w", err)
-	}
-
-	result := &LaunchResult{
-		WorkspaceRef: wsRef,
-		Surfaces:     make([]string, 0, len(specs)),
-	}
-
-	// First surface is created with the workspace
-	firstSurfaceRef, err := c.findFirstSurface(wsRef)
-	if err != nil {
-		return nil, fmt.Errorf("find first surface: %w", err)
-	}
-
-	if err := c.renameTab(firstSurfaceRef, specs[0].Name); err != nil {
-		return nil, fmt.Errorf("rename tab: %w", err)
-	}
-
-	if specs[0].Command != "" {
-		if err := c.Send(firstSurfaceRef, specs[0].Command); err != nil {
-			return nil, fmt.Errorf("send command: %w", err)
-		}
-	}
-
-	result.Surfaces = append(result.Surfaces, firstSurfaceRef)
-
-	// Launch remaining surfaces
-	for _, s := range specs[1:] {
-		surfaceRef, err := c.addSurface(wsRef)
+	for i, m := range members {
+		surfaceRef, err := c.ensureSurface(wsRef, i)
 		if err != nil {
-			return nil, fmt.Errorf("add surface: %w", err)
+			return fmt.Errorf("ensure surface: %w", err)
 		}
 
-		if err := c.renameTab(surfaceRef, s.Name); err != nil {
-			return nil, fmt.Errorf("rename tab: %w", err)
+		if err := c.setupSurface(surfaceRef, m); err != nil {
+			return err
 		}
 
-		if s.Command != "" {
-			if err := c.Send(surfaceRef, s.Command); err != nil {
-				return nil, fmt.Errorf("send command: %w", err)
-			}
+		if err := c.saveSurface(sprintID, m.ID, wsRef, surfaceRef); err != nil {
+			return fmt.Errorf("save surface: %w", err)
 		}
-
-		result.Surfaces = append(result.Surfaces, surfaceRef)
 	}
 
 	success = true
-	return result, nil
+	return nil
 }
 
-func (c *CmuxTerminal) Terminate(workspaceRef string) error {
-	_, err := c.run("close-workspace", "--workspace", workspaceRef)
+func (c *CmuxTerminal) Send(sprintID, memberID, text string) error {
+	surfaceRef, err := c.getSurfaceRef(sprintID, memberID)
+	if err != nil {
+		return fmt.Errorf("get surface ref for %s: %w", memberID, err)
+	}
+	_, err = c.run("send", "--surface", surfaceRef, text+"\n")
 	return err
 }
 
-// Send sends text to a surface.
-func (c *CmuxTerminal) Send(surfaceRef, text string) error {
-	_, err := c.run("send", "--surface", surfaceRef, text+"\n")
+func (c *CmuxTerminal) Terminate(sprintID string) error {
+	wsRef, err := c.getWorkspaceRef(sprintID)
+	if err != nil {
+		return fmt.Errorf("get workspace ref: %w", err)
+	}
+
+	if _, err := c.run("close-workspace", "--workspace", wsRef); err != nil {
+		return err
+	}
+
+	return c.deleteSurfaces(sprintID)
+}
+
+// setupSurface renames the tab and sends the launch command.
+func (c *CmuxTerminal) setupSurface(surfaceRef string, m sprint.LaunchMember) error {
+	if err := c.renameTab(surfaceRef, m.Name); err != nil {
+		return fmt.Errorf("rename tab: %w", err)
+	}
+	if m.Command != "" {
+		if _, err := c.run("send", "--surface", surfaceRef, m.Command+"\n"); err != nil {
+			return fmt.Errorf("send command: %w", err)
+		}
+	}
+	return nil
+}
+
+// persistence — sprint_surfaces table
+
+func (c *CmuxTerminal) saveSurface(sprintID, memberID, workspaceRef, surfaceRef string) error {
+	_, err := c.db.Exec(
+		"INSERT INTO sprint_surfaces (sprint_id, member_id, workspace_ref, surface_ref) VALUES (?, ?, ?, ?)",
+		sprintID, memberID, workspaceRef, surfaceRef,
+	)
+	return err
+}
+
+func (c *CmuxTerminal) getSurfaceRef(sprintID, memberID string) (string, error) {
+	var ref string
+	err := c.db.QueryRow(
+		"SELECT surface_ref FROM sprint_surfaces WHERE sprint_id = ? AND member_id = ?",
+		sprintID, memberID,
+	).Scan(&ref)
+	return ref, err
+}
+
+func (c *CmuxTerminal) getWorkspaceRef(sprintID string) (string, error) {
+	var ref string
+	err := c.db.QueryRow(
+		"SELECT workspace_ref FROM sprint_surfaces WHERE sprint_id = ? LIMIT 1",
+		sprintID,
+	).Scan(&ref)
+	return ref, err
+}
+
+func (c *CmuxTerminal) deleteSurfaces(sprintID string) error {
+	_, err := c.db.Exec("DELETE FROM sprint_surfaces WHERE sprint_id = ?", sprintID)
 	return err
 }
 
 // cmux command helpers
 
-func (c *CmuxTerminal) createWorkspace() (string, error) {
+func (c *CmuxTerminal) createWorkspace(name string) (string, error) {
 	out, err := c.run("new-workspace")
 	if err != nil {
 		return "", err
 	}
-	return parseRef(out, "workspace:")
-}
-
-func (c *CmuxTerminal) findFirstSurface(wsRef string) (string, error) {
-	out, err := c.run("list-pane-surfaces", "--workspace", wsRef)
+	wsRef, err := parseRef(out, "workspace:")
 	if err != nil {
 		return "", err
 	}
-	return parseRef(out, "surface:")
+	if err := c.renameWorkspace(wsRef, name); err != nil {
+		_, _ = c.run("close-workspace", "--workspace", wsRef)
+		return "", err
+	}
+	return wsRef, nil
 }
 
-func (c *CmuxTerminal) addSurface(wsRef string) (string, error) {
-	out, err := c.run("new-surface", "--workspace", wsRef)
+// ensureSurface returns a surface ref. The first surface (index 0) is created
+// with the workspace; subsequent surfaces are added explicitly.
+func (c *CmuxTerminal) ensureSurface(wsRef string, index int) (string, error) {
+	var out string
+	var err error
+	if index == 0 {
+		out, err = c.run("list-pane-surfaces", "--workspace", wsRef)
+	} else {
+		out, err = c.run("new-surface", "--workspace", wsRef)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -157,9 +185,4 @@ func parseRef(output, prefix string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("ref not found in output: %s", output)
-}
-
-// ShellQuote wraps a string in single quotes, escaping embedded single quotes.
-func ShellQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }

@@ -653,43 +653,6 @@ func (s *Store) DeleteSprint(ctx context.Context, id string) error {
 	return s.queries.DeleteSprint(ctx, id)
 }
 
-// SprintSurface
-
-func (s *Store) SaveSurfaces(ctx context.Context, sprintID, workspaceRef string, surfaces map[string]string) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback()
-
-	qtx := generated.New(tx)
-	for memberID, surfaceRef := range surfaces {
-		if err := qtx.CreateSprintSurface(ctx, generated.CreateSprintSurfaceParams{
-			SprintID:     sprintID,
-			MemberID:     memberID,
-			WorkspaceRef: workspaceRef,
-			SurfaceRef:   surfaceRef,
-		}); err != nil {
-			return err
-		}
-	}
-	return tx.Commit()
-}
-
-func (s *Store) GetSurfaceRef(ctx context.Context, sprintID, memberID string) (string, error) {
-	return s.queries.GetSprintSurfaceRef(ctx, generated.GetSprintSurfaceRefParams{
-		SprintID: sprintID, MemberID: memberID,
-	})
-}
-
-func (s *Store) GetWorkspaceRef(ctx context.Context, sprintID string) (string, error) {
-	return s.queries.GetSprintWorkspaceRef(ctx, sprintID)
-}
-
-func (s *Store) DeleteSurfaces(ctx context.Context, sprintID string) error {
-	return s.queries.DeleteSprintSurfaces(ctx, sprintID)
-}
-
 // Message
 
 func (s *Store) CreateMessage(ctx context.Context, msg *domain.Message) error {

@@ -35,14 +35,8 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 		return fmt.Errorf("save message: %w", err)
 	}
 
-	// Load surface ref and deliver
-	surfaceRef, err := s.store.GetSurfaceRef(ctx, sprintID, toMemberID)
-	if err != nil {
-		return fmt.Errorf("get surface ref for %s: %w", toMemberID, err)
-	}
-
 	text := fmt.Sprintf("[Message from %s] %s", fromName, content)
-	return s.terminal.Send(surfaceRef, text)
+	return s.terminal.Send(sprintID, toMemberID, text)
 }
 
 func validateMessageRoute(snapshot domain.TeamSnapshot, fromID, toID string) (string, error) {

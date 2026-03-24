@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/adapter/terminal"
 )
 
 // Store defines the DB operations needed by the sprint engine.
@@ -20,17 +19,20 @@ type Store interface {
 	CreateSprint(ctx context.Context, sprint *domain.Sprint) error
 	UpdateSprintState(ctx context.Context, sprintID string, state domain.SprintState, sprintErr string) error
 	CreateMessage(ctx context.Context, msg *domain.Message) error
-	SaveSurfaces(ctx context.Context, sprintID, workspaceRef string, surfaces map[string]string) error
-	GetSurfaceRef(ctx context.Context, sprintID, memberID string) (string, error)
-	GetWorkspaceRef(ctx context.Context, sprintID string) (string, error)
-	DeleteSurfaces(ctx context.Context, sprintID string) error
+}
+
+// LaunchMember describes a member to launch in a terminal session.
+type LaunchMember struct {
+	ID      string
+	Name    string
+	Command string
 }
 
 // Terminal defines the terminal operations needed by the sprint engine.
 type Terminal interface {
-	Launch(workspaceName string, specs []terminal.SurfaceSpec) (*terminal.LaunchResult, error)
-	Terminate(workspaceRef string) error
-	Send(surfaceRef, text string) error
+	Launch(sprintID, sprintName string, members []LaunchMember) error
+	Send(sprintID, memberID, text string) error
+	Terminate(sprintID string) error
 }
 
 // Workspace defines the filesystem operations for sprint member environments.
@@ -61,7 +63,7 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		return nil, fmt.Errorf("new sprint: %w", err)
 	}
 
-	specs, tempFiles, err := s.prepareMembers(ctx, sprint.ID, snapshot)
+	members, tempFiles, err := s.prepareMembers(ctx, sprint.ID, snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("prepare members: %w", err)
 	}
@@ -70,31 +72,17 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		return nil, fmt.Errorf("save sprint: %w", err)
 	}
 
-	result, err := s.terminal.Launch(sprint.Name, specs)
-	if err != nil {
+	if err := s.terminal.Launch(sprint.ID, sprint.Name, members); err != nil {
 		s.failSprint(ctx, sprint.ID, err.Error())
 		cleanupTempFiles(tempFiles)
 		return nil, fmt.Errorf("launch terminal: %w", err)
-	}
-
-	surfaces := make(map[string]string, len(snapshot.Members))
-	for i, m := range snapshot.Members {
-		surfaces[m.MemberID] = result.Surfaces[i]
-	}
-	if err := s.store.SaveSurfaces(ctx, sprint.ID, result.WorkspaceRef, surfaces); err != nil {
-		return nil, fmt.Errorf("save surfaces: %w", err)
 	}
 
 	return sprint, nil
 }
 
 func (s *Service) Stop(ctx context.Context, sprintID string) error {
-	workspaceRef, err := s.store.GetWorkspaceRef(ctx, sprintID)
-	if err != nil {
-		return fmt.Errorf("get workspace ref: %w", err)
-	}
-
-	if err := s.terminal.Terminate(workspaceRef); err != nil {
+	if err := s.terminal.Terminate(sprintID); err != nil {
 		return fmt.Errorf("terminate terminal: %w", err)
 	}
 
@@ -102,18 +90,14 @@ func (s *Service) Stop(ctx context.Context, sprintID string) error {
 		return fmt.Errorf("update sprint state: %w", err)
 	}
 
-	if err := s.store.DeleteSurfaces(ctx, sprintID); err != nil {
-		return fmt.Errorf("delete surfaces: %w", err)
-	}
-
 	_ = s.workspace.Cleanup(sprintID)
 
 	return nil
 }
 
-// prepareMembers prepares isolated workspaces and builds launch specs for all members.
-func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) ([]terminal.SurfaceSpec, []string, error) {
-	var specs []terminal.SurfaceSpec
+// prepareMembers prepares isolated workspaces and builds launch members for all members.
+func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) ([]LaunchMember, []string, error) {
+	var members []LaunchMember
 	var tempFiles []string
 
 	for _, m := range snapshot.Members {
@@ -130,13 +114,14 @@ func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot 
 		}
 		tempFiles = append(tempFiles, tf...)
 
-		specs = append(specs, terminal.SurfaceSpec{
+		members = append(members, LaunchMember{
+			ID:      m.MemberID,
 			Name:    m.MemberName,
 			Command: cmd,
 		})
 	}
 
-	return specs, tempFiles, nil
+	return members, tempFiles, nil
 }
 
 // buildSnapshot loads all team data from DB and creates a TeamSnapshot.
@@ -219,4 +204,3 @@ func (s *Service) loadMemberSnapshot(ctx context.Context, memberID string) (doma
 func (s *Service) failSprint(ctx context.Context, sprintID, errMsg string) {
 	_ = s.store.UpdateSprintState(ctx, sprintID, domain.SprintErrored, errMsg)
 }
-
