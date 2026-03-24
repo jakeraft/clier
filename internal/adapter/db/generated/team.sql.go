@@ -108,7 +108,7 @@ func (q *Queries) GetTeam(ctx context.Context, id string) (Team, error) {
 }
 
 const listTeamMemberIDs = `-- name: ListTeamMemberIDs :many
-SELECT member_id FROM team_members WHERE team_id = ?
+SELECT member_id FROM team_members WHERE team_id = ? ORDER BY rowid
 `
 
 func (q *Queries) ListTeamMemberIDs(ctx context.Context, teamID string) ([]string, error) {

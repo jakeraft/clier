@@ -21,7 +21,7 @@ INSERT INTO team_members (team_id, member_id) VALUES (?, ?);
 DELETE FROM team_members WHERE team_id = ? AND member_id = ?;
 
 -- name: ListTeamMemberIDs :many
-SELECT member_id FROM team_members WHERE team_id = ?;
+SELECT member_id FROM team_members WHERE team_id = ? ORDER BY rowid;
 
 -- name: DeleteTeamMembers :execresult
 DELETE FROM team_members WHERE team_id = ?;
