@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"strings"
 
 	"github.com/jakeraft/clier/internal/domain"
@@ -46,7 +45,7 @@ func newProfileCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := store.CreateCliProfile(context.Background(), p); err != nil {
+			if err := store.CreateCliProfile(cmd.Context(), p); err != nil {
 				return err
 			}
 			return printJSON(p)
@@ -75,7 +74,7 @@ func newProfileListCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			profiles, err := store.ListCliProfiles(context.Background())
+			profiles, err := store.ListCliProfiles(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -102,7 +101,7 @@ func newProfileUpdateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			p, err := store.GetCliProfile(context.Background(), args[0])
+			p, err := store.GetCliProfile(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -120,7 +119,7 @@ func newProfileUpdateCmd() *cobra.Command {
 			if err := p.Update(namePtr, customArgsPtr); err != nil {
 				return err
 			}
-			if err := store.UpdateCliProfile(context.Background(), &p); err != nil {
+			if err := store.UpdateCliProfile(cmd.Context(), &p); err != nil {
 				return err
 			}
 			return printJSON(p)
@@ -147,7 +146,7 @@ func newProfileDeleteCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if err := store.DeleteCliProfile(context.Background(), args[0]); err != nil {
+			if err := store.DeleteCliProfile(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

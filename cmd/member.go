@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"strings"
 
 	"github.com/jakeraft/clier/internal/domain"
@@ -54,7 +53,7 @@ func newMemberCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := store.CreateMember(context.Background(), m); err != nil {
+			if err := store.CreateMember(cmd.Context(), m); err != nil {
 				return err
 			}
 			return printJSON(m)
@@ -85,7 +84,7 @@ func newMemberListCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			members, err := store.ListMembers(context.Background())
+			members, err := store.ListMembers(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -112,7 +111,7 @@ func newMemberUpdateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			m, err := store.GetMember(context.Background(), args[0])
+			m, err := store.GetMember(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -149,7 +148,7 @@ func newMemberUpdateCmd() *cobra.Command {
 			if err := m.Update(namePtr, profilePtr, promptIDsPtr, envIDsPtr, repoPtr); err != nil {
 				return err
 			}
-			if err := store.UpdateMember(context.Background(), &m); err != nil {
+			if err := store.UpdateMember(cmd.Context(), &m); err != nil {
 				return err
 			}
 			return printJSON(m)
@@ -179,7 +178,7 @@ func newMemberDeleteCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if err := store.DeleteMember(context.Background(), args[0]); err != nil {
+			if err := store.DeleteMember(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

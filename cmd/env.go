@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -44,7 +42,7 @@ func newEnvCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := store.CreateEnvironment(context.Background(), e); err != nil {
+			if err := store.CreateEnvironment(cmd.Context(), e); err != nil {
 				return err
 			}
 			return printJSON(e)
@@ -74,7 +72,7 @@ func newEnvListCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			envs, err := store.ListEnvironments(context.Background())
+			envs, err := store.ListEnvironments(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -101,7 +99,7 @@ func newEnvUpdateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			e, err := store.GetEnvironment(context.Background(), args[0])
+			e, err := store.GetEnvironment(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -122,7 +120,7 @@ func newEnvUpdateCmd() *cobra.Command {
 			if err := e.Update(namePtr, keyPtr, valuePtr); err != nil {
 				return err
 			}
-			if err := store.UpdateEnvironment(context.Background(), &e); err != nil {
+			if err := store.UpdateEnvironment(cmd.Context(), &e); err != nil {
 				return err
 			}
 			return printJSON(e)
@@ -150,7 +148,7 @@ func newEnvDeleteCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if err := store.DeleteEnvironment(context.Background(), args[0]); err != nil {
+			if err := store.DeleteEnvironment(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

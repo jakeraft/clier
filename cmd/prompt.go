@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -44,7 +42,7 @@ func newPromptCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := store.CreateSystemPrompt(context.Background(), s); err != nil {
+			if err := store.CreateSystemPrompt(cmd.Context(), s); err != nil {
 				return err
 			}
 			return printJSON(s)
@@ -72,7 +70,7 @@ func newPromptListCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			prompts, err := store.ListSystemPrompts(context.Background())
+			prompts, err := store.ListSystemPrompts(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -99,7 +97,7 @@ func newPromptUpdateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			s, err := store.GetSystemPrompt(context.Background(), args[0])
+			s, err := store.GetSystemPrompt(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -116,7 +114,7 @@ func newPromptUpdateCmd() *cobra.Command {
 			if err := s.Update(namePtr, promptPtr); err != nil {
 				return err
 			}
-			if err := store.UpdateSystemPrompt(context.Background(), &s); err != nil {
+			if err := store.UpdateSystemPrompt(cmd.Context(), &s); err != nil {
 				return err
 			}
 			return printJSON(s)
@@ -143,7 +141,7 @@ func newPromptDeleteCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if err := store.DeleteSystemPrompt(context.Background(), args[0]); err != nil {
+			if err := store.DeleteSystemPrompt(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

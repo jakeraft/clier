@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/jakeraft/clier/internal/app/tutorial"
@@ -62,7 +61,7 @@ func newTutorialRunCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if err := tutorial.Run(context.Background(), store, scenario); err != nil {
+			if err := tutorial.Run(cmd.Context(), store, scenario); err != nil {
 				return err
 			}
 
@@ -93,7 +92,7 @@ func newTutorialCleanCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if err := tutorial.Clean(context.Background(), store, scenario); err != nil {
+			if err := tutorial.Clean(cmd.Context(), store, scenario); err != nil {
 				return err
 			}
 

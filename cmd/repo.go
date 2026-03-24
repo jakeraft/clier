@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"context"
-
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -44,7 +42,7 @@ func newRepoCreateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := store.CreateGitRepo(context.Background(), r); err != nil {
+			if err := store.CreateGitRepo(cmd.Context(), r); err != nil {
 				return err
 			}
 			return printJSON(r)
@@ -72,7 +70,7 @@ func newRepoListCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			repos, err := store.ListGitRepos(context.Background())
+			repos, err := store.ListGitRepos(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -99,7 +97,7 @@ func newRepoUpdateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			r, err := store.GetGitRepo(context.Background(), args[0])
+			r, err := store.GetGitRepo(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -116,7 +114,7 @@ func newRepoUpdateCmd() *cobra.Command {
 			if err := r.Update(namePtr, urlPtr); err != nil {
 				return err
 			}
-			if err := store.UpdateGitRepo(context.Background(), &r); err != nil {
+			if err := store.UpdateGitRepo(cmd.Context(), &r); err != nil {
 				return err
 			}
 			return printJSON(r)
@@ -143,7 +141,7 @@ func newRepoDeleteCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if err := store.DeleteGitRepo(context.Background(), args[0]); err != nil {
+			if err := store.DeleteGitRepo(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})
