@@ -64,9 +64,14 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		return nil, fmt.Errorf("new sprint: %w", err)
 	}
 
-	members, err := s.prepareMembers(ctx, sprint.ID, snapshot)
+	dirs, err := s.workspace.Prepare(ctx, sprint.ID, snapshot)
 	if err != nil {
-		return nil, fmt.Errorf("prepare members: %w", err)
+		return nil, fmt.Errorf("prepare workspace: %w", err)
+	}
+
+	members, err := buildMemberSpecs(sprint.ID, snapshot, dirs)
+	if err != nil {
+		return nil, fmt.Errorf("build member specs: %w", err)
 	}
 
 	if err := s.store.CreateSprint(ctx, sprint); err != nil {
@@ -96,13 +101,7 @@ func (s *Service) Stop(ctx context.Context, sprintID string) error {
 	return nil
 }
 
-// prepareMembers sets up the workspace and builds launch commands for all members.
-func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) ([]MemberSpec, error) {
-	dirs, err := s.workspace.Prepare(ctx, sprintID, snapshot)
-	if err != nil {
-		return nil, fmt.Errorf("prepare workspace: %w", err)
-	}
-
+func buildMemberSpecs(sprintID string, snapshot domain.TeamSnapshot, dirs map[string]MemberDir) ([]MemberSpec, error) {
 	var members []MemberSpec
 
 	for _, m := range snapshot.Members {
