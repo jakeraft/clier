@@ -16,7 +16,7 @@ func newTestTeam(rootID string, members []domain.MemberSnapshot) domain.TeamSnap
 }
 
 func TestBuildProtocol(t *testing.T) {
-	t.Run("RootMember/CoordinatesWorkers", func(t *testing.T) {
+	t.Run("RootWithWorkers_MentionsRootRole", func(t *testing.T) {
 		team := newTestTeam("boss-1", []domain.MemberSnapshot{
 			{MemberID: "boss-1", MemberName: "Boss", Relations: domain.MemberRelations{Workers: []string{"worker-1"}}},
 			{MemberID: "worker-1", MemberName: "Writer"},
@@ -37,7 +37,7 @@ func TestBuildProtocol(t *testing.T) {
 		}
 	})
 
-	t.Run("NonRoot/MentionsLeader", func(t *testing.T) {
+	t.Run("NonRootWithLeader_MentionsLeaderName", func(t *testing.T) {
 		team := newTestTeam("leader-1", []domain.MemberSnapshot{
 			{MemberID: "leader-1", MemberName: "Editor"},
 			{MemberID: "writer-1", MemberName: "Writer", Relations: domain.MemberRelations{Leaders: []string{"leader-1"}, Peers: []string{"peer-1"}}},
@@ -53,7 +53,7 @@ func TestBuildProtocol(t *testing.T) {
 		}
 	})
 
-	t.Run("NoRelations/RootNoMessageSection", func(t *testing.T) {
+	t.Run("NoRelations_OmitsMessageSection", func(t *testing.T) {
 		team := newTestTeam("solo-1", []domain.MemberSnapshot{
 			{MemberID: "solo-1", MemberName: "Solo"},
 		})
@@ -64,7 +64,7 @@ func TestBuildProtocol(t *testing.T) {
 		}
 	})
 
-	t.Run("RelationTable/ShowsAllRoles", func(t *testing.T) {
+	t.Run("AllRelationTypes_ShowsFullTable", func(t *testing.T) {
 		team := newTestTeam("leader-1", []domain.MemberSnapshot{
 			{MemberID: "leader-1", MemberName: "Editor"},
 			{MemberID: "agent-1", MemberName: "Agent", Relations: domain.MemberRelations{
@@ -90,7 +90,7 @@ func TestBuildProtocol(t *testing.T) {
 }
 
 func TestComposePrompt(t *testing.T) {
-	t.Run("CombinesPromptsAndProtocol", func(t *testing.T) {
+	t.Run("MultiplePrompts_CombinesAll", func(t *testing.T) {
 		prompts := []domain.SnapshotPrompt{
 			{Name: "p1", Prompt: "Be concise."},
 			{Name: "p2", Prompt: "Write tests."},

@@ -69,72 +69,98 @@ func TestShellQuote(t *testing.T) {
 }
 
 func TestBuildCommand(t *testing.T) {
-	t.Run("Claude/IncludesAllArgs", func(t *testing.T) {
-		m := domain.MemberSnapshot{
-			MemberID:   "m1",
-			Binary:     domain.BinaryClaude,
-			Model:      "claude-sonnet-4-6",
-			SystemArgs: []string{"--dangerously-skip-permissions"},
-			CustomArgs: []string{"--verbose"},
-		}
-		cmd, tempFiles, err := BuildCommand(m, "you are a coder", "/work", nil)
-		if err != nil {
-			t.Fatalf("BuildCommand: %v", err)
-		}
-		if len(tempFiles) != 0 {
-			t.Errorf("claude should have no temp files, got %v", tempFiles)
-		}
-		if !strings.Contains(cmd, "claude") {
-			t.Errorf("command should contain binary: %s", cmd)
-		}
-		if !strings.Contains(cmd, "--model 'claude-sonnet-4-6'") {
-			t.Errorf("command should contain model: %s", cmd)
-		}
-		if !strings.Contains(cmd, "--session-id 'm1'") {
-			t.Errorf("command should contain session-id: %s", cmd)
-		}
-		if !strings.Contains(cmd, "--dangerously-skip-permissions") {
-			t.Errorf("command should contain system args: %s", cmd)
-		}
-		if !strings.Contains(cmd, "--verbose") {
-			t.Errorf("command should contain custom args: %s", cmd)
-		}
-		if !strings.Contains(cmd, "--append-system-prompt") {
-			t.Errorf("command should contain prompt: %s", cmd)
-		}
-		if !strings.HasPrefix(cmd, "cd ") {
-			t.Errorf("command should start with cd: %s", cmd)
-		}
+	t.Run("Claude", func(t *testing.T) {
+		t.Run("AllArgs_IncludesModelSessionPromptAndCustom", func(t *testing.T) {
+			m := domain.MemberSnapshot{
+				MemberID:   "m1",
+				Binary:     domain.BinaryClaude,
+				Model:      "claude-sonnet-4-6",
+				SystemArgs: []string{"--dangerously-skip-permissions"},
+				CustomArgs: []string{"--verbose"},
+			}
+			cmd, tempFiles, err := BuildCommand(m, "you are a coder", "/work", nil)
+			if err != nil {
+				t.Fatalf("BuildCommand: %v", err)
+			}
+			if len(tempFiles) != 0 {
+				t.Errorf("claude should have no temp files, got %v", tempFiles)
+			}
+			if !strings.Contains(cmd, "claude") {
+				t.Errorf("command should contain binary: %s", cmd)
+			}
+			if !strings.Contains(cmd, "--model 'claude-sonnet-4-6'") {
+				t.Errorf("command should contain model: %s", cmd)
+			}
+			if !strings.Contains(cmd, "--session-id 'm1'") {
+				t.Errorf("command should contain session-id: %s", cmd)
+			}
+			if !strings.Contains(cmd, "--dangerously-skip-permissions") {
+				t.Errorf("command should contain system args: %s", cmd)
+			}
+			if !strings.Contains(cmd, "--verbose") {
+				t.Errorf("command should contain custom args: %s", cmd)
+			}
+			if !strings.Contains(cmd, "--append-system-prompt") {
+				t.Errorf("command should contain prompt: %s", cmd)
+			}
+			if !strings.HasPrefix(cmd, "cd ") {
+				t.Errorf("command should start with cd: %s", cmd)
+			}
+		})
+
+		t.Run("WithEnv_PrependsExports", func(t *testing.T) {
+			m := domain.MemberSnapshot{
+				MemberID: "m1",
+				Binary:   domain.BinaryClaude,
+				Model:    "claude-sonnet-4-6",
+			}
+			env := []string{"HOME=/tmp/sprint", "FOO=bar"}
+			cmd, _, err := BuildCommand(m, "", "/work", env)
+			if err != nil {
+				t.Fatalf("BuildCommand: %v", err)
+			}
+			if !strings.HasPrefix(cmd, "export HOME=") {
+				t.Errorf("command should start with env exports: %s", cmd)
+			}
+			if !strings.Contains(cmd, "export FOO='bar'") {
+				t.Errorf("command should contain FOO export: %s", cmd)
+			}
+			if !strings.Contains(cmd, "cd '/work'") {
+				t.Errorf("command should contain cd: %s", cmd)
+			}
+		})
 	})
 
-	t.Run("Codex/WritesInstructionsFile", func(t *testing.T) {
-		m := domain.MemberSnapshot{
-			MemberID:   "m2",
-			Binary:     domain.BinaryCodex,
-			Model:      "gpt-5.4",
-			SystemArgs: []string{},
-			CustomArgs: []string{},
-		}
-		cmd, tempFiles, err := BuildCommand(m, "you are a coder", "/work", nil)
-		if err != nil {
-			t.Fatalf("BuildCommand: %v", err)
-		}
-		if len(tempFiles) != 1 {
-			t.Fatalf("codex should have 1 temp file, got %d", len(tempFiles))
-		}
-		defer os.Remove(tempFiles[0])
+	t.Run("Codex", func(t *testing.T) {
+		t.Run("WithPrompt_WritesInstructionsFile", func(t *testing.T) {
+			m := domain.MemberSnapshot{
+				MemberID:   "m2",
+				Binary:     domain.BinaryCodex,
+				Model:      "gpt-5.4",
+				SystemArgs: []string{},
+				CustomArgs: []string{},
+			}
+			cmd, tempFiles, err := BuildCommand(m, "you are a coder", "/work", nil)
+			if err != nil {
+				t.Fatalf("BuildCommand: %v", err)
+			}
+			if len(tempFiles) != 1 {
+				t.Fatalf("codex should have 1 temp file, got %d", len(tempFiles))
+			}
+			defer os.Remove(tempFiles[0])
 
-		if !strings.Contains(cmd, "model_instructions_file=") {
-			t.Errorf("command should contain instructions file: %s", cmd)
-		}
+			if !strings.Contains(cmd, "model_instructions_file=") {
+				t.Errorf("command should contain instructions file: %s", cmd)
+			}
 
-		data, err := os.ReadFile(tempFiles[0])
-		if err != nil {
-			t.Fatalf("read instructions file: %v", err)
-		}
-		if string(data) != "you are a coder" {
-			t.Errorf("instructions content = %q, want %q", string(data), "you are a coder")
-		}
+			data, err := os.ReadFile(tempFiles[0])
+			if err != nil {
+				t.Fatalf("read instructions file: %v", err)
+			}
+			if string(data) != "you are a coder" {
+				t.Errorf("instructions content = %q, want %q", string(data), "you are a coder")
+			}
+		})
 	})
 }
 
@@ -187,32 +213,8 @@ func TestBuildEnvCommand(t *testing.T) {
 	})
 }
 
-func TestBuildCommand_WithEnv(t *testing.T) {
-	t.Run("EnvIncludedInCommand", func(t *testing.T) {
-		m := domain.MemberSnapshot{
-			MemberID: "m1",
-			Binary:   domain.BinaryClaude,
-			Model:    "claude-sonnet-4-6",
-		}
-		env := []string{"HOME=/tmp/sprint", "FOO=bar"}
-		cmd, _, err := BuildCommand(m, "", "/work", env)
-		if err != nil {
-			t.Fatalf("BuildCommand: %v", err)
-		}
-		if !strings.HasPrefix(cmd, "export HOME=") {
-			t.Errorf("command should start with env exports: %s", cmd)
-		}
-		if !strings.Contains(cmd, "export FOO='bar'") {
-			t.Errorf("command should contain FOO export: %s", cmd)
-		}
-		if !strings.Contains(cmd, "cd '/work'") {
-			t.Errorf("command should contain cd: %s", cmd)
-		}
-	})
-}
-
 func TestBuildEnv(t *testing.T) {
-	t.Run("IncludesRequiredVars", func(t *testing.T) {
+	t.Run("WithCustomEnv_IncludesAllVars", func(t *testing.T) {
 		m := domain.MemberSnapshot{
 			MemberID: "m1",
 			Environments: []domain.SnapshotEnvironment{

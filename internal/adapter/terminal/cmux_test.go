@@ -5,7 +5,7 @@ import (
 )
 
 func TestParseRef(t *testing.T) {
-	t.Run("WorkspaceRef_ExtractsRef", func(t *testing.T) {
+	t.Run("WorkspacePrefix_ExtractsRef", func(t *testing.T) {
 		got, err := parseRef("Created workspace:42", "workspace:")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -15,7 +15,7 @@ func TestParseRef(t *testing.T) {
 		}
 	})
 
-	t.Run("SurfaceRef_ExtractsRef", func(t *testing.T) {
+	t.Run("SurfacePrefix_ExtractsRef", func(t *testing.T) {
 		got, err := parseRef("surface:10 ready", "surface:")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
