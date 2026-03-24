@@ -98,6 +98,7 @@ func TestBuildCommand(t *testing.T) {
 				"--verbose",
 				"--append-system-prompt",
 				"export HOME='/home/m1'",
+				"export CLIER_DATA_DIR=",
 				"export CLIER_SPRINT_ID='sprint-1'",
 				"export CLIER_MEMBER_ID='m1'",
 			} {

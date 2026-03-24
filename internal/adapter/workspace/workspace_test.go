@@ -238,4 +238,55 @@ func TestWriteConfigs(t *testing.T) {
 			}
 		})
 	})
+
+	t.Run("Claude/ClaudeMdExcludes_TildeExpandedToAbsolutePath", func(t *testing.T) {
+		home := t.TempDir()
+		workDir := filepath.Join(home, "project")
+
+		m := domain.MemberSnapshot{
+			Binary: domain.BinaryClaude,
+			DotConfig: domain.DotConfig{
+				"claudeMdExcludes": []string{"~/.claude/**"},
+			},
+		}
+
+		if err := writeConfigs(m, home, workDir); err != nil {
+			t.Fatalf("writeConfigs: %v", err)
+		}
+
+		data, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+		if err != nil {
+			t.Fatalf("read settings.json: %v", err)
+		}
+
+		content := string(data)
+		if strings.Contains(content, "~/") {
+			t.Errorf("tilde should be expanded in settings.json:\n%s", content)
+		}
+		realHome, _ := os.UserHomeDir()
+		if !strings.Contains(content, realHome) {
+			t.Errorf("settings.json should contain real home %s:\n%s", realHome, content)
+		}
+	})
+}
+
+func TestExpandTildePaths(t *testing.T) {
+	home, _ := os.UserHomeDir()
+
+	t.Run("ExpandsTilde", func(t *testing.T) {
+		input := []byte(`{"paths": ["~/.claude/**"]}`)
+		got := string(expandTildePaths(input))
+		want := fmt.Sprintf(`{"paths": ["%s/.claude/**"]}`, home)
+		if got != want {
+			t.Errorf("got %s, want %s", got, want)
+		}
+	})
+
+	t.Run("NoTilde_Unchanged", func(t *testing.T) {
+		input := []byte(`{"paths": ["/absolute/path"]}`)
+		got := string(expandTildePaths(input))
+		if got != string(input) {
+			t.Errorf("should not change: got %s", got)
+		}
+	})
 }
