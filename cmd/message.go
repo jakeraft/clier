@@ -23,17 +23,20 @@ func newMessageCmd() *cobra.Command {
 }
 
 func newMessageSendCmd() *cobra.Command {
-	var toMemberID string
+	var sprintFlag, toMemberID string
 
 	cmd := &cobra.Command{
 		Use:   "send <content>",
 		Short: "Send a message to a teammate",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			sprintID := os.Getenv("CLIER_SPRINT_ID")
+			sprintID := sprintFlag
+			if sprintID == "" {
+				sprintID = os.Getenv("CLIER_SPRINT_ID")
+			}
 			fromMemberID := os.Getenv("CLIER_MEMBER_ID")
-			if sprintID == "" || fromMemberID == "" {
-				return fmt.Errorf("CLIER_SPRINT_ID and CLIER_MEMBER_ID must be set")
+			if sprintID == "" {
+				return fmt.Errorf("--sprint flag or CLIER_SPRINT_ID must be set")
 			}
 
 			store, err := newStore()
@@ -55,6 +58,7 @@ func newMessageSendCmd() *cobra.Command {
 			})
 		},
 	}
+	cmd.Flags().StringVar(&sprintFlag, "sprint", "", "Sprint ID (defaults to CLIER_SPRINT_ID)")
 	cmd.Flags().StringVar(&toMemberID, "to", "", "Recipient member ID")
 	_ = cmd.MarkFlagRequired("to")
 	return cmd

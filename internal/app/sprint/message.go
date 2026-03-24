@@ -17,15 +17,20 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 		return fmt.Errorf("sprint is not running (state: %s)", sprint.State)
 	}
 
-	from, ok := findMember(sprint.TeamSnapshot.Members, fromMemberID)
-	if !ok {
-		return fmt.Errorf("sender not found: %s", fromMemberID)
-	}
 	if _, ok := findMember(sprint.TeamSnapshot.Members, toMemberID); !ok {
 		return fmt.Errorf("recipient not found: %s", toMemberID)
 	}
-	if !from.Relations.IsConnectedTo(toMemberID) {
-		return fmt.Errorf("no relation from %s to %s", fromMemberID, toMemberID)
+
+	senderName := "user"
+	if fromMemberID != "" {
+		from, ok := findMember(sprint.TeamSnapshot.Members, fromMemberID)
+		if !ok {
+			return fmt.Errorf("sender not found: %s", fromMemberID)
+		}
+		if !from.Relations.IsConnectedTo(toMemberID) {
+			return fmt.Errorf("no relation from %s to %s", fromMemberID, toMemberID)
+		}
+		senderName = from.MemberName
 	}
 
 	msg, err := domain.NewMessage(sprintID, fromMemberID, toMemberID, content)
@@ -36,6 +41,6 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 		return fmt.Errorf("save message: %w", err)
 	}
 
-	text := fmt.Sprintf("[Message from %s] %s", from.MemberName, content)
+	text := fmt.Sprintf("[Message from %s] %s", senderName, content)
 	return s.terminal.Send(sprintID, toMemberID, text)
 }
