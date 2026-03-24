@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	db "github.com/jakeraft/clier/internal/adapter/db"
 	"github.com/jakeraft/clier/internal/adapter/settings"
 	"github.com/spf13/cobra"
 )
@@ -17,6 +18,15 @@ func newSettings() (*settings.Settings, error) {
 		return nil, fmt.Errorf("get home dir: %w", err)
 	}
 	return settings.New(filepath.Join(home, configDirName)), nil
+}
+
+func newStore() (*db.Store, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("get home dir: %w", err)
+	}
+	dbPath := filepath.Join(home, configDirName, "clier.db")
+	return db.NewStore(dbPath)
 }
 
 var rootCmd = &cobra.Command{
