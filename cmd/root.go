@@ -32,14 +32,23 @@ func newSettings() (*settings.Settings, error) {
 }
 
 func newStore() (*db.Store, error) {
-	dir, err := dataDir()
+	_, store, err := newSettingsAndStore()
+	return store, err
+}
+
+func newSettingsAndStore() (*settings.Settings, *db.Store, error) {
+	cfg, err := newSettings()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, fmt.Errorf("create data dir: %w", err)
+	if err := cfg.EnsureDirs(); err != nil {
+		return nil, nil, err
 	}
-	return db.NewStore(filepath.Join(dir, "clier.db"))
+	store, err := db.NewStore(cfg.DBPath())
+	if err != nil {
+		return nil, nil, err
+	}
+	return cfg, store, nil
 }
 
 var rootCmd = &cobra.Command{

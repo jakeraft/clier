@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	dbFileName  = "data.db"
+	dbFileName  = "clier.db"
 	authDirName = "auth"
 )
 

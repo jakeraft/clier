@@ -32,16 +32,11 @@ func newSprintStartCmd() *cobra.Command {
 		Use:   "start",
 		Short: "Start a sprint",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, store, err := newSettingsAndStore()
 			if err != nil {
 				return err
 			}
 			defer store.Close()
-
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
 
 			term := terminal.NewCmuxTerminal(store)
 			ws := workspace.New(filepath.Join(cfg.ConfigDir(), "workspaces"), cfg)
@@ -65,16 +60,11 @@ func newSprintStopCmd() *cobra.Command {
 		Short: "Stop a sprint",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, store, err := newSettingsAndStore()
 			if err != nil {
 				return err
 			}
 			defer store.Close()
-
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
 
 			term := terminal.NewCmuxTerminal(store)
 			ws := workspace.New(filepath.Join(cfg.ConfigDir(), "workspaces"), cfg)
