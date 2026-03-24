@@ -53,10 +53,6 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-func (s *Store) DB() *sql.DB {
-	return s.db
-}
-
 // Team
 
 func (s *Store) CreateTeam(ctx context.Context, t *domain.Team) error {
@@ -858,4 +854,34 @@ func (s *Store) ListMessagesBySprintID(ctx context.Context, sprintID string) ([]
 		})
 	}
 	return msgs, nil
+}
+
+// SprintSurface (infra state for terminal adapter)
+
+func (s *Store) SaveSprintSurface(ctx context.Context, sprintID, memberID, workspaceRef, surfaceRef string) error {
+	_, err := s.queries.SaveSprintSurface(ctx, generated.SaveSprintSurfaceParams{
+		SprintID: sprintID, MemberID: memberID, WorkspaceRef: workspaceRef, SurfaceRef: surfaceRef,
+	})
+	return err
+}
+
+func (s *Store) GetSprintSurface(ctx context.Context, sprintID, memberID string) (workspaceRef, surfaceRef string, err error) {
+	row, err := s.queries.GetSprintSurface(ctx, generated.GetSprintSurfaceParams{
+		SprintID: sprintID, MemberID: memberID,
+	})
+	if err != nil {
+		return "", "", err
+	}
+	return row.WorkspaceRef, row.SurfaceRef, nil
+}
+
+func (s *Store) GetSprintWorkspaceRef(ctx context.Context, sprintID, excludeMemberID string) (string, error) {
+	return s.queries.GetSprintWorkspaceRef(ctx, generated.GetSprintWorkspaceRefParams{
+		SprintID: sprintID, MemberID: excludeMemberID,
+	})
+}
+
+func (s *Store) DeleteSprintSurfaces(ctx context.Context, sprintID string) error {
+	_, err := s.queries.DeleteSprintSurfaces(ctx, sprintID)
+	return err
 }

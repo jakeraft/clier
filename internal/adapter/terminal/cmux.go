@@ -1,7 +1,7 @@
 package terminal
 
 import (
-	"database/sql"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -12,13 +12,21 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-type CmuxTerminal struct {
-	binary string
-	db     *sql.DB
+// SurfaceStore persists sprint surface refs across CLI invocations.
+type SurfaceStore interface {
+	SaveSprintSurface(ctx context.Context, sprintID, memberID, workspaceRef, surfaceRef string) error
+	GetSprintSurface(ctx context.Context, sprintID, memberID string) (workspaceRef, surfaceRef string, err error)
+	GetSprintWorkspaceRef(ctx context.Context, sprintID, excludeMemberID string) (string, error)
+	DeleteSprintSurfaces(ctx context.Context, sprintID string) error
 }
 
-func NewCmuxTerminal(db *sql.DB) *CmuxTerminal {
-	return &CmuxTerminal{binary: "cmux", db: db}
+type CmuxTerminal struct {
+	binary   string
+	surfaces SurfaceStore
+}
+
+func NewCmuxTerminal(surfaces SurfaceStore) *CmuxTerminal {
+	return &CmuxTerminal{binary: "cmux", surfaces: surfaces}
 }
 
 func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.MemberSpec) error {
@@ -93,36 +101,22 @@ func (c *CmuxTerminal) setupSurface(wsRef, surfaceRef string, m sprint.MemberSpe
 	return nil
 }
 
-// persistence — sprint_surfaces table
+// persistence — delegated to SurfaceStore
 
 func (c *CmuxTerminal) saveSurface(sprintID, memberID, workspaceRef, surfaceRef string) error {
-	_, err := c.db.Exec(
-		"INSERT INTO sprint_surfaces (sprint_id, member_id, workspace_ref, surface_ref) VALUES (?, ?, ?, ?)",
-		sprintID, memberID, workspaceRef, surfaceRef,
-	)
-	return err
+	return c.surfaces.SaveSprintSurface(context.Background(), sprintID, memberID, workspaceRef, surfaceRef)
 }
 
 func (c *CmuxTerminal) getRefs(sprintID, memberID string) (wsRef, surfaceRef string, err error) {
-	err = c.db.QueryRow(
-		"SELECT workspace_ref, surface_ref FROM sprint_surfaces WHERE sprint_id = ? AND member_id = ?",
-		sprintID, memberID,
-	).Scan(&wsRef, &surfaceRef)
-	return
+	return c.surfaces.GetSprintSurface(context.Background(), sprintID, memberID)
 }
 
 func (c *CmuxTerminal) getWorkspaceRef(sprintID string) (string, error) {
-	var ref string
-	err := c.db.QueryRow(
-		"SELECT workspace_ref FROM sprint_surfaces WHERE sprint_id = ? AND member_id != ? LIMIT 1",
-		sprintID, domain.UserMemberID,
-	).Scan(&ref)
-	return ref, err
+	return c.surfaces.GetSprintWorkspaceRef(context.Background(), sprintID, domain.UserMemberID)
 }
 
 func (c *CmuxTerminal) deleteSurfaces(sprintID string) error {
-	_, err := c.db.Exec("DELETE FROM sprint_surfaces WHERE sprint_id = ?", sprintID)
-	return err
+	return c.surfaces.DeleteSprintSurfaces(context.Background(), sprintID)
 }
 
 func (c *CmuxTerminal) saveCallerSurface(sprintID string) error {
