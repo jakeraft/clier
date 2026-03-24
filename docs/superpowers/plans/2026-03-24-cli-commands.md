@@ -4,7 +4,7 @@
 
 **Goal:** clier의 모든 리소스를 CRUD하고 sprint/message를 실행하는 CLI 커맨드를 추가한다.
 
-**Architecture:** cmd 레이어에서 cobra 커맨드를 정의하고, 각 RunE에서 Store를 생성한 뒤 domain/service를 호출하여 결과를 JSON으로 출력한다. 모든 출력은 `printJSON` 헬퍼를 통해 stdout에 pretty-printed JSON으로 나간다.
+**Architecture:** cmd 레이어에서 cobra 커맨드를 정의하고, 각 RunE에서 Store를 생성한 뒤 domain/service를 호출하여 결과를 JSON으로 출력한다. 모든 출력은 `printJSON` 헬퍼를 통해 stdout에 raw JSON으로 나간다.
 
 **Tech Stack:** Go 1.25, Cobra CLI, SQLite (modernc.org/sqlite), sqlc
 
@@ -211,9 +211,7 @@ import (
 )
 
 func printJSON(v any) error {
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	return enc.Encode(v)
+	return json.NewEncoder(os.Stdout).Encode(v)
 }
 ```
 

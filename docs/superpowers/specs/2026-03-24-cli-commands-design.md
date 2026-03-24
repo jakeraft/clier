@@ -33,9 +33,7 @@ clier
 
 ```go
 func printJSON(v any) error {
-    enc := json.NewEncoder(os.Stdout)
-    enc.SetIndent("", "  ")
-    return enc.Encode(v)
+    return json.NewEncoder(os.Stdout).Encode(v)
 }
 ```
 
