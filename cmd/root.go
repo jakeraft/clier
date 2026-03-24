@@ -12,21 +12,31 @@ import (
 
 const configDirName = ".clier"
 
-func newSettings() (*settings.Settings, error) {
+func dataDir() (string, error) {
+	if dir := os.Getenv("CLIER_DATA_DIR"); dir != "" {
+		return dir, nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, fmt.Errorf("get home dir: %w", err)
+		return "", fmt.Errorf("get home dir: %w", err)
 	}
-	return settings.New(filepath.Join(home, configDirName)), nil
+	return filepath.Join(home, configDirName), nil
+}
+
+func newSettings() (*settings.Settings, error) {
+	dir, err := dataDir()
+	if err != nil {
+		return nil, err
+	}
+	return settings.New(dir), nil
 }
 
 func newStore() (*db.Store, error) {
-	home, err := os.UserHomeDir()
+	dir, err := dataDir()
 	if err != nil {
-		return nil, fmt.Errorf("get home dir: %w", err)
+		return nil, err
 	}
-	dbPath := filepath.Join(home, configDirName, "clier.db")
-	return db.NewStore(dbPath)
+	return db.NewStore(filepath.Join(dir, "clier.db"))
 }
 
 var rootCmd = &cobra.Command{

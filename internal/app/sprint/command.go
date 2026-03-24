@@ -87,8 +87,10 @@ func quoteArgs(args []string) []string {
 }
 
 func buildEnv(m domain.MemberSnapshot, sprintID, memberHome string) []string {
+	home, _ := os.UserHomeDir()
 	env := []string{
 		"HOME=" + memberHome,
+		"CLIER_DATA_DIR=" + filepath.Join(home, ".clier"),
 		"CLIER_SPRINT_ID=" + sprintID,
 		"CLIER_MEMBER_ID=" + m.MemberID,
 	}
