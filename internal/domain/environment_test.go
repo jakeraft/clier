@@ -41,6 +41,26 @@ func TestEnvironment(t *testing.T) {
 			}
 		})
 
+		t.Run("InvalidKey_ReturnsError", func(t *testing.T) {
+			keys := []string{"1BAD", "MY-KEY", "KEY;rm", "KEY=VAL", "has space"}
+			for _, key := range keys {
+				_, err := NewEnvironment("name", key, "val")
+				if err == nil {
+					t.Errorf("key %q: expected error, got nil", key)
+				}
+			}
+		})
+
+		t.Run("ValidKeys_Accepted", func(t *testing.T) {
+			keys := []string{"A", "_PRIVATE", "MY_KEY_123", "lowercase"}
+			for _, key := range keys {
+				_, err := NewEnvironment("name", key, "val")
+				if err != nil {
+					t.Errorf("key %q: unexpected error: %v", key, err)
+				}
+			}
+		})
+
 		t.Run("EmptyValue_ReturnsError", func(t *testing.T) {
 			_, err := NewEnvironment("name", "KEY", "  ")
 			if err == nil {
@@ -78,6 +98,14 @@ func TestEnvironment(t *testing.T) {
 		t.Run("EmptyKey_ReturnsError", func(t *testing.T) {
 			e, _ := NewEnvironment("valid", "KEY", "val")
 			key := "  "
+			if err := e.Update(nil, &key, nil); err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+
+		t.Run("InvalidKey_ReturnsError", func(t *testing.T) {
+			e, _ := NewEnvironment("valid", "KEY", "val")
+			key := "BAD;KEY"
 			if err := e.Update(nil, &key, nil); err == nil {
 				t.Fatal("expected error, got nil")
 			}

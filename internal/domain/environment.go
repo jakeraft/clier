@@ -2,11 +2,14 @@ package domain
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+var envKeyRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 type Environment struct {
 	ID        string    `json:"id"`
@@ -23,8 +26,8 @@ func NewEnvironment(name, key, value string) (*Environment, error) {
 		return nil, errors.New("environment name must not be empty")
 	}
 	key = strings.TrimSpace(key)
-	if key == "" {
-		return nil, errors.New("environment key must not be empty")
+	if !envKeyRe.MatchString(key) {
+		return nil, errors.New("environment key must be a valid identifier (letters, digits, underscore)")
 	}
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -52,8 +55,8 @@ func (e *Environment) Update(name, key, value *string) error {
 	}
 	if key != nil {
 		trimmed := strings.TrimSpace(*key)
-		if trimmed == "" {
-			return errors.New("environment key must not be empty")
+		if !envKeyRe.MatchString(trimmed) {
+			return errors.New("environment key must be a valid identifier (letters, digits, underscore)")
 		}
 		e.Key = trimmed
 	}
