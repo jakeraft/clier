@@ -65,15 +65,15 @@ var CliProfilePresets = []CliProfilePreset{
 }
 
 type CliProfile struct {
-	ID         string
-	Name       string
-	Model      string
-	Binary     CliBinary
-	SystemArgs []string
-	CustomArgs []string
-	DotConfig  DotConfig
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID         string    `json:"id"`
+	Name       string    `json:"name"`
+	Model      string    `json:"model"`
+	Binary     CliBinary `json:"binary"`
+	SystemArgs []string  `json:"system_args"`
+	CustomArgs []string  `json:"custom_args"`
+	DotConfig  DotConfig `json:"dot_config"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 func NewCliProfile(name, presetKey string, customArgs []string) (*CliProfile, error) {

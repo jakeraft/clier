@@ -16,13 +16,13 @@ const (
 )
 
 type Sprint struct {
-	ID           string
-	TeamSnapshot TeamSnapshot
-	Name         string
-	State        SprintState
-	Error        string // empty string means no error
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID           string       `json:"id"`
+	TeamSnapshot TeamSnapshot `json:"team_snapshot"`
+	Name         string       `json:"name"`
+	State        SprintState  `json:"state"`
+	Error        string       `json:"error"` // empty string means no error
+	CreatedAt    time.Time    `json:"created_at"`
+	UpdatedAt    time.Time    `json:"updated_at"`
 }
 
 func NewSprint(snapshot TeamSnapshot) (*Sprint, error) {

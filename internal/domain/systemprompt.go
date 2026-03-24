@@ -9,11 +9,11 @@ import (
 )
 
 type SystemPrompt struct {
-	ID        string
-	Name      string
-	Prompt    string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Prompt    string    `json:"prompt"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func NewSystemPrompt(name, prompt string) (*SystemPrompt, error) {

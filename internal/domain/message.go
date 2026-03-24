@@ -9,12 +9,12 @@ import (
 )
 
 type Message struct {
-	ID           string
-	SprintID     string
-	FromMemberID string
-	ToMemberID   string
-	Content      string
-	CreatedAt    time.Time
+	ID           string    `json:"id"`
+	SprintID     string    `json:"sprint_id"`
+	FromMemberID string    `json:"from_member_id"`
+	ToMemberID   string    `json:"to_member_id"`
+	Content      string    `json:"content"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 func NewMessage(sprintID, fromMemberID, toMemberID, content string) (*Message, error) {

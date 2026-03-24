@@ -17,15 +17,15 @@ const (
 )
 
 type Relation struct {
-	From string
-	To   string
-	Type RelationType
+	From string       `json:"from"`
+	To   string       `json:"to"`
+	Type RelationType `json:"type"`
 }
 
 type MemberRelations struct {
-	Leaders []string
-	Workers []string
-	Peers   []string
+	Leaders []string `json:"leaders"`
+	Workers []string `json:"workers"`
+	Peers   []string `json:"peers"`
 }
 
 func (r MemberRelations) IsConnectedTo(memberID string) bool {
@@ -35,13 +35,13 @@ func (r MemberRelations) IsConnectedTo(memberID string) bool {
 }
 
 type Team struct {
-	ID           string
-	Name         string
-	RootMemberID string
-	MemberIDs    []string
-	Relations    []Relation
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID           string     `json:"id"`
+	Name         string     `json:"name"`
+	RootMemberID string     `json:"root_member_id"`
+	MemberIDs    []string   `json:"member_ids"`
+	Relations    []Relation `json:"relations"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 func NewTeam(name, rootMemberID string) (*Team, error) {

@@ -9,14 +9,14 @@ import (
 )
 
 type Member struct {
-	ID              string
-	Name            string
-	CliProfileID    string
-	SystemPromptIDs []string
-	EnvironmentIDs  []string
-	GitRepoID       string // empty string means not set
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID              string    `json:"id"`
+	Name            string    `json:"name"`
+	CliProfileID    string    `json:"cli_profile_id"`
+	SystemPromptIDs []string  `json:"system_prompt_ids"`
+	EnvironmentIDs  []string  `json:"environment_ids"`
+	GitRepoID       string    `json:"git_repo_id"` // empty string means not set
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 func NewMember(name, cliProfileID string, systemPromptIDs, environmentIDs []string, gitRepoID string) (*Member, error) {

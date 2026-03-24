@@ -9,12 +9,12 @@ import (
 )
 
 type Environment struct {
-	ID        string
-	Name      string
-	Key       string
-	Value     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Key       string    `json:"key"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func NewEnvironment(name, key, value string) (*Environment, error) {
