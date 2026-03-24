@@ -17,8 +17,10 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 		return fmt.Errorf("sprint is not running (state: %s)", sprint.State)
 	}
 
-	if _, ok := findMember(sprint.TeamSnapshot.Members, toMemberID); !ok {
-		return fmt.Errorf("recipient not found: %s", toMemberID)
+	if toMemberID != "user" {
+		if _, ok := findMember(sprint.TeamSnapshot.Members, toMemberID); !ok {
+			return fmt.Errorf("recipient not found: %s", toMemberID)
+		}
 	}
 
 	senderName := "user"
@@ -27,7 +29,7 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 		if !ok {
 			return fmt.Errorf("sender not found: %s", fromMemberID)
 		}
-		if !from.Relations.IsConnectedTo(toMemberID) {
+		if toMemberID != "user" && !from.Relations.IsConnectedTo(toMemberID) {
 			return fmt.Errorf("no relation from %s to %s", fromMemberID, toMemberID)
 		}
 		senderName = from.MemberName

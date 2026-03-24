@@ -103,7 +103,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 		}
 	})
 
-	t.Run("NoRelations_OmitsMessageSection", func(t *testing.T) {
+	t.Run("NoRelations_HasUserGuidanceOnly", func(t *testing.T) {
 		// given: Solo is root with no relations
 		team := newTestTeam("solo-1", []domain.MemberSnapshot{
 			{MemberID: "solo-1", MemberName: "Solo"},
@@ -115,21 +115,15 @@ func TestBuildMemberPrompt(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// then: prompt is only
-		//   ## Team Protocol
-		//
-		//   You are "Solo", part of team "MyTeam".
-		// (no relation table, no guidance, no message section)
-		if strings.Contains(got, "message send") {
-			t.Errorf("should not have message section:\n%s", got)
-		}
+		// then: no relation table, no teammate messaging, but has user guidance
 		if strings.Contains(got, "| Role |") {
 			t.Errorf("should not have relation table:\n%s", got)
 		}
-		// no trailing blank lines
-		trimmed := strings.TrimRight(got, "\n")
-		if strings.HasSuffix(trimmed, "\n\n") {
-			t.Errorf("should not have trailing blank lines:\n%q", got)
+		if strings.Contains(got, "message send --to <id>") {
+			t.Errorf("should not have teammate message section:\n%s", got)
+		}
+		if !strings.Contains(got, "message send --to user") {
+			t.Errorf("should have user guidance:\n%s", got)
 		}
 	})
 

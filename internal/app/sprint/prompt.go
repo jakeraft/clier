@@ -14,7 +14,8 @@ const (
 	promptWorkerGuidance = "Delegate sub-tasks to workers. Wait for all responses before wrapping up.\n"
 	promptPeerGuidance   = "Coordinate with peers when tasks overlap.\n"
 
-	promptMessaging = "To message a teammate:\n\n```bash\nclier message send --to <id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n"
+	promptMessaging    = "To message a teammate:\n\n```bash\nclier message send --to <id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n"
+	promptUserGuidance = "You were started by a human user. Report final results back with:\n\n```bash\nclier message send --to user \"<result>\"\n```\n"
 )
 
 // BuildMemberPrompt generates the full prompt for a member by combining
@@ -55,7 +56,10 @@ func buildProtocol(teamName string, member domain.MemberSnapshot, memberNames ma
 	}
 
 	// Role guidance
-	if len(member.Relations.Leaders) > 0 {
+	if len(member.Relations.Leaders) == 0 {
+		b.WriteString("\n")
+		b.WriteString(promptUserGuidance)
+	} else {
 		b.WriteString("\n")
 		fmt.Fprintf(&b, promptLeaderGuidance, memberNames[member.Relations.Leaders[0]])
 	}

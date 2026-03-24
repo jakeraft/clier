@@ -3,6 +3,7 @@ package terminal
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -21,6 +22,11 @@ func NewCmuxTerminal(db *sql.DB) *CmuxTerminal {
 func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.MemberSpec) error {
 	if len(members) == 0 {
 		return fmt.Errorf("no members to launch")
+	}
+
+	// Save the caller's surface as "user" so agents can message back.
+	if err := c.saveCallerSurface(sprintID); err != nil {
+		return fmt.Errorf("save caller surface: %w", err)
 	}
 
 	wsRef, err := c.createWorkspace(sprintName)
@@ -57,13 +63,9 @@ func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.Memb
 }
 
 func (c *CmuxTerminal) Send(sprintID, memberID, text string) error {
-	wsRef, err := c.getWorkspaceRef(sprintID)
+	wsRef, surfaceRef, err := c.getRefs(sprintID, memberID)
 	if err != nil {
-		return fmt.Errorf("get workspace ref: %w", err)
-	}
-	surfaceRef, err := c.getSurfaceRef(sprintID, memberID)
-	if err != nil {
-		return fmt.Errorf("get surface ref for %s: %w", memberID, err)
+		return fmt.Errorf("get refs for %s: %w", memberID, err)
 	}
 	return c.sendAndEnter(wsRef, surfaceRef, text)
 }
@@ -104,13 +106,12 @@ func (c *CmuxTerminal) saveSurface(sprintID, memberID, workspaceRef, surfaceRef 
 	return err
 }
 
-func (c *CmuxTerminal) getSurfaceRef(sprintID, memberID string) (string, error) {
-	var ref string
-	err := c.db.QueryRow(
-		"SELECT surface_ref FROM sprint_surfaces WHERE sprint_id = ? AND member_id = ?",
+func (c *CmuxTerminal) getRefs(sprintID, memberID string) (wsRef, surfaceRef string, err error) {
+	err = c.db.QueryRow(
+		"SELECT workspace_ref, surface_ref FROM sprint_surfaces WHERE sprint_id = ? AND member_id = ?",
 		sprintID, memberID,
-	).Scan(&ref)
-	return ref, err
+	).Scan(&wsRef, &surfaceRef)
+	return
 }
 
 func (c *CmuxTerminal) getWorkspaceRef(sprintID string) (string, error) {
@@ -125,6 +126,17 @@ func (c *CmuxTerminal) getWorkspaceRef(sprintID string) (string, error) {
 func (c *CmuxTerminal) deleteSurfaces(sprintID string) error {
 	_, err := c.db.Exec("DELETE FROM sprint_surfaces WHERE sprint_id = ?", sprintID)
 	return err
+}
+
+const userMemberID = "user"
+
+func (c *CmuxTerminal) saveCallerSurface(sprintID string) error {
+	wsRef := os.Getenv("CMUX_WORKSPACE_ID")
+	surfaceRef := os.Getenv("CMUX_SURFACE_ID")
+	if wsRef == "" || surfaceRef == "" {
+		return nil
+	}
+	return c.saveSurface(sprintID, userMemberID, wsRef, surfaceRef)
 }
 
 // cmux command helpers
