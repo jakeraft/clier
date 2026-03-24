@@ -581,6 +581,84 @@ func (s *Store) DeleteGitRepo(ctx context.Context, id string) error {
 	return s.queries.DeleteGitRepo(ctx, id)
 }
 
+// TeamSnapshot (aggregate)
+
+func (s *Store) GetTeamSnapshot(ctx context.Context, teamID string) (domain.TeamSnapshot, error) {
+	team, err := s.GetTeam(ctx, teamID)
+	if err != nil {
+		return domain.TeamSnapshot{}, fmt.Errorf("get team: %w", err)
+	}
+
+	members := make([]domain.MemberSnapshot, 0, len(team.MemberIDs))
+	for _, id := range team.MemberIDs {
+		ms, err := s.getMemberSnapshot(ctx, id)
+		if err != nil {
+			return domain.TeamSnapshot{}, fmt.Errorf("load member %s: %w", id, err)
+		}
+		ms.Relations = team.MemberRelations(id)
+		members = append(members, ms)
+	}
+
+	return domain.TeamSnapshot{
+		TeamName:     team.Name,
+		RootMemberID: team.RootMemberID,
+		Members:      members,
+	}, nil
+}
+
+func (s *Store) getMemberSnapshot(ctx context.Context, memberID string) (domain.MemberSnapshot, error) {
+	member, err := s.GetMember(ctx, memberID)
+	if err != nil {
+		return domain.MemberSnapshot{}, fmt.Errorf("get member: %w", err)
+	}
+
+	profile, err := s.GetCliProfile(ctx, member.CliProfileID)
+	if err != nil {
+		return domain.MemberSnapshot{}, fmt.Errorf("get cli profile: %w", err)
+	}
+
+	prompts := make([]domain.SnapshotPrompt, 0, len(member.SystemPromptIDs))
+	for _, id := range member.SystemPromptIDs {
+		sp, err := s.GetSystemPrompt(ctx, id)
+		if err != nil {
+			return domain.MemberSnapshot{}, fmt.Errorf("get prompt %s: %w", id, err)
+		}
+		prompts = append(prompts, domain.SnapshotPrompt{Name: sp.Name, Prompt: sp.Prompt})
+	}
+
+	envs := make([]domain.SnapshotEnvironment, 0, len(member.EnvironmentIDs))
+	for _, id := range member.EnvironmentIDs {
+		env, err := s.GetEnvironment(ctx, id)
+		if err != nil {
+			return domain.MemberSnapshot{}, fmt.Errorf("get environment %s: %w", id, err)
+		}
+		envs = append(envs, domain.SnapshotEnvironment{Name: env.Name, Key: env.Key, Value: env.Value})
+	}
+
+	var gitRepo *domain.SnapshotGitRepo
+	if member.GitRepoID != "" {
+		repo, err := s.GetGitRepo(ctx, member.GitRepoID)
+		if err != nil {
+			return domain.MemberSnapshot{}, fmt.Errorf("get git repo: %w", err)
+		}
+		gitRepo = &domain.SnapshotGitRepo{Name: repo.Name, URL: repo.URL}
+	}
+
+	return domain.MemberSnapshot{
+		MemberID:       memberID,
+		MemberName:     member.Name,
+		Binary:         profile.Binary,
+		Model:          profile.Model,
+		CliProfileName: profile.Name,
+		SystemArgs:     profile.SystemArgs,
+		CustomArgs:     profile.CustomArgs,
+		DotConfig:      profile.DotConfig,
+		SystemPrompts:  prompts,
+		Environments:   envs,
+		GitRepo:        gitRepo,
+	}, nil
+}
+
 // Sprint
 
 func unmarshalSprint(row generated.Sprint) (domain.Sprint, error) {
