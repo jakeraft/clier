@@ -15,7 +15,7 @@ const (
 	promptPeerGuidance   = "Coordinate with peers when tasks overlap.\n"
 
 	promptMessaging    = "To message a teammate:\n\n```bash\nclier message send --to <id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n"
-	promptUserGuidance = "You were started by a human user. Report final results back with:\n\n```bash\nclier message send --to user \"<result>\"\n```\n"
+	promptUserGuidance = "You were started by a human user. Report final results back with:\n\n```bash\nclier message send --to " + domain.UserMemberID + " \"<result>\"\n```\n"
 )
 
 // BuildMemberPrompt generates the full prompt for a member by combining

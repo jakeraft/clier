@@ -122,7 +122,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 		if strings.Contains(got, "message send --to <id>") {
 			t.Errorf("should not have teammate message section:\n%s", got)
 		}
-		if !strings.Contains(got, "message send --to user") {
+		if !strings.Contains(got, "message send --to "+domain.UserMemberID) {
 			t.Errorf("should have user guidance:\n%s", got)
 		}
 	})

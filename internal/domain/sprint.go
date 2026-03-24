@@ -15,7 +15,7 @@ const (
 	SprintErrored   SprintState = "errored"
 
 	// UserMemberID is the reserved member ID for the human user who started the sprint.
-	UserMemberID = "user"
+	UserMemberID = "00000000-0000-0000-0000-000000000000"
 )
 
 type Sprint struct {
