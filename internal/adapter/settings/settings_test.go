@@ -34,7 +34,7 @@ func TestSettings(t *testing.T) {
 		if err := s.EnsureDirs(); err != nil {
 			t.Fatalf("EnsureDirs() error = %v", err)
 		}
-		for _, dir := range []string{s.ConfigDir(), filepath.Join(s.ConfigDir(), authDirName), s.SprintsDir()} {
+		for _, dir := range []string{s.ConfigDir(), filepath.Join(s.ConfigDir(), authDirName)} {
 			info, err := os.Stat(dir)
 			if err != nil {
 				t.Errorf("dir %q not created: %v", dir, err)
@@ -121,6 +121,16 @@ func TestCredential(t *testing.T) {
 		_, err := s.GetCredential("gitlab.com")
 		if err == nil {
 			t.Error("GetCredential() after remove should return error")
+		}
+	})
+
+	t.Run("Remove_NonexistentHost_ReturnsError", func(t *testing.T) {
+		s := newWithConfigDir(t.TempDir())
+		if err := s.SetCredential("exists.com", "tok"); err != nil {
+			t.Fatalf("SetCredential() error = %v", err)
+		}
+		if err := s.RemoveCredential("nonexistent.com"); err == nil {
+			t.Error("RemoveCredential() for nonexistent host should return error")
 		}
 	})
 

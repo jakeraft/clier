@@ -32,6 +32,7 @@ internal/
       generated/       ← sqlc output (DO NOT edit manually)
     terminal/          ← driven adapter (cmux CLI)
     settings/          ← driven adapter (local config/credentials)
+    workspace/         ← driven adapter (sprint member filesystem environments)
 ```
 
 ## Test Conventions

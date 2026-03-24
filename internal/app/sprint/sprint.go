@@ -3,13 +3,8 @@ package sprint
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"os"
-	"os/exec"
-	"path/filepath"
 
 	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/adapter/settings"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 )
 
@@ -38,15 +33,21 @@ type Terminal interface {
 	Send(surfaceRef, text string) error
 }
 
-// Service orchestrates sprint lifecycle.
-type Service struct {
-	store    Store
-	terminal Terminal
-	settings *settings.Settings
+// Workspace defines the filesystem operations for sprint member environments.
+type Workspace interface {
+	PrepareMember(ctx context.Context, sprintID string, m domain.MemberSnapshot) (memberHome, workDir string, err error)
+	Cleanup(sprintID string) error
 }
 
-func New(store Store, term Terminal, s *settings.Settings) *Service {
-	return &Service{store: store, terminal: term, settings: s}
+// Service orchestrates sprint lifecycle.
+type Service struct {
+	store     Store
+	terminal  Terminal
+	workspace Workspace
+}
+
+func New(store Store, term Terminal, ws Workspace) *Service {
+	return &Service{store: store, terminal: term, workspace: ws}
 }
 
 func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, error) {
@@ -105,36 +106,20 @@ func (s *Service) Stop(ctx context.Context, sprintID string) error {
 		return fmt.Errorf("delete surfaces: %w", err)
 	}
 
-	sprintDir := filepath.Join(s.settings.SprintsDir(), sprintID)
-	_ = os.RemoveAll(sprintDir)
+	_ = s.workspace.Cleanup(sprintID)
 
 	return nil
 }
 
-// prepareMembers creates workspace directories, copies auth, writes configs,
-// sets up git repos, and builds launch specs for all members.
+// prepareMembers prepares isolated workspaces and builds launch specs for all members.
 func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) ([]terminal.SurfaceSpec, []string, error) {
 	var specs []terminal.SurfaceSpec
 	var tempFiles []string
 
 	for _, m := range snapshot.Members {
-		memberHome := filepath.Join(s.settings.SprintsDir(), sprintID, m.MemberID)
-		workDir := filepath.Join(memberHome, "project")
-
-		if err := os.MkdirAll(workDir, 0755); err != nil {
-			return nil, nil, fmt.Errorf("create workspace for %s: %w", m.MemberName, err)
-		}
-
-		if err := s.settings.CopyAuthTo(m.Binary, memberHome); err != nil {
-			return nil, nil, fmt.Errorf("copy auth for %s: %w", m.MemberName, err)
-		}
-
-		if err := WriteConfigs(m, memberHome, workDir); err != nil {
-			return nil, nil, fmt.Errorf("write configs for %s: %w", m.MemberName, err)
-		}
-
-		if err := s.setupGit(ctx, m, workDir); err != nil {
-			return nil, nil, fmt.Errorf("setup git for %s: %w", m.MemberName, err)
+		memberHome, workDir, err := s.workspace.PrepareMember(ctx, sprintID, m)
+		if err != nil {
+			return nil, nil, fmt.Errorf("prepare member %s: %w", m.MemberName, err)
 		}
 
 		prompt := ComposePrompt(m.SystemPrompts, BuildProtocol(snapshot, m))
@@ -152,24 +137,6 @@ func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot 
 	}
 
 	return specs, tempFiles, nil
-}
-
-func (s *Service) setupGit(ctx context.Context, m domain.MemberSnapshot, workDir string) error {
-	if m.GitRepo == nil {
-		return exec.CommandContext(ctx, "git", "init", workDir).Run()
-	}
-
-	cloneURL := m.GitRepo.URL
-	if host := extractHost(cloneURL); host != "" {
-		if token, err := s.settings.GetCredential(host); err == nil {
-			cloneURL = injectCredential(cloneURL, token)
-		}
-	}
-
-	if err := exec.CommandContext(ctx, "git", "clone", "--depth", "1", cloneURL, workDir).Run(); err != nil {
-		return fmt.Errorf("git clone %s: %w", m.GitRepo.URL, err)
-	}
-	return nil
 }
 
 // buildSnapshot loads all team data from DB and creates a TeamSnapshot.
@@ -253,27 +220,3 @@ func (s *Service) failSprint(ctx context.Context, sprintID, errMsg string) {
 	_ = s.store.UpdateSprintState(ctx, sprintID, domain.SprintErrored, errMsg)
 }
 
-// helpers
-
-func extractHost(gitURL string) string {
-	u, err := url.Parse(gitURL)
-	if err != nil || u.Host == "" {
-		return ""
-	}
-	return u.Host
-}
-
-func injectCredential(gitURL, token string) string {
-	u, err := url.Parse(gitURL)
-	if err != nil {
-		return gitURL
-	}
-	u.User = url.UserPassword("x-access-token", token)
-	return u.String()
-}
-
-func cleanupTempFiles(files []string) {
-	for _, f := range files {
-		_ = os.Remove(f)
-	}
-}

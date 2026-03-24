@@ -17,11 +17,9 @@ const (
 	dbFileName      = "data.db"
 	credentialsFile = "credentials.json"
 	authDirName     = "auth"
-	sprintsDirName  = "sprints"
 )
 
 type Credential struct {
-	Type  string `json:"type"`
 	Value string `json:"value"`
 }
 
@@ -59,15 +57,10 @@ func (s *Settings) AuthDir(binary domain.CliBinary) string {
 	return filepath.Join(s.configDir, authDirName, string(binary))
 }
 
-func (s *Settings) SprintsDir() string {
-	return filepath.Join(s.configDir, sprintsDirName)
-}
-
 func (s *Settings) EnsureDirs() error {
 	dirs := []string{
 		s.configDir,
 		filepath.Join(s.configDir, authDirName),
-		filepath.Join(s.configDir, sprintsDirName),
 	}
 	for _, d := range dirs {
 		if err := os.MkdirAll(d, 0755); err != nil {
@@ -194,7 +187,7 @@ func (s *Settings) SetCredential(host, token string) error {
 	if creds == nil {
 		creds = make(map[string]Credential)
 	}
-	creds[host] = Credential{Type: "git", Value: token}
+	creds[host] = Credential{Value: token}
 	return s.saveCredentials(creds)
 }
 
@@ -202,6 +195,9 @@ func (s *Settings) RemoveCredential(host string) error {
 	creds, err := s.loadCredentials()
 	if err != nil {
 		return err
+	}
+	if _, ok := creds[host]; !ok {
+		return fmt.Errorf("no credential for host: %s", host)
 	}
 	delete(creds, host)
 	return s.saveCredentials(creds)
