@@ -7,9 +7,10 @@ package generated
 
 import (
 	"context"
+	"database/sql"
 )
 
-const createEnvironment = `-- name: CreateEnvironment :exec
+const createEnvironment = `-- name: CreateEnvironment :execresult
 INSERT INTO environments (id, name, key, value, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?)
 `
@@ -23,8 +24,8 @@ type CreateEnvironmentParams struct {
 	UpdatedAt int64
 }
 
-func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) error {
-	_, err := q.db.ExecContext(ctx, createEnvironment,
+func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createEnvironment,
 		arg.ID,
 		arg.Name,
 		arg.Key,
@@ -32,16 +33,14 @@ func (q *Queries) CreateEnvironment(ctx context.Context, arg CreateEnvironmentPa
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	return err
 }
 
-const deleteEnvironment = `-- name: DeleteEnvironment :exec
+const deleteEnvironment = `-- name: DeleteEnvironment :execresult
 DELETE FROM environments WHERE id = ?
 `
 
-func (q *Queries) DeleteEnvironment(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteEnvironment, id)
-	return err
+func (q *Queries) DeleteEnvironment(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteEnvironment, id)
 }
 
 const getEnvironment = `-- name: GetEnvironment :one
@@ -96,7 +95,7 @@ func (q *Queries) ListEnvironments(ctx context.Context) ([]Environment, error) {
 	return items, nil
 }
 
-const updateEnvironment = `-- name: UpdateEnvironment :exec
+const updateEnvironment = `-- name: UpdateEnvironment :execresult
 UPDATE environments SET name = ?, key = ?, value = ?, updated_at = ? WHERE id = ?
 `
 
@@ -108,13 +107,12 @@ type UpdateEnvironmentParams struct {
 	ID        string
 }
 
-func (q *Queries) UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) error {
-	_, err := q.db.ExecContext(ctx, updateEnvironment,
+func (q *Queries) UpdateEnvironment(ctx context.Context, arg UpdateEnvironmentParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateEnvironment,
 		arg.Name,
 		arg.Key,
 		arg.Value,
 		arg.UpdatedAt,
 		arg.ID,
 	)
-	return err
 }

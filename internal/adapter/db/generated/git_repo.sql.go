@@ -7,9 +7,10 @@ package generated
 
 import (
 	"context"
+	"database/sql"
 )
 
-const createGitRepo = `-- name: CreateGitRepo :exec
+const createGitRepo = `-- name: CreateGitRepo :execresult
 INSERT INTO git_repos (id, name, url, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?)
 `
@@ -22,24 +23,22 @@ type CreateGitRepoParams struct {
 	UpdatedAt int64
 }
 
-func (q *Queries) CreateGitRepo(ctx context.Context, arg CreateGitRepoParams) error {
-	_, err := q.db.ExecContext(ctx, createGitRepo,
+func (q *Queries) CreateGitRepo(ctx context.Context, arg CreateGitRepoParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createGitRepo,
 		arg.ID,
 		arg.Name,
 		arg.Url,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	return err
 }
 
-const deleteGitRepo = `-- name: DeleteGitRepo :exec
+const deleteGitRepo = `-- name: DeleteGitRepo :execresult
 DELETE FROM git_repos WHERE id = ?
 `
 
-func (q *Queries) DeleteGitRepo(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteGitRepo, id)
-	return err
+func (q *Queries) DeleteGitRepo(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteGitRepo, id)
 }
 
 const getGitRepo = `-- name: GetGitRepo :one
@@ -92,7 +91,7 @@ func (q *Queries) ListGitRepos(ctx context.Context) ([]GitRepo, error) {
 	return items, nil
 }
 
-const updateGitRepo = `-- name: UpdateGitRepo :exec
+const updateGitRepo = `-- name: UpdateGitRepo :execresult
 UPDATE git_repos SET name = ?, url = ?, updated_at = ? WHERE id = ?
 `
 
@@ -103,12 +102,11 @@ type UpdateGitRepoParams struct {
 	ID        string
 }
 
-func (q *Queries) UpdateGitRepo(ctx context.Context, arg UpdateGitRepoParams) error {
-	_, err := q.db.ExecContext(ctx, updateGitRepo,
+func (q *Queries) UpdateGitRepo(ctx context.Context, arg UpdateGitRepoParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateGitRepo,
 		arg.Name,
 		arg.Url,
 		arg.UpdatedAt,
 		arg.ID,
 	)
-	return err
 }

@@ -10,7 +10,7 @@ import (
 	"database/sql"
 )
 
-const addMemberEnvironment = `-- name: AddMemberEnvironment :exec
+const addMemberEnvironment = `-- name: AddMemberEnvironment :execresult
 INSERT INTO member_environments (member_id, environment_id) VALUES (?, ?)
 `
 
@@ -19,12 +19,11 @@ type AddMemberEnvironmentParams struct {
 	EnvironmentID string
 }
 
-func (q *Queries) AddMemberEnvironment(ctx context.Context, arg AddMemberEnvironmentParams) error {
-	_, err := q.db.ExecContext(ctx, addMemberEnvironment, arg.MemberID, arg.EnvironmentID)
-	return err
+func (q *Queries) AddMemberEnvironment(ctx context.Context, arg AddMemberEnvironmentParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, addMemberEnvironment, arg.MemberID, arg.EnvironmentID)
 }
 
-const addMemberSystemPrompt = `-- name: AddMemberSystemPrompt :exec
+const addMemberSystemPrompt = `-- name: AddMemberSystemPrompt :execresult
 INSERT INTO member_system_prompts (member_id, system_prompt_id) VALUES (?, ?)
 `
 
@@ -33,12 +32,11 @@ type AddMemberSystemPromptParams struct {
 	SystemPromptID string
 }
 
-func (q *Queries) AddMemberSystemPrompt(ctx context.Context, arg AddMemberSystemPromptParams) error {
-	_, err := q.db.ExecContext(ctx, addMemberSystemPrompt, arg.MemberID, arg.SystemPromptID)
-	return err
+func (q *Queries) AddMemberSystemPrompt(ctx context.Context, arg AddMemberSystemPromptParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, addMemberSystemPrompt, arg.MemberID, arg.SystemPromptID)
 }
 
-const createMember = `-- name: CreateMember :exec
+const createMember = `-- name: CreateMember :execresult
 INSERT INTO members (id, name, cli_profile_id, git_repo_id, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?)
 `
@@ -52,8 +50,8 @@ type CreateMemberParams struct {
 	UpdatedAt    int64
 }
 
-func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) error {
-	_, err := q.db.ExecContext(ctx, createMember,
+func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createMember,
 		arg.ID,
 		arg.Name,
 		arg.CliProfileID,
@@ -61,34 +59,30 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) erro
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	return err
 }
 
-const deleteMember = `-- name: DeleteMember :exec
+const deleteMember = `-- name: DeleteMember :execresult
 DELETE FROM members WHERE id = ?
 `
 
-func (q *Queries) DeleteMember(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteMember, id)
-	return err
+func (q *Queries) DeleteMember(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteMember, id)
 }
 
-const deleteMemberEnvironments = `-- name: DeleteMemberEnvironments :exec
+const deleteMemberEnvironments = `-- name: DeleteMemberEnvironments :execresult
 DELETE FROM member_environments WHERE member_id = ?
 `
 
-func (q *Queries) DeleteMemberEnvironments(ctx context.Context, memberID string) error {
-	_, err := q.db.ExecContext(ctx, deleteMemberEnvironments, memberID)
-	return err
+func (q *Queries) DeleteMemberEnvironments(ctx context.Context, memberID string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteMemberEnvironments, memberID)
 }
 
-const deleteMemberSystemPrompts = `-- name: DeleteMemberSystemPrompts :exec
+const deleteMemberSystemPrompts = `-- name: DeleteMemberSystemPrompts :execresult
 DELETE FROM member_system_prompts WHERE member_id = ?
 `
 
-func (q *Queries) DeleteMemberSystemPrompts(ctx context.Context, memberID string) error {
-	_, err := q.db.ExecContext(ctx, deleteMemberSystemPrompts, memberID)
-	return err
+func (q *Queries) DeleteMemberSystemPrompts(ctx context.Context, memberID string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteMemberSystemPrompts, memberID)
 }
 
 const getMember = `-- name: GetMember :one
@@ -197,7 +191,7 @@ func (q *Queries) ListMembers(ctx context.Context) ([]Member, error) {
 	return items, nil
 }
 
-const removeMemberEnvironment = `-- name: RemoveMemberEnvironment :exec
+const removeMemberEnvironment = `-- name: RemoveMemberEnvironment :execresult
 DELETE FROM member_environments WHERE member_id = ? AND environment_id = ?
 `
 
@@ -206,12 +200,11 @@ type RemoveMemberEnvironmentParams struct {
 	EnvironmentID string
 }
 
-func (q *Queries) RemoveMemberEnvironment(ctx context.Context, arg RemoveMemberEnvironmentParams) error {
-	_, err := q.db.ExecContext(ctx, removeMemberEnvironment, arg.MemberID, arg.EnvironmentID)
-	return err
+func (q *Queries) RemoveMemberEnvironment(ctx context.Context, arg RemoveMemberEnvironmentParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, removeMemberEnvironment, arg.MemberID, arg.EnvironmentID)
 }
 
-const removeMemberSystemPrompt = `-- name: RemoveMemberSystemPrompt :exec
+const removeMemberSystemPrompt = `-- name: RemoveMemberSystemPrompt :execresult
 DELETE FROM member_system_prompts WHERE member_id = ? AND system_prompt_id = ?
 `
 
@@ -220,12 +213,11 @@ type RemoveMemberSystemPromptParams struct {
 	SystemPromptID string
 }
 
-func (q *Queries) RemoveMemberSystemPrompt(ctx context.Context, arg RemoveMemberSystemPromptParams) error {
-	_, err := q.db.ExecContext(ctx, removeMemberSystemPrompt, arg.MemberID, arg.SystemPromptID)
-	return err
+func (q *Queries) RemoveMemberSystemPrompt(ctx context.Context, arg RemoveMemberSystemPromptParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, removeMemberSystemPrompt, arg.MemberID, arg.SystemPromptID)
 }
 
-const updateMember = `-- name: UpdateMember :exec
+const updateMember = `-- name: UpdateMember :execresult
 UPDATE members SET name = ?, cli_profile_id = ?, git_repo_id = ?, updated_at = ? WHERE id = ?
 `
 
@@ -237,13 +229,12 @@ type UpdateMemberParams struct {
 	ID           string
 }
 
-func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) error {
-	_, err := q.db.ExecContext(ctx, updateMember,
+func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateMember,
 		arg.Name,
 		arg.CliProfileID,
 		arg.GitRepoID,
 		arg.UpdatedAt,
 		arg.ID,
 	)
-	return err
 }

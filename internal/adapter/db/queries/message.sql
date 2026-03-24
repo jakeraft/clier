@@ -1,4 +1,4 @@
--- name: CreateMessage :exec
+-- name: CreateMessage :execresult
 INSERT INTO messages (id, sprint_id, from_member_id, to_member_id, content, created_at)
 VALUES (?, ?, ?, ?, ?, ?);
 

@@ -67,7 +67,7 @@ func (s *Store) CreateTeam(ctx context.Context, t *domain.Team) error {
 	defer tx.Rollback()
 
 	qtx := generated.New(tx)
-	if err := qtx.CreateTeam(ctx, generated.CreateTeamParams{
+	if _, err := qtx.CreateTeam(ctx, generated.CreateTeamParams{
 		ID:           t.ID,
 		Name:         t.Name,
 		RootMemberID: t.RootMemberID,
@@ -77,14 +77,14 @@ func (s *Store) CreateTeam(ctx context.Context, t *domain.Team) error {
 		return err
 	}
 	for _, memberID := range t.MemberIDs {
-		if err := qtx.AddTeamMember(ctx, generated.AddTeamMemberParams{
+		if _, err := qtx.AddTeamMember(ctx, generated.AddTeamMemberParams{
 			TeamID: t.ID, MemberID: memberID,
 		}); err != nil {
 			return err
 		}
 	}
 	for _, r := range t.Relations {
-		if err := qtx.AddTeamRelation(ctx, generated.AddTeamRelationParams{
+		if _, err := qtx.AddTeamRelation(ctx, generated.AddTeamRelationParams{
 			TeamID: t.ID, FromMemberID: r.From, ToMemberID: r.To, Type: string(r.Type),
 		}); err != nil {
 			return err
@@ -138,41 +138,57 @@ func (s *Store) ListTeams(ctx context.Context) ([]domain.Team, error) {
 }
 
 func (s *Store) UpdateTeam(ctx context.Context, t *domain.Team) error {
-	return s.queries.UpdateTeam(ctx, generated.UpdateTeamParams{
+	_, err := s.queries.UpdateTeam(ctx, generated.UpdateTeamParams{
 		Name:         t.Name,
 		RootMemberID: t.RootMemberID,
 		UpdatedAt:    t.UpdatedAt.Unix(),
 		ID:           t.ID,
 	})
+	return err
 }
 
 // DeleteTeam deletes a team. CASCADE: team_members, team_relations.
 func (s *Store) DeleteTeam(ctx context.Context, id string) error {
-	return s.queries.DeleteTeam(ctx, id)
+	result, err := s.queries.DeleteTeam(ctx, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("team not found: %s", id)
+	}
+	return nil
 }
 
 func (s *Store) AddTeamMember(ctx context.Context, teamID, memberID string) error {
-	return s.queries.AddTeamMember(ctx, generated.AddTeamMemberParams{
+	_, err := s.queries.AddTeamMember(ctx, generated.AddTeamMemberParams{
 		TeamID: teamID, MemberID: memberID,
 	})
+	return err
 }
 
 func (s *Store) RemoveTeamMember(ctx context.Context, teamID, memberID string) error {
-	return s.queries.RemoveTeamMember(ctx, generated.RemoveTeamMemberParams{
+	_, err := s.queries.RemoveTeamMember(ctx, generated.RemoveTeamMemberParams{
 		TeamID: teamID, MemberID: memberID,
 	})
+	return err
 }
 
 func (s *Store) AddTeamRelation(ctx context.Context, teamID string, r domain.Relation) error {
-	return s.queries.AddTeamRelation(ctx, generated.AddTeamRelationParams{
+	_, err := s.queries.AddTeamRelation(ctx, generated.AddTeamRelationParams{
 		TeamID: teamID, FromMemberID: r.From, ToMemberID: r.To, Type: string(r.Type),
 	})
+	return err
 }
 
 func (s *Store) RemoveTeamRelation(ctx context.Context, teamID string, r domain.Relation) error {
-	return s.queries.RemoveTeamRelation(ctx, generated.RemoveTeamRelationParams{
+	_, err := s.queries.RemoveTeamRelation(ctx, generated.RemoveTeamRelationParams{
 		TeamID: teamID, FromMemberID: r.From, ToMemberID: r.To, Type: string(r.Type),
 	})
+	return err
 }
 
 // Member
@@ -185,7 +201,7 @@ func (s *Store) CreateMember(ctx context.Context, m *domain.Member) error {
 	defer tx.Rollback()
 
 	qtx := generated.New(tx)
-	if err := qtx.CreateMember(ctx, generated.CreateMemberParams{
+	if _, err := qtx.CreateMember(ctx, generated.CreateMemberParams{
 		ID:           m.ID,
 		Name:         m.Name,
 		CliProfileID: m.CliProfileID,
@@ -196,14 +212,14 @@ func (s *Store) CreateMember(ctx context.Context, m *domain.Member) error {
 		return err
 	}
 	for _, promptID := range m.SystemPromptIDs {
-		if err := qtx.AddMemberSystemPrompt(ctx, generated.AddMemberSystemPromptParams{
+		if _, err := qtx.AddMemberSystemPrompt(ctx, generated.AddMemberSystemPromptParams{
 			MemberID: m.ID, SystemPromptID: promptID,
 		}); err != nil {
 			return err
 		}
 	}
 	for _, envID := range m.EnvironmentIDs {
-		if err := qtx.AddMemberEnvironment(ctx, generated.AddMemberEnvironmentParams{
+		if _, err := qtx.AddMemberEnvironment(ctx, generated.AddMemberEnvironmentParams{
 			MemberID: m.ID, EnvironmentID: envID,
 		}); err != nil {
 			return err
@@ -261,7 +277,7 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 	defer tx.Rollback()
 
 	qtx := generated.New(tx)
-	if err := qtx.UpdateMember(ctx, generated.UpdateMemberParams{
+	if _, err := qtx.UpdateMember(ctx, generated.UpdateMemberParams{
 		Name:         m.Name,
 		CliProfileID: m.CliProfileID,
 		GitRepoID:    sql.NullString{String: m.GitRepoID, Valid: m.GitRepoID != ""},
@@ -271,21 +287,21 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 		return err
 	}
 	// Replace junction rows: delete all + re-insert.
-	if err := qtx.DeleteMemberSystemPrompts(ctx, m.ID); err != nil {
+	if _, err := qtx.DeleteMemberSystemPrompts(ctx, m.ID); err != nil {
 		return err
 	}
 	for _, promptID := range m.SystemPromptIDs {
-		if err := qtx.AddMemberSystemPrompt(ctx, generated.AddMemberSystemPromptParams{
+		if _, err := qtx.AddMemberSystemPrompt(ctx, generated.AddMemberSystemPromptParams{
 			MemberID: m.ID, SystemPromptID: promptID,
 		}); err != nil {
 			return err
 		}
 	}
-	if err := qtx.DeleteMemberEnvironments(ctx, m.ID); err != nil {
+	if _, err := qtx.DeleteMemberEnvironments(ctx, m.ID); err != nil {
 		return err
 	}
 	for _, envID := range m.EnvironmentIDs {
-		if err := qtx.AddMemberEnvironment(ctx, generated.AddMemberEnvironmentParams{
+		if _, err := qtx.AddMemberEnvironment(ctx, generated.AddMemberEnvironmentParams{
 			MemberID: m.ID, EnvironmentID: envID,
 		}); err != nil {
 			return err
@@ -297,7 +313,18 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 // DeleteMember deletes a member. CASCADE: member_system_prompts, member_environments.
 // RESTRICT: teams.root_member_id — fails if member is a team's root.
 func (s *Store) DeleteMember(ctx context.Context, id string) error {
-	return s.queries.DeleteMember(ctx, id)
+	result, err := s.queries.DeleteMember(ctx, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("member not found: %s", id)
+	}
+	return nil
 }
 
 // CliProfile
@@ -323,7 +350,7 @@ func (s *Store) CreateCliProfile(ctx context.Context, p *domain.CliProfile) erro
 	if err != nil {
 		return err
 	}
-	return s.queries.CreateCliProfile(ctx, generated.CreateCliProfileParams{
+	_, err = s.queries.CreateCliProfile(ctx, generated.CreateCliProfileParams{
 		ID:         p.ID,
 		Name:       p.Name,
 		Model:      p.Model,
@@ -334,6 +361,7 @@ func (s *Store) CreateCliProfile(ctx context.Context, p *domain.CliProfile) erro
 		CreatedAt:  p.CreatedAt.Unix(),
 		UpdatedAt:  p.UpdatedAt.Unix(),
 	})
+	return err
 }
 
 func unmarshalCliProfile(row generated.CliProfile) (domain.CliProfile, error) {
@@ -390,7 +418,7 @@ func (s *Store) UpdateCliProfile(ctx context.Context, p *domain.CliProfile) erro
 	if err != nil {
 		return err
 	}
-	return s.queries.UpdateCliProfile(ctx, generated.UpdateCliProfileParams{
+	_, err = s.queries.UpdateCliProfile(ctx, generated.UpdateCliProfileParams{
 		Name:       p.Name,
 		Model:      p.Model,
 		Binary:     string(p.Binary),
@@ -400,23 +428,36 @@ func (s *Store) UpdateCliProfile(ctx context.Context, p *domain.CliProfile) erro
 		UpdatedAt:  p.UpdatedAt.Unix(),
 		ID:         p.ID,
 	})
+	return err
 }
 
 // DeleteCliProfile deletes a cli profile. RESTRICT: fails if referenced by a member.
 func (s *Store) DeleteCliProfile(ctx context.Context, id string) error {
-	return s.queries.DeleteCliProfile(ctx, id)
+	result, err := s.queries.DeleteCliProfile(ctx, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("cli profile not found: %s", id)
+	}
+	return nil
 }
 
 // SystemPrompt
 
 func (s *Store) CreateSystemPrompt(ctx context.Context, sp *domain.SystemPrompt) error {
-	return s.queries.CreateSystemPrompt(ctx, generated.CreateSystemPromptParams{
+	_, err := s.queries.CreateSystemPrompt(ctx, generated.CreateSystemPromptParams{
 		ID:        sp.ID,
 		Name:      sp.Name,
 		Prompt:    sp.Prompt,
 		CreatedAt: sp.CreatedAt.Unix(),
 		UpdatedAt: sp.UpdatedAt.Unix(),
 	})
+	return err
 }
 
 func (s *Store) GetSystemPrompt(ctx context.Context, id string) (domain.SystemPrompt, error) {
@@ -452,23 +493,35 @@ func (s *Store) ListSystemPrompts(ctx context.Context) ([]domain.SystemPrompt, e
 }
 
 func (s *Store) UpdateSystemPrompt(ctx context.Context, sp *domain.SystemPrompt) error {
-	return s.queries.UpdateSystemPrompt(ctx, generated.UpdateSystemPromptParams{
+	_, err := s.queries.UpdateSystemPrompt(ctx, generated.UpdateSystemPromptParams{
 		Name:      sp.Name,
 		Prompt:    sp.Prompt,
 		UpdatedAt: sp.UpdatedAt.Unix(),
 		ID:        sp.ID,
 	})
+	return err
 }
 
 // DeleteSystemPrompt deletes a system prompt. RESTRICT: fails if referenced by a member.
 func (s *Store) DeleteSystemPrompt(ctx context.Context, id string) error {
-	return s.queries.DeleteSystemPrompt(ctx, id)
+	result, err := s.queries.DeleteSystemPrompt(ctx, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("system prompt not found: %s", id)
+	}
+	return nil
 }
 
 // Environment
 
 func (s *Store) CreateEnvironment(ctx context.Context, e *domain.Environment) error {
-	return s.queries.CreateEnvironment(ctx, generated.CreateEnvironmentParams{
+	_, err := s.queries.CreateEnvironment(ctx, generated.CreateEnvironmentParams{
 		ID:        e.ID,
 		Name:      e.Name,
 		Key:       e.Key,
@@ -476,6 +529,7 @@ func (s *Store) CreateEnvironment(ctx context.Context, e *domain.Environment) er
 		CreatedAt: e.CreatedAt.Unix(),
 		UpdatedAt: e.UpdatedAt.Unix(),
 	})
+	return err
 }
 
 func (s *Store) GetEnvironment(ctx context.Context, id string) (domain.Environment, error) {
@@ -513,30 +567,43 @@ func (s *Store) ListEnvironments(ctx context.Context) ([]domain.Environment, err
 }
 
 func (s *Store) UpdateEnvironment(ctx context.Context, e *domain.Environment) error {
-	return s.queries.UpdateEnvironment(ctx, generated.UpdateEnvironmentParams{
+	_, err := s.queries.UpdateEnvironment(ctx, generated.UpdateEnvironmentParams{
 		Name:      e.Name,
 		Key:       e.Key,
 		Value:     e.Value,
 		UpdatedAt: e.UpdatedAt.Unix(),
 		ID:        e.ID,
 	})
+	return err
 }
 
 // DeleteEnvironment deletes an environment. RESTRICT: fails if referenced by a member.
 func (s *Store) DeleteEnvironment(ctx context.Context, id string) error {
-	return s.queries.DeleteEnvironment(ctx, id)
+	result, err := s.queries.DeleteEnvironment(ctx, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("environment not found: %s", id)
+	}
+	return nil
 }
 
 // GitRepo
 
 func (s *Store) CreateGitRepo(ctx context.Context, r *domain.GitRepo) error {
-	return s.queries.CreateGitRepo(ctx, generated.CreateGitRepoParams{
+	_, err := s.queries.CreateGitRepo(ctx, generated.CreateGitRepoParams{
 		ID:        r.ID,
 		Name:      r.Name,
 		Url:       r.URL,
 		CreatedAt: r.CreatedAt.Unix(),
 		UpdatedAt: r.UpdatedAt.Unix(),
 	})
+	return err
 }
 
 func (s *Store) GetGitRepo(ctx context.Context, id string) (domain.GitRepo, error) {
@@ -572,17 +639,29 @@ func (s *Store) ListGitRepos(ctx context.Context) ([]domain.GitRepo, error) {
 }
 
 func (s *Store) UpdateGitRepo(ctx context.Context, r *domain.GitRepo) error {
-	return s.queries.UpdateGitRepo(ctx, generated.UpdateGitRepoParams{
+	_, err := s.queries.UpdateGitRepo(ctx, generated.UpdateGitRepoParams{
 		Name:      r.Name,
 		Url:       r.URL,
 		UpdatedAt: r.UpdatedAt.Unix(),
 		ID:        r.ID,
 	})
+	return err
 }
 
 // DeleteGitRepo deletes a git repo. RESTRICT: fails if referenced by a member.
 func (s *Store) DeleteGitRepo(ctx context.Context, id string) error {
-	return s.queries.DeleteGitRepo(ctx, id)
+	result, err := s.queries.DeleteGitRepo(ctx, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("git repo not found: %s", id)
+	}
+	return nil
 }
 
 // TeamSnapshot (aggregate)
@@ -694,7 +773,7 @@ func (s *Store) CreateSprint(ctx context.Context, sprint *domain.Sprint) error {
 	if err != nil {
 		return fmt.Errorf("marshal snapshot: %w", err)
 	}
-	return s.queries.CreateSprint(ctx, generated.CreateSprintParams{
+	_, err = s.queries.CreateSprint(ctx, generated.CreateSprintParams{
 		ID:           sprint.ID,
 		Name:         sprint.Name,
 		TeamSnapshot: string(snapshotJSON),
@@ -703,15 +782,17 @@ func (s *Store) CreateSprint(ctx context.Context, sprint *domain.Sprint) error {
 		CreatedAt:    sprint.CreatedAt.Unix(),
 		UpdatedAt:    sprint.UpdatedAt.Unix(),
 	})
+	return err
 }
 
 func (s *Store) UpdateSprintState(ctx context.Context, sprintID string, state domain.SprintState, sprintErr string) error {
-	return s.queries.UpdateSprintState(ctx, generated.UpdateSprintStateParams{
+	_, err := s.queries.UpdateSprintState(ctx, generated.UpdateSprintStateParams{
 		State:     string(state),
 		Error:     sprintErr,
 		UpdatedAt: time.Now().Unix(),
 		ID:        sprintID,
 	})
+	return err
 }
 
 func (s *Store) ListSprints(ctx context.Context) ([]domain.Sprint, error) {
@@ -732,13 +813,24 @@ func (s *Store) ListSprints(ctx context.Context) ([]domain.Sprint, error) {
 
 // DeleteSprint deletes a sprint. CASCADE: sprint_surfaces, messages.
 func (s *Store) DeleteSprint(ctx context.Context, id string) error {
-	return s.queries.DeleteSprint(ctx, id)
+	result, err := s.queries.DeleteSprint(ctx, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("sprint not found: %s", id)
+	}
+	return nil
 }
 
 // Message
 
 func (s *Store) CreateMessage(ctx context.Context, msg *domain.Message) error {
-	return s.queries.CreateMessage(ctx, generated.CreateMessageParams{
+	_, err := s.queries.CreateMessage(ctx, generated.CreateMessageParams{
 		ID:           msg.ID,
 		SprintID:     msg.SprintID,
 		FromMemberID: msg.FromMemberID,
@@ -746,6 +838,7 @@ func (s *Store) CreateMessage(ctx context.Context, msg *domain.Message) error {
 		Content:      msg.Content,
 		CreatedAt:    msg.CreatedAt.Unix(),
 	})
+	return err
 }
 
 func (s *Store) ListMessagesBySprintID(ctx context.Context, sprintID string) ([]domain.Message, error) {

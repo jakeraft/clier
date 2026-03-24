@@ -7,9 +7,10 @@ package generated
 
 import (
 	"context"
+	"database/sql"
 )
 
-const createSystemPrompt = `-- name: CreateSystemPrompt :exec
+const createSystemPrompt = `-- name: CreateSystemPrompt :execresult
 INSERT INTO system_prompts (id, name, prompt, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?)
 `
@@ -22,24 +23,22 @@ type CreateSystemPromptParams struct {
 	UpdatedAt int64
 }
 
-func (q *Queries) CreateSystemPrompt(ctx context.Context, arg CreateSystemPromptParams) error {
-	_, err := q.db.ExecContext(ctx, createSystemPrompt,
+func (q *Queries) CreateSystemPrompt(ctx context.Context, arg CreateSystemPromptParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createSystemPrompt,
 		arg.ID,
 		arg.Name,
 		arg.Prompt,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	return err
 }
 
-const deleteSystemPrompt = `-- name: DeleteSystemPrompt :exec
+const deleteSystemPrompt = `-- name: DeleteSystemPrompt :execresult
 DELETE FROM system_prompts WHERE id = ?
 `
 
-func (q *Queries) DeleteSystemPrompt(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteSystemPrompt, id)
-	return err
+func (q *Queries) DeleteSystemPrompt(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteSystemPrompt, id)
 }
 
 const getSystemPrompt = `-- name: GetSystemPrompt :one
@@ -92,7 +91,7 @@ func (q *Queries) ListSystemPrompts(ctx context.Context) ([]SystemPrompt, error)
 	return items, nil
 }
 
-const updateSystemPrompt = `-- name: UpdateSystemPrompt :exec
+const updateSystemPrompt = `-- name: UpdateSystemPrompt :execresult
 UPDATE system_prompts SET name = ?, prompt = ?, updated_at = ? WHERE id = ?
 `
 
@@ -103,12 +102,11 @@ type UpdateSystemPromptParams struct {
 	ID        string
 }
 
-func (q *Queries) UpdateSystemPrompt(ctx context.Context, arg UpdateSystemPromptParams) error {
-	_, err := q.db.ExecContext(ctx, updateSystemPrompt,
+func (q *Queries) UpdateSystemPrompt(ctx context.Context, arg UpdateSystemPromptParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateSystemPrompt,
 		arg.Name,
 		arg.Prompt,
 		arg.UpdatedAt,
 		arg.ID,
 	)
-	return err
 }

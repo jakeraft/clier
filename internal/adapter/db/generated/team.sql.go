@@ -7,9 +7,10 @@ package generated
 
 import (
 	"context"
+	"database/sql"
 )
 
-const addTeamMember = `-- name: AddTeamMember :exec
+const addTeamMember = `-- name: AddTeamMember :execresult
 INSERT INTO team_members (team_id, member_id) VALUES (?, ?)
 `
 
@@ -18,12 +19,11 @@ type AddTeamMemberParams struct {
 	MemberID string
 }
 
-func (q *Queries) AddTeamMember(ctx context.Context, arg AddTeamMemberParams) error {
-	_, err := q.db.ExecContext(ctx, addTeamMember, arg.TeamID, arg.MemberID)
-	return err
+func (q *Queries) AddTeamMember(ctx context.Context, arg AddTeamMemberParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, addTeamMember, arg.TeamID, arg.MemberID)
 }
 
-const addTeamRelation = `-- name: AddTeamRelation :exec
+const addTeamRelation = `-- name: AddTeamRelation :execresult
 INSERT INTO team_relations (team_id, from_member_id, to_member_id, type) VALUES (?, ?, ?, ?)
 `
 
@@ -34,17 +34,16 @@ type AddTeamRelationParams struct {
 	Type         string
 }
 
-func (q *Queries) AddTeamRelation(ctx context.Context, arg AddTeamRelationParams) error {
-	_, err := q.db.ExecContext(ctx, addTeamRelation,
+func (q *Queries) AddTeamRelation(ctx context.Context, arg AddTeamRelationParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, addTeamRelation,
 		arg.TeamID,
 		arg.FromMemberID,
 		arg.ToMemberID,
 		arg.Type,
 	)
-	return err
 }
 
-const createTeam = `-- name: CreateTeam :exec
+const createTeam = `-- name: CreateTeam :execresult
 INSERT INTO teams (id, name, root_member_id, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?)
 `
@@ -57,42 +56,38 @@ type CreateTeamParams struct {
 	UpdatedAt    int64
 }
 
-func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) error {
-	_, err := q.db.ExecContext(ctx, createTeam,
+func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createTeam,
 		arg.ID,
 		arg.Name,
 		arg.RootMemberID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	return err
 }
 
-const deleteTeam = `-- name: DeleteTeam :exec
+const deleteTeam = `-- name: DeleteTeam :execresult
 DELETE FROM teams WHERE id = ?
 `
 
-func (q *Queries) DeleteTeam(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteTeam, id)
-	return err
+func (q *Queries) DeleteTeam(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteTeam, id)
 }
 
-const deleteTeamMembers = `-- name: DeleteTeamMembers :exec
+const deleteTeamMembers = `-- name: DeleteTeamMembers :execresult
 DELETE FROM team_members WHERE team_id = ?
 `
 
-func (q *Queries) DeleteTeamMembers(ctx context.Context, teamID string) error {
-	_, err := q.db.ExecContext(ctx, deleteTeamMembers, teamID)
-	return err
+func (q *Queries) DeleteTeamMembers(ctx context.Context, teamID string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteTeamMembers, teamID)
 }
 
-const deleteTeamRelations = `-- name: DeleteTeamRelations :exec
+const deleteTeamRelations = `-- name: DeleteTeamRelations :execresult
 DELETE FROM team_relations WHERE team_id = ?
 `
 
-func (q *Queries) DeleteTeamRelations(ctx context.Context, teamID string) error {
-	_, err := q.db.ExecContext(ctx, deleteTeamRelations, teamID)
-	return err
+func (q *Queries) DeleteTeamRelations(ctx context.Context, teamID string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteTeamRelations, teamID)
 }
 
 const getTeam = `-- name: GetTeam :one
@@ -205,7 +200,7 @@ func (q *Queries) ListTeams(ctx context.Context) ([]Team, error) {
 	return items, nil
 }
 
-const removeTeamMember = `-- name: RemoveTeamMember :exec
+const removeTeamMember = `-- name: RemoveTeamMember :execresult
 DELETE FROM team_members WHERE team_id = ? AND member_id = ?
 `
 
@@ -214,12 +209,11 @@ type RemoveTeamMemberParams struct {
 	MemberID string
 }
 
-func (q *Queries) RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) error {
-	_, err := q.db.ExecContext(ctx, removeTeamMember, arg.TeamID, arg.MemberID)
-	return err
+func (q *Queries) RemoveTeamMember(ctx context.Context, arg RemoveTeamMemberParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, removeTeamMember, arg.TeamID, arg.MemberID)
 }
 
-const removeTeamRelation = `-- name: RemoveTeamRelation :exec
+const removeTeamRelation = `-- name: RemoveTeamRelation :execresult
 DELETE FROM team_relations WHERE team_id = ? AND from_member_id = ? AND to_member_id = ? AND type = ?
 `
 
@@ -230,17 +224,16 @@ type RemoveTeamRelationParams struct {
 	Type         string
 }
 
-func (q *Queries) RemoveTeamRelation(ctx context.Context, arg RemoveTeamRelationParams) error {
-	_, err := q.db.ExecContext(ctx, removeTeamRelation,
+func (q *Queries) RemoveTeamRelation(ctx context.Context, arg RemoveTeamRelationParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, removeTeamRelation,
 		arg.TeamID,
 		arg.FromMemberID,
 		arg.ToMemberID,
 		arg.Type,
 	)
-	return err
 }
 
-const updateTeam = `-- name: UpdateTeam :exec
+const updateTeam = `-- name: UpdateTeam :execresult
 UPDATE teams SET name = ?, root_member_id = ?, updated_at = ? WHERE id = ?
 `
 
@@ -251,12 +244,11 @@ type UpdateTeamParams struct {
 	ID           string
 }
 
-func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) error {
-	_, err := q.db.ExecContext(ctx, updateTeam,
+func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateTeam,
 		arg.Name,
 		arg.RootMemberID,
 		arg.UpdatedAt,
 		arg.ID,
 	)
-	return err
 }

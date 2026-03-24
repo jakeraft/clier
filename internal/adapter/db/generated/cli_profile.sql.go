@@ -7,9 +7,10 @@ package generated
 
 import (
 	"context"
+	"database/sql"
 )
 
-const createCliProfile = `-- name: CreateCliProfile :exec
+const createCliProfile = `-- name: CreateCliProfile :execresult
 INSERT INTO cli_profiles (id, name, model, binary, system_args, custom_args, dot_config, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
@@ -26,8 +27,8 @@ type CreateCliProfileParams struct {
 	UpdatedAt  int64
 }
 
-func (q *Queries) CreateCliProfile(ctx context.Context, arg CreateCliProfileParams) error {
-	_, err := q.db.ExecContext(ctx, createCliProfile,
+func (q *Queries) CreateCliProfile(ctx context.Context, arg CreateCliProfileParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createCliProfile,
 		arg.ID,
 		arg.Name,
 		arg.Model,
@@ -38,16 +39,14 @@ func (q *Queries) CreateCliProfile(ctx context.Context, arg CreateCliProfilePara
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	return err
 }
 
-const deleteCliProfile = `-- name: DeleteCliProfile :exec
+const deleteCliProfile = `-- name: DeleteCliProfile :execresult
 DELETE FROM cli_profiles WHERE id = ?
 `
 
-func (q *Queries) DeleteCliProfile(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteCliProfile, id)
-	return err
+func (q *Queries) DeleteCliProfile(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteCliProfile, id)
 }
 
 const getCliProfile = `-- name: GetCliProfile :one
@@ -108,7 +107,7 @@ func (q *Queries) ListCliProfiles(ctx context.Context) ([]CliProfile, error) {
 	return items, nil
 }
 
-const updateCliProfile = `-- name: UpdateCliProfile :exec
+const updateCliProfile = `-- name: UpdateCliProfile :execresult
 UPDATE cli_profiles
 SET name = ?, model = ?, binary = ?, system_args = ?, custom_args = ?, dot_config = ?, updated_at = ?
 WHERE id = ?
@@ -125,8 +124,8 @@ type UpdateCliProfileParams struct {
 	ID         string
 }
 
-func (q *Queries) UpdateCliProfile(ctx context.Context, arg UpdateCliProfileParams) error {
-	_, err := q.db.ExecContext(ctx, updateCliProfile,
+func (q *Queries) UpdateCliProfile(ctx context.Context, arg UpdateCliProfileParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateCliProfile,
 		arg.Name,
 		arg.Model,
 		arg.Binary,
@@ -136,5 +135,4 @@ func (q *Queries) UpdateCliProfile(ctx context.Context, arg UpdateCliProfilePara
 		arg.UpdatedAt,
 		arg.ID,
 	)
-	return err
 }

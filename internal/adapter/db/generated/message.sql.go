@@ -7,9 +7,10 @@ package generated
 
 import (
 	"context"
+	"database/sql"
 )
 
-const createMessage = `-- name: CreateMessage :exec
+const createMessage = `-- name: CreateMessage :execresult
 INSERT INTO messages (id, sprint_id, from_member_id, to_member_id, content, created_at)
 VALUES (?, ?, ?, ?, ?, ?)
 `
@@ -23,8 +24,8 @@ type CreateMessageParams struct {
 	CreatedAt    int64
 }
 
-func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) error {
-	_, err := q.db.ExecContext(ctx, createMessage,
+func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createMessage,
 		arg.ID,
 		arg.SprintID,
 		arg.FromMemberID,
@@ -32,7 +33,6 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) er
 		arg.Content,
 		arg.CreatedAt,
 	)
-	return err
 }
 
 const listMessagesBySprintAndMember = `-- name: ListMessagesBySprintAndMember :many

@@ -7,9 +7,10 @@ package generated
 
 import (
 	"context"
+	"database/sql"
 )
 
-const createSprint = `-- name: CreateSprint :exec
+const createSprint = `-- name: CreateSprint :execresult
 INSERT INTO sprints (id, name, team_snapshot, state, error, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?)
 `
@@ -24,8 +25,8 @@ type CreateSprintParams struct {
 	UpdatedAt    int64
 }
 
-func (q *Queries) CreateSprint(ctx context.Context, arg CreateSprintParams) error {
-	_, err := q.db.ExecContext(ctx, createSprint,
+func (q *Queries) CreateSprint(ctx context.Context, arg CreateSprintParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createSprint,
 		arg.ID,
 		arg.Name,
 		arg.TeamSnapshot,
@@ -34,16 +35,14 @@ func (q *Queries) CreateSprint(ctx context.Context, arg CreateSprintParams) erro
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
-	return err
 }
 
-const deleteSprint = `-- name: DeleteSprint :exec
+const deleteSprint = `-- name: DeleteSprint :execresult
 DELETE FROM sprints WHERE id = ?
 `
 
-func (q *Queries) DeleteSprint(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteSprint, id)
-	return err
+func (q *Queries) DeleteSprint(ctx context.Context, id string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteSprint, id)
 }
 
 const getSprint = `-- name: GetSprint :one
@@ -100,7 +99,7 @@ func (q *Queries) ListSprints(ctx context.Context) ([]Sprint, error) {
 	return items, nil
 }
 
-const updateSprintState = `-- name: UpdateSprintState :exec
+const updateSprintState = `-- name: UpdateSprintState :execresult
 UPDATE sprints SET state = ?, error = ?, updated_at = ? WHERE id = ?
 `
 
@@ -111,12 +110,11 @@ type UpdateSprintStateParams struct {
 	ID        string
 }
 
-func (q *Queries) UpdateSprintState(ctx context.Context, arg UpdateSprintStateParams) error {
-	_, err := q.db.ExecContext(ctx, updateSprintState,
+func (q *Queries) UpdateSprintState(ctx context.Context, arg UpdateSprintStateParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, updateSprintState,
 		arg.State,
 		arg.Error,
 		arg.UpdatedAt,
 		arg.ID,
 	)
-	return err
 }
