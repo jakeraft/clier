@@ -53,6 +53,10 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
+func (s *Store) DB() *sql.DB {
+	return s.db
+}
+
 // Team
 
 func (s *Store) CreateTeam(ctx context.Context, t *domain.Team) error {
