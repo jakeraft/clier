@@ -29,18 +29,8 @@ func TestBuildMemberPrompt(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// then: prompt is
-		//   ## Team Protocol
-		//
-		//   You are "Boss", part of team "MyTeam".
-		//
-		//   | Role   | Name   | ID       |
-		//   | Worker | Writer | worker-1 |
-		//
-		//   Delegate sub-tasks to workers. Wait for all responses before wrapping up.
-		//
-		//   To message a teammate:
-		//   clier message send <id> "<message>"
+		// then: prompt contains protocol header, user guidance, relation table,
+		//   worker delegation guidance, and teammate messaging with --to flag.
 		for _, want := range []string{
 			`"Boss"`,
 			`"MyTeam"`,
@@ -52,9 +42,12 @@ func TestBuildMemberPrompt(t *testing.T) {
 				t.Errorf("missing %q in:\n%s", want, got)
 			}
 		}
-		// no root-specific guidance
-		if strings.Contains(got, "root member") {
-			t.Errorf("should not mention root role:\n%s", got)
+		// root member gets user guidance instead of leader guidance
+		if !strings.Contains(got, "human user") {
+			t.Errorf("root should have user guidance:\n%s", got)
+		}
+		if strings.Contains(got, "Your leader is") {
+			t.Errorf("root should not have leader guidance:\n%s", got)
 		}
 	})
 
@@ -75,21 +68,8 @@ func TestBuildMemberPrompt(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// then: prompt is
-		//   ## Team Protocol
-		//
-		//   You are "Writer", part of team "MyTeam".
-		//
-		//   | Role   | Name     | ID       |
-		//   | Leader | Editor   | leader-1 |
-		//   | Peer   | Reviewer | peer-1   |
-		//
-		//   Your leader is "Editor". Report results to them. Ask them if stuck.
-		//
-		//   Coordinate with peers when tasks overlap.
-		//
-		//   Messages from teammates appear directly in your conversation.
-		//   clier message send <id> "<message>"
+		// then: prompt contains leader/peer relations, leader guidance, peer guidance,
+		//   and teammate messaging with --to flag.
 		for _, want := range []string{
 			"| Leader | Editor | leader-1 |",
 			"| Peer | Reviewer | peer-1 |",
@@ -147,10 +127,6 @@ func TestBuildMemberPrompt(t *testing.T) {
 		}
 
 		// then: prompt has all three relation rows
-		//   | Role   | Name     | ID       |
-		//   | Leader | Editor   | leader-1 |
-		//   | Worker | Writer   | worker-1 |
-		//   | Peer   | Reviewer | peer-1   |
 		for _, want := range []string{
 			"| Leader | Editor | leader-1 |",
 			"| Worker | Writer | worker-1 |",
@@ -181,14 +157,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// then: prompt is
-		//   Be concise.
-		//
-		//   Write tests.
-		//
-		//   ## Team Protocol
-		//
-		//   You are "Agent", part of team "MyTeam".
+		// then: system prompts precede Team Protocol section
 		for _, want := range []string{
 			"Be concise.",
 			"Write tests.",
