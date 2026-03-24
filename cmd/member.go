@@ -1,0 +1,172 @@
+package cmd
+
+import (
+	"context"
+	"strings"
+
+	"github.com/jakeraft/clier/internal/domain"
+	"github.com/spf13/cobra"
+)
+
+func init() {
+	rootCmd.AddCommand(newMemberCmd())
+}
+
+func newMemberCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "member",
+		Short: "Manage members",
+	}
+	cmd.AddCommand(newMemberCreateCmd())
+	cmd.AddCommand(newMemberListCmd())
+	cmd.AddCommand(newMemberUpdateCmd())
+	cmd.AddCommand(newMemberDeleteCmd())
+	return cmd
+}
+
+func newMemberCreateCmd() *cobra.Command {
+	var name, profile, prompts, envs, repo string
+
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create a member",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			store, err := newStore()
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			var promptIDs []string
+			if prompts != "" {
+				promptIDs = strings.Split(prompts, ",")
+			}
+			var envIDs []string
+			if envs != "" {
+				envIDs = strings.Split(envs, ",")
+			}
+
+			m, err := domain.NewMember(name, profile, promptIDs, envIDs, repo)
+			if err != nil {
+				return err
+			}
+			if err := store.CreateMember(context.Background(), m); err != nil {
+				return err
+			}
+			return printJSON(m)
+		},
+	}
+	cmd.Flags().StringVar(&name, "name", "", "Member name")
+	cmd.Flags().StringVar(&profile, "profile", "", "CLI profile ID")
+	cmd.Flags().StringVar(&prompts, "prompts", "", "System prompt IDs (comma-separated)")
+	cmd.Flags().StringVar(&envs, "envs", "", "Environment IDs (comma-separated)")
+	cmd.Flags().StringVar(&repo, "repo", "", "Git repo ID")
+	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("profile")
+	return cmd
+}
+
+func newMemberListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list",
+		Short: "List all members",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			store, err := newStore()
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			members, err := store.ListMembers(context.Background())
+			if err != nil {
+				return err
+			}
+			return printJSON(members)
+		},
+	}
+}
+
+func newMemberUpdateCmd() *cobra.Command {
+	var name, profile, prompts, envs, repo string
+
+	cmd := &cobra.Command{
+		Use:   "update <id>",
+		Short: "Update a member",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			store, err := newStore()
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			m, err := store.GetMember(context.Background(), args[0])
+			if err != nil {
+				return err
+			}
+
+			var namePtr *string
+			if cmd.Flags().Changed("name") {
+				namePtr = &name
+			}
+			var profilePtr *string
+			if cmd.Flags().Changed("profile") {
+				profilePtr = &profile
+			}
+			var promptIDsPtr *[]string
+			if cmd.Flags().Changed("prompts") {
+				var ids []string
+				if prompts != "" {
+					ids = strings.Split(prompts, ",")
+				}
+				promptIDsPtr = &ids
+			}
+			var envIDsPtr *[]string
+			if cmd.Flags().Changed("envs") {
+				var ids []string
+				if envs != "" {
+					ids = strings.Split(envs, ",")
+				}
+				envIDsPtr = &ids
+			}
+			var repoPtr *string
+			if cmd.Flags().Changed("repo") {
+				repoPtr = &repo
+			}
+
+			if err := m.Update(namePtr, profilePtr, promptIDsPtr, envIDsPtr, repoPtr); err != nil {
+				return err
+			}
+			if err := store.UpdateMember(context.Background(), &m); err != nil {
+				return err
+			}
+			return printJSON(m)
+		},
+	}
+	cmd.Flags().StringVar(&name, "name", "", "New member name")
+	cmd.Flags().StringVar(&profile, "profile", "", "New CLI profile ID")
+	cmd.Flags().StringVar(&prompts, "prompts", "", "New system prompt IDs (comma-separated)")
+	cmd.Flags().StringVar(&envs, "envs", "", "New environment IDs (comma-separated)")
+	cmd.Flags().StringVar(&repo, "repo", "", "New git repo ID")
+	return cmd
+}
+
+func newMemberDeleteCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "delete <id>",
+		Short: "Delete a member",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			store, err := newStore()
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			if err := store.DeleteMember(context.Background(), args[0]); err != nil {
+				return err
+			}
+			return printJSON(map[string]string{"deleted": args[0]})
+		},
+	}
+}
