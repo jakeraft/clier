@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,6 +26,12 @@ type MemberRelations struct {
 	Leaders []string
 	Workers []string
 	Peers   []string
+}
+
+func (r MemberRelations) IsConnectedTo(memberID string) bool {
+	return slices.Contains(r.Leaders, memberID) ||
+		slices.Contains(r.Workers, memberID) ||
+		slices.Contains(r.Peers, memberID)
 }
 
 type Team struct {

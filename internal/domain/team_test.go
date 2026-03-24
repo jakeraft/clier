@@ -275,6 +275,46 @@ func TestTeam(t *testing.T) {
 		})
 	})
 
+	t.Run("IsConnectedTo", func(t *testing.T) {
+		// given: Agent's relation graph
+		//
+		//   leader-1
+		//       |
+		//       v (leader)
+		//     Agent ──(peer)── peer-1
+		//       |
+		//       v (worker)
+		//   worker-1
+		//
+		//   stranger (no relation)
+		rel := MemberRelations{
+			Leaders: []string{"leader-1"},
+			Workers: []string{"worker-1"},
+			Peers:   []string{"peer-1"},
+		}
+
+		t.Run("Connected_ReturnsTrue", func(t *testing.T) {
+			for _, id := range []string{"leader-1", "worker-1", "peer-1"} {
+				if !rel.IsConnectedTo(id) {
+					t.Errorf("IsConnectedTo(%q) = false, want true", id)
+				}
+			}
+		})
+
+		t.Run("NotConnected_ReturnsFalse", func(t *testing.T) {
+			if rel.IsConnectedTo("stranger") {
+				t.Error("IsConnectedTo(stranger) = true, want false")
+			}
+		})
+
+		t.Run("Empty_ReturnsFalse", func(t *testing.T) {
+			empty := MemberRelations{}
+			if empty.IsConnectedTo("anyone") {
+				t.Error("IsConnectedTo(anyone) = true, want false")
+			}
+		})
+	})
+
 	t.Run("DisconnectedWarnings", func(t *testing.T) {
 		t.Run("DisconnectedMember_ReturnsWarning", func(t *testing.T) {
 			team := createTeamWithMembers(t, "member-2", "member-3")
