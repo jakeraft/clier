@@ -4,48 +4,56 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
+	"github.com/jakeraft/clier/internal/app/sprint"
 	"github.com/jakeraft/clier/internal/domain"
+	toml "github.com/pelletier/go-toml/v2"
 )
+
+// AuthCopier copies CLI auth files to a destination home directory.
+type AuthCopier interface {
+	CopyAuthTo(binary domain.CliBinary, destHome string) error
+}
 
 // Workspace manages sprint member filesystem environments.
 type Workspace struct {
-	baseDir       string
-	copyAuth      func(binary domain.CliBinary, destHome string) error
-	getCredential func(host string) (string, error)
+	baseDir string
+	auth    AuthCopier
 }
 
-func New(baseDir string, copyAuth func(domain.CliBinary, string) error, getCredential func(string) (string, error)) *Workspace {
-	return &Workspace{baseDir: baseDir, copyAuth: copyAuth, getCredential: getCredential}
+func New(baseDir string, auth AuthCopier) *Workspace {
+	return &Workspace{baseDir: baseDir, auth: auth}
 }
 
-// PrepareMember creates the member's isolated workspace: directories, auth, configs, and git repo.
-func (w *Workspace) PrepareMember(ctx context.Context, sprintID string, m domain.MemberSnapshot) (memberHome, workDir string, err error) {
-	memberHome = filepath.Join(w.baseDir, sprintID, m.MemberID)
-	workDir = filepath.Join(memberHome, "project")
-
-	if err := os.MkdirAll(workDir, 0755); err != nil {
-		return "", "", fmt.Errorf("create workspace: %w", err)
+// Prepare creates the sprint directory and sets up isolated environments for all members.
+func (w *Workspace) Prepare(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) (map[string]sprint.MemberDir, error) {
+	sprintDir := filepath.Join(w.baseDir, sprintID)
+	if err := os.MkdirAll(sprintDir, 0755); err != nil {
+		return nil, fmt.Errorf("create sprint dir: %w", err)
 	}
 
-	if err := w.copyAuth(m.Binary, memberHome); err != nil {
-		return "", "", fmt.Errorf("copy auth: %w", err)
+	// Cleanup entire sprint directory on any failure
+	success := false
+	defer func() {
+		if !success {
+			os.RemoveAll(sprintDir)
+		}
+	}()
+
+	dirs := make(map[string]sprint.MemberDir, len(snapshot.Members))
+	for _, m := range snapshot.Members {
+		dir, err := w.prepareMember(ctx, sprintDir, m)
+		if err != nil {
+			return nil, fmt.Errorf("prepare member %s: %w", m.MemberName, err)
+		}
+		dirs[m.MemberID] = dir
 	}
 
-	if err := writeConfigs(m, memberHome, workDir); err != nil {
-		return "", "", fmt.Errorf("write configs: %w", err)
-	}
-
-	if err := w.setupGit(ctx, m, workDir); err != nil {
-		return "", "", fmt.Errorf("setup git: %w", err)
-	}
-
-	return memberHome, workDir, nil
+	success = true
+	return dirs, nil
 }
 
 // Cleanup removes all workspace files for a sprint.
@@ -53,19 +61,34 @@ func (w *Workspace) Cleanup(sprintID string) error {
 	return os.RemoveAll(filepath.Join(w.baseDir, sprintID))
 }
 
+func (w *Workspace) prepareMember(ctx context.Context, sprintDir string, m domain.MemberSnapshot) (sprint.MemberDir, error) {
+	memberHome := filepath.Join(sprintDir, m.MemberID)
+	workDir := filepath.Join(memberHome, "project")
+
+	if err := os.MkdirAll(workDir, 0755); err != nil {
+		return sprint.MemberDir{}, fmt.Errorf("create member dir: %w", err)
+	}
+
+	if err := w.auth.CopyAuthTo(m.Binary, memberHome); err != nil {
+		return sprint.MemberDir{}, fmt.Errorf("copy auth: %w", err)
+	}
+
+	if err := writeConfigs(m, memberHome, workDir); err != nil {
+		return sprint.MemberDir{}, fmt.Errorf("write configs: %w", err)
+	}
+
+	if err := w.setupGit(ctx, m, workDir); err != nil {
+		return sprint.MemberDir{}, fmt.Errorf("setup git: %w", err)
+	}
+
+	return sprint.MemberDir{Home: memberHome, WorkDir: workDir}, nil
+}
+
 func (w *Workspace) setupGit(ctx context.Context, m domain.MemberSnapshot, workDir string) error {
 	if m.GitRepo == nil {
 		return exec.CommandContext(ctx, "git", "init", workDir).Run()
 	}
-
-	cloneURL := m.GitRepo.URL
-	if host := extractHost(cloneURL); host != "" {
-		if token, err := w.getCredential(host); err == nil {
-			cloneURL = injectCredential(cloneURL, token)
-		}
-	}
-
-	if err := exec.CommandContext(ctx, "git", "clone", "--depth", "1", cloneURL, workDir).Run(); err != nil {
+	if err := exec.CommandContext(ctx, "git", "clone", "--depth", "1", m.GitRepo.URL, workDir).Run(); err != nil {
 		return fmt.Errorf("git clone %s: %w", m.GitRepo.URL, err)
 	}
 	return nil
@@ -83,18 +106,17 @@ func writeConfigs(m domain.MemberSnapshot, memberHome, workDir string) error {
 }
 
 func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) error {
-	if len(m.DotConfig) > 0 {
-		claudeDir := filepath.Join(memberHome, ".claude")
-		if err := os.MkdirAll(claudeDir, 0755); err != nil {
-			return fmt.Errorf("create .claude dir: %w", err)
-		}
-		data, err := json.MarshalIndent(m.DotConfig, "", "  ")
-		if err != nil {
-			return fmt.Errorf("marshal dotconfig: %w", err)
-		}
-		if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644); err != nil {
-			return fmt.Errorf("write settings.json: %w", err)
-		}
+	claudeDir := filepath.Join(memberHome, ".claude")
+	if err := os.MkdirAll(claudeDir, 0755); err != nil {
+		return fmt.Errorf("create .claude dir: %w", err)
+	}
+
+	data, err := json.MarshalIndent(m.DotConfig, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal dotconfig: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(claudeDir, "settings.json"), data, 0644); err != nil {
+		return fmt.Errorf("write settings.json: %w", err)
 	}
 
 	trust := map[string]any{
@@ -105,7 +127,7 @@ func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) err
 			},
 		},
 	}
-	data, err := json.MarshalIndent(trust, "", "  ")
+	data, err = json.MarshalIndent(trust, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal trust config: %w", err)
 	}
@@ -118,31 +140,19 @@ func writeCodexConfigs(m domain.MemberSnapshot, memberHome, workDir string) erro
 		return fmt.Errorf("create .codex dir: %w", err)
 	}
 
-	var b strings.Builder
+	config := make(map[string]any)
 	for k, v := range m.DotConfig {
-		fmt.Fprintf(&b, "%s = %q\n", k, fmt.Sprint(v))
+		config[k] = v
 	}
-	b.WriteString("\n[projects]\n")
-	fmt.Fprintf(&b, "[projects.%q]\n", workDir)
-	b.WriteString("trust_level = \"trusted\"\n")
-
-	return os.WriteFile(filepath.Join(codexDir, "config.toml"), []byte(b.String()), 0644)
-}
-
-func extractHost(gitURL string) string {
-	u, err := url.Parse(gitURL)
-	if err != nil || u.Host == "" {
-		return ""
+	config["projects"] = map[string]any{
+		workDir: map[string]any{
+			"trust_level": "trusted",
+		},
 	}
-	return u.Host
-}
 
-func injectCredential(gitURL, token string) string {
-	u, err := url.Parse(gitURL)
+	data, err := toml.Marshal(config)
 	if err != nil {
-		return gitURL
+		return fmt.Errorf("marshal config.toml: %w", err)
 	}
-	u.User = url.UserPassword("x-access-token", token)
-	return u.String()
+	return os.WriteFile(filepath.Join(codexDir, "config.toml"), data, 0644)
 }
-

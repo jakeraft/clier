@@ -18,7 +18,7 @@ func NewCmuxTerminal(db *sql.DB) *CmuxTerminal {
 	return &CmuxTerminal{binary: "cmux", db: db}
 }
 
-func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.LaunchMember) error {
+func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.MemberSpec) error {
 	if len(members) == 0 {
 		return fmt.Errorf("no members to launch")
 	}
@@ -79,7 +79,7 @@ func (c *CmuxTerminal) Terminate(sprintID string) error {
 }
 
 // setupSurface renames the tab and sends the launch command.
-func (c *CmuxTerminal) setupSurface(surfaceRef string, m sprint.LaunchMember) error {
+func (c *CmuxTerminal) setupSurface(surfaceRef string, m sprint.MemberSpec) error {
 	if err := c.renameTab(surfaceRef, m.Name); err != nil {
 		return fmt.Errorf("rename tab: %w", err)
 	}

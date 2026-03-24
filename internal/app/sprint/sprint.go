@@ -21,8 +21,8 @@ type Store interface {
 	CreateMessage(ctx context.Context, msg *domain.Message) error
 }
 
-// LaunchMember describes a member to launch in a terminal session.
-type LaunchMember struct {
+// MemberSpec describes what to run for a member in a terminal session.
+type MemberSpec struct {
 	ID      string
 	Name    string
 	Command string
@@ -30,14 +30,20 @@ type LaunchMember struct {
 
 // Terminal defines the terminal operations needed by the sprint engine.
 type Terminal interface {
-	Launch(sprintID, sprintName string, members []LaunchMember) error
+	Launch(sprintID, sprintName string, members []MemberSpec) error
 	Send(sprintID, memberID, text string) error
 	Terminate(sprintID string) error
 }
 
-// Workspace defines the filesystem operations for sprint member environments.
+// MemberDir holds the prepared directory paths for a member.
+type MemberDir struct {
+	Home    string
+	WorkDir string
+}
+
+// Workspace defines the filesystem operations for sprint environments.
 type Workspace interface {
-	PrepareMember(ctx context.Context, sprintID string, m domain.MemberSnapshot) (memberHome, workDir string, err error)
+	Prepare(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) (map[string]MemberDir, error)
 	Cleanup(sprintID string) error
 }
 
@@ -95,26 +101,27 @@ func (s *Service) Stop(ctx context.Context, sprintID string) error {
 	return nil
 }
 
-// prepareMembers prepares isolated workspaces and builds launch members for all members.
-func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) ([]LaunchMember, []string, error) {
-	var members []LaunchMember
+// prepareMembers sets up the workspace and builds launch commands for all members.
+func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) ([]MemberSpec, []string, error) {
+	dirs, err := s.workspace.Prepare(ctx, sprintID, snapshot)
+	if err != nil {
+		return nil, nil, fmt.Errorf("prepare workspace: %w", err)
+	}
+
+	var members []MemberSpec
 	var tempFiles []string
 
 	for _, m := range snapshot.Members {
-		memberHome, workDir, err := s.workspace.PrepareMember(ctx, sprintID, m)
-		if err != nil {
-			return nil, nil, fmt.Errorf("prepare member %s: %w", m.MemberName, err)
-		}
-
+		dir := dirs[m.MemberID]
 		prompt := ComposePrompt(m.SystemPrompts, BuildProtocol(snapshot, m))
-		env := BuildEnv(m, sprintID, memberHome)
-		cmd, tf, err := BuildCommand(m, prompt, workDir, env)
+		env := BuildEnv(m, sprintID, dir.Home)
+		cmd, tf, err := BuildCommand(m, prompt, dir.WorkDir, env)
 		if err != nil {
 			return nil, nil, fmt.Errorf("build command for %s: %w", m.MemberName, err)
 		}
 		tempFiles = append(tempFiles, tf...)
 
-		members = append(members, LaunchMember{
+		members = append(members, MemberSpec{
 			ID:      m.MemberID,
 			Name:    m.MemberName,
 			Command: cmd,
