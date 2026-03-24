@@ -87,7 +87,8 @@ func TestBuildCommand(t *testing.T) {
 			}
 
 			// then: command is
-			//   export HOME='/home/m1' && export CLIER_SPRINT_ID='sprint-1' && export CLIER_MEMBER_ID='m1' &&
+			//   export HOME='/home/m1' && export CLIER_DATA_DIR='...' &&
+			//   export CLIER_SPRINT_ID='sprint-1' && export CLIER_MEMBER_ID='m1' &&
 			//   cd '/work' && claude '--dangerously-skip-permissions' --model 'claude-sonnet-4-6'
 			//     --session-id 'm1' --append-system-prompt '...' '--verbose'
 			for _, want := range []string{
@@ -229,13 +230,16 @@ func TestBuildEnv(t *testing.T) {
 		// when
 		env := buildEnv(m, "sprint-1", "/home/m1")
 
-		// then: env contains HOME, CLIER_SPRINT_ID, CLIER_MEMBER_ID, API_KEY
+		// then: env contains HOME, CLIER_DATA_DIR, CLIER_SPRINT_ID, CLIER_MEMBER_ID, API_KEY
 		envMap := make(map[string]string)
 		for _, e := range env {
 			parts := strings.SplitN(e, "=", 2)
 			envMap[parts[0]] = parts[1]
 		}
 
+		if _, ok := envMap["CLIER_DATA_DIR"]; !ok {
+			t.Error("CLIER_DATA_DIR should be set")
+		}
 		for k, want := range map[string]string{
 			"HOME":            "/home/m1",
 			"CLIER_SPRINT_ID": "sprint-1",

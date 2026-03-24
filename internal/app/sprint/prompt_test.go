@@ -29,8 +29,24 @@ func TestBuildMemberPrompt(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// then: prompt contains protocol header, user guidance, relation table,
-		//   worker delegation guidance, and teammate messaging with --to flag.
+		// then: prompt is
+		//   ## Team Protocol
+		//
+		//   You are "Boss", part of team "MyTeam".
+		//
+		//   | Role | Name | ID |
+		//   |------|------|----|
+		//   | Worker | Writer | worker-1 |
+		//
+		//   You were started by a human user. Report final results back with:
+		//   clier message send --to 00000000-0000-0000-0000-000000000000 "<result>"
+		//
+		//   Delegate sub-tasks to workers. Wait for all responses before wrapping up.
+		//
+		//   To message a teammate:
+		//   clier message send --to <id> "<message>"
+		//
+		//   Replies arrive directly in your terminal input. Do not poll or call any receive command.
 		for _, want := range []string{
 			`"Boss"`,
 			`"MyTeam"`,
@@ -68,8 +84,24 @@ func TestBuildMemberPrompt(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// then: prompt contains leader/peer relations, leader guidance, peer guidance,
-		//   and teammate messaging with --to flag.
+		// then: prompt is
+		//   ## Team Protocol
+		//
+		//   You are "Writer", part of team "MyTeam".
+		//
+		//   | Role | Name | ID |
+		//   |------|------|----|
+		//   | Leader | Editor | leader-1 |
+		//   | Peer | Reviewer | peer-1 |
+		//
+		//   Your leader is "Editor". Report results to them.
+		//
+		//   Coordinate with peers when tasks overlap.
+		//
+		//   To message a teammate:
+		//   clier message send --to <id> "<message>"
+		//
+		//   Replies arrive directly in your terminal input. Do not poll or call any receive command.
 		for _, want := range []string{
 			"| Leader | Editor | leader-1 |",
 			"| Peer | Reviewer | peer-1 |",
@@ -95,7 +127,14 @@ func TestBuildMemberPrompt(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// then: no relation table, no teammate messaging, but has user guidance
+		// then: prompt is
+		//   ## Team Protocol
+		//
+		//   You are "Solo", part of team "MyTeam".
+		//
+		//   You were started by a human user. Report final results back with:
+		//   clier message send --to 00000000-0000-0000-0000-000000000000 "<result>"
+		// (no relation table, no teammate messaging)
 		if strings.Contains(got, "| Role |") {
 			t.Errorf("should not have relation table:\n%s", got)
 		}
@@ -157,7 +196,17 @@ func TestBuildMemberPrompt(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// then: system prompts precede Team Protocol section
+		// then: prompt is
+		//   Be concise.
+		//
+		//   Write tests.
+		//
+		//   ## Team Protocol
+		//
+		//   You are "Agent", part of team "MyTeam".
+		//
+		//   You were started by a human user. Report final results back with:
+		//   clier message send --to 00000000-0000-0000-0000-000000000000 "<result>"
 		for _, want := range []string{
 			"Be concise.",
 			"Write tests.",
