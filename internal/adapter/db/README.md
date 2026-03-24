@@ -1,6 +1,17 @@
-# internal/db
+# internal/adapter/db
 
 SQLite persistence layer using sqlc (code generation) and modernc.org/sqlite (CGO-free driver).
+
+## Architecture
+
+`Store` is a domain-aware facade that wraps sqlc-generated queries and converts between DB rows and domain entities. Consumers never touch `generated/` directly — they depend on `Store` methods that return `domain.*` types.
+
+```
+store.go         ← domain-aware facade (generated row <-> domain entity)
+schema.sql       ← DDL (embedded, auto-init on first run)
+queries/         ← SQL source for sqlc codegen
+generated/       ← sqlc output (DO NOT edit manually)
+```
 
 ## How It Works
 
@@ -38,24 +49,32 @@ store, err := db.NewStore("~/.clier/data.db")
 3. Execute embedded `schema.sql` — `CREATE TABLE IF NOT EXISTS` creates tables on first run, no-op after
 4. `generated.New(db)` — inject DB connection into sqlc Queries struct
 
-### Runtime — Query Usage
+### Runtime — Store Usage
 
 ```go
-err := store.Queries.CreateCliProfile(ctx, generated.CreateCliProfileParams{
-    ID: "abc-123", Name: "my-profile", Model: "claude-sonnet-4-6", ...
-})
-
-profile, err := store.Queries.GetCliProfile(ctx, "abc-123")
+// Store methods accept/return domain types, not generated types.
+sprint, err := store.GetSprint(ctx, sprintID)    // returns domain.Sprint
+err := store.CreateSprint(ctx, &sprint)           // accepts *domain.Sprint
+err := store.CreateMessage(ctx, &msg)             // accepts *domain.Message
 ```
 
-Consumers define their own interfaces (Go idiom) satisfied by `*generated.Queries` implicitly.
+Consumers (app layer) define their own port interfaces satisfied by `*Store`:
+
+```go
+// app/sprint/sprint.go
+type Store interface {
+    GetTeam(ctx context.Context, id string) (domain.Team, error)
+    CreateSprint(ctx context.Context, sprint *domain.Sprint) error
+    // ...
+}
+```
 
 ## Regenerating Code
 
 After modifying `schema.sql` or `queries/*.sql`:
 
 ```bash
-cd internal/db && sqlc generate
+cd internal/adapter/db && sqlc generate
 ```
 
 Commit the regenerated `generated/` directory.

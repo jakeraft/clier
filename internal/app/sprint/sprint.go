@@ -24,7 +24,7 @@ type Store interface {
 	GetSprint(ctx context.Context, id string) (domain.Sprint, error)
 	CreateSprint(ctx context.Context, sprint *domain.Sprint) error
 	UpdateSprintState(ctx context.Context, sprintID string, state domain.SprintState, sprintErr string) error
-	CreateMessage(ctx context.Context, sprintID, fromMemberID, toMemberID, content string) error
+	CreateMessage(ctx context.Context, msg *domain.Message) error
 }
 
 // Terminal defines the terminal operations needed by the sprint engine.

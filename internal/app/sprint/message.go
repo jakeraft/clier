@@ -69,7 +69,11 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 	}
 
 	// Persist message
-	if err := s.store.CreateMessage(ctx, sprintID, fromMemberID, toMemberID, content); err != nil {
+	msg, err := domain.NewMessage(sprintID, fromMemberID, toMemberID, content)
+	if err != nil {
+		return fmt.Errorf("new message: %w", err)
+	}
+	if err := s.store.CreateMessage(ctx, msg); err != nil {
 		return fmt.Errorf("save message: %w", err)
 	}
 

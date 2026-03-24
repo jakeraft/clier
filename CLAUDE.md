@@ -25,7 +25,11 @@ internal/
   app/
     sprint/            ← sprint use case (port definitions + orchestration)
   adapter/
-    db/                ← driven adapter (sqlc generated → domain conversion)
+    db/                ← driven adapter (SQLite persistence, sqlc generated → domain conversion)
+      store.go         ← domain-aware facade (generated row ↔ domain entity transform)
+      schema.sql       ← DDL (embedded, auto-init on first run)
+      queries/         ← SQL source for sqlc codegen
+      generated/       ← sqlc output (DO NOT edit manually)
     terminal/          ← driven adapter (cmux CLI)
     settings/          ← driven adapter (local config/credentials)
 ```
