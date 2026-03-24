@@ -142,24 +142,9 @@ func (s *Store) UpdateTeam(ctx context.Context, t *domain.Team) error {
 	})
 }
 
+// DeleteTeam deletes a team. CASCADE: team_members, team_relations.
 func (s *Store) DeleteTeam(ctx context.Context, id string) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback()
-
-	qtx := generated.New(tx)
-	if err := qtx.DeleteTeamRelations(ctx, id); err != nil {
-		return err
-	}
-	if err := qtx.DeleteTeamMembers(ctx, id); err != nil {
-		return err
-	}
-	if err := qtx.DeleteTeam(ctx, id); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return s.queries.DeleteTeam(ctx, id)
 }
 
 func (s *Store) AddTeamMember(ctx context.Context, teamID, memberID string) error {
@@ -305,50 +290,49 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 	return tx.Commit()
 }
 
+// DeleteMember deletes a member. CASCADE: member_system_prompts, member_environments.
+// RESTRICT: teams.root_member_id — fails if member is a team's root.
 func (s *Store) DeleteMember(ctx context.Context, id string) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("begin tx: %w", err)
-	}
-	defer tx.Rollback()
-
-	qtx := generated.New(tx)
-	if err := qtx.DeleteMemberSystemPrompts(ctx, id); err != nil {
-		return err
-	}
-	if err := qtx.DeleteMemberEnvironments(ctx, id); err != nil {
-		return err
-	}
-	if err := qtx.DeleteMember(ctx, id); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return s.queries.DeleteMember(ctx, id)
 }
 
 // CliProfile
 
+func marshalCliProfileJSON(p *domain.CliProfile) (systemArgs, customArgs, dotConfig string, err error) {
+	sa, err := json.Marshal(p.SystemArgs)
+	if err != nil {
+		return "", "", "", fmt.Errorf("marshal system_args: %w", err)
+	}
+	ca, err := json.Marshal(p.CustomArgs)
+	if err != nil {
+		return "", "", "", fmt.Errorf("marshal custom_args: %w", err)
+	}
+	dc, err := json.Marshal(p.DotConfig)
+	if err != nil {
+		return "", "", "", fmt.Errorf("marshal dot_config: %w", err)
+	}
+	return string(sa), string(ca), string(dc), nil
+}
+
 func (s *Store) CreateCliProfile(ctx context.Context, p *domain.CliProfile) error {
-	systemArgs, _ := json.Marshal(p.SystemArgs)
-	customArgs, _ := json.Marshal(p.CustomArgs)
-	dotConfig, _ := json.Marshal(p.DotConfig)
+	systemArgs, customArgs, dotConfig, err := marshalCliProfileJSON(p)
+	if err != nil {
+		return err
+	}
 	return s.queries.CreateCliProfile(ctx, generated.CreateCliProfileParams{
 		ID:         p.ID,
 		Name:       p.Name,
 		Model:      p.Model,
 		Binary:     string(p.Binary),
-		SystemArgs: string(systemArgs),
-		CustomArgs: string(customArgs),
-		DotConfig:  string(dotConfig),
+		SystemArgs: systemArgs,
+		CustomArgs: customArgs,
+		DotConfig:  dotConfig,
 		CreatedAt:  p.CreatedAt.Unix(),
 		UpdatedAt:  p.UpdatedAt.Unix(),
 	})
 }
 
-func (s *Store) GetCliProfile(ctx context.Context, id string) (domain.CliProfile, error) {
-	row, err := s.queries.GetCliProfile(ctx, id)
-	if err != nil {
-		return domain.CliProfile{}, err
-	}
+func unmarshalCliProfile(row generated.CliProfile) (domain.CliProfile, error) {
 	var systemArgs, customArgs []string
 	if err := json.Unmarshal([]byte(row.SystemArgs), &systemArgs); err != nil {
 		return domain.CliProfile{}, fmt.Errorf("unmarshal system_args: %w", err)
@@ -373,6 +357,14 @@ func (s *Store) GetCliProfile(ctx context.Context, id string) (domain.CliProfile
 	}, nil
 }
 
+func (s *Store) GetCliProfile(ctx context.Context, id string) (domain.CliProfile, error) {
+	row, err := s.queries.GetCliProfile(ctx, id)
+	if err != nil {
+		return domain.CliProfile{}, err
+	}
+	return unmarshalCliProfile(row)
+}
+
 func (s *Store) ListCliProfiles(ctx context.Context) ([]domain.CliProfile, error) {
 	rows, err := s.queries.ListCliProfiles(ctx)
 	if err != nil {
@@ -380,7 +372,7 @@ func (s *Store) ListCliProfiles(ctx context.Context) ([]domain.CliProfile, error
 	}
 	profiles := make([]domain.CliProfile, 0, len(rows))
 	for _, row := range rows {
-		p, err := s.GetCliProfile(ctx, row.ID)
+		p, err := unmarshalCliProfile(row)
 		if err != nil {
 			return nil, err
 		}
@@ -390,21 +382,23 @@ func (s *Store) ListCliProfiles(ctx context.Context) ([]domain.CliProfile, error
 }
 
 func (s *Store) UpdateCliProfile(ctx context.Context, p *domain.CliProfile) error {
-	systemArgs, _ := json.Marshal(p.SystemArgs)
-	customArgs, _ := json.Marshal(p.CustomArgs)
-	dotConfig, _ := json.Marshal(p.DotConfig)
+	systemArgs, customArgs, dotConfig, err := marshalCliProfileJSON(p)
+	if err != nil {
+		return err
+	}
 	return s.queries.UpdateCliProfile(ctx, generated.UpdateCliProfileParams{
 		Name:       p.Name,
 		Model:      p.Model,
 		Binary:     string(p.Binary),
-		SystemArgs: string(systemArgs),
-		CustomArgs: string(customArgs),
-		DotConfig:  string(dotConfig),
+		SystemArgs: systemArgs,
+		CustomArgs: customArgs,
+		DotConfig:  dotConfig,
 		UpdatedAt:  p.UpdatedAt.Unix(),
 		ID:         p.ID,
 	})
 }
 
+// DeleteCliProfile deletes a cli profile. RESTRICT: fails if referenced by a member.
 func (s *Store) DeleteCliProfile(ctx context.Context, id string) error {
 	return s.queries.DeleteCliProfile(ctx, id)
 }
@@ -462,6 +456,7 @@ func (s *Store) UpdateSystemPrompt(ctx context.Context, sp *domain.SystemPrompt)
 	})
 }
 
+// DeleteSystemPrompt deletes a system prompt. RESTRICT: fails if referenced by a member.
 func (s *Store) DeleteSystemPrompt(ctx context.Context, id string) error {
 	return s.queries.DeleteSystemPrompt(ctx, id)
 }
@@ -523,6 +518,7 @@ func (s *Store) UpdateEnvironment(ctx context.Context, e *domain.Environment) er
 	})
 }
 
+// DeleteEnvironment deletes an environment. RESTRICT: fails if referenced by a member.
 func (s *Store) DeleteEnvironment(ctx context.Context, id string) error {
 	return s.queries.DeleteEnvironment(ctx, id)
 }
@@ -580,17 +576,14 @@ func (s *Store) UpdateGitRepo(ctx context.Context, r *domain.GitRepo) error {
 	})
 }
 
+// DeleteGitRepo deletes a git repo. RESTRICT: fails if referenced by a member.
 func (s *Store) DeleteGitRepo(ctx context.Context, id string) error {
 	return s.queries.DeleteGitRepo(ctx, id)
 }
 
 // Sprint
 
-func (s *Store) GetSprint(ctx context.Context, id string) (domain.Sprint, error) {
-	row, err := s.queries.GetSprint(ctx, id)
-	if err != nil {
-		return domain.Sprint{}, err
-	}
+func unmarshalSprint(row generated.Sprint) (domain.Sprint, error) {
 	var snapshot domain.TeamSnapshot
 	if err := json.Unmarshal([]byte(row.TeamSnapshot), &snapshot); err != nil {
 		return domain.Sprint{}, fmt.Errorf("unmarshal team_snapshot: %w", err)
@@ -604,6 +597,14 @@ func (s *Store) GetSprint(ctx context.Context, id string) (domain.Sprint, error)
 		CreatedAt:    time.Unix(row.CreatedAt, 0),
 		UpdatedAt:    time.Unix(row.UpdatedAt, 0),
 	}, nil
+}
+
+func (s *Store) GetSprint(ctx context.Context, id string) (domain.Sprint, error) {
+	row, err := s.queries.GetSprint(ctx, id)
+	if err != nil {
+		return domain.Sprint{}, err
+	}
+	return unmarshalSprint(row)
 }
 
 func (s *Store) CreateSprint(ctx context.Context, sprint *domain.Sprint) error {
@@ -638,7 +639,7 @@ func (s *Store) ListSprints(ctx context.Context) ([]domain.Sprint, error) {
 	}
 	sprints := make([]domain.Sprint, 0, len(rows))
 	for _, row := range rows {
-		sp, err := s.GetSprint(ctx, row.ID)
+		sp, err := unmarshalSprint(row)
 		if err != nil {
 			return nil, err
 		}
@@ -647,8 +648,46 @@ func (s *Store) ListSprints(ctx context.Context) ([]domain.Sprint, error) {
 	return sprints, nil
 }
 
+// DeleteSprint deletes a sprint. CASCADE: sprint_surfaces, messages.
 func (s *Store) DeleteSprint(ctx context.Context, id string) error {
 	return s.queries.DeleteSprint(ctx, id)
+}
+
+// SprintSurface
+
+func (s *Store) SaveSurfaces(ctx context.Context, sprintID, workspaceRef string, surfaces map[string]string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	qtx := generated.New(tx)
+	for memberID, surfaceRef := range surfaces {
+		if err := qtx.CreateSprintSurface(ctx, generated.CreateSprintSurfaceParams{
+			SprintID:     sprintID,
+			MemberID:     memberID,
+			WorkspaceRef: workspaceRef,
+			SurfaceRef:   surfaceRef,
+		}); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func (s *Store) GetSurfaceRef(ctx context.Context, sprintID, memberID string) (string, error) {
+	return s.queries.GetSprintSurfaceRef(ctx, generated.GetSprintSurfaceRefParams{
+		SprintID: sprintID, MemberID: memberID,
+	})
+}
+
+func (s *Store) GetWorkspaceRef(ctx context.Context, sprintID string) (string, error) {
+	return s.queries.GetSprintWorkspaceRef(ctx, sprintID)
+}
+
+func (s *Store) DeleteSurfaces(ctx context.Context, sprintID string) error {
+	return s.queries.DeleteSprintSurfaces(ctx, sprintID)
 }
 
 // Message

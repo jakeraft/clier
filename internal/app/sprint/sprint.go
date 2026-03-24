@@ -25,6 +25,10 @@ type Store interface {
 	CreateSprint(ctx context.Context, sprint *domain.Sprint) error
 	UpdateSprintState(ctx context.Context, sprintID string, state domain.SprintState, sprintErr string) error
 	CreateMessage(ctx context.Context, msg *domain.Message) error
+	SaveSurfaces(ctx context.Context, sprintID, workspaceRef string, surfaces map[string]string) error
+	GetSurfaceRef(ctx context.Context, sprintID, memberID string) (string, error)
+	GetWorkspaceRef(ctx context.Context, sprintID string) (string, error)
+	DeleteSurfaces(ctx context.Context, sprintID string) error
 }
 
 // Terminal defines the terminal operations needed by the sprint engine.
@@ -72,7 +76,11 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		return nil, fmt.Errorf("launch terminal: %w", err)
 	}
 
-	if err := saveSurfaces(s.settings.SprintsDir(), sprint.ID, snapshot, result); err != nil {
+	surfaces := make(map[string]string, len(snapshot.Members))
+	for i, m := range snapshot.Members {
+		surfaces[m.MemberID] = result.Surfaces[i]
+	}
+	if err := s.store.SaveSurfaces(ctx, sprint.ID, result.WorkspaceRef, surfaces); err != nil {
 		return nil, fmt.Errorf("save surfaces: %w", err)
 	}
 
@@ -80,17 +88,21 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 }
 
 func (s *Service) Stop(ctx context.Context, sprintID string) error {
-	surfaces, err := loadSurfaces(s.settings.SprintsDir(), sprintID)
+	workspaceRef, err := s.store.GetWorkspaceRef(ctx, sprintID)
 	if err != nil {
-		return fmt.Errorf("load surfaces: %w", err)
+		return fmt.Errorf("get workspace ref: %w", err)
 	}
 
-	if err := s.terminal.Terminate(surfaces.WorkspaceRef); err != nil {
+	if err := s.terminal.Terminate(workspaceRef); err != nil {
 		return fmt.Errorf("terminate terminal: %w", err)
 	}
 
 	if err := s.store.UpdateSprintState(ctx, sprintID, domain.SprintCompleted, ""); err != nil {
 		return fmt.Errorf("update sprint state: %w", err)
+	}
+
+	if err := s.store.DeleteSurfaces(ctx, sprintID); err != nil {
+		return fmt.Errorf("delete surfaces: %w", err)
 	}
 
 	sprintDir := filepath.Join(s.settings.SprintsDir(), sprintID)

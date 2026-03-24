@@ -2,53 +2,11 @@ package sprint
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 
 	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/adapter/terminal"
 )
-
-const surfacesFileName = "surfaces.json"
-
-// SurfaceMap holds workspace and surface refs for a sprint.
-type SurfaceMap struct {
-	WorkspaceRef string            `json:"workspace_ref"`
-	Surfaces     map[string]string `json:"surfaces"` // memberID → surface ref
-}
-
-func saveSurfaces(sprintsDir, sprintID string, snapshot domain.TeamSnapshot, result *terminal.LaunchResult) error {
-	surfaces := make(map[string]string, len(snapshot.Members))
-	for i, m := range snapshot.Members {
-		surfaces[m.MemberID] = result.Surfaces[i]
-	}
-	m := SurfaceMap{
-		WorkspaceRef: result.WorkspaceRef,
-		Surfaces:     surfaces,
-	}
-	data, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal surfaces: %w", err)
-	}
-	path := filepath.Join(sprintsDir, sprintID, surfacesFileName)
-	return os.WriteFile(path, data, 0644)
-}
-
-func loadSurfaces(sprintsDir, sprintID string) (*SurfaceMap, error) {
-	path := filepath.Join(sprintsDir, sprintID, surfacesFileName)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read surfaces: %w", err)
-	}
-	var m SurfaceMap
-	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, fmt.Errorf("parse surfaces: %w", err)
-	}
-	return &m, nil
-}
 
 // DeliverMessage validates the relation, persists the message, and delivers it to the recipient's terminal.
 func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, toMemberID, content string) error {
@@ -78,14 +36,9 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 	}
 
 	// Load surface ref and deliver
-	surfaces, err := loadSurfaces(s.settings.SprintsDir(), sprintID)
+	surfaceRef, err := s.store.GetSurfaceRef(ctx, sprintID, toMemberID)
 	if err != nil {
-		return fmt.Errorf("load surfaces: %w", err)
-	}
-
-	surfaceRef, ok := surfaces.Surfaces[toMemberID]
-	if !ok {
-		return fmt.Errorf("surface not found for member: %s", toMemberID)
+		return fmt.Errorf("get surface ref for %s: %w", toMemberID, err)
 	}
 
 	text := fmt.Sprintf("[Message from %s] %s", fromName, content)

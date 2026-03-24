@@ -75,6 +75,13 @@ type Sprint struct {
 	UpdatedAt    int64
 }
 
+type SprintSurface struct {
+	SprintID     string
+	MemberID     string
+	WorkspaceRef string
+	SurfaceRef   string
+}
+
 type SystemPrompt struct {
 	ID        string
 	Name      string
