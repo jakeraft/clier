@@ -7,16 +7,42 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-// BuildProtocol generates the team protocol prompt for a member.
-func BuildProtocol(team domain.TeamSnapshot, member domain.MemberSnapshot) string {
+const (
+	promptHeader = "## Team Protocol\n\nYou are %q, part of team %q.\n"
+
+	promptLeaderGuidance = "Your leader is %q. Report results to them.\n"
+	promptWorkerGuidance = "Delegate sub-tasks to workers. Wait for all responses before wrapping up.\n"
+	promptPeerGuidance   = "Coordinate with peers when tasks overlap.\n"
+
+	promptMessaging = "To message a teammate:\n\n```bash\nclier message send <id> \"<message>\"\n```\n"
+)
+
+// BuildMemberPrompt generates the full prompt for a member by combining
+// system prompts and team protocol into a single string.
+func BuildMemberPrompt(team domain.TeamSnapshot, memberID string) (string, error) {
+	member, ok := findMember(team.Members, memberID)
+	if !ok {
+		return "", fmt.Errorf("member %q not found in team %q", memberID, team.TeamName)
+	}
+
 	memberNames := make(map[string]string, len(team.Members))
 	for _, m := range team.Members {
 		memberNames[m.MemberID] = m.MemberName
 	}
 
+	var parts []string
+	for _, sp := range member.SystemPrompts {
+		parts = append(parts, sp.Prompt)
+	}
+	parts = append(parts, buildProtocol(team.TeamName, member, memberNames))
+
+	return strings.Join(parts, "\n\n"), nil
+}
+
+func buildProtocol(teamName string, member domain.MemberSnapshot, memberNames map[string]string) string {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "## Team Protocol\n\nYou are %q, part of team %q.\n", member.MemberName, team.TeamName)
+	fmt.Fprintf(&b, promptHeader, member.MemberName, teamName)
 
 	// Relation table
 	rows := buildRelationRows(member.Relations, memberNames)
@@ -29,26 +55,25 @@ func BuildProtocol(team domain.TeamSnapshot, member domain.MemberSnapshot) strin
 	}
 
 	// Role guidance
-	isRoot := member.MemberID == team.RootMemberID
-	b.WriteString("\n")
-	if isRoot && len(member.Relations.Workers) > 0 {
-		b.WriteString("You are the root member. Coordinate your workers and synthesize their results.\n")
-	} else if len(member.Relations.Leaders) > 0 {
-		leaderName := memberNames[member.Relations.Leaders[0]]
-		fmt.Fprintf(&b, "Your leader is %s. When you complete a task, send the results back to them. If you get stuck or need more context, ask them.\n", leaderName)
+	if len(member.Relations.Leaders) > 0 {
+		b.WriteString("\n")
+		fmt.Fprintf(&b, promptLeaderGuidance, memberNames[member.Relations.Leaders[0]])
 	}
 
 	if len(member.Relations.Workers) > 0 {
-		b.WriteString("\nYou have workers who handle tasks better than doing them yourself. Delegate sub-tasks to them and wait for all responses before wrapping up.\n")
+		b.WriteString("\n")
+		b.WriteString(promptWorkerGuidance)
 	}
 
 	if len(member.Relations.Peers) > 0 {
-		b.WriteString("\nCoordinate with your peers when tasks overlap.\n")
+		b.WriteString("\n")
+		b.WriteString(promptPeerGuidance)
 	}
 
 	// Communication section
 	if len(rows) > 0 {
-		fmt.Fprintf(&b, "\nMessages from teammates appear directly in your conversation.\n\nTo message a teammate:\n\n```bash\nclier message send <id> \"<message>\"\n```\n")
+		b.WriteString("\n")
+		b.WriteString(promptMessaging)
 	}
 
 	return b.String()
@@ -74,12 +99,11 @@ func buildRelationRows(relations domain.MemberRelations, memberNames map[string]
 	return rows
 }
 
-// ComposePrompt combines system prompts and team protocol into a single prompt.
-func ComposePrompt(prompts []domain.SnapshotPrompt, protocol string) string {
-	var parts []string
-	for _, sp := range prompts {
-		parts = append(parts, sp.Prompt)
+func findMember(members []domain.MemberSnapshot, memberID string) (domain.MemberSnapshot, bool) {
+	for _, m := range members {
+		if m.MemberID == memberID {
+			return m, true
+		}
 	}
-	parts = append(parts, protocol)
-	return strings.Join(parts, "\n\n")
+	return domain.MemberSnapshot{}, false
 }

@@ -15,56 +15,126 @@ func newTestTeam(rootID string, members []domain.MemberSnapshot) domain.TeamSnap
 	}
 }
 
-func TestBuildProtocol(t *testing.T) {
-	t.Run("RootWithWorkers_MentionsRootRole", func(t *testing.T) {
+func TestBuildMemberPrompt(t *testing.T) {
+	t.Run("RootWithWorkers_HasWorkerGuidanceOnly", func(t *testing.T) {
+		// given: Boss is root member with one worker (no leader)
 		team := newTestTeam("boss-1", []domain.MemberSnapshot{
 			{MemberID: "boss-1", MemberName: "Boss", Relations: domain.MemberRelations{Workers: []string{"worker-1"}}},
 			{MemberID: "worker-1", MemberName: "Writer"},
 		})
-		got := BuildProtocol(team, team.Members[0])
 
-		if !strings.Contains(got, `"Boss"`) {
-			t.Errorf("should contain member name: %s", got)
+		// when
+		got, err := BuildMemberPrompt(team, "boss-1")
+		if err != nil {
+			t.Fatal(err)
 		}
-		if !strings.Contains(got, `"MyTeam"`) {
-			t.Errorf("should contain team name: %s", got)
+
+		// then: prompt is
+		//   ## Team Protocol
+		//
+		//   You are "Boss", part of team "MyTeam".
+		//
+		//   | Role   | Name   | ID       |
+		//   | Worker | Writer | worker-1 |
+		//
+		//   Delegate sub-tasks to workers. Wait for all responses before wrapping up.
+		//
+		//   To message a teammate:
+		//   clier message send <id> "<message>"
+		for _, want := range []string{
+			`"Boss"`,
+			`"MyTeam"`,
+			"| Worker | Writer | worker-1 |",
+			"Delegate sub-tasks",
+			"clier message send",
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("missing %q in:\n%s", want, got)
+			}
 		}
-		if !strings.Contains(got, "root member") {
-			t.Errorf("root should mention root role: %s", got)
-		}
-		if !strings.Contains(got, "clier message send") {
-			t.Errorf("should contain send command: %s", got)
+		// no root-specific guidance
+		if strings.Contains(got, "root member") {
+			t.Errorf("should not mention root role:\n%s", got)
 		}
 	})
 
 	t.Run("NonRootWithLeader_MentionsLeaderName", func(t *testing.T) {
+		// given: Writer is non-root with leader Editor and peer Reviewer
 		team := newTestTeam("leader-1", []domain.MemberSnapshot{
 			{MemberID: "leader-1", MemberName: "Editor"},
-			{MemberID: "writer-1", MemberName: "Writer", Relations: domain.MemberRelations{Leaders: []string{"leader-1"}, Peers: []string{"peer-1"}}},
+			{MemberID: "writer-1", MemberName: "Writer", Relations: domain.MemberRelations{
+				Leaders: []string{"leader-1"},
+				Peers:   []string{"peer-1"},
+			}},
 			{MemberID: "peer-1", MemberName: "Reviewer"},
 		})
-		got := BuildProtocol(team, team.Members[1])
 
-		if !strings.Contains(got, "Editor") {
-			t.Errorf("should mention leader name: %s", got)
+		// when
+		got, err := BuildMemberPrompt(team, "writer-1")
+		if err != nil {
+			t.Fatal(err)
 		}
-		if !strings.Contains(got, "clier message send") {
-			t.Errorf("should contain clier send command: %s", got)
+
+		// then: prompt is
+		//   ## Team Protocol
+		//
+		//   You are "Writer", part of team "MyTeam".
+		//
+		//   | Role   | Name     | ID       |
+		//   | Leader | Editor   | leader-1 |
+		//   | Peer   | Reviewer | peer-1   |
+		//
+		//   Your leader is "Editor". Report results to them. Ask them if stuck.
+		//
+		//   Coordinate with peers when tasks overlap.
+		//
+		//   Messages from teammates appear directly in your conversation.
+		//   clier message send <id> "<message>"
+		for _, want := range []string{
+			"| Leader | Editor | leader-1 |",
+			"| Peer | Reviewer | peer-1 |",
+			`Your leader is "Editor"`,
+			"Coordinate with peers",
+			"clier message send",
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("missing %q in:\n%s", want, got)
+			}
 		}
 	})
 
 	t.Run("NoRelations_OmitsMessageSection", func(t *testing.T) {
+		// given: Solo is root with no relations
 		team := newTestTeam("solo-1", []domain.MemberSnapshot{
 			{MemberID: "solo-1", MemberName: "Solo"},
 		})
-		got := BuildProtocol(team, team.Members[0])
 
+		// when
+		got, err := BuildMemberPrompt(team, "solo-1")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// then: prompt is only
+		//   ## Team Protocol
+		//
+		//   You are "Solo", part of team "MyTeam".
+		// (no relation table, no guidance, no message section)
 		if strings.Contains(got, "message send") {
-			t.Errorf("solo root with no relations should not have message section: %s", got)
+			t.Errorf("should not have message section:\n%s", got)
+		}
+		if strings.Contains(got, "| Role |") {
+			t.Errorf("should not have relation table:\n%s", got)
+		}
+		// no trailing blank lines
+		trimmed := strings.TrimRight(got, "\n")
+		if strings.HasSuffix(trimmed, "\n\n") {
+			t.Errorf("should not have trailing blank lines:\n%q", got)
 		}
 	})
 
 	t.Run("AllRelationTypes_ShowsFullTable", func(t *testing.T) {
+		// given: Agent has leader, worker, and peer
 		team := newTestTeam("leader-1", []domain.MemberSnapshot{
 			{MemberID: "leader-1", MemberName: "Editor"},
 			{MemberID: "agent-1", MemberName: "Agent", Relations: domain.MemberRelations{
@@ -75,36 +145,84 @@ func TestBuildProtocol(t *testing.T) {
 			{MemberID: "worker-1", MemberName: "Writer"},
 			{MemberID: "peer-1", MemberName: "Reviewer"},
 		})
-		got := BuildProtocol(team, team.Members[1])
 
-		if !strings.Contains(got, "| Leader | Editor | leader-1 |") {
-			t.Errorf("should show leader row: %s", got)
+		// when
+		got, err := BuildMemberPrompt(team, "agent-1")
+		if err != nil {
+			t.Fatal(err)
 		}
-		if !strings.Contains(got, "| Worker | Writer | worker-1 |") {
-			t.Errorf("should show worker row: %s", got)
-		}
-		if !strings.Contains(got, "| Peer | Reviewer | peer-1 |") {
-			t.Errorf("should show peer row: %s", got)
+
+		// then: prompt has all three relation rows
+		//   | Role   | Name     | ID       |
+		//   | Leader | Editor   | leader-1 |
+		//   | Worker | Writer   | worker-1 |
+		//   | Peer   | Reviewer | peer-1   |
+		for _, want := range []string{
+			"| Leader | Editor | leader-1 |",
+			"| Worker | Writer | worker-1 |",
+			"| Peer | Reviewer | peer-1 |",
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("missing %q in:\n%s", want, got)
+			}
 		}
 	})
-}
 
-func TestComposePrompt(t *testing.T) {
-	t.Run("MultiplePrompts_CombinesAll", func(t *testing.T) {
-		prompts := []domain.SnapshotPrompt{
-			{Name: "p1", Prompt: "Be concise."},
-			{Name: "p2", Prompt: "Write tests."},
-		}
-		got := ComposePrompt(prompts, "## Team Protocol\n...")
+	t.Run("WithSystemPrompts_PrependedBeforeProtocol", func(t *testing.T) {
+		// given: Agent has two system prompts
+		team := newTestTeam("m-1", []domain.MemberSnapshot{
+			{
+				MemberID:   "m-1",
+				MemberName: "Agent",
+				SystemPrompts: []domain.SnapshotPrompt{
+					{Name: "style", Prompt: "Be concise."},
+					{Name: "testing", Prompt: "Write tests."},
+				},
+			},
+		})
 
-		if !strings.Contains(got, "Be concise.") {
-			t.Errorf("should contain first prompt: %s", got)
+		// when
+		got, err := BuildMemberPrompt(team, "m-1")
+		if err != nil {
+			t.Fatal(err)
 		}
-		if !strings.Contains(got, "Write tests.") {
-			t.Errorf("should contain second prompt: %s", got)
+
+		// then: prompt is
+		//   Be concise.
+		//
+		//   Write tests.
+		//
+		//   ## Team Protocol
+		//
+		//   You are "Agent", part of team "MyTeam".
+		for _, want := range []string{
+			"Be concise.",
+			"Write tests.",
+			"## Team Protocol",
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("missing %q in:\n%s", want, got)
+			}
 		}
-		if !strings.Contains(got, "## Team Protocol") {
-			t.Errorf("should contain protocol: %s", got)
+		// system prompts come before protocol
+		protoIdx := strings.Index(got, "## Team Protocol")
+		if idx := strings.Index(got, "Be concise."); idx > protoIdx {
+			t.Errorf("system prompt should precede protocol:\n%s", got)
+		}
+	})
+
+	t.Run("UnknownMemberID_ReturnsError", func(t *testing.T) {
+		// given: team has only m-1
+		team := newTestTeam("m-1", []domain.MemberSnapshot{
+			{MemberID: "m-1", MemberName: "Agent"},
+		})
+
+		// when: build prompt for nonexistent member
+		_, err := BuildMemberPrompt(team, "nonexistent")
+
+		// then
+		if err == nil {
+			t.Error("should return error for unknown member ID")
 		}
 	})
 }

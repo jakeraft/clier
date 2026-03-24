@@ -113,7 +113,10 @@ func (s *Service) prepareMembers(ctx context.Context, sprintID string, snapshot 
 
 	for _, m := range snapshot.Members {
 		dir := dirs[m.MemberID]
-		prompt := ComposePrompt(m.SystemPrompts, BuildProtocol(snapshot, m))
+		prompt, err := BuildMemberPrompt(snapshot, m.MemberID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("build prompt for %s: %w", m.MemberName, err)
+		}
 		env := BuildEnv(m, sprintID, dir.Home)
 		cmd, tf, err := BuildCommand(m, prompt, dir.WorkDir, env)
 		if err != nil {
