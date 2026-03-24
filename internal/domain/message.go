@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"time"
 
@@ -20,7 +20,7 @@ type Message struct {
 func NewMessage(sprintID, fromMemberID, toMemberID, content string) (*Message, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return nil, fmt.Errorf("message content must not be empty")
+		return nil, errors.New("message content must not be empty")
 	}
 
 	return &Message{

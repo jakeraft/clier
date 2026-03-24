@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"errors"
 	"os"
 
 	"github.com/jakeraft/clier/internal/adapter/terminal"
@@ -36,7 +36,7 @@ func newMessageSendCmd() *cobra.Command {
 			}
 			fromMemberID := os.Getenv("CLIER_MEMBER_ID")
 			if sprintID == "" {
-				return fmt.Errorf("--sprint flag or CLIER_SPRINT_ID must be set")
+				return errors.New("--sprint flag or CLIER_SPRINT_ID must be set")
 			}
 
 			store, err := newStore()

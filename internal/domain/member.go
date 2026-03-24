@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"time"
 
@@ -22,11 +22,11 @@ type Member struct {
 func NewMember(name, cliProfileID string, systemPromptIDs, environmentIDs []string, gitRepoID string) (*Member, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, fmt.Errorf("member name must not be empty")
+		return nil, errors.New("member name must not be empty")
 	}
 	cliProfileID = strings.TrimSpace(cliProfileID)
 	if cliProfileID == "" {
-		return nil, fmt.Errorf("member cli profile id must not be empty")
+		return nil, errors.New("member cli profile id must not be empty")
 	}
 
 	if systemPromptIDs == nil {
@@ -53,14 +53,14 @@ func (m *Member) Update(name, cliProfileID *string, systemPromptIDs, environment
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
-			return fmt.Errorf("member name must not be empty")
+			return errors.New("member name must not be empty")
 		}
 		m.Name = trimmed
 	}
 	if cliProfileID != nil {
 		trimmed := strings.TrimSpace(*cliProfileID)
 		if trimmed == "" {
-			return fmt.Errorf("member cli profile id must not be empty")
+			return errors.New("member cli profile id must not be empty")
 		}
 		m.CliProfileID = trimmed
 	}

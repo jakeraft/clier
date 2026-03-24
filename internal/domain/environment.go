@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"time"
 
@@ -20,15 +20,15 @@ type Environment struct {
 func NewEnvironment(name, key, value string) (*Environment, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, fmt.Errorf("environment name must not be empty")
+		return nil, errors.New("environment name must not be empty")
 	}
 	key = strings.TrimSpace(key)
 	if key == "" {
-		return nil, fmt.Errorf("environment key must not be empty")
+		return nil, errors.New("environment key must not be empty")
 	}
 	value = strings.TrimSpace(value)
 	if value == "" {
-		return nil, fmt.Errorf("environment value must not be empty")
+		return nil, errors.New("environment value must not be empty")
 	}
 
 	now := time.Now()
@@ -46,21 +46,21 @@ func (e *Environment) Update(name, key, value *string) error {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
-			return fmt.Errorf("environment name must not be empty")
+			return errors.New("environment name must not be empty")
 		}
 		e.Name = trimmed
 	}
 	if key != nil {
 		trimmed := strings.TrimSpace(*key)
 		if trimmed == "" {
-			return fmt.Errorf("environment key must not be empty")
+			return errors.New("environment key must not be empty")
 		}
 		e.Key = trimmed
 	}
 	if value != nil {
 		trimmed := strings.TrimSpace(*value)
 		if trimmed == "" {
-			return fmt.Errorf("environment value must not be empty")
+			return errors.New("environment value must not be empty")
 		}
 		e.Value = trimmed
 	}

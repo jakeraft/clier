@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -30,10 +31,10 @@ type Sprint struct {
 
 func NewSprint(snapshot TeamSnapshot) (*Sprint, error) {
 	if snapshot.TeamName == "" {
-		return nil, fmt.Errorf("snapshot team name must not be empty")
+		return nil, errors.New("snapshot team name must not be empty")
 	}
 	if snapshot.RootMemberID == "" {
-		return nil, fmt.Errorf("snapshot root member id must not be empty")
+		return nil, errors.New("snapshot root member id must not be empty")
 	}
 
 	id := uuid.NewString()

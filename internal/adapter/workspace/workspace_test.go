@@ -3,6 +3,7 @@ package workspace
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,7 +17,7 @@ type stubAuth struct {
 	err error
 }
 
-func (s *stubAuth) CheckAuthReady(_ domain.CliBinary) error {
+func (s *stubAuth) CheckAuth(_ domain.CliBinary) error {
 	return s.err
 }
 
@@ -80,7 +81,7 @@ func TestWorkspace(t *testing.T) {
 		t.Run("AuthFailure_CleansUpSprintDir", func(t *testing.T) {
 			// Given: auth that always fails
 			baseDir := t.TempDir()
-			ws := New(baseDir, &stubAuth{err: fmt.Errorf("auth failed")})
+			ws := New(baseDir, &stubAuth{err: errors.New("auth failed")})
 
 			snapshot := domain.TeamSnapshot{
 				TeamName:     "team-1",

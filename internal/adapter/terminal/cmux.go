@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -22,7 +23,7 @@ func NewCmuxTerminal(db *sql.DB) *CmuxTerminal {
 
 func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.MemberSpec) error {
 	if len(members) == 0 {
-		return fmt.Errorf("no members to launch")
+		return errors.New("no members to launch")
 	}
 
 	// Save the caller's surface as "user" so agents can message back.
@@ -196,7 +197,7 @@ func (c *CmuxTerminal) run(args ...string) (string, error) {
 }
 
 func parseRef(output, prefix string) (string, error) {
-	for _, part := range strings.Fields(output) {
+	for part := range strings.FieldsSeq(output) {
 		if strings.HasPrefix(part, prefix) {
 			return part, nil
 		}

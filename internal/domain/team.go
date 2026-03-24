@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -47,7 +48,7 @@ type Team struct {
 func NewTeam(name, rootMemberID string) (*Team, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, fmt.Errorf("team name must not be empty")
+		return nil, errors.New("team name must not be empty")
 	}
 
 	now := time.Now()
@@ -66,7 +67,7 @@ func (t *Team) Update(name *string, rootMemberID *string) error {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
-			return fmt.Errorf("team name must not be empty")
+			return errors.New("team name must not be empty")
 		}
 		t.Name = trimmed
 	}
@@ -113,7 +114,7 @@ func (t *Team) RemoveMember(memberID string) error {
 
 func (t *Team) AddRelation(r Relation) error {
 	if r.From == r.To {
-		return fmt.Errorf("cannot create relation to self")
+		return errors.New("cannot create relation to self")
 	}
 	if !t.hasMember(r.From) {
 		return fmt.Errorf("member not in team: %s", r.From)
@@ -155,7 +156,7 @@ func (t *Team) RemoveRelation(from, to string, relType RelationType) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("relation not found")
+	return errors.New("relation not found")
 }
 
 func (t *Team) MemberRelations(memberID string) MemberRelations {

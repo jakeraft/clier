@@ -60,7 +60,7 @@ func buildCodexCommand(m domain.MemberSnapshot, prompt, workDir, memberHome stri
 	args := []string{string(m.Binary)}
 	args = append(args, quoteArgs(m.SystemArgs)...)
 	args = append(args, "--model", q(m.Model))
-	args = append(args, "-c", fmt.Sprintf("model_instructions_file=%s", q(instructionsFile)))
+	args = append(args, "-c", "model_instructions_file="+q(instructionsFile))
 	args = append(args, quoteArgs(m.CustomArgs)...)
 	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " ")), nil
 }

@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"time"
 
@@ -19,11 +19,11 @@ type SystemPrompt struct {
 func NewSystemPrompt(name, prompt string) (*SystemPrompt, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, fmt.Errorf("system prompt name must not be empty")
+		return nil, errors.New("system prompt name must not be empty")
 	}
 	prompt = strings.TrimSpace(prompt)
 	if prompt == "" {
-		return nil, fmt.Errorf("system prompt text must not be empty")
+		return nil, errors.New("system prompt text must not be empty")
 	}
 
 	now := time.Now()
@@ -40,14 +40,14 @@ func (s *SystemPrompt) Update(name, prompt *string) error {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
-			return fmt.Errorf("system prompt name must not be empty")
+			return errors.New("system prompt name must not be empty")
 		}
 		s.Name = trimmed
 	}
 	if prompt != nil {
 		trimmed := strings.TrimSpace(*prompt)
 		if trimmed == "" {
-			return fmt.Errorf("system prompt text must not be empty")
+			return errors.New("system prompt text must not be empty")
 		}
 		s.Prompt = trimmed
 	}

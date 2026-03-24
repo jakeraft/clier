@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"time"
 
@@ -19,11 +19,11 @@ type GitRepo struct {
 func NewGitRepo(name, url string) (*GitRepo, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, fmt.Errorf("git repo name must not be empty")
+		return nil, errors.New("git repo name must not be empty")
 	}
 	url = strings.TrimSpace(url)
 	if url == "" {
-		return nil, fmt.Errorf("git repo url must not be empty")
+		return nil, errors.New("git repo url must not be empty")
 	}
 
 	now := time.Now()
@@ -40,14 +40,14 @@ func (r *GitRepo) Update(name, url *string) error {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
-			return fmt.Errorf("git repo name must not be empty")
+			return errors.New("git repo name must not be empty")
 		}
 		r.Name = trimmed
 	}
 	if url != nil {
 		trimmed := strings.TrimSpace(*url)
 		if trimmed == "" {
-			return fmt.Errorf("git repo url must not be empty")
+			return errors.New("git repo url must not be empty")
 		}
 		r.URL = trimmed
 	}

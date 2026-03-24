@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,7 +17,7 @@ import (
 
 // AuthCopier copies CLI auth files to a destination home directory.
 type AuthCopier interface {
-	CheckAuthReady(binary domain.CliBinary) error
+	CheckAuth(binary domain.CliBinary) error
 	CopyAuthTo(binary domain.CliBinary, destHome string) error
 }
 
@@ -41,7 +42,7 @@ func (w *Workspace) Prepare(ctx context.Context, sprintID string, snapshot domai
 	success := false
 	defer func() {
 		if !success {
-			os.RemoveAll(sprintDir)
+			_ = os.RemoveAll(sprintDir)
 		}
 	}()
 
@@ -50,7 +51,7 @@ func (w *Workspace) Prepare(ctx context.Context, sprintID string, snapshot domai
 	for _, m := range snapshot.Members {
 		if !checked[m.Binary] {
 			checked[m.Binary] = true
-			if err := w.auth.CheckAuthReady(m.Binary); err != nil {
+			if err := w.auth.CheckAuth(m.Binary); err != nil {
 				return nil, err
 			}
 		}
@@ -163,10 +164,8 @@ func writeCodexConfigs(m domain.MemberSnapshot, memberHome, workDir string) erro
 		return fmt.Errorf("create .codex dir: %w", err)
 	}
 
-	config := make(map[string]any)
-	for k, v := range m.DotConfig {
-		config[k] = v
-	}
+	config := make(map[string]any, len(m.DotConfig))
+	maps.Copy(config, m.DotConfig)
 	config["projects"] = map[string]any{
 		workDir: map[string]any{
 			"trust_level": "trusted",

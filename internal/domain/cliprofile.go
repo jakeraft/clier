@@ -1,7 +1,9 @@
 package domain
 
 import (
+	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"strings"
 	"time"
@@ -100,7 +102,7 @@ type CliProfile struct {
 func NewCliProfile(name, presetKey string, customArgs []string) (*CliProfile, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, fmt.Errorf("cli profile name must not be empty")
+		return nil, errors.New("cli profile name must not be empty")
 	}
 
 	preset, err := ResolvePreset(presetKey)
@@ -149,7 +151,7 @@ func (p *CliProfile) Update(name *string, customArgs *[]string) error {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
-			return fmt.Errorf("cli profile name must not be empty")
+			return errors.New("cli profile name must not be empty")
 		}
 		p.Name = trimmed
 	}
@@ -165,8 +167,6 @@ func copyDotConfig(src DotConfig) DotConfig {
 		return nil
 	}
 	dst := make(DotConfig, len(src))
-	for k, v := range src {
-		dst[k] = v
-	}
+	maps.Copy(dst, src)
 	return dst
 }

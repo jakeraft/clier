@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 
-	"github.com/jakeraft/clier/internal/adapter/settings"
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -39,6 +41,11 @@ func newAgentLoginCmd(binary domain.CliBinary) *cobra.Command {
 	}
 }
 
+func isExitError(err error) bool {
+	var exitErr *exec.ExitError
+	return errors.As(err, &exitErr)
+}
+
 func newAgentCheckCmd(binary domain.CliBinary) *cobra.Command {
 	return &cobra.Command{
 		Use:   "check",
@@ -48,17 +55,17 @@ func newAgentCheckCmd(binary domain.CliBinary) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			status, err := s.CheckAuth(binary)
-			if err != nil {
-				return err
-			}
-			switch status {
-			case settings.AuthNotConfigured:
-				fmt.Fprintf(cmd.OutOrStdout(), "%s auth not configured. Run: clier %s login\n", binary, binary)
-			case settings.AuthInvalid:
-				fmt.Fprintf(cmd.OutOrStdout(), "%s auth is invalid. Run: clier %s login\n", binary, binary)
-			case settings.AuthOK:
-				fmt.Fprintf(cmd.OutOrStdout(), "%s auth is valid\n", binary)
+			w := cmd.OutOrStdout()
+			if err := s.CheckAuth(binary); err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					_, _ = fmt.Fprintf(w, "%s auth not configured. Run: clier %s login\n", binary, binary)
+				} else if isExitError(err) {
+					_, _ = fmt.Fprintf(w, "%s auth is invalid. Run: clier %s login\n", binary, binary)
+				} else {
+					return err
+				}
+			} else {
+				_, _ = fmt.Fprintf(w, "%s auth is valid\n", binary)
 			}
 			return nil
 		},

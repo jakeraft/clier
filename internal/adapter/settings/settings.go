@@ -61,45 +61,23 @@ var statusCommands = map[domain.CliBinary][]string{
 	domain.BinaryCodex:  {"codex", "login", "status"},
 }
 
-type AuthStatus int
-
-const (
-	AuthOK AuthStatus = iota
-	AuthNotConfigured
-	AuthInvalid
-)
-
-func (s *Settings) CheckAuthReady(binary domain.CliBinary) error {
-	status, err := s.CheckAuth(binary)
-	if err != nil {
-		return err
-	}
-	switch status {
-	case AuthNotConfigured:
-		return fmt.Errorf("%s auth not configured — run: clier %s login", binary, binary)
-	case AuthInvalid:
-		return fmt.Errorf("%s auth is invalid — run: clier %s login", binary, binary)
-	}
-	return nil
-}
-
-func (s *Settings) CheckAuth(binary domain.CliBinary) (AuthStatus, error) {
+func (s *Settings) CheckAuth(binary domain.CliBinary) error {
 	args, ok := statusCommands[binary]
 	if !ok {
-		return 0, fmt.Errorf("unknown binary: %s", binary)
+		return fmt.Errorf("unknown binary: %s", binary)
 	}
 
 	authDir := s.AuthDir(binary)
 	if _, err := os.Stat(authDir); err != nil {
-		return AuthNotConfigured, nil
+		return fmt.Errorf("check auth dir: %w", err)
 	}
 
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Env = append(systemEnv(), "HOME="+authDir)
 	if err := cmd.Run(); err != nil {
-		return AuthInvalid, nil
+		return fmt.Errorf("run %s status: %w", args[0], err)
 	}
-	return AuthOK, nil
+	return nil
 }
 
 func (s *Settings) LoginAuth(binary domain.CliBinary) error {
