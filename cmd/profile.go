@@ -32,7 +32,11 @@ func newProfileCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a CLI profile",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -61,7 +65,11 @@ func newProfileListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all CLI profiles",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -84,7 +92,11 @@ func newProfileUpdateCmd() *cobra.Command {
 		Short: "Update a CLI profile",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -125,7 +137,11 @@ func newProfileDeleteCmd() *cobra.Command {
 		Short: "Delete a CLI profile",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}

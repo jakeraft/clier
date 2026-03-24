@@ -30,7 +30,11 @@ func newPromptCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a system prompt",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -58,7 +62,11 @@ func newPromptListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all system prompts",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -81,7 +89,11 @@ func newPromptUpdateCmd() *cobra.Command {
 		Short: "Update a system prompt",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -121,7 +133,11 @@ func newPromptDeleteCmd() *cobra.Command {
 		Short: "Delete a system prompt",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}

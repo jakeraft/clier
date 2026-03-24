@@ -30,7 +30,11 @@ func newRepoCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a git repo",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -58,7 +62,11 @@ func newRepoListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all git repos",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -81,7 +89,11 @@ func newRepoUpdateCmd() *cobra.Command {
 		Short: "Update a git repo",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -121,7 +133,11 @@ func newRepoDeleteCmd() *cobra.Command {
 		Short: "Delete a git repo",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}

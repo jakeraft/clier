@@ -30,7 +30,11 @@ func newTeamCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a team",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -58,7 +62,11 @@ func newTeamListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all teams",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -81,7 +89,11 @@ func newTeamUpdateCmd() *cobra.Command {
 		Short: "Update a team",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -121,7 +133,11 @@ func newTeamDeleteCmd() *cobra.Command {
 		Short: "Delete a team",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -154,7 +170,11 @@ func newTeamMemberAddCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			teamID, memberID := args[0], args[1]
 
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -183,7 +203,11 @@ func newTeamMemberRemoveCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			teamID, memberID := args[0], args[1]
 
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -210,7 +234,11 @@ func newTeamMemberListCmd() *cobra.Command {
 		Short: "List members of a team",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -246,7 +274,11 @@ func newTeamRelationAddCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			teamID := args[0]
 
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -285,7 +317,11 @@ func newTeamRelationRemoveCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			teamID := args[0]
 
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -319,7 +355,11 @@ func newTeamRelationListCmd() *cobra.Command {
 		Short: "List relations of a team",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}

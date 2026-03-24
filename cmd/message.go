@@ -39,7 +39,11 @@ func newMessageSendCmd() *cobra.Command {
 				return errors.New("--sprint flag or CLIER_SPRINT_ID must be set")
 			}
 
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}

@@ -31,7 +31,11 @@ func newMemberCreateCmd() *cobra.Command {
 		Use:   "create",
 		Short: "Create a member",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -71,7 +75,11 @@ func newMemberListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all members",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -94,7 +102,11 @@ func newMemberUpdateCmd() *cobra.Command {
 		Short: "Update a member",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -157,7 +169,11 @@ func newMemberDeleteCmd() *cobra.Command {
 		Short: "Delete a member",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}

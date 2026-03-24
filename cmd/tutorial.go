@@ -52,7 +52,11 @@ func newTutorialRunCmd() *cobra.Command {
 				return err
 			}
 
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -79,7 +83,11 @@ func newTutorialCleanCmd() *cobra.Command {
 				return err
 			}
 
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}

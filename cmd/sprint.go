@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"path/filepath"
 
 	"github.com/jakeraft/clier/internal/adapter/terminal"
@@ -32,7 +31,11 @@ func newSprintStartCmd() *cobra.Command {
 		Use:   "start",
 		Short: "Start a sprint",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, store, err := newSettingsAndStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -60,7 +63,11 @@ func newSprintStopCmd() *cobra.Command {
 		Short: "Stop a sprint",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, store, err := newSettingsAndStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
@@ -83,13 +90,17 @@ func newSprintListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all sprints",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store, err := newStore()
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
 			if err != nil {
 				return err
 			}
 			defer store.Close()
 
-			sprints, err := store.ListSprints(context.Background())
+			sprints, err := store.ListSprints(cmd.Context())
 			if err != nil {
 				return err
 			}

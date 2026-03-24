@@ -31,24 +31,11 @@ func newSettings() (*settings.Settings, error) {
 	return settings.New(dir), nil
 }
 
-func newStore() (*db.Store, error) {
-	_, store, err := newSettingsAndStore()
-	return store, err
-}
-
-func newSettingsAndStore() (*settings.Settings, *db.Store, error) {
-	cfg, err := newSettings()
-	if err != nil {
-		return nil, nil, err
-	}
+func newStore(cfg *settings.Settings) (*db.Store, error) {
 	if err := cfg.EnsureDirs(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	store, err := db.NewStore(cfg.DBPath())
-	if err != nil {
-		return nil, nil, err
-	}
-	return cfg, store, nil
+	return db.NewStore(cfg.DBPath())
 }
 
 var rootCmd = &cobra.Command{
