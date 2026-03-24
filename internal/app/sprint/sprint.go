@@ -152,7 +152,7 @@ func (s *Service) buildSnapshot(ctx context.Context, teamID string) (domain.Team
 		if err != nil {
 			return domain.TeamSnapshot{}, fmt.Errorf("load member %s: %w", id, err)
 		}
-		ms.Relations = team.GetMemberRelations(id)
+		ms.Relations = team.MemberRelations(id)
 		snapshots = append(snapshots, ms)
 	}
 

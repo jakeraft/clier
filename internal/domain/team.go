@@ -151,7 +151,7 @@ func (t *Team) RemoveRelation(from, to string, relType RelationType) error {
 	return fmt.Errorf("relation not found")
 }
 
-func (t *Team) GetMemberRelations(memberID string) MemberRelations {
+func (t *Team) MemberRelations(memberID string) MemberRelations {
 	var leaders, workers, peers []string
 
 	for _, r := range t.Relations {
@@ -179,7 +179,7 @@ func (t *Team) GetMemberRelations(memberID string) MemberRelations {
 	}
 }
 
-func (t *Team) GetDisconnectedWarnings() []string {
+func (t *Team) DisconnectedWarnings() []string {
 	connected := make(map[string]bool)
 	connected[t.RootMemberID] = true
 	for _, r := range t.Relations {

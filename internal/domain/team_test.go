@@ -241,14 +241,14 @@ func TestTeam(t *testing.T) {
 		})
 	})
 
-	t.Run("GetMemberRelations", func(t *testing.T) {
+	t.Run("MemberRelations", func(t *testing.T) {
 		t.Run("MultipleRelations_ReturnsLeadersWorkersPeers", func(t *testing.T) {
 			team := createTeamWithMembers(t, "member-2", "member-3", "member-4")
 			_ = team.AddRelation(Relation{From: rootID, To: "member-2", Type: RelationLeader})
 			_ = team.AddRelation(Relation{From: "member-3", To: rootID, Type: RelationLeader})
 			_ = team.AddRelation(Relation{From: rootID, To: "member-4", Type: RelationPeer})
 
-			rel := team.GetMemberRelations(rootID)
+			rel := team.MemberRelations(rootID)
 			if len(rel.Workers) != 1 || rel.Workers[0] != "member-2" {
 				t.Errorf("Workers = %v, want [member-2]", rel.Workers)
 			}
@@ -262,7 +262,7 @@ func TestTeam(t *testing.T) {
 
 		t.Run("NoRelations_ReturnsNilSlices", func(t *testing.T) {
 			team := createTeamWithMembers(t, "member-2")
-			rel := team.GetMemberRelations("member-2")
+			rel := team.MemberRelations("member-2")
 			if rel.Leaders != nil {
 				t.Errorf("Leaders = %v, want nil", rel.Leaders)
 			}
@@ -275,11 +275,11 @@ func TestTeam(t *testing.T) {
 		})
 	})
 
-	t.Run("GetDisconnectedWarnings", func(t *testing.T) {
+	t.Run("DisconnectedWarnings", func(t *testing.T) {
 		t.Run("DisconnectedMember_ReturnsWarning", func(t *testing.T) {
 			team := createTeamWithMembers(t, "member-2", "member-3")
 			_ = team.AddRelation(Relation{From: rootID, To: "member-2", Type: RelationLeader})
-			warnings := team.GetDisconnectedWarnings()
+			warnings := team.DisconnectedWarnings()
 			if len(warnings) != 1 {
 				t.Fatalf("warnings length = %d, want 1", len(warnings))
 			}
@@ -291,14 +291,14 @@ func TestTeam(t *testing.T) {
 		t.Run("AllConnected_ReturnsEmpty", func(t *testing.T) {
 			team := createTeamWithMembers(t, "member-2")
 			_ = team.AddRelation(Relation{From: rootID, To: "member-2", Type: RelationLeader})
-			if warnings := team.GetDisconnectedWarnings(); len(warnings) != 0 {
+			if warnings := team.DisconnectedWarnings(); len(warnings) != 0 {
 				t.Errorf("warnings = %v, want []", warnings)
 			}
 		})
 
 		t.Run("OnlyRoot_ReturnsEmpty", func(t *testing.T) {
 			team, _ := NewTeam("team", rootID)
-			if warnings := team.GetDisconnectedWarnings(); len(warnings) != 0 {
+			if warnings := team.DisconnectedWarnings(); len(warnings) != 0 {
 				t.Errorf("warnings = %v, want []", warnings)
 			}
 		})
