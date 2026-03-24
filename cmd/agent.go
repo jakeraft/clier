@@ -3,8 +3,8 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/jakeraft/clier/internal/domain"
 	"github.com/jakeraft/clier/internal/adapter/settings"
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +30,7 @@ func newAgentLoginCmd(binary domain.CliBinary) *cobra.Command {
 		Use:   "login",
 		Short: fmt.Sprintf("Login to %s CLI", binary),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := settings.New()
+			s, err := newSettings()
 			if err != nil {
 				return err
 			}
@@ -44,7 +44,7 @@ func newAgentCheckCmd(binary domain.CliBinary) *cobra.Command {
 		Use:   "check",
 		Short: fmt.Sprintf("Check %s CLI auth status", binary),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := settings.New()
+			s, err := newSettings()
 			if err != nil {
 				return err
 			}

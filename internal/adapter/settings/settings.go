@@ -13,31 +13,16 @@ import (
 )
 
 const (
-	configDirName   = ".clier"
-	dbFileName      = "data.db"
-	credentialsFile = "credentials.json"
-	authDirName     = "auth"
+	dbFileName         = "data.db"
+	gitCredentialsFile = "git_credentials.json"
+	authDirName        = "auth"
 )
-
-type Credential struct {
-	Value string `json:"value"`
-}
 
 type Settings struct {
 	configDir string
 }
 
-func New() (*Settings, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("get home dir: %w", err)
-	}
-	return &Settings{
-		configDir: filepath.Join(home, configDirName),
-	}, nil
-}
-
-func newWithConfigDir(configDir string) *Settings {
+func New(configDir string) *Settings {
 	return &Settings{configDir: configDir}
 }
 
@@ -49,8 +34,8 @@ func (s *Settings) DBPath() string {
 	return filepath.Join(s.configDir, dbFileName)
 }
 
-func (s *Settings) credentialsPath() string {
-	return filepath.Join(s.configDir, credentialsFile)
+func (s *Settings) gitCredentialsPath() string {
+	return filepath.Join(s.configDir, gitCredentialsFile)
 }
 
 func (s *Settings) AuthDir(binary domain.CliBinary) string {
@@ -165,46 +150,46 @@ func (s *Settings) CopyAuthTo(binary domain.CliBinary, destHome string) error {
 	})
 }
 
-// Credential management
+// Git credential management
 
-func (s *Settings) GetCredential(host string) (string, error) {
-	creds, err := s.loadCredentials()
+func (s *Settings) GetGitCredential(host string) (string, error) {
+	creds, err := s.loadGitCredentials()
 	if err != nil {
 		return "", err
 	}
-	cred, ok := creds[host]
+	token, ok := creds[host]
 	if !ok {
-		return "", fmt.Errorf("no credential for host: %s", host)
+		return "", fmt.Errorf("no git credential for host: %s", host)
 	}
-	return cred.Value, nil
+	return token, nil
 }
 
-func (s *Settings) SetCredential(host, token string) error {
-	creds, err := s.loadCredentials()
+func (s *Settings) SetGitCredential(host, token string) error {
+	creds, err := s.loadGitCredentials()
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	if creds == nil {
-		creds = make(map[string]Credential)
+		creds = make(map[string]string)
 	}
-	creds[host] = Credential{Value: token}
-	return s.saveCredentials(creds)
+	creds[host] = token
+	return s.saveGitCredentials(creds)
 }
 
-func (s *Settings) RemoveCredential(host string) error {
-	creds, err := s.loadCredentials()
+func (s *Settings) RemoveGitCredential(host string) error {
+	creds, err := s.loadGitCredentials()
 	if err != nil {
 		return err
 	}
 	if _, ok := creds[host]; !ok {
-		return fmt.Errorf("no credential for host: %s", host)
+		return fmt.Errorf("no git credential for host: %s", host)
 	}
 	delete(creds, host)
-	return s.saveCredentials(creds)
+	return s.saveGitCredentials(creds)
 }
 
-func (s *Settings) ListCredentialHosts() ([]string, error) {
-	creds, err := s.loadCredentials()
+func (s *Settings) ListGitCredentialHosts() ([]string, error) {
+	creds, err := s.loadGitCredentials()
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -218,28 +203,28 @@ func (s *Settings) ListCredentialHosts() ([]string, error) {
 	return hosts, nil
 }
 
-func (s *Settings) loadCredentials() (map[string]Credential, error) {
-	data, err := os.ReadFile(s.credentialsPath())
+func (s *Settings) loadGitCredentials() (map[string]string, error) {
+	data, err := os.ReadFile(s.gitCredentialsPath())
 	if err != nil {
 		return nil, err
 	}
-	var creds map[string]Credential
+	var creds map[string]string
 	if err := json.Unmarshal(data, &creds); err != nil {
-		return nil, fmt.Errorf("parse credentials: %w", err)
+		return nil, fmt.Errorf("parse git credentials: %w", err)
 	}
 	return creds, nil
 }
 
-func (s *Settings) saveCredentials(creds map[string]Credential) error {
+func (s *Settings) saveGitCredentials(creds map[string]string) error {
 	data, err := json.MarshalIndent(creds, "", "  ")
 	if err != nil {
-		return fmt.Errorf("marshal credentials: %w", err)
+		return fmt.Errorf("marshal git credentials: %w", err)
 	}
-	if err := os.MkdirAll(filepath.Dir(s.credentialsPath()), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(s.gitCredentialsPath()), 0755); err != nil {
 		return fmt.Errorf("create credentials dir: %w", err)
 	}
-	if err := os.WriteFile(s.credentialsPath(), data, 0600); err != nil {
-		return fmt.Errorf("write credentials: %w", err)
+	if err := os.WriteFile(s.gitCredentialsPath(), data, 0600); err != nil {
+		return fmt.Errorf("write git credentials: %w", err)
 	}
 	return nil
 }

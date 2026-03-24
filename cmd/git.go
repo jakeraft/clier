@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/jakeraft/clier/internal/adapter/settings"
 	"github.com/spf13/cobra"
 )
 
@@ -25,11 +24,11 @@ var gitSetCmd = &cobra.Command{
 	Short: "Set git credential for a host",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		s, err := settings.New()
+		s, err := newSettings()
 		if err != nil {
 			return err
 		}
-		if err := s.SetCredential(args[0], args[1]); err != nil {
+		if err := s.SetGitCredential(args[0], args[1]); err != nil {
 			return err
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "credential set for %s\n", args[0])
@@ -42,11 +41,11 @@ var gitGetCmd = &cobra.Command{
 	Short: "Get git credential for a host",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		s, err := settings.New()
+		s, err := newSettings()
 		if err != nil {
 			return err
 		}
-		token, err := s.GetCredential(args[0])
+		token, err := s.GetGitCredential(args[0])
 		if err != nil {
 			return err
 		}
@@ -60,11 +59,11 @@ var gitRemoveCmd = &cobra.Command{
 	Short: "Remove git credential for a host",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		s, err := settings.New()
+		s, err := newSettings()
 		if err != nil {
 			return err
 		}
-		if err := s.RemoveCredential(args[0]); err != nil {
+		if err := s.RemoveGitCredential(args[0]); err != nil {
 			return err
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "credential removed for %s\n", args[0])
@@ -76,11 +75,11 @@ var gitListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all git credential hosts",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		s, err := settings.New()
+		s, err := newSettings()
 		if err != nil {
 			return err
 		}
-		hosts, err := s.ListCredentialHosts()
+		hosts, err := s.ListGitCredentialHosts()
 		if err != nil {
 			return err
 		}
