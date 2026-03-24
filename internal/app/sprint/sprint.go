@@ -69,6 +69,13 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		return nil, fmt.Errorf("prepare workspace: %w", err)
 	}
 
+	success := false
+	defer func() {
+		if !success {
+			_ = s.workspace.Cleanup(sprint.ID)
+		}
+	}()
+
 	members, err := buildMemberSpecs(sprint.ID, snapshot, dirs)
 	if err != nil {
 		return nil, fmt.Errorf("build member specs: %w", err)
@@ -80,10 +87,10 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 
 	if err := s.terminal.Launch(sprint.ID, sprint.Name, members); err != nil {
 		s.failSprint(ctx, sprint.ID, err.Error())
-		_ = s.workspace.Cleanup(sprint.ID)
 		return nil, fmt.Errorf("launch terminal: %w", err)
 	}
 
+	success = true
 	return sprint, nil
 }
 
