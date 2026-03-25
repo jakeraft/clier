@@ -42,7 +42,7 @@ func resolveSender(members []domain.MemberSnapshot, fromMemberID string) string 
 }
 
 func validateDelivery(members []domain.MemberSnapshot, fromMemberID, toMemberID string) error {
-	isUserSender := fromMemberID == "" || fromMemberID == domain.UserMemberID
+	isUserSender := fromMemberID == domain.UserMemberID
 	isUserRecipient := toMemberID == domain.UserMemberID
 
 	// User can message any member; any member can message user.

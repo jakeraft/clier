@@ -31,8 +31,8 @@ func TestResolveSender(t *testing.T) {
 		}
 	})
 
-	t.Run("EmptyID_ReturnsUserMemberID", func(t *testing.T) {
-		got := resolveSender(members, "")
+	t.Run("UserMemberID_ReturnsUserMemberID", func(t *testing.T) {
+		got := resolveSender(members, domain.UserMemberID)
 		if got != domain.UserMemberID {
 			t.Errorf("got %q, want %q", got, domain.UserMemberID)
 		}
@@ -50,13 +50,13 @@ func TestValidateDelivery(t *testing.T) {
 	members := testMembers()
 
 	t.Run("UserToMember_Allowed", func(t *testing.T) {
-		if err := validateDelivery(members, "", "leader-1"); err != nil {
+		if err := validateDelivery(members, domain.UserMemberID, "leader-1"); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 	})
 
 	t.Run("UserToUser_Allowed", func(t *testing.T) {
-		if err := validateDelivery(members, "", domain.UserMemberID); err != nil {
+		if err := validateDelivery(members, domain.UserMemberID, domain.UserMemberID); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 	})
@@ -86,7 +86,7 @@ func TestValidateDelivery(t *testing.T) {
 	})
 
 	t.Run("UserToUnknownMember_Rejected", func(t *testing.T) {
-		err := validateDelivery(members, "", "unknown")
+		err := validateDelivery(members, domain.UserMemberID, "unknown")
 		if err == nil {
 			t.Error("expected error for unknown recipient")
 		}

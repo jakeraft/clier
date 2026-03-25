@@ -6,6 +6,7 @@ import (
 
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/app/sprint"
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +36,9 @@ func newMessageSendCmd() *cobra.Command {
 				sprintID = os.Getenv("CLIER_SPRINT_ID")
 			}
 			fromMemberID := os.Getenv("CLIER_MEMBER_ID")
+			if fromMemberID == "" {
+				fromMemberID = domain.UserMemberID
+			}
 			if sprintID == "" {
 				return errors.New("--sprint flag or CLIER_SPRINT_ID must be set")
 			}
