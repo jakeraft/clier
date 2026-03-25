@@ -1,8 +1,9 @@
 package settings
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,10 +19,9 @@ type Settings struct {
 }
 
 func New(baseDir string) *Settings {
-	paths := &Paths{base: baseDir}
 	return &Settings{
-		Paths: paths,
-		Auth:  &Auth{paths: paths},
+		Paths: &Paths{base: baseDir},
+		Auth:  &Auth{},
 	}
 }
 
@@ -38,23 +38,14 @@ func (p *Paths) DB() string {
 	return filepath.Join(p.base, "clier.db")
 }
 
-func (p *Paths) Auth(binary domain.CliBinary) string {
-	return filepath.Join(p.base, "auth", string(binary))
-}
-
 func (p *Paths) Workspaces() string {
 	return filepath.Join(p.base, "workspaces")
 }
 
 // Auth manages CLI authentication for agent binaries.
-type Auth struct {
-	paths *Paths
-}
-
-var loginCommands = map[domain.CliBinary][]string{
-	domain.BinaryClaude: {"claude", "auth", "login"},
-	domain.BinaryCodex:  {"codex", "login"},
-}
+// It does not store credentials itself — it reads from the user's
+// actual CLI auth (Keychain on macOS, credential files on Linux).
+type Auth struct{}
 
 var statusCommands = map[domain.CliBinary][]string{
 	domain.BinaryClaude: {"claude", "auth", "status"},
@@ -67,73 +58,77 @@ func (a *Auth) Check(binary domain.CliBinary) error {
 		return fmt.Errorf("unknown binary: %s", binary)
 	}
 
-	authDir := a.paths.Auth(binary)
-	if _, err := os.Stat(authDir); err != nil {
-		return fmt.Errorf("check auth dir: %w", err)
-	}
-
 	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Env = append(systemEnv(), "HOME="+authDir)
+	cmd.Env = systemEnv()
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("run %s status: %w", args[0], err)
 	}
 	return nil
 }
 
-func (a *Auth) Login(binary domain.CliBinary) error {
-	args, ok := loginCommands[binary]
+// credentialSources defines where to find credentials for each binary.
+// Tried in order: keychain first (macOS), then file fallback.
+var credentialSources = map[domain.CliBinary]credentialSource{
+	domain.BinaryClaude: {
+		keychainService: "Claude Code-credentials",
+		filePath:        ".claude/.credentials.json",
+		destPath:        ".claude/.credentials.json",
+	},
+	domain.BinaryCodex: {
+		filePath: ".codex/auth.json",
+		destPath: ".codex/auth.json",
+	},
+}
+
+type credentialSource struct {
+	keychainService string // macOS Keychain service name (empty = skip)
+	filePath        string // path relative to user HOME
+	destPath        string // path relative to dest HOME
+}
+
+func (a *Auth) CopyTo(binary domain.CliBinary, destHome string) error {
+	src, ok := credentialSources[binary]
 	if !ok {
 		return fmt.Errorf("unknown binary: %s", binary)
 	}
 
-	authDir := a.paths.Auth(binary)
-	if err := os.MkdirAll(authDir, 0755); err != nil {
-		return fmt.Errorf("create auth dir: %w", err)
+	data, err := a.readCredentials(src)
+	if err != nil {
+		return fmt.Errorf("auth not configured for %s — run: %s login", binary, binary)
 	}
 
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Env = append(systemEnv(), "HOME="+authDir)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("login %s: %w", binary, err)
+	dest := filepath.Join(destHome, src.destPath)
+	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+		return fmt.Errorf("create credential dir: %w", err)
 	}
-	return nil
+	return os.WriteFile(dest, data, 0600)
 }
 
-func (a *Auth) CopyTo(binary domain.CliBinary, destHome string) error {
-	authDir := a.paths.Auth(binary)
-	if _, err := os.Stat(authDir); err != nil {
-		return fmt.Errorf("auth not configured for %s — run: clier %s login", binary, binary)
+// readCredentials tries keychain first (macOS), then falls back to file.
+func (a *Auth) readCredentials(src credentialSource) ([]byte, error) {
+	if src.keychainService != "" {
+		if data, err := readKeychain(src.keychainService); err == nil {
+			return data, nil
+		}
 	}
 
-	return filepath.WalkDir(authDir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadFile(filepath.Join(home, src.filePath))
+}
 
-		rel, err := filepath.Rel(authDir, path)
-		if err != nil {
-			return err
-		}
-		dest := filepath.Join(destHome, rel)
-
-		if d.IsDir() {
-			return os.MkdirAll(dest, 0755)
-		}
-
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(dest, data, info.Mode().Perm())
-	})
+func readKeychain(service string) ([]byte, error) {
+	out, err := exec.Command("security", "find-generic-password", "-s", service, "-w").Output()
+	if err != nil {
+		return nil, err
+	}
+	data := bytes.TrimSpace(out)
+	if len(data) == 0 {
+		return nil, errors.New("empty keychain entry")
+	}
+	return data, nil
 }
 
 func systemEnv() []string {
