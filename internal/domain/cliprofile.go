@@ -1,9 +1,9 @@
 package domain
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"regexp"
 	"strings"
 	"time"
@@ -166,7 +166,8 @@ func copyDotConfig(src DotConfig) DotConfig {
 	if src == nil {
 		return nil
 	}
-	dst := make(DotConfig, len(src))
-	maps.Copy(dst, src)
+	data, _ := json.Marshal(src)
+	var dst DotConfig
+	_ = json.Unmarshal(data, &dst)
 	return dst
 }
