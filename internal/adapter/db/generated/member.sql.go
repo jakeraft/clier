@@ -104,7 +104,7 @@ func (q *Queries) GetMember(ctx context.Context, id string) (Member, error) {
 }
 
 const listMemberEnvironmentIDs = `-- name: ListMemberEnvironmentIDs :many
-SELECT environment_id FROM member_environments WHERE member_id = ?
+SELECT environment_id FROM member_environments WHERE member_id = ? ORDER BY rowid
 `
 
 func (q *Queries) ListMemberEnvironmentIDs(ctx context.Context, memberID string) ([]string, error) {
@@ -131,7 +131,7 @@ func (q *Queries) ListMemberEnvironmentIDs(ctx context.Context, memberID string)
 }
 
 const listMemberSystemPromptIDs = `-- name: ListMemberSystemPromptIDs :many
-SELECT system_prompt_id FROM member_system_prompts WHERE member_id = ?
+SELECT system_prompt_id FROM member_system_prompts WHERE member_id = ? ORDER BY rowid
 `
 
 func (q *Queries) ListMemberSystemPromptIDs(ctx context.Context, memberID string) ([]string, error) {

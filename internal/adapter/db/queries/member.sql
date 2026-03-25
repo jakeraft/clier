@@ -21,7 +21,7 @@ INSERT INTO member_system_prompts (member_id, system_prompt_id) VALUES (?, ?);
 DELETE FROM member_system_prompts WHERE member_id = ? AND system_prompt_id = ?;
 
 -- name: ListMemberSystemPromptIDs :many
-SELECT system_prompt_id FROM member_system_prompts WHERE member_id = ?;
+SELECT system_prompt_id FROM member_system_prompts WHERE member_id = ? ORDER BY rowid;
 
 -- name: DeleteMemberSystemPrompts :execresult
 DELETE FROM member_system_prompts WHERE member_id = ?;
@@ -33,7 +33,7 @@ INSERT INTO member_environments (member_id, environment_id) VALUES (?, ?);
 DELETE FROM member_environments WHERE member_id = ? AND environment_id = ?;
 
 -- name: ListMemberEnvironmentIDs :many
-SELECT environment_id FROM member_environments WHERE member_id = ?;
+SELECT environment_id FROM member_environments WHERE member_id = ? ORDER BY rowid;
 
 -- name: DeleteMemberEnvironments :execresult
 DELETE FROM member_environments WHERE member_id = ?;

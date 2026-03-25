@@ -33,7 +33,7 @@ INSERT INTO team_relations (team_id, from_member_id, to_member_id, type) VALUES 
 DELETE FROM team_relations WHERE team_id = ? AND from_member_id = ? AND to_member_id = ? AND type = ?;
 
 -- name: ListTeamRelations :many
-SELECT from_member_id, to_member_id, type FROM team_relations WHERE team_id = ?;
+SELECT from_member_id, to_member_id, type FROM team_relations WHERE team_id = ? ORDER BY rowid;
 
 -- name: DeleteTeamRelations :execresult
 DELETE FROM team_relations WHERE team_id = ?;

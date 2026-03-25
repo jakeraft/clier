@@ -135,7 +135,7 @@ func (q *Queries) ListTeamMemberIDs(ctx context.Context, teamID string) ([]strin
 }
 
 const listTeamRelations = `-- name: ListTeamRelations :many
-SELECT from_member_id, to_member_id, type FROM team_relations WHERE team_id = ?
+SELECT from_member_id, to_member_id, type FROM team_relations WHERE team_id = ? ORDER BY rowid
 `
 
 type ListTeamRelationsRow struct {
