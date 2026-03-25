@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -84,7 +82,8 @@ func newProfileListCmd() *cobra.Command {
 }
 
 func newProfileUpdateCmd() *cobra.Command {
-	var name, customArgsStr string
+	var name string
+	var customArgs []string
 
 	cmd := &cobra.Command{
 		Use:   "update <id>",
@@ -112,8 +111,7 @@ func newProfileUpdateCmd() *cobra.Command {
 			}
 			var customArgsPtr *[]string
 			if cmd.Flags().Changed("args") {
-				parts := strings.Split(customArgsStr, ",")
-				customArgsPtr = &parts
+				customArgsPtr = &customArgs
 			}
 
 			if err := p.Update(namePtr, customArgsPtr); err != nil {
@@ -126,7 +124,7 @@ func newProfileUpdateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New profile name")
-	cmd.Flags().StringVar(&customArgsStr, "args", "", "New custom CLI arguments (comma-separated)")
+	cmd.Flags().StringSliceVar(&customArgs, "args", nil, "New custom CLI arguments (comma-separated)")
 	return cmd
 }
 

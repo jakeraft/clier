@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"strings"
-
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -24,7 +22,8 @@ func newMemberCmd() *cobra.Command {
 }
 
 func newMemberCreateCmd() *cobra.Command {
-	var name, profile, prompts, envs, repo string
+	var name, profile, repo string
+	var prompts, envs []string
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -40,16 +39,7 @@ func newMemberCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			var promptIDs []string
-			if prompts != "" {
-				promptIDs = strings.Split(prompts, ",")
-			}
-			var envIDs []string
-			if envs != "" {
-				envIDs = strings.Split(envs, ",")
-			}
-
-			m, err := domain.NewMember(name, profile, promptIDs, envIDs, repo)
+			m, err := domain.NewMember(name, profile, prompts, envs, repo)
 			if err != nil {
 				return err
 			}
@@ -61,8 +51,8 @@ func newMemberCreateCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Member name")
 	cmd.Flags().StringVar(&profile, "profile", "", "CLI profile ID")
-	cmd.Flags().StringVar(&prompts, "prompts", "", "System prompt IDs (comma-separated)")
-	cmd.Flags().StringVar(&envs, "envs", "", "Environment IDs (comma-separated)")
+	cmd.Flags().StringSliceVar(&prompts, "prompts", nil, "System prompt IDs (comma-separated)")
+	cmd.Flags().StringSliceVar(&envs, "envs", nil, "Environment IDs (comma-separated)")
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repo ID")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("profile")
@@ -94,7 +84,8 @@ func newMemberListCmd() *cobra.Command {
 }
 
 func newMemberUpdateCmd() *cobra.Command {
-	var name, profile, prompts, envs, repo string
+	var name, profile, repo string
+	var prompts, envs []string
 
 	cmd := &cobra.Command{
 		Use:   "update <id>",
@@ -126,19 +117,11 @@ func newMemberUpdateCmd() *cobra.Command {
 			}
 			var promptIDsPtr *[]string
 			if cmd.Flags().Changed("prompts") {
-				var ids []string
-				if prompts != "" {
-					ids = strings.Split(prompts, ",")
-				}
-				promptIDsPtr = &ids
+				promptIDsPtr = &prompts
 			}
 			var envIDsPtr *[]string
 			if cmd.Flags().Changed("envs") {
-				var ids []string
-				if envs != "" {
-					ids = strings.Split(envs, ",")
-				}
-				envIDsPtr = &ids
+				envIDsPtr = &envs
 			}
 			var repoPtr *string
 			if cmd.Flags().Changed("repo") {
@@ -156,8 +139,8 @@ func newMemberUpdateCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New member name")
 	cmd.Flags().StringVar(&profile, "profile", "", "New CLI profile ID")
-	cmd.Flags().StringVar(&prompts, "prompts", "", "New system prompt IDs (comma-separated)")
-	cmd.Flags().StringVar(&envs, "envs", "", "New environment IDs (comma-separated)")
+	cmd.Flags().StringSliceVar(&prompts, "prompts", nil, "New system prompt IDs (comma-separated)")
+	cmd.Flags().StringSliceVar(&envs, "envs", nil, "New environment IDs (comma-separated)")
 	cmd.Flags().StringVar(&repo, "repo", "", "New git repo ID")
 	return cmd
 }
