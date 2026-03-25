@@ -1,6 +1,7 @@
 package settings
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -100,6 +101,8 @@ func (a *Auth) Login(binary domain.CliBinary) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("login %s: %w", binary, err)
 	}
+
+	a.syncFromKeychain(binary)
 	return nil
 }
 
@@ -108,6 +111,8 @@ func (a *Auth) CopyTo(binary domain.CliBinary, destHome string) error {
 	if _, err := os.Stat(authDir); err != nil {
 		return fmt.Errorf("auth not configured for %s — run: clier %s login", binary, binary)
 	}
+
+	a.syncFromKeychain(binary)
 
 	return filepath.WalkDir(authDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -134,6 +139,37 @@ func (a *Auth) CopyTo(binary domain.CliBinary, destHome string) error {
 		}
 		return os.WriteFile(dest, data, info.Mode().Perm())
 	})
+}
+
+// keychainServices maps binaries to their macOS Keychain service names.
+var keychainServices = map[domain.CliBinary]string{
+	domain.BinaryClaude: "Claude Code-credentials",
+}
+
+// syncFromKeychain updates the stored credentials file with the latest
+// token from macOS Keychain, if available and fresher. Best-effort: errors
+// are silently ignored so file-based auth still works as fallback.
+func (a *Auth) syncFromKeychain(binary domain.CliBinary) {
+	service, ok := keychainServices[binary]
+	if !ok {
+		return
+	}
+
+	out, err := exec.Command("security", "find-generic-password", "-s", service, "-w").Output()
+	if err != nil {
+		return
+	}
+
+	keychainData := bytes.TrimSpace(out)
+	if len(keychainData) == 0 {
+		return
+	}
+
+	credPath := filepath.Join(a.paths.Auth(binary), ".claude", ".credentials.json")
+	if err := os.MkdirAll(filepath.Dir(credPath), 0755); err != nil {
+		return
+	}
+	_ = os.WriteFile(credPath, keychainData, 0600)
 }
 
 func systemEnv() []string {
