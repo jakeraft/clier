@@ -81,13 +81,13 @@ func TestBuildCommand(t *testing.T) {
 			}
 
 			// when
-			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", "/home/m1")
+			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", "/home/m1", "/data/clier")
 			if err != nil {
 				t.Fatalf("BuildCommand: %v", err)
 			}
 
 			// then: command is
-			//   export HOME='/home/m1' && export CLIER_DATA_DIR='...' &&
+			//   export HOME='/home/m1' && export CLIER_DATA_DIR='/data/clier' &&
 			//   export CLIER_SPRINT_ID='sprint-1' && export CLIER_MEMBER_ID='m1' &&
 			//   cd '/work' && claude '--dangerously-skip-permissions' --model 'claude-sonnet-4-6'
 			//     --session-id 'm1' --append-system-prompt '...' '--verbose'
@@ -99,7 +99,7 @@ func TestBuildCommand(t *testing.T) {
 				"--verbose",
 				"--append-system-prompt",
 				"export HOME='/home/m1'",
-				"export CLIER_DATA_DIR=",
+				"export CLIER_DATA_DIR='/data/clier'",
 				"export CLIER_SPRINT_ID='sprint-1'",
 				"export CLIER_MEMBER_ID='m1'",
 			} {
@@ -121,7 +121,7 @@ func TestBuildCommand(t *testing.T) {
 			}
 
 			// when
-			cmd, err := BuildCommand(m, "", "/work", "sprint-1", "/home/m1")
+			cmd, err := BuildCommand(m, "", "/work", "sprint-1", "/home/m1", "/data/clier")
 			if err != nil {
 				t.Fatalf("BuildCommand: %v", err)
 			}
@@ -146,7 +146,7 @@ func TestBuildCommand(t *testing.T) {
 			}
 
 			// when
-			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", memberHome)
+			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", memberHome, "/data/clier")
 			if err != nil {
 				t.Fatalf("BuildCommand: %v", err)
 			}
@@ -228,7 +228,7 @@ func TestBuildEnv(t *testing.T) {
 		}
 
 		// when
-		env := buildEnv(m, "sprint-1", "/home/m1")
+		env := buildEnv(m, "sprint-1", "/home/m1", "/data/clier")
 
 		// then: env contains HOME, CLIER_DATA_DIR, CLIER_SPRINT_ID, CLIER_MEMBER_ID, API_KEY
 		envMap := make(map[string]string)
@@ -237,11 +237,9 @@ func TestBuildEnv(t *testing.T) {
 			envMap[parts[0]] = parts[1]
 		}
 
-		if _, ok := envMap["CLIER_DATA_DIR"]; !ok {
-			t.Error("CLIER_DATA_DIR should be set")
-		}
 		for k, want := range map[string]string{
 			"HOME":            "/home/m1",
+			"CLIER_DATA_DIR":  "/data/clier",
 			"CLIER_SPRINT_ID": "sprint-1",
 			"CLIER_MEMBER_ID": "m1",
 			"API_KEY":         "secret",

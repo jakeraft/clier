@@ -19,7 +19,7 @@ func shellQuote(s string) string {
 // BuildCommand returns the full shell command to launch an agent,
 // including environment variable exports.
 // Result format: "export K='V' && ... && cd <workDir> && <binary> <args...>"
-func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome string) (string, error) {
+func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome, dataDir string) (string, error) {
 	var cmd string
 
 	switch m.Binary {
@@ -35,7 +35,7 @@ func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome
 		return "", fmt.Errorf("unknown binary: %s", m.Binary)
 	}
 
-	env := buildEnv(m, sprintID, memberHome)
+	env := buildEnv(m, sprintID, memberHome, dataDir)
 	return buildEnvCommand(cmd, env), nil
 }
 
@@ -86,11 +86,10 @@ func quoteArgs(args []string) []string {
 	return quoted
 }
 
-func buildEnv(m domain.MemberSnapshot, sprintID, memberHome string) []string {
-	home, _ := os.UserHomeDir()
+func buildEnv(m domain.MemberSnapshot, sprintID, memberHome, dataDir string) []string {
 	env := []string{
 		"HOME=" + memberHome,
-		"CLIER_DATA_DIR=" + filepath.Join(home, ".clier"),
+		"CLIER_DATA_DIR=" + dataDir,
 		"CLIER_SPRINT_ID=" + sprintID,
 		"CLIER_MEMBER_ID=" + m.MemberID,
 	}

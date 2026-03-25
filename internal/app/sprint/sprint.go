@@ -47,10 +47,11 @@ type Service struct {
 	store     Store
 	terminal  Terminal
 	workspace Workspace
+	dataDir   string
 }
 
-func New(store Store, term Terminal, ws Workspace) *Service {
-	return &Service{store: store, terminal: term, workspace: ws}
+func New(store Store, term Terminal, ws Workspace, dataDir string) *Service {
+	return &Service{store: store, terminal: term, workspace: ws, dataDir: dataDir}
 }
 
 func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, error) {
@@ -76,7 +77,7 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		}
 	}()
 
-	members, err := buildMemberSpecs(sprint.ID, snapshot, dirs)
+	members, err := buildMemberSpecs(sprint.ID, snapshot, dirs, s.dataDir)
 	if err != nil {
 		return nil, fmt.Errorf("build member specs: %w", err)
 	}
@@ -124,7 +125,7 @@ func (s *Service) Stop(ctx context.Context, sprintID string) error {
 	return nil
 }
 
-func buildMemberSpecs(sprintID string, snapshot domain.TeamSnapshot, dirs map[string]MemberDir) ([]MemberSpec, error) {
+func buildMemberSpecs(sprintID string, snapshot domain.TeamSnapshot, dirs map[string]MemberDir, dataDir string) ([]MemberSpec, error) {
 	var members []MemberSpec
 
 	for _, m := range snapshot.Members {
@@ -133,7 +134,7 @@ func buildMemberSpecs(sprintID string, snapshot domain.TeamSnapshot, dirs map[st
 		if err != nil {
 			return nil, fmt.Errorf("build prompt for %s: %w", m.MemberName, err)
 		}
-		cmd, err := BuildCommand(m, prompt, dir.WorkDir, sprintID, dir.Home)
+		cmd, err := BuildCommand(m, prompt, dir.WorkDir, sprintID, dir.Home, dataDir)
 		if err != nil {
 			return nil, fmt.Errorf("build command for %s: %w", m.MemberName, err)
 		}
