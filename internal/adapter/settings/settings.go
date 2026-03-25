@@ -61,7 +61,7 @@ func (a *Auth) Check(binary domain.CliBinary) error {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Env = systemEnv()
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("run %s status: %w", args[0], err)
+		return fmt.Errorf("%s is not logged in — run: %s login", binary, binary)
 	}
 	return nil
 }
@@ -94,7 +94,7 @@ func (a *Auth) CopyTo(binary domain.CliBinary, destHome string) error {
 
 	data, err := a.readCredentials(src)
 	if err != nil {
-		return fmt.Errorf("auth not configured for %s — run: %s login", binary, binary)
+		return fmt.Errorf("%s is not logged in — run: %s login", binary, binary)
 	}
 
 	dest := filepath.Join(destHome, src.destPath)

@@ -44,7 +44,7 @@ func newAgentCheckCmd(binary domain.CliBinary) *cobra.Command {
 				if isExitError(err) {
 					_, _ = fmt.Fprintf(w, "%s auth is invalid. Run: %s login\n", binary, binary)
 				} else {
-					_, _ = fmt.Fprintf(w, "%s auth not configured. Run: %s login\n", binary, binary)
+					_, _ = fmt.Fprintf(w, "%s is not logged in. Run: %s login\n", binary, binary)
 				}
 			} else {
 				_, _ = fmt.Fprintf(w, "%s auth is valid\n", binary)
