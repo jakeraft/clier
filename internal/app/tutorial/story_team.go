@@ -9,11 +9,10 @@ func init() {
 var StoryTeam = &Scenario{
 	Name:        "story-team",
 	Description: "3-depth nested team for E2E delegation chain testing",
-	Prefix:      "tut-",
 
 	SystemPrompts: []SystemPromptDef{
 		{
-			Name: "tut-editor-in-chief",
+			Name: "editor-in-chief",
 			Prompt: `You are the Editor in Chief. You plan a short story and delegate chapters to your workers.
 
 Rules:
@@ -27,7 +26,7 @@ Process:
 4. Once ALL chapters are collected, combine them into the final story. Include every chapter in order. Output the complete result.`,
 		},
 		{
-			Name: "tut-section-editor",
+			Name: "section-editor",
 			Prompt: `You are a Section Editor. You receive a chapter brief and delegate scenes to your workers.
 
 Rules:
@@ -40,7 +39,7 @@ Process:
 4. Once ALL full scene texts are collected, combine them into a single cohesive chapter. Then send the FULL chapter text to your leader in a single message.`,
 		},
 		{
-			Name: "tut-writer",
+			Name: "writer",
 			Prompt: `You are a Writer. Write a single scene from the brief you receive.
 
 Rules:
@@ -52,41 +51,41 @@ When finished, send the FULL scene text to your leader in a single message. Do N
 	},
 
 	Environments: []EnvironmentDef{
-		{Name: "tut-eic-env", Key: "STORY_ROLE", Value: "editor-in-chief"},
-		{Name: "tut-se-env", Key: "STORY_ROLE", Value: "section-editor"},
-		{Name: "tut-writer-env", Key: "STORY_ROLE", Value: "writer"},
+		{Name: "eic-env", Key: "STORY_ROLE", Value: "editor-in-chief"},
+		{Name: "se-env", Key: "STORY_ROLE", Value: "section-editor"},
+		{Name: "writer-env", Key: "STORY_ROLE", Value: "writer"},
 	},
 
 	GitRepos: []GitRepoDef{
-		{Name: "tut-story-repo", URL: "https://github.com/jakeraft/clier_hello.git"},
+		{Name: "story-repo", URL: "https://github.com/jakeraft/clier_hello.git"},
 	},
 
 	CliProfiles: []CliProfileDef{
-		{Name: "tut-claude-sonnet", PresetKey: "claude-sonnet"},
-		{Name: "tut-codex", PresetKey: "codex-5.4"},
+		{Name: "claude-sonnet", PresetKey: "claude-sonnet"},
+		{Name: "codex", PresetKey: "codex-5.4"},
 	},
 
 	Members: []MemberDef{
-		{Name: "tut-chief", CliProfileName: "tut-claude-sonnet", SystemPromptNames: []string{"tut-editor-in-chief"}, EnvNames: []string{"tut-eic-env"}, GitRepoName: "tut-story-repo"},
-		{Name: "tut-se-1", CliProfileName: "tut-claude-sonnet", SystemPromptNames: []string{"tut-section-editor"}, EnvNames: []string{"tut-se-env"}, GitRepoName: "tut-story-repo"},
-		{Name: "tut-se-2", CliProfileName: "tut-claude-sonnet", SystemPromptNames: []string{"tut-section-editor"}, EnvNames: []string{"tut-se-env"}, GitRepoName: "tut-story-repo"},
-		{Name: "tut-writer-1", CliProfileName: "tut-claude-sonnet", SystemPromptNames: []string{"tut-writer"}, EnvNames: []string{"tut-writer-env"}, GitRepoName: "tut-story-repo"},
-		{Name: "tut-writer-2", CliProfileName: "tut-claude-sonnet", SystemPromptNames: []string{"tut-writer"}, EnvNames: []string{"tut-writer-env"}, GitRepoName: "tut-story-repo"},
-		{Name: "tut-writer-3", CliProfileName: "tut-codex", SystemPromptNames: []string{"tut-writer"}, EnvNames: []string{"tut-writer-env"}},
-		{Name: "tut-writer-4", CliProfileName: "tut-codex", SystemPromptNames: []string{"tut-writer"}, EnvNames: []string{"tut-writer-env"}},
+		{Name: "chief", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"editor-in-chief"}, EnvNames: []string{"eic-env"}, GitRepoName: "story-repo"},
+		{Name: "se-1", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"section-editor"}, EnvNames: []string{"se-env"}, GitRepoName: "story-repo"},
+		{Name: "se-2", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"section-editor"}, EnvNames: []string{"se-env"}, GitRepoName: "story-repo"},
+		{Name: "writer-1", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"writer"}, EnvNames: []string{"writer-env"}, GitRepoName: "story-repo"},
+		{Name: "writer-2", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"writer"}, EnvNames: []string{"writer-env"}, GitRepoName: "story-repo"},
+		{Name: "writer-3", CliProfileName: "codex", SystemPromptNames: []string{"writer"}, EnvNames: []string{"writer-env"}},
+		{Name: "writer-4", CliProfileName: "codex", SystemPromptNames: []string{"writer"}, EnvNames: []string{"writer-env"}},
 	},
 
 	Team: TeamDef{
-		Name:           "tut-story-team",
-		RootMemberName: "tut-chief",
+		Name:           "story-team",
+		RootMemberName: "chief",
 	},
 
 	Relations: []RelationDef{
-		{From: "tut-chief", To: "tut-se-1", Type: domain.RelationLeader},
-		{From: "tut-chief", To: "tut-se-2", Type: domain.RelationLeader},
-		{From: "tut-se-1", To: "tut-writer-1", Type: domain.RelationLeader},
-		{From: "tut-se-1", To: "tut-writer-2", Type: domain.RelationLeader},
-		{From: "tut-se-2", To: "tut-writer-3", Type: domain.RelationLeader},
-		{From: "tut-se-2", To: "tut-writer-4", Type: domain.RelationLeader},
+		{From: "chief", To: "se-1", Type: domain.RelationLeader},
+		{From: "chief", To: "se-2", Type: domain.RelationLeader},
+		{From: "se-1", To: "writer-1", Type: domain.RelationLeader},
+		{From: "se-1", To: "writer-2", Type: domain.RelationLeader},
+		{From: "se-2", To: "writer-3", Type: domain.RelationLeader},
+		{From: "se-2", To: "writer-4", Type: domain.RelationLeader},
 	},
 }

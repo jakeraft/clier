@@ -77,7 +77,6 @@ type RelationDef struct {
 type Scenario struct {
 	Name          string
 	Description   string
-	Prefix        string
 	SystemPrompts []SystemPromptDef
 	Environments  []EnvironmentDef
 	GitRepos      []GitRepoDef
@@ -259,10 +258,30 @@ func Run(ctx context.Context, store Store, scenario *Scenario) error {
 	return nil
 }
 
-// Clean deletes all resources matching the scenario's prefix.
+// Clean deletes all resources defined in the scenario.
 // Deletion order: teams → members → (cli profiles, system prompts, environments, git repos).
 func Clean(ctx context.Context, store Store, scenario *Scenario) error {
-	prefix := scenario.Prefix
+	// Build name sets from scenario definitions.
+	memberNames := make(map[string]bool, len(scenario.Members))
+	for _, d := range scenario.Members {
+		memberNames[d.Name] = true
+	}
+	profileNames := make(map[string]bool, len(scenario.CliProfiles))
+	for _, d := range scenario.CliProfiles {
+		profileNames[d.Name] = true
+	}
+	promptNames := make(map[string]bool, len(scenario.SystemPrompts))
+	for _, d := range scenario.SystemPrompts {
+		promptNames[d.Name] = true
+	}
+	envNames := make(map[string]bool, len(scenario.Environments))
+	for _, d := range scenario.Environments {
+		envNames[d.Name] = true
+	}
+	repoNames := make(map[string]bool, len(scenario.GitRepos))
+	for _, d := range scenario.GitRepos {
+		repoNames[d.Name] = true
+	}
 
 	// 1. Delete teams (CASCADE: team_members, team_relations)
 	teams, err := store.ListTeams(ctx)
@@ -270,7 +289,7 @@ func Clean(ctx context.Context, store Store, scenario *Scenario) error {
 		return fmt.Errorf("list teams: %w", err)
 	}
 	for _, t := range teams {
-		if strings.HasPrefix(t.Name, prefix) {
+		if t.Name == scenario.Team.Name {
 			if err := store.DeleteTeam(ctx, t.ID); err != nil {
 				return fmt.Errorf("delete team %s: %w", t.Name, err)
 			}
@@ -283,7 +302,7 @@ func Clean(ctx context.Context, store Store, scenario *Scenario) error {
 		return fmt.Errorf("list members: %w", err)
 	}
 	for _, m := range members {
-		if strings.HasPrefix(m.Name, prefix) {
+		if memberNames[m.Name] {
 			if err := store.DeleteMember(ctx, m.ID); err != nil {
 				return fmt.Errorf("delete member %s: %w", m.Name, err)
 			}
@@ -296,7 +315,7 @@ func Clean(ctx context.Context, store Store, scenario *Scenario) error {
 		return fmt.Errorf("list cli profiles: %w", err)
 	}
 	for _, p := range profiles {
-		if strings.HasPrefix(p.Name, prefix) {
+		if profileNames[p.Name] {
 			if err := store.DeleteCliProfile(ctx, p.ID); err != nil {
 				return fmt.Errorf("delete cli profile %s: %w", p.Name, err)
 			}
@@ -308,7 +327,7 @@ func Clean(ctx context.Context, store Store, scenario *Scenario) error {
 		return fmt.Errorf("list system prompts: %w", err)
 	}
 	for _, sp := range prompts {
-		if strings.HasPrefix(sp.Name, prefix) {
+		if promptNames[sp.Name] {
 			if err := store.DeleteSystemPrompt(ctx, sp.ID); err != nil {
 				return fmt.Errorf("delete system prompt %s: %w", sp.Name, err)
 			}
@@ -320,7 +339,7 @@ func Clean(ctx context.Context, store Store, scenario *Scenario) error {
 		return fmt.Errorf("list environments: %w", err)
 	}
 	for _, e := range envs {
-		if strings.HasPrefix(e.Name, prefix) {
+		if envNames[e.Name] {
 			if err := store.DeleteEnvironment(ctx, e.ID); err != nil {
 				return fmt.Errorf("delete environment %s: %w", e.Name, err)
 			}
@@ -332,7 +351,7 @@ func Clean(ctx context.Context, store Store, scenario *Scenario) error {
 		return fmt.Errorf("list git repos: %w", err)
 	}
 	for _, r := range repos {
-		if strings.HasPrefix(r.Name, prefix) {
+		if repoNames[r.Name] {
 			if err := store.DeleteGitRepo(ctx, r.ID); err != nil {
 				return fmt.Errorf("delete git repo %s: %w", r.Name, err)
 			}
