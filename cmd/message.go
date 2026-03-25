@@ -54,7 +54,7 @@ func newMessageSendCmd() *cobra.Command {
 			defer store.Close()
 
 			term := terminal.NewCmuxTerminal(store)
-			svc := sprint.New(store, term, nil, cfg.ConfigDir())
+			svc := sprint.New(store, term, nil, cfg.Paths.Base())
 
 			if err := svc.DeliverMessage(cmd.Context(), sprintID, fromMemberID, toMemberID, args[0]); err != nil {
 				return err

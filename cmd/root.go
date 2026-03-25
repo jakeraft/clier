@@ -32,10 +32,7 @@ func newSettings() (*settings.Settings, error) {
 }
 
 func newStore(cfg *settings.Settings) (*db.Store, error) {
-	if err := cfg.EnsureDirs(); err != nil {
-		return nil, err
-	}
-	return db.NewStore(cfg.DBPath())
+	return db.NewStore(cfg.Paths.DB())
 }
 
 var rootCmd = &cobra.Command{

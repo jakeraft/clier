@@ -11,45 +11,45 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-const (
-	dbFileName  = "clier.db"
-	authDirName = "auth"
-)
-
+// Settings is the facade for all user-configurable settings.
 type Settings struct {
-	configDir string
+	Paths *Paths
+	Auth  *Auth
 }
 
-func New(configDir string) *Settings {
-	return &Settings{configDir: configDir}
-}
-
-func (s *Settings) ConfigDir() string {
-	return s.configDir
-}
-
-func (s *Settings) DBPath() string {
-	return filepath.Join(s.configDir, dbFileName)
-}
-
-func (s *Settings) AuthDir(binary domain.CliBinary) string {
-	return filepath.Join(s.configDir, authDirName, string(binary))
-}
-
-func (s *Settings) EnsureDirs() error {
-	dirs := []string{
-		s.configDir,
-		filepath.Join(s.configDir, authDirName),
+func New(baseDir string) *Settings {
+	paths := &Paths{base: baseDir}
+	return &Settings{
+		Paths: paths,
+		Auth:  &Auth{paths: paths},
 	}
-	for _, d := range dirs {
-		if err := os.MkdirAll(d, 0755); err != nil {
-			return fmt.Errorf("create dir %s: %w", d, err)
-		}
-	}
-	return nil
 }
 
-// Auth management
+// Paths resolves filesystem paths under the base settings directory.
+type Paths struct {
+	base string
+}
+
+func (p *Paths) Base() string {
+	return p.base
+}
+
+func (p *Paths) DB() string {
+	return filepath.Join(p.base, "clier.db")
+}
+
+func (p *Paths) Auth(binary domain.CliBinary) string {
+	return filepath.Join(p.base, "auth", string(binary))
+}
+
+func (p *Paths) Workspaces() string {
+	return filepath.Join(p.base, "workspaces")
+}
+
+// Auth manages CLI authentication for agent binaries.
+type Auth struct {
+	paths *Paths
+}
 
 var loginCommands = map[domain.CliBinary][]string{
 	domain.BinaryClaude: {"claude", "auth", "login"},
@@ -61,13 +61,13 @@ var statusCommands = map[domain.CliBinary][]string{
 	domain.BinaryCodex:  {"codex", "login", "status"},
 }
 
-func (s *Settings) CheckAuth(binary domain.CliBinary) error {
+func (a *Auth) Check(binary domain.CliBinary) error {
 	args, ok := statusCommands[binary]
 	if !ok {
 		return fmt.Errorf("unknown binary: %s", binary)
 	}
 
-	authDir := s.AuthDir(binary)
+	authDir := a.paths.Auth(binary)
 	if _, err := os.Stat(authDir); err != nil {
 		return fmt.Errorf("check auth dir: %w", err)
 	}
@@ -80,13 +80,13 @@ func (s *Settings) CheckAuth(binary domain.CliBinary) error {
 	return nil
 }
 
-func (s *Settings) LoginAuth(binary domain.CliBinary) error {
+func (a *Auth) Login(binary domain.CliBinary) error {
 	args, ok := loginCommands[binary]
 	if !ok {
 		return fmt.Errorf("unknown binary: %s", binary)
 	}
 
-	authDir := s.AuthDir(binary)
+	authDir := a.paths.Auth(binary)
 	if err := os.MkdirAll(authDir, 0755); err != nil {
 		return fmt.Errorf("create auth dir: %w", err)
 	}
@@ -103,8 +103,8 @@ func (s *Settings) LoginAuth(binary domain.CliBinary) error {
 	return nil
 }
 
-func (s *Settings) CopyAuthTo(binary domain.CliBinary, destHome string) error {
-	authDir := s.AuthDir(binary)
+func (a *Auth) CopyTo(binary domain.CliBinary, destHome string) error {
+	authDir := a.paths.Auth(binary)
 	if _, err := os.Stat(authDir); err != nil {
 		return fmt.Errorf("auth not configured for %s — run: clier %s login", binary, binary)
 	}

@@ -32,11 +32,11 @@ func newAgentLoginCmd(binary domain.CliBinary) *cobra.Command {
 		Use:   "login",
 		Short: fmt.Sprintf("Login to %s CLI", binary),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := newSettings()
+			cfg, err := newSettings()
 			if err != nil {
 				return err
 			}
-			return s.LoginAuth(binary)
+			return cfg.Auth.Login(binary)
 		},
 	}
 }
@@ -51,12 +51,12 @@ func newAgentCheckCmd(binary domain.CliBinary) *cobra.Command {
 		Use:   "check",
 		Short: fmt.Sprintf("Check %s CLI auth status", binary),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s, err := newSettings()
+			cfg, err := newSettings()
 			if err != nil {
 				return err
 			}
 			w := cmd.OutOrStdout()
-			if err := s.CheckAuth(binary); err != nil {
+			if err := cfg.Auth.Check(binary); err != nil {
 				if errors.Is(err, os.ErrNotExist) {
 					_, _ = fmt.Fprintf(w, "%s auth not configured. Run: clier %s login\n", binary, binary)
 				} else if isExitError(err) {

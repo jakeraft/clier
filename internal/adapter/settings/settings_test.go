@@ -9,51 +9,65 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func TestSettings(t *testing.T) {
-	t.Run("CheckAuth", func(t *testing.T) {
+func TestPaths(t *testing.T) {
+	t.Run("Base_ReturnsBaseDir", func(t *testing.T) {
+		s := New("/tmp/clier")
+		if s.Paths.Base() != "/tmp/clier" {
+			t.Errorf("Base() = %q, want %q", s.Paths.Base(), "/tmp/clier")
+		}
+	})
+
+	t.Run("DB_ReturnsDBPath", func(t *testing.T) {
+		s := New("/tmp/clier")
+		want := "/tmp/clier/clier.db"
+		if s.Paths.DB() != want {
+			t.Errorf("DB() = %q, want %q", s.Paths.DB(), want)
+		}
+	})
+
+	t.Run("Auth_ReturnsBinaryAuthPath", func(t *testing.T) {
+		s := New("/tmp/clier")
+		want := "/tmp/clier/auth/claude"
+		if s.Paths.Auth(domain.BinaryClaude) != want {
+			t.Errorf("Auth() = %q, want %q", s.Paths.Auth(domain.BinaryClaude), want)
+		}
+	})
+
+	t.Run("Workspaces_ReturnsWorkspacesPath", func(t *testing.T) {
+		s := New("/tmp/clier")
+		want := "/tmp/clier/workspaces"
+		if s.Paths.Workspaces() != want {
+			t.Errorf("Workspaces() = %q, want %q", s.Paths.Workspaces(), want)
+		}
+	})
+}
+
+func TestAuth(t *testing.T) {
+	t.Run("Check", func(t *testing.T) {
 		t.Run("NoAuthDir_ReturnsNotExist", func(t *testing.T) {
 			s := New(t.TempDir())
-			err := s.CheckAuth(domain.BinaryClaude)
+			err := s.Auth.Check(domain.BinaryClaude)
 			if err == nil {
-				t.Fatal("CheckAuth() should return error when auth dir missing")
+				t.Fatal("Check() should return error when auth dir missing")
 			}
 			if !errors.Is(err, os.ErrNotExist) {
-				t.Errorf("CheckAuth() error should wrap os.ErrNotExist, got: %v", err)
+				t.Errorf("Check() error should wrap os.ErrNotExist, got: %v", err)
 			}
 		})
 
 		t.Run("UnknownBinary_ReturnsError", func(t *testing.T) {
 			s := New(t.TempDir())
-			err := s.CheckAuth(domain.CliBinary("unknown"))
+			err := s.Auth.Check(domain.CliBinary("unknown"))
 			if err == nil {
-				t.Error("CheckAuth() should return error for unknown binary")
+				t.Error("Check() should return error for unknown binary")
 			}
 		})
 	})
 
-	t.Run("EnsureDirs", func(t *testing.T) {
-		t.Run("ValidConfig_CreatesDirectories", func(t *testing.T) {
-			s := New(t.TempDir())
-			if err := s.EnsureDirs(); err != nil {
-				t.Fatalf("EnsureDirs() error = %v", err)
-			}
-			for _, dir := range []string{s.ConfigDir(), filepath.Join(s.ConfigDir(), authDirName)} {
-				info, err := os.Stat(dir)
-				if err != nil {
-					t.Errorf("dir %q not created: %v", dir, err)
-					continue
-				}
-				if !info.IsDir() {
-					t.Errorf("path %q is not a directory", dir)
-				}
-			}
-		})
-	})
-
-	t.Run("CopyAuthTo", func(t *testing.T) {
+	t.Run("CopyTo", func(t *testing.T) {
 		t.Run("ExistingAuth_CopiesFiles", func(t *testing.T) {
 			s := New(t.TempDir())
-			authDir := s.AuthDir(domain.BinaryClaude)
+			authDir := s.Paths.Auth(domain.BinaryClaude)
 			if err := os.MkdirAll(filepath.Join(authDir, ".claude"), 0755); err != nil {
 				t.Fatalf("create auth dir: %v", err)
 			}
@@ -62,8 +76,8 @@ func TestSettings(t *testing.T) {
 			}
 
 			destHome := t.TempDir()
-			if err := s.CopyAuthTo(domain.BinaryClaude, destHome); err != nil {
-				t.Fatalf("CopyAuthTo() error = %v", err)
+			if err := s.Auth.CopyTo(domain.BinaryClaude, destHome); err != nil {
+				t.Fatalf("CopyTo() error = %v", err)
 			}
 
 			data, err := os.ReadFile(filepath.Join(destHome, ".claude", "credentials.json"))
@@ -77,17 +91,17 @@ func TestSettings(t *testing.T) {
 
 		t.Run("NoAuth_ReturnsError", func(t *testing.T) {
 			s := New(t.TempDir())
-			if err := s.CopyAuthTo(domain.BinaryClaude, t.TempDir()); err == nil {
-				t.Error("CopyAuthTo() should return error when auth not configured")
+			if err := s.Auth.CopyTo(domain.BinaryClaude, t.TempDir()); err == nil {
+				t.Error("CopyTo() should return error when auth not configured")
 			}
 		})
 	})
 
-	t.Run("LoginAuth", func(t *testing.T) {
+	t.Run("Login", func(t *testing.T) {
 		t.Run("UnknownBinary_ReturnsError", func(t *testing.T) {
 			s := New(t.TempDir())
-			if err := s.LoginAuth(domain.CliBinary("unknown")); err == nil {
-				t.Error("LoginAuth() should return error for unknown binary")
+			if err := s.Auth.Login(domain.CliBinary("unknown")); err == nil {
+				t.Error("Login() should return error for unknown binary")
 			}
 		})
 	})

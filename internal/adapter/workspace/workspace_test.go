@@ -17,11 +17,11 @@ type stubAuth struct {
 	err error
 }
 
-func (s *stubAuth) CheckAuth(_ domain.CliBinary) error {
+func (s *stubAuth) Check(_ domain.CliBinary) error {
 	return s.err
 }
 
-func (s *stubAuth) CopyAuthTo(_ domain.CliBinary, _ string) error {
+func (s *stubAuth) CopyTo(_ domain.CliBinary, _ string) error {
 	return s.err
 }
 

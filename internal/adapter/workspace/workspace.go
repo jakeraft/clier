@@ -17,8 +17,8 @@ import (
 
 // AuthCopier copies CLI auth files to a destination home directory.
 type AuthCopier interface {
-	CheckAuth(binary domain.CliBinary) error
-	CopyAuthTo(binary domain.CliBinary, destHome string) error
+	Check(binary domain.CliBinary) error
+	CopyTo(binary domain.CliBinary, destHome string) error
 }
 
 // Workspace manages sprint member filesystem environments.
@@ -51,7 +51,7 @@ func (w *Workspace) Prepare(ctx context.Context, sprintID string, snapshot domai
 	for _, m := range snapshot.Members {
 		if !checked[m.Binary] {
 			checked[m.Binary] = true
-			if err := w.auth.CheckAuth(m.Binary); err != nil {
+			if err := w.auth.Check(m.Binary); err != nil {
 				return nil, err
 			}
 		}
@@ -83,7 +83,7 @@ func (w *Workspace) prepareMember(ctx context.Context, sprintDir string, m domai
 		return sprint.MemberDir{}, fmt.Errorf("create member dir: %w", err)
 	}
 
-	if err := w.auth.CopyAuthTo(m.Binary, memberHome); err != nil {
+	if err := w.auth.CopyTo(m.Binary, memberHome); err != nil {
 		return sprint.MemberDir{}, fmt.Errorf("copy auth: %w", err)
 	}
 
