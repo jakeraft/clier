@@ -95,11 +95,19 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 }
 
 func (s *Service) Stop(ctx context.Context, sprintID string) error {
+	sp, err := s.store.GetSprint(ctx, sprintID)
+	if err != nil {
+		return fmt.Errorf("get sprint: %w", err)
+	}
+	if err := sp.Complete(); err != nil {
+		return err
+	}
+
 	if err := s.terminal.Terminate(sprintID); err != nil {
 		return fmt.Errorf("terminate terminal: %w", err)
 	}
 
-	if err := s.store.UpdateSprintState(ctx, sprintID, domain.SprintCompleted, ""); err != nil {
+	if err := s.store.UpdateSprintState(ctx, sprintID, sp.State, sp.Error); err != nil {
 		return fmt.Errorf("update sprint state: %w", err)
 	}
 
