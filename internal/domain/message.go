@@ -18,6 +18,12 @@ type Message struct {
 }
 
 func NewMessage(sprintID, fromMemberID, toMemberID, content string) (*Message, error) {
+	if strings.TrimSpace(sprintID) == "" {
+		return nil, errors.New("message sprint id must not be empty")
+	}
+	if strings.TrimSpace(toMemberID) == "" {
+		return nil, errors.New("message recipient must not be empty")
+	}
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return nil, errors.New("message content must not be empty")

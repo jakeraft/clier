@@ -33,6 +33,30 @@ func TestMessage(t *testing.T) {
 			}
 		})
 
+		t.Run("EmptySprintID_ReturnsError", func(t *testing.T) {
+			_, err := NewMessage("", "from-1", "to-1", "hello")
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+
+		t.Run("EmptyToMemberID_ReturnsError", func(t *testing.T) {
+			_, err := NewMessage("sprint-1", "from-1", "  ", "hello")
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+
+		t.Run("EmptyFromMemberID_Allowed", func(t *testing.T) {
+			m, err := NewMessage("sprint-1", "", "to-1", "hello")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if m.FromMemberID != "" {
+				t.Errorf("FromMemberID = %q, want empty", m.FromMemberID)
+			}
+		})
+
 		t.Run("EmptyContent_ReturnsError", func(t *testing.T) {
 			_, err := NewMessage("sprint-1", "from-1", "to-1", "  ")
 			if err == nil {
