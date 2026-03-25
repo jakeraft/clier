@@ -2,7 +2,6 @@ package domain
 
 import (
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -315,32 +314,4 @@ func TestTeam(t *testing.T) {
 		})
 	})
 
-	t.Run("DisconnectedWarnings", func(t *testing.T) {
-		t.Run("DisconnectedMember_ReturnsWarning", func(t *testing.T) {
-			team := createTeamWithMembers(t, "member-2", "member-3")
-			_ = team.AddRelation(Relation{From: rootID, To: "member-2", Type: RelationLeader})
-			warnings := team.DisconnectedWarnings()
-			if len(warnings) != 1 {
-				t.Fatalf("warnings length = %d, want 1", len(warnings))
-			}
-			if !strings.HasPrefix(warnings[0], "Member member-3") {
-				t.Errorf("warning = %q, want prefix 'Member member-3'", warnings[0])
-			}
-		})
-
-		t.Run("AllConnected_ReturnsEmpty", func(t *testing.T) {
-			team := createTeamWithMembers(t, "member-2")
-			_ = team.AddRelation(Relation{From: rootID, To: "member-2", Type: RelationLeader})
-			if warnings := team.DisconnectedWarnings(); len(warnings) != 0 {
-				t.Errorf("warnings = %v, want []", warnings)
-			}
-		})
-
-		t.Run("OnlyRoot_ReturnsEmpty", func(t *testing.T) {
-			team, _ := NewTeam("team", rootID)
-			if warnings := team.DisconnectedWarnings(); len(warnings) != 0 {
-				t.Errorf("warnings = %v, want []", warnings)
-			}
-		})
-	})
 }

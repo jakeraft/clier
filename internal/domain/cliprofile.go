@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -135,16 +134,6 @@ func ResolvePreset(key string) (CliProfilePreset, error) {
 		}
 	}
 	return CliProfilePreset{}, fmt.Errorf("unknown preset: %s", key)
-}
-
-var dateSuffixRe = regexp.MustCompile(`-\d{8}$`)
-
-func StripDateSuffix(modelID string) string {
-	return dateSuffixRe.ReplaceAllString(modelID, "")
-}
-
-func (p *CliProfile) MatchesRawID(rawID string) bool {
-	return StripDateSuffix(rawID) == p.Model
 }
 
 func (p *CliProfile) Update(name *string, customArgs *[]string) error {

@@ -96,29 +96,6 @@ func TestCliProfile(t *testing.T) {
 		})
 	})
 
-	t.Run("MatchesRawID", func(t *testing.T) {
-		t.Run("ExactModel_ReturnsTrue", func(t *testing.T) {
-			p, _ := NewCliProfile("test", "claude-sonnet", nil)
-			if !p.MatchesRawID("claude-sonnet-4-6") {
-				t.Error("expected true for exact model match")
-			}
-		})
-
-		t.Run("WithDateSuffix_ReturnsTrue", func(t *testing.T) {
-			p, _ := NewCliProfile("test", "claude-sonnet", nil)
-			if !p.MatchesRawID("claude-sonnet-4-6-20250514") {
-				t.Error("expected true for model with date suffix")
-			}
-		})
-
-		t.Run("DifferentModel_ReturnsFalse", func(t *testing.T) {
-			p, _ := NewCliProfile("test", "claude-sonnet", nil)
-			if p.MatchesRawID("claude-opus-4-6") {
-				t.Error("expected false for different model")
-			}
-		})
-	})
-
 	t.Run("ResolvePreset", func(t *testing.T) {
 		t.Run("AllKnownPresets_ResolvesCorrectly", func(t *testing.T) {
 			for _, preset := range CliProfilePresets {
@@ -144,19 +121,4 @@ func TestCliProfile(t *testing.T) {
 		})
 	})
 
-	t.Run("StripDateSuffix", func(t *testing.T) {
-		t.Run("WithDateSuffix_StripsSuffix", func(t *testing.T) {
-			got := StripDateSuffix("claude-sonnet-4-6-20250514")
-			if got != "claude-sonnet-4-6" {
-				t.Errorf("got %q, want %q", got, "claude-sonnet-4-6")
-			}
-		})
-
-		t.Run("WithoutDateSuffix_ReturnsUnchanged", func(t *testing.T) {
-			got := StripDateSuffix("claude-sonnet-4-6")
-			if got != "claude-sonnet-4-6" {
-				t.Errorf("got %q, want %q", got, "claude-sonnet-4-6")
-			}
-		})
-	})
 }

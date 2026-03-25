@@ -187,23 +187,6 @@ func (t *Team) MemberRelations(memberID string) MemberRelations {
 	}
 }
 
-func (t *Team) DisconnectedWarnings() []string {
-	connected := make(map[string]bool)
-	connected[t.RootMemberID] = true
-	for _, r := range t.Relations {
-		connected[r.From] = true
-		connected[r.To] = true
-	}
-
-	var warnings []string
-	for _, id := range t.MemberIDs {
-		if !connected[id] {
-			warnings = append(warnings, fmt.Sprintf("Member %s has no relations. Connect with 'team relation add' if needed.", id))
-		}
-	}
-	return warnings
-}
-
 func (t *Team) hasMember(memberID string) bool {
 	return t.memberIndex(memberID) != -1
 }

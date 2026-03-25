@@ -86,7 +86,8 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 	}
 
 	if err := s.terminal.Launch(sprint.ID, sprint.Name, members); err != nil {
-		s.failSprint(ctx, sprint.ID, err.Error())
+		_ = sprint.Fail(err.Error())
+		_ = s.store.UpdateSprintState(ctx, sprint.ID, sprint.State, sprint.Error)
 		return nil, fmt.Errorf("launch terminal: %w", err)
 	}
 
@@ -147,6 +148,3 @@ func buildMemberSpecs(sprintID string, snapshot domain.TeamSnapshot, dirs map[st
 	return members, nil
 }
 
-func (s *Service) failSprint(ctx context.Context, sprintID, errMsg string) {
-	_ = s.store.UpdateSprintState(ctx, sprintID, domain.SprintErrored, errMsg)
-}
