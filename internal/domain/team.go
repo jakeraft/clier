@@ -113,6 +113,11 @@ func (t *Team) RemoveMember(memberID string) error {
 }
 
 func (t *Team) AddRelation(r Relation) error {
+	switch r.Type {
+	case RelationLeader, RelationPeer:
+	default:
+		return fmt.Errorf("invalid relation type: %s (must be leader or peer)", r.Type)
+	}
 	if r.From == r.To {
 		return errors.New("cannot create relation to self")
 	}

@@ -171,6 +171,14 @@ func TestTeam(t *testing.T) {
 			}
 		})
 
+		t.Run("InvalidType_ReturnsError", func(t *testing.T) {
+			team := createTeamWithMembers(t, "member-2")
+			err := team.AddRelation(Relation{From: rootID, To: "member-2", Type: "foo"})
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+
 		t.Run("SelfRelation_ReturnsError", func(t *testing.T) {
 			team, _ := NewTeam("team", rootID)
 			err := team.AddRelation(Relation{From: rootID, To: rootID, Type: RelationPeer})
