@@ -93,8 +93,5 @@ func buildEnv(m domain.MemberSnapshot, sprintID, memberHome, dataDir string) []s
 		"CLIER_SPRINT_ID=" + sprintID,
 		"CLIER_MEMBER_ID=" + m.MemberID,
 	}
-	for _, e := range m.Environments {
-		env = append(env, e.Key+"="+e.Value)
-	}
 	return env
 }
