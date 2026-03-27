@@ -34,5 +34,9 @@ go.work.sum
 # binary build file
 clier
 
+# local project config
+CLAUDE.md
+mise.toml
+
 # internal planning docs
 docs/
