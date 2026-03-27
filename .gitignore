@@ -33,3 +33,6 @@ go.work.sum
 
 # binary build file
 clier
+
+# internal planning docs
+docs/
