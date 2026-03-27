@@ -20,15 +20,6 @@ type CliProfile struct {
 	UpdatedAt  int64
 }
 
-type Environment struct {
-	ID        string
-	Name      string
-	Key       string
-	Value     string
-	CreatedAt int64
-	UpdatedAt int64
-}
-
 type GitRepo struct {
 	ID        string
 	Name      string
@@ -44,11 +35,6 @@ type Member struct {
 	GitRepoID    sql.NullString
 	CreatedAt    int64
 	UpdatedAt    int64
-}
-
-type MemberEnvironment struct {
-	MemberID      string
-	EnvironmentID string
 }
 
 type MemberSystemPrompt struct {

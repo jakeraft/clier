@@ -26,14 +26,3 @@ SELECT system_prompt_id FROM member_system_prompts WHERE member_id = ? ORDER BY 
 -- name: DeleteMemberSystemPrompts :execresult
 DELETE FROM member_system_prompts WHERE member_id = ?;
 
--- name: AddMemberEnvironment :execresult
-INSERT INTO member_environments (member_id, environment_id) VALUES (?, ?);
-
--- name: RemoveMemberEnvironment :execresult
-DELETE FROM member_environments WHERE member_id = ? AND environment_id = ?;
-
--- name: ListMemberEnvironmentIDs :many
-SELECT environment_id FROM member_environments WHERE member_id = ? ORDER BY rowid;
-
--- name: DeleteMemberEnvironments :execresult
-DELETE FROM member_environments WHERE member_id = ?;
