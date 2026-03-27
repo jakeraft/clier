@@ -148,4 +148,3 @@ func buildMemberSpecs(sprintID string, snapshot domain.TeamSnapshot, dirs map[st
 
 	return members, nil
 }
-
