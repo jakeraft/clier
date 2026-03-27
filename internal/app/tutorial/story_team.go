@@ -50,12 +50,6 @@ When finished, send the FULL scene text to your leader in a single message. Do N
 		},
 	},
 
-	Environments: []EnvironmentDef{
-		{Name: "eic-env", Key: "STORY_ROLE", Value: "editor-in-chief"},
-		{Name: "se-env", Key: "STORY_ROLE", Value: "section-editor"},
-		{Name: "writer-env", Key: "STORY_ROLE", Value: "writer"},
-	},
-
 	GitRepos: []GitRepoDef{
 		{Name: "story-repo", URL: "https://github.com/jakeraft/clier_hello.git"},
 	},
@@ -66,13 +60,13 @@ When finished, send the FULL scene text to your leader in a single message. Do N
 	},
 
 	Members: []MemberDef{
-		{Name: "chief", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"editor-in-chief"}, EnvNames: []string{"eic-env"}, GitRepoName: "story-repo"},
-		{Name: "se-1", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"section-editor"}, EnvNames: []string{"se-env"}, GitRepoName: "story-repo"},
-		{Name: "se-2", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"section-editor"}, EnvNames: []string{"se-env"}, GitRepoName: "story-repo"},
-		{Name: "writer-1", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"writer"}, EnvNames: []string{"writer-env"}, GitRepoName: "story-repo"},
-		{Name: "writer-2", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"writer"}, EnvNames: []string{"writer-env"}, GitRepoName: "story-repo"},
-		{Name: "writer-3", CliProfileName: "codex", SystemPromptNames: []string{"writer"}, EnvNames: []string{"writer-env"}},
-		{Name: "writer-4", CliProfileName: "codex", SystemPromptNames: []string{"writer"}, EnvNames: []string{"writer-env"}},
+		{Name: "chief", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"editor-in-chief"}, GitRepoName: "story-repo"},
+		{Name: "se-1", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"section-editor"}, GitRepoName: "story-repo"},
+		{Name: "se-2", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"section-editor"}, GitRepoName: "story-repo"},
+		{Name: "writer-1", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"writer"}, GitRepoName: "story-repo"},
+		{Name: "writer-2", CliProfileName: "claude-sonnet", SystemPromptNames: []string{"writer"}, GitRepoName: "story-repo"},
+		{Name: "writer-3", CliProfileName: "codex", SystemPromptNames: []string{"writer"}},
+		{Name: "writer-4", CliProfileName: "codex", SystemPromptNames: []string{"writer"}},
 	},
 
 	Team: TeamDef{

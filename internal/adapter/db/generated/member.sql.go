@@ -10,19 +10,6 @@ import (
 	"database/sql"
 )
 
-const addMemberEnvironment = `-- name: AddMemberEnvironment :execresult
-INSERT INTO member_environments (member_id, environment_id) VALUES (?, ?)
-`
-
-type AddMemberEnvironmentParams struct {
-	MemberID      string
-	EnvironmentID string
-}
-
-func (q *Queries) AddMemberEnvironment(ctx context.Context, arg AddMemberEnvironmentParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, addMemberEnvironment, arg.MemberID, arg.EnvironmentID)
-}
-
 const addMemberSystemPrompt = `-- name: AddMemberSystemPrompt :execresult
 INSERT INTO member_system_prompts (member_id, system_prompt_id) VALUES (?, ?)
 `
@@ -69,14 +56,6 @@ func (q *Queries) DeleteMember(ctx context.Context, id string) (sql.Result, erro
 	return q.db.ExecContext(ctx, deleteMember, id)
 }
 
-const deleteMemberEnvironments = `-- name: DeleteMemberEnvironments :execresult
-DELETE FROM member_environments WHERE member_id = ?
-`
-
-func (q *Queries) DeleteMemberEnvironments(ctx context.Context, memberID string) (sql.Result, error) {
-	return q.db.ExecContext(ctx, deleteMemberEnvironments, memberID)
-}
-
 const deleteMemberSystemPrompts = `-- name: DeleteMemberSystemPrompts :execresult
 DELETE FROM member_system_prompts WHERE member_id = ?
 `
@@ -101,33 +80,6 @@ func (q *Queries) GetMember(ctx context.Context, id string) (Member, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const listMemberEnvironmentIDs = `-- name: ListMemberEnvironmentIDs :many
-SELECT environment_id FROM member_environments WHERE member_id = ? ORDER BY rowid
-`
-
-func (q *Queries) ListMemberEnvironmentIDs(ctx context.Context, memberID string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listMemberEnvironmentIDs, memberID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var environment_id string
-		if err := rows.Scan(&environment_id); err != nil {
-			return nil, err
-		}
-		items = append(items, environment_id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const listMemberSystemPromptIDs = `-- name: ListMemberSystemPromptIDs :many
@@ -189,19 +141,6 @@ func (q *Queries) ListMembers(ctx context.Context) ([]Member, error) {
 		return nil, err
 	}
 	return items, nil
-}
-
-const removeMemberEnvironment = `-- name: RemoveMemberEnvironment :execresult
-DELETE FROM member_environments WHERE member_id = ? AND environment_id = ?
-`
-
-type RemoveMemberEnvironmentParams struct {
-	MemberID      string
-	EnvironmentID string
-}
-
-func (q *Queries) RemoveMemberEnvironment(ctx context.Context, arg RemoveMemberEnvironmentParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, removeMemberEnvironment, arg.MemberID, arg.EnvironmentID)
 }
 
 const removeMemberSystemPrompt = `-- name: RemoveMemberSystemPrompt :execresult

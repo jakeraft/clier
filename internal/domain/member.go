@@ -13,13 +13,12 @@ type Member struct {
 	Name            string    `json:"name"`
 	CliProfileID    string    `json:"cli_profile_id"`
 	SystemPromptIDs []string  `json:"system_prompt_ids"`
-	EnvironmentIDs  []string  `json:"environment_ids"`
 	GitRepoID       string    `json:"git_repo_id"` // empty string means not set
 	CreatedAt       time.Time `json:"created_at"`
 	UpdatedAt       time.Time `json:"updated_at"`
 }
 
-func NewMember(name, cliProfileID string, systemPromptIDs, environmentIDs []string, gitRepoID string) (*Member, error) {
+func NewMember(name, cliProfileID string, systemPromptIDs []string, gitRepoID string) (*Member, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("member name must not be empty")
@@ -32,9 +31,6 @@ func NewMember(name, cliProfileID string, systemPromptIDs, environmentIDs []stri
 	if systemPromptIDs == nil {
 		systemPromptIDs = []string{}
 	}
-	if environmentIDs == nil {
-		environmentIDs = []string{}
-	}
 
 	now := time.Now()
 	return &Member{
@@ -42,14 +38,13 @@ func NewMember(name, cliProfileID string, systemPromptIDs, environmentIDs []stri
 		Name:            name,
 		CliProfileID:    cliProfileID,
 		SystemPromptIDs: systemPromptIDs,
-		EnvironmentIDs:  environmentIDs,
 		GitRepoID:       gitRepoID,
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}, nil
 }
 
-func (m *Member) Update(name, cliProfileID *string, systemPromptIDs, environmentIDs *[]string, gitRepoID *string) error {
+func (m *Member) Update(name, cliProfileID *string, systemPromptIDs *[]string, gitRepoID *string) error {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
@@ -66,9 +61,6 @@ func (m *Member) Update(name, cliProfileID *string, systemPromptIDs, environment
 	}
 	if systemPromptIDs != nil {
 		m.SystemPromptIDs = *systemPromptIDs
-	}
-	if environmentIDs != nil {
-		m.EnvironmentIDs = *environmentIDs
 	}
 	if gitRepoID != nil {
 		m.GitRepoID = *gitRepoID

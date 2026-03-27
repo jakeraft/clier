@@ -109,28 +109,6 @@ func TestBuildCommand(t *testing.T) {
 			}
 		})
 
-		t.Run("WithCustomEnv_IncludesEnvExports", func(t *testing.T) {
-			// given: member with custom environment
-			m := domain.MemberSnapshot{
-				MemberID: "m1",
-				Binary:   domain.BinaryClaude,
-				Model:    "claude-sonnet-4-6",
-				Environments: []domain.EnvironmentSnapshot{
-					{Key: "API_KEY", Value: "secret"},
-				},
-			}
-
-			// when
-			cmd, err := BuildCommand(m, "", "/work", "sprint-1", "/home/m1", "/data/clier")
-			if err != nil {
-				t.Fatalf("BuildCommand: %v", err)
-			}
-
-			// then: command includes custom env export
-			if !strings.Contains(cmd, "export API_KEY='secret'") {
-				t.Errorf("missing API_KEY export in:\n%s", cmd)
-			}
-		})
 	})
 
 	t.Run("Codex", func(t *testing.T) {
@@ -218,19 +196,13 @@ func TestBuildEnvCommand(t *testing.T) {
 }
 
 func TestBuildEnv(t *testing.T) {
-	t.Run("WithCustomEnv_IncludesAllVars", func(t *testing.T) {
-		// given: member with custom API_KEY env
+	t.Run("SystemVars_IncludesAllVars", func(t *testing.T) {
 		m := domain.MemberSnapshot{
 			MemberID: "m1",
-			Environments: []domain.EnvironmentSnapshot{
-				{Key: "API_KEY", Value: "secret"},
-			},
 		}
 
-		// when
 		env := buildEnv(m, "sprint-1", "/home/m1", "/data/clier")
 
-		// then: env contains HOME, CLIER_DATA_DIR, CLIER_SPRINT_ID, CLIER_MEMBER_ID, API_KEY
 		envMap := make(map[string]string)
 		for _, e := range env {
 			parts := strings.SplitN(e, "=", 2)
@@ -242,7 +214,6 @@ func TestBuildEnv(t *testing.T) {
 			"CLIER_DATA_DIR":  "/data/clier",
 			"CLIER_SPRINT_ID": "sprint-1",
 			"CLIER_MEMBER_ID": "m1",
-			"API_KEY":         "secret",
 		} {
 			if envMap[k] != want {
 				t.Errorf("%s = %q, want %q", k, envMap[k], want)

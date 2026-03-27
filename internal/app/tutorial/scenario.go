@@ -11,7 +11,6 @@ import (
 // Store defines the DB operations needed by the tutorial engine.
 type Store interface {
 	CreateSystemPrompt(ctx context.Context, sp *domain.SystemPrompt) error
-	CreateEnvironment(ctx context.Context, e *domain.Environment) error
 	CreateGitRepo(ctx context.Context, r *domain.GitRepo) error
 	CreateCliProfile(ctx context.Context, p *domain.CliProfile) error
 	CreateMember(ctx context.Context, m *domain.Member) error
@@ -23,26 +22,18 @@ type Store interface {
 	ListMembers(ctx context.Context) ([]domain.Member, error)
 	ListCliProfiles(ctx context.Context) ([]domain.CliProfile, error)
 	ListSystemPrompts(ctx context.Context) ([]domain.SystemPrompt, error)
-	ListEnvironments(ctx context.Context) ([]domain.Environment, error)
 	ListGitRepos(ctx context.Context) ([]domain.GitRepo, error)
 
 	DeleteTeam(ctx context.Context, id string) error
 	DeleteMember(ctx context.Context, id string) error
 	DeleteCliProfile(ctx context.Context, id string) error
 	DeleteSystemPrompt(ctx context.Context, id string) error
-	DeleteEnvironment(ctx context.Context, id string) error
 	DeleteGitRepo(ctx context.Context, id string) error
 }
 
 type SystemPromptDef struct {
 	Name   string
 	Prompt string
-}
-
-type EnvironmentDef struct {
-	Name  string
-	Key   string
-	Value string
 }
 
 type GitRepoDef struct {
@@ -59,7 +50,6 @@ type MemberDef struct {
 	Name              string
 	CliProfileName    string
 	SystemPromptNames []string
-	EnvNames          []string
 	GitRepoName       string // empty = none
 }
 
@@ -78,7 +68,6 @@ type Scenario struct {
 	Name          string
 	Description   string
 	SystemPrompts []SystemPromptDef
-	Environments  []EnvironmentDef
 	GitRepos      []GitRepoDef
 	CliProfiles   []CliProfileDef
 	Members       []MemberDef
@@ -122,12 +111,11 @@ func Run(ctx context.Context, store Store, scenario *Scenario) error {
 
 	// Separate ID maps per entity type to prevent name collisions.
 	systemPromptIDs := make(map[string]string)
-	environmentIDs := make(map[string]string)
 	gitRepoIDs := make(map[string]string)
 	cliProfileIDs := make(map[string]string)
 	memberIDs := make(map[string]string)
 
-	// Phase 1: Independent resources (system prompts, environments, git repos, cli profiles)
+	// Phase 1: Independent resources (system prompts, git repos, cli profiles)
 	for _, def := range scenario.SystemPrompts {
 		sp, err := domain.NewSystemPrompt(def.Name, def.Prompt)
 		if err != nil {
@@ -137,17 +125,6 @@ func Run(ctx context.Context, store Store, scenario *Scenario) error {
 			return fmt.Errorf("create system prompt %s: %w", def.Name, err)
 		}
 		systemPromptIDs[def.Name] = sp.ID
-	}
-
-	for _, def := range scenario.Environments {
-		env, err := domain.NewEnvironment(def.Name, def.Key, def.Value)
-		if err != nil {
-			return fmt.Errorf("new environment %s: %w", def.Name, err)
-		}
-		if err := store.CreateEnvironment(ctx, env); err != nil {
-			return fmt.Errorf("create environment %s: %w", def.Name, err)
-		}
-		environmentIDs[def.Name] = env.ID
 	}
 
 	for _, def := range scenario.GitRepos {
@@ -172,7 +149,7 @@ func Run(ctx context.Context, store Store, scenario *Scenario) error {
 		cliProfileIDs[def.Name] = profile.ID
 	}
 
-	// Phase 2: Members (depend on cli profile, system prompts, environments, git repos)
+	// Phase 2: Members (depend on cli profile, system prompts, git repos)
 	for _, def := range scenario.Members {
 		profileID, ok := cliProfileIDs[def.CliProfileName]
 		if !ok {
@@ -188,15 +165,6 @@ func Run(ctx context.Context, store Store, scenario *Scenario) error {
 			spIDs[i] = id
 		}
 
-		envIDs := make([]string, len(def.EnvNames))
-		for i, name := range def.EnvNames {
-			id, ok := environmentIDs[name]
-			if !ok {
-				return fmt.Errorf("member %s: unknown environment %s", def.Name, name)
-			}
-			envIDs[i] = id
-		}
-
 		var gitRepoID string
 		if def.GitRepoName != "" {
 			id, ok := gitRepoIDs[def.GitRepoName]
@@ -206,7 +174,7 @@ func Run(ctx context.Context, store Store, scenario *Scenario) error {
 			gitRepoID = id
 		}
 
-		member, err := domain.NewMember(def.Name, profileID, spIDs, envIDs, gitRepoID)
+		member, err := domain.NewMember(def.Name, profileID, spIDs, gitRepoID)
 		if err != nil {
 			return fmt.Errorf("new member %s: %w", def.Name, err)
 		}
@@ -259,7 +227,7 @@ func Run(ctx context.Context, store Store, scenario *Scenario) error {
 }
 
 // Clean deletes all resources defined in the scenario.
-// Deletion order: teams → members → (cli profiles, system prompts, environments, git repos).
+// Deletion order: teams → members → (cli profiles, system prompts, git repos).
 func Clean(ctx context.Context, store Store, scenario *Scenario) error {
 	// Build name sets from scenario definitions.
 	memberNames := make(map[string]bool, len(scenario.Members))
@@ -273,10 +241,6 @@ func Clean(ctx context.Context, store Store, scenario *Scenario) error {
 	promptNames := make(map[string]bool, len(scenario.SystemPrompts))
 	for _, d := range scenario.SystemPrompts {
 		promptNames[d.Name] = true
-	}
-	envNames := make(map[string]bool, len(scenario.Environments))
-	for _, d := range scenario.Environments {
-		envNames[d.Name] = true
 	}
 	repoNames := make(map[string]bool, len(scenario.GitRepos))
 	for _, d := range scenario.GitRepos {
@@ -296,7 +260,7 @@ func Clean(ctx context.Context, store Store, scenario *Scenario) error {
 		}
 	}
 
-	// 2. Delete members (CASCADE: member_system_prompts, member_environments)
+	// 2. Delete members (CASCADE: member_system_prompts)
 	members, err := store.ListMembers(ctx)
 	if err != nil {
 		return fmt.Errorf("list members: %w", err)
@@ -330,18 +294,6 @@ func Clean(ctx context.Context, store Store, scenario *Scenario) error {
 		if promptNames[sp.Name] {
 			if err := store.DeleteSystemPrompt(ctx, sp.ID); err != nil {
 				return fmt.Errorf("delete system prompt %s: %w", sp.Name, err)
-			}
-		}
-	}
-
-	envs, err := store.ListEnvironments(ctx)
-	if err != nil {
-		return fmt.Errorf("list environments: %w", err)
-	}
-	for _, e := range envs {
-		if envNames[e.Name] {
-			if err := store.DeleteEnvironment(ctx, e.ID); err != nil {
-				return fmt.Errorf("delete environment %s: %w", e.Name, err)
 			}
 		}
 	}

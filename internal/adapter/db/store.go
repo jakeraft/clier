@@ -220,13 +220,6 @@ func (s *Store) CreateMember(ctx context.Context, m *domain.Member) error {
 			return err
 		}
 	}
-	for _, envID := range m.EnvironmentIDs {
-		if _, err := qtx.AddMemberEnvironment(ctx, generated.AddMemberEnvironmentParams{
-			MemberID: m.ID, EnvironmentID: envID,
-		}); err != nil {
-			return err
-		}
-	}
 	return tx.Commit()
 }
 
@@ -239,16 +232,11 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 	if err != nil {
 		return domain.Member{}, err
 	}
-	envIDs, err := s.queries.ListMemberEnvironmentIDs(ctx, id)
-	if err != nil {
-		return domain.Member{}, err
-	}
 	return domain.Member{
 		ID:              row.ID,
 		Name:            row.Name,
 		CliProfileID:    row.CliProfileID,
 		SystemPromptIDs: promptIDs,
-		EnvironmentIDs:  envIDs,
 		GitRepoID:       row.GitRepoID.String,
 		CreatedAt:       time.Unix(row.CreatedAt, 0),
 		UpdatedAt:       time.Unix(row.UpdatedAt, 0),
@@ -299,20 +287,10 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 			return err
 		}
 	}
-	if _, err := qtx.DeleteMemberEnvironments(ctx, m.ID); err != nil {
-		return err
-	}
-	for _, envID := range m.EnvironmentIDs {
-		if _, err := qtx.AddMemberEnvironment(ctx, generated.AddMemberEnvironmentParams{
-			MemberID: m.ID, EnvironmentID: envID,
-		}); err != nil {
-			return err
-		}
-	}
 	return tx.Commit()
 }
 
-// DeleteMember deletes a member. CASCADE: member_system_prompts, member_environments.
+// DeleteMember deletes a member. CASCADE: member_system_prompts.
 // RESTRICT: teams.root_member_id — fails if member is a team's root.
 func (s *Store) DeleteMember(ctx context.Context, id string) error {
 	result, err := s.queries.DeleteMember(ctx, id)
@@ -520,81 +498,6 @@ func (s *Store) DeleteSystemPrompt(ctx context.Context, id string) error {
 	return nil
 }
 
-// Environment
-
-func (s *Store) CreateEnvironment(ctx context.Context, e *domain.Environment) error {
-	_, err := s.queries.CreateEnvironment(ctx, generated.CreateEnvironmentParams{
-		ID:        e.ID,
-		Name:      e.Name,
-		Key:       e.Key,
-		Value:     e.Value,
-		CreatedAt: e.CreatedAt.Unix(),
-		UpdatedAt: e.UpdatedAt.Unix(),
-	})
-	return err
-}
-
-func (s *Store) GetEnvironment(ctx context.Context, id string) (domain.Environment, error) {
-	row, err := s.queries.GetEnvironment(ctx, id)
-	if err != nil {
-		return domain.Environment{}, err
-	}
-	return domain.Environment{
-		ID:        row.ID,
-		Name:      row.Name,
-		Key:       row.Key,
-		Value:     row.Value,
-		CreatedAt: time.Unix(row.CreatedAt, 0),
-		UpdatedAt: time.Unix(row.UpdatedAt, 0),
-	}, nil
-}
-
-func (s *Store) ListEnvironments(ctx context.Context) ([]domain.Environment, error) {
-	rows, err := s.queries.ListEnvironments(ctx)
-	if err != nil {
-		return nil, err
-	}
-	envs := make([]domain.Environment, 0, len(rows))
-	for _, row := range rows {
-		envs = append(envs, domain.Environment{
-			ID:        row.ID,
-			Name:      row.Name,
-			Key:       row.Key,
-			Value:     row.Value,
-			CreatedAt: time.Unix(row.CreatedAt, 0),
-			UpdatedAt: time.Unix(row.UpdatedAt, 0),
-		})
-	}
-	return envs, nil
-}
-
-func (s *Store) UpdateEnvironment(ctx context.Context, e *domain.Environment) error {
-	_, err := s.queries.UpdateEnvironment(ctx, generated.UpdateEnvironmentParams{
-		Name:      e.Name,
-		Key:       e.Key,
-		Value:     e.Value,
-		UpdatedAt: e.UpdatedAt.Unix(),
-		ID:        e.ID,
-	})
-	return err
-}
-
-// DeleteEnvironment deletes an environment. RESTRICT: fails if referenced by a member.
-func (s *Store) DeleteEnvironment(ctx context.Context, id string) error {
-	result, err := s.queries.DeleteEnvironment(ctx, id)
-	if err != nil {
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return fmt.Errorf("environment not found: %s", id)
-	}
-	return nil
-}
-
 // GitRepo
 
 func (s *Store) CreateGitRepo(ctx context.Context, r *domain.GitRepo) error {
@@ -711,15 +614,6 @@ func (s *Store) getMemberSnapshot(ctx context.Context, memberID string) (domain.
 		prompts = append(prompts, domain.PromptSnapshot{Name: sp.Name, Prompt: sp.Prompt})
 	}
 
-	envs := make([]domain.EnvironmentSnapshot, 0, len(member.EnvironmentIDs))
-	for _, id := range member.EnvironmentIDs {
-		env, err := s.GetEnvironment(ctx, id)
-		if err != nil {
-			return domain.MemberSnapshot{}, fmt.Errorf("get environment %s: %w", id, err)
-		}
-		envs = append(envs, domain.EnvironmentSnapshot{Name: env.Name, Key: env.Key, Value: env.Value})
-	}
-
 	var gitRepo *domain.GitRepoSnapshot
 	if member.GitRepoID != "" {
 		repo, err := s.GetGitRepo(ctx, member.GitRepoID)
@@ -739,7 +633,6 @@ func (s *Store) getMemberSnapshot(ctx context.Context, memberID string) (domain.
 		CustomArgs:     profile.CustomArgs,
 		DotConfig:      profile.DotConfig,
 		SystemPrompts:  prompts,
-		Environments:   envs,
 		GitRepo:        gitRepo,
 	}, nil
 }

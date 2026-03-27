@@ -18,15 +18,6 @@ CREATE TABLE IF NOT EXISTS system_prompts (
     updated_at INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS environments (
-    id         TEXT PRIMARY KEY,
-    name       TEXT NOT NULL,
-    key        TEXT NOT NULL,
-    value      TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS git_repos (
     id         TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
@@ -97,10 +88,4 @@ CREATE TABLE IF NOT EXISTS member_system_prompts (
     member_id        TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
     system_prompt_id TEXT NOT NULL REFERENCES system_prompts(id) ON DELETE RESTRICT,
     PRIMARY KEY (member_id, system_prompt_id)
-);
-
-CREATE TABLE IF NOT EXISTS member_environments (
-    member_id      TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-    environment_id TEXT NOT NULL REFERENCES environments(id) ON DELETE RESTRICT,
-    PRIMARY KEY (member_id, environment_id)
 );
