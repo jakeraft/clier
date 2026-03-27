@@ -9,7 +9,7 @@ import (
 func TestMember(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
 		t.Run("ValidInputs_GeneratesUUIDAndSetsFields", func(t *testing.T) {
-			m, err := NewMember("alice", "profile-1", []string{"prompt-1"}, []string{"env-1"}, "repo-1")
+			m, err := NewMember("alice", "profile-1", []string{"prompt-1"}, "repo-1")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -25,24 +25,18 @@ func TestMember(t *testing.T) {
 			if len(m.SystemPromptIDs) != 1 || m.SystemPromptIDs[0] != "prompt-1" {
 				t.Errorf("SystemPromptIDs = %v, want [prompt-1]", m.SystemPromptIDs)
 			}
-			if len(m.EnvironmentIDs) != 1 || m.EnvironmentIDs[0] != "env-1" {
-				t.Errorf("EnvironmentIDs = %v, want [env-1]", m.EnvironmentIDs)
-			}
 			if m.GitRepoID != "repo-1" {
 				t.Errorf("GitRepoID = %q, want %q", m.GitRepoID, "repo-1")
 			}
 		})
 
 		t.Run("NoOptionalFields_DefaultsToEmpty", func(t *testing.T) {
-			m, err := NewMember("bob", "profile-1", nil, nil, "")
+			m, err := NewMember("bob", "profile-1", nil, "")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if len(m.SystemPromptIDs) != 0 {
 				t.Errorf("SystemPromptIDs = %v, want []", m.SystemPromptIDs)
-			}
-			if len(m.EnvironmentIDs) != 0 {
-				t.Errorf("EnvironmentIDs = %v, want []", m.EnvironmentIDs)
 			}
 			if m.GitRepoID != "" {
 				t.Errorf("GitRepoID = %q, want empty", m.GitRepoID)
@@ -50,14 +44,14 @@ func TestMember(t *testing.T) {
 		})
 
 		t.Run("EmptyName_ReturnsError", func(t *testing.T) {
-			_, err := NewMember("", "profile-1", nil, nil, "")
+			_, err := NewMember("", "profile-1", nil, "")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
 		t.Run("EmptyCliProfileID_ReturnsError", func(t *testing.T) {
-			_, err := NewMember("name", "  ", nil, nil, "")
+			_, err := NewMember("name", "  ", nil, "")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -66,13 +60,12 @@ func TestMember(t *testing.T) {
 
 	t.Run("Update", func(t *testing.T) {
 		t.Run("ValidFields_ChangesAllFields", func(t *testing.T) {
-			m, _ := NewMember("old", "profile-1", nil, nil, "")
+			m, _ := NewMember("old", "profile-1", nil, "")
 			name := "new"
 			profileID := "profile-2"
 			prompts := []string{"prompt-1"}
-			envs := []string{"env-1"}
 			repoID := "repo-1"
-			if err := m.Update(&name, &profileID, &prompts, &envs, &repoID); err != nil {
+			if err := m.Update(&name, &profileID, &prompts, &repoID); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if m.Name != "new" {
@@ -84,18 +77,15 @@ func TestMember(t *testing.T) {
 			if len(m.SystemPromptIDs) != 1 {
 				t.Errorf("SystemPromptIDs = %v, want [prompt-1]", m.SystemPromptIDs)
 			}
-			if len(m.EnvironmentIDs) != 1 {
-				t.Errorf("EnvironmentIDs = %v, want [env-1]", m.EnvironmentIDs)
-			}
 			if m.GitRepoID != "repo-1" {
 				t.Errorf("GitRepoID = %q, want %q", m.GitRepoID, "repo-1")
 			}
 		})
 
 		t.Run("ClearGitRepoID_SetsEmpty", func(t *testing.T) {
-			m, _ := NewMember("name", "profile-1", nil, nil, "repo-1")
+			m, _ := NewMember("name", "profile-1", nil, "repo-1")
 			empty := ""
-			if err := m.Update(nil, nil, nil, nil, &empty); err != nil {
+			if err := m.Update(nil, nil, nil, &empty); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if m.GitRepoID != "" {
@@ -104,17 +94,17 @@ func TestMember(t *testing.T) {
 		})
 
 		t.Run("EmptyName_ReturnsError", func(t *testing.T) {
-			m, _ := NewMember("valid", "profile-1", nil, nil, "")
+			m, _ := NewMember("valid", "profile-1", nil, "")
 			name := ""
-			if err := m.Update(&name, nil, nil, nil, nil); err == nil {
+			if err := m.Update(&name, nil, nil, nil); err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
 		t.Run("EmptyCliProfileID_ReturnsError", func(t *testing.T) {
-			m, _ := NewMember("valid", "profile-1", nil, nil, "")
+			m, _ := NewMember("valid", "profile-1", nil, "")
 			profileID := "  "
-			if err := m.Update(nil, &profileID, nil, nil, nil); err == nil {
+			if err := m.Update(nil, &profileID, nil, nil); err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})

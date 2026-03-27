@@ -16,7 +16,6 @@ type MemberSnapshot struct {
 	CustomArgs     []string             `json:"custom_args"`
 	DotConfig      DotConfig            `json:"dot_config"`
 	SystemPrompts  []PromptSnapshot     `json:"system_prompts"`
-	Environments   []EnvironmentSnapshot `json:"environments"`
 	GitRepo        *GitRepoSnapshot     `json:"git_repo"` // nil means not set
 	Relations      MemberRelations      `json:"relations"`
 }
@@ -24,12 +23,6 @@ type MemberSnapshot struct {
 type PromptSnapshot struct {
 	Name   string `json:"name"`
 	Prompt string `json:"prompt"`
-}
-
-type EnvironmentSnapshot struct {
-	Name  string `json:"name"`
-	Key   string `json:"key"`
-	Value string `json:"value"`
 }
 
 type GitRepoSnapshot struct {
