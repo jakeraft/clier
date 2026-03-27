@@ -7,7 +7,7 @@
 |                  | CLI Agent alone              | With Clier                                     |
 |------------------|------------------------------|-------------------------------------------------|
 | Team             | Flat or 1-level deep         | Nested hierarchy with leader/peer edges         |
-| Roles            | Full access, no boundaries   | Scoped — system prompts, env vars, git repos per member |
+| Roles            | Full access, no boundaries   | Scoped — system prompts, git repos per member |
 | Control          | One terminal                 | Each agent in its own terminal — watch, intervene, iterate |
 | Agents           | Single agent                 | Mix Claude, Codex, Gemini in one team           |
 | Communication    | Manual copy & paste          | Built-in messaging between teammates            |
@@ -16,7 +16,7 @@
 
 **1. Nested teams** — Every existing CLI agent orchestrator is capped at depth 1. Clier has no depth limit.
 
-**2. You design the roles** — Without scoping, agents see your entire local environment — too much context makes them unfocused, and unrestricted access is risky. Clier lets you define each member's system prompt, git repo, env vars, and CLI profile. Agents see only what they need.
+**2. You design the roles** — Without scoping, agents see your entire local environment — too much context makes them unfocused, and unrestricted access is risky. Clier lets you define each member's system prompt, git repo, and CLI profile. Agents see only what they need.
 
 **3. Under your control** — Agents run locally in your terminal. You see what they see, intervene when needed, and redirect in real time. No blind API calls.
 
