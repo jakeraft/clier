@@ -19,6 +19,7 @@ func newSprintCmd() *cobra.Command {
 	cmd.AddCommand(newSprintStartCmd())
 	cmd.AddCommand(newSprintStopCmd())
 	cmd.AddCommand(newSprintListCmd())
+	cmd.AddCommand(newSprintContextCmd())
 	return cmd
 }
 
