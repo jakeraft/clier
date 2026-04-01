@@ -7,10 +7,8 @@ import {
   User,
   BookOpen,
   Bot,
-  KeyRound,
   FolderGit2,
 } from "lucide-react";
-import { useBrand } from "@/hooks/use-brand";
 import { typography, typographyIcon } from "@/lib/typography";
 import { cn } from "@/lib/utilities";
 import { flex, gap } from "@/lib/layout";
@@ -27,14 +25,11 @@ const NAV_ITEMS = [
   { to: "/git-repos", label: "Git Repo", icon: FolderGit2 },
   { to: "/cli-profiles", label: "CLI Profile", icon: Bot },
   { to: "/system-prompts", label: "System Prompt", icon: BookOpen },
-  { to: "/environments", label: "Environment", icon: KeyRound },
 ];
 
 export function AppLayout() {
   const navigate = useNavigate();
   const { theme, toggle } = useTheme();
-  const brand = useBrand();
-
   return (
     <div className={cn(flex.col, "h-screen")}>
       <header className="shrink-0 border-b">
@@ -48,7 +43,7 @@ export function AppLayout() {
             }}
           >
             <Logo />
-            {brand.displayName}
+            Clier
           </Button>
           <Nav />
           <div className={cn("ml-auto", flex.row, gap[1])}>

@@ -75,22 +75,17 @@ export function useTeamStructure(teamId: string | undefined) {
   useEffect(() => {
     if (!teamId) return;
 
-    const controller = new AbortController();
     dispatch({ type: "reset" });
 
     api.teams
-      .getStructure(teamId, controller.signal)
+      .getStructure(teamId)
       .then((data) => {
-        if (controller.signal.aborted) return;
         dispatch({ type: "loaded", structure: data });
       })
       .catch((error_: unknown) => {
-        if (controller.signal.aborted) return;
         logger.error("Failed to load team structure", { error: error_ });
         dispatch({ type: "errored", message: getErrorMessage(error_, "Failed to load") });
       });
-
-    return () => controller.abort();
   }, [teamId]);
 
   const layout = useMemo(() => buildLayout(state.structure), [state.structure]);

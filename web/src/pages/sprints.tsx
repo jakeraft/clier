@@ -12,7 +12,7 @@ const columns: EntityTableColumn<SprintView>[] = [
   },
   {
     header: "Team",
-    cell: (r) => <EntityBadge to={`/teams/${r.teamId}`}>{r.teamName}</EntityBadge>,
+    cell: (r) => <EntityBadge to="/teams">{r.teamName}</EntityBadge>,
   },
 ];
 

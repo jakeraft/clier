@@ -58,19 +58,6 @@ export function MemberDetail() {
                 />
               ),
             },
-            {
-              label: "Environment",
-              children: (
-                <EntityBadgeList
-                  entity="environment"
-                  items={member.environmentIds.map((id, i) => ({
-                    id,
-                    name: member.environmentNames[i] ?? EMPTY_DATA,
-                    to: "/environments",
-                  }))}
-                />
-              ),
-            },
           ]}
         />
       </Section>

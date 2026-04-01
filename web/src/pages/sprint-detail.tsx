@@ -36,7 +36,7 @@ export function SprintDetail() {
             { label: "State", children: <StateBadge state={sprint.state} /> },
             {
               label: "Team",
-              children: <EntityBadge to={`/teams/${sprint.teamId}`}>{sprint.teamName}</EntityBadge>,
+              children: <EntityBadge to="/teams">{sprint.teamName}</EntityBadge>,
             },
           ]}
         />

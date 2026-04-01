@@ -27,10 +27,6 @@ const columns: EntityTableColumn<MemberView>[] = [
     header: "System Prompt",
     cell: (m) => <CountBadge count={m.systemPromptIds.length} />,
   },
-  {
-    header: "Environment",
-    cell: (m) => <CountBadge count={m.environmentIds.length} />,
-  },
 ];
 
 export function Members() {
