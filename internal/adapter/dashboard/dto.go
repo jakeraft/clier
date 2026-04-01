@@ -105,6 +105,7 @@ type SystemPromptView struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Prompt    string    `json:"prompt"`
+	BuiltIn   bool      `json:"builtIn"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

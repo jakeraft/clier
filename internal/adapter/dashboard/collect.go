@@ -50,9 +50,17 @@ func Collect(ctx context.Context, store *db.Store) (DashboardData, error) {
 		repoNames[r.ID] = r.Name
 	}
 
+	// Collect built-in prompt IDs to prepend to every member.
+	var builtInIDs []string
+	for _, p := range prompts {
+		if p.BuiltIn {
+			builtInIDs = append(builtInIDs, p.ID)
+		}
+	}
+
 	return DashboardData{
 		Teams:         convertTeams(teams, memberNames),
-		Members:       convertMembers(members, profileNames, promptNames, repoNames),
+		Members:       convertMembers(members, builtInIDs, profileNames, promptNames, repoNames),
 		Sprints:       convertSprints(sprints),
 		CliProfiles:   convertCliProfiles(profiles),
 		SystemPrompts: convertSystemPrompts(prompts),
@@ -86,18 +94,24 @@ func convertTeams(teams []domain.Team, memberNames map[string]string) []TeamView
 	return views
 }
 
-func convertMembers(members []domain.Member, profileNames, promptNames, repoNames map[string]string) []MemberView {
+func convertMembers(members []domain.Member, builtInIDs []string, profileNames, promptNames, repoNames map[string]string) []MemberView {
 	views := make([]MemberView, 0, len(members))
 	for _, m := range members {
-		spNames := make([]string, 0, len(m.SystemPromptIDs))
+		// Built-in prompts first, then user-assigned.
+		spIDs := append([]string{}, builtInIDs...)
+		spNames := make([]string, 0, len(builtInIDs)+len(m.SystemPromptIDs))
+		for _, id := range builtInIDs {
+			spNames = append(spNames, promptNames[id])
+		}
 		for _, id := range m.SystemPromptIDs {
+			spIDs = append(spIDs, id)
 			spNames = append(spNames, promptNames[id])
 		}
 		mv := MemberView{
 			ID:                m.ID,
 			Name:              m.Name,
 			CliProfileID:      m.CliProfileID,
-			SystemPromptIDs:   m.SystemPromptIDs,
+			SystemPromptIDs:   spIDs,
 			CliProfileName:    profileNames[m.CliProfileID],
 			SystemPromptNames: spNames,
 			CreatedAt:         m.CreatedAt,
@@ -193,6 +207,7 @@ func convertSystemPrompts(prompts []domain.SystemPrompt) []SystemPromptView {
 			ID:        p.ID,
 			Name:      p.Name,
 			Prompt:    p.Prompt,
+			BuiltIn:   p.BuiltIn,
 			CreatedAt: p.CreatedAt,
 			UpdatedAt: p.UpdatedAt,
 		})

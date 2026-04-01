@@ -72,6 +72,7 @@ type SystemPrompt struct {
 	ID        string
 	Name      string
 	Prompt    string
+	BuiltIn   int64
 	CreatedAt int64
 	UpdatedAt int64
 }

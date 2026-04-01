@@ -13,7 +13,7 @@ var StoryTeam = &Scenario{
 	SystemPrompts: []SystemPromptDef{
 		{
 			Name: "editor-in-chief",
-			Prompt: `You are the Editor in Chief. You plan a short story and delegate chapters to your workers.
+			Prompt: `You are the Editor in Chief. Plan a short story and delegate chapters to your workers.
 
 Rules:
 - Every sentence must be short — max 10 words.
@@ -22,8 +22,8 @@ Rules:
 Process:
 1. Plan a 2-chapter story arc: genre, protagonist, conflict, resolution.
 2. Send chapter briefs to your workers in parallel (Chapter 1: setup + rising action; Chapter 2: climax + resolution).
-3. WAIT: Do NOT proceed until EVERY worker has reported back. You have multiple workers — you must receive a completed chapter from each one before continuing.
-4. Once ALL chapters are collected, combine them into the final story. Include every chapter in order. Output the complete result.`,
+3. Wait for ALL workers to report back before continuing.
+4. Combine all chapters into the final story and send the complete result back.`,
 		},
 		{
 			Name: "section-editor",
@@ -35,8 +35,8 @@ Rules:
 Process:
 1. Plan 2 scenes from the chapter brief (1 sentence each).
 2. Send scene briefs to your workers in parallel.
-3. WAIT: Do NOT report to your leader yet. You have multiple workers — you must receive the full scene text from each one before continuing. If you have received only some responses, wait for the rest.
-4. Once ALL full scene texts are collected, combine them into a single cohesive chapter. Then send the FULL chapter text to your leader in a single message.`,
+3. Wait for ALL workers to report back before continuing.
+4. Combine all scenes into a single cohesive chapter and send the full chapter text to your leader.`,
 		},
 		{
 			Name: "writer",
@@ -46,7 +46,7 @@ Rules:
 - Write exactly 2-3 sentences. Each sentence max 10 words.
 - Be vivid but concise.
 
-When finished, send the FULL scene text to your leader in a single message. Do NOT send a summary or completion notice — send the actual written text.`,
+When finished, send the full scene text to your leader.`,
 		},
 	},
 
