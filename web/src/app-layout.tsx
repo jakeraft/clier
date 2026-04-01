@@ -22,9 +22,9 @@ const NAV_ITEMS = [
   { to: "/sprints", label: "Sprint", icon: History },
   { to: "/teams", label: "Team", icon: Users },
   { to: "/members", label: "Member", icon: User },
-  { to: "/git-repos", label: "Git Repo", icon: FolderGit2 },
-  { to: "/cli-profiles", label: "CLI Profile", icon: Bot },
-  { to: "/system-prompts", label: "System Prompt", icon: BookOpen },
+  { to: "/git-repos", label: "Repo", icon: FolderGit2 },
+  { to: "/cli-profiles", label: "CLI", icon: Bot },
+  { to: "/system-prompts", label: "Prompt", icon: BookOpen },
 ];
 
 export function AppLayout() {
