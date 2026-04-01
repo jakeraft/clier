@@ -143,6 +143,7 @@ func (c *CmuxTerminal) createWorkspace(name string) (string, error) {
 		_, _ = c.run("close-workspace", "--workspace", wsRef)
 		return "", err
 	}
+	c.setManagedStatus(wsRef)
 	return wsRef, nil
 }
 
@@ -165,6 +166,11 @@ func (c *CmuxTerminal) ensureSurface(wsRef string, index int) (string, error) {
 func (c *CmuxTerminal) renameWorkspace(wsRef, name string) error {
 	_, err := c.run("rename-workspace", "--workspace", wsRef, name)
 	return err
+}
+
+func (c *CmuxTerminal) setManagedStatus(wsRef string) {
+	_, _ = c.run("set-status", "clier", "Managed by clier",
+		"--icon", "gearshape.2.fill", "--color", "#8B5CF6", "--workspace", wsRef)
 }
 
 func (c *CmuxTerminal) renameTab(wsRef, surfaceRef, name string) error {
