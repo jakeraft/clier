@@ -54,7 +54,7 @@ var rootCmd = &cobra.Command{
 		}
 		defer store.Close()
 		// silently regenerate dashboard; ignore errors
-		_ = dashboard.Generate(cmd.Context(), store, cfg.Paths.Base(), web.DistFS, web.DistRoot)
+		_, _ = dashboard.Generate(cmd.Context(), store, cfg.Paths.Base(), web.DistFS, web.DistRoot)
 		return nil
 	},
 }

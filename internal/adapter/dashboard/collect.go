@@ -3,7 +3,7 @@ package dashboard
 import (
 	"context"
 
-	db "github.com/jakeraft/clier/internal/adapter/db"
+	"github.com/jakeraft/clier/internal/adapter/db"
 	"github.com/jakeraft/clier/internal/domain"
 )
 

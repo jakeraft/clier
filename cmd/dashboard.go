@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+	"os/exec"
+
 	"github.com/jakeraft/clier/internal/adapter/dashboard"
 	"github.com/jakeraft/clier/web"
 	"github.com/spf13/cobra"
@@ -24,7 +27,14 @@ func newDashboardCmd() *cobra.Command {
 				return err
 			}
 			defer store.Close()
-			return dashboard.Open(cmd.Context(), store, cfg.Paths.Base(), web.DistFS, web.DistRoot)
+
+			outPath, err := dashboard.Generate(cmd.Context(), store, cfg.Paths.Base(), web.DistFS, web.DistRoot)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(cmd.OutOrStdout(), "Dashboard:", outPath)
+			return exec.Command("open", outPath).Run() // macOS only
 		},
 	}
 }
