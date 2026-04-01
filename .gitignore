@@ -44,3 +44,6 @@ docs/
 # frontend
 web/node_modules/
 web/dist/
+
+# worktrees
+.worktrees/
