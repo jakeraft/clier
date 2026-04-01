@@ -33,7 +33,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 		for _, want := range []string{
 			"Be concise.",
 			"Write tests.",
-			"## Team Protocol",
+			"# Team Protocol",
 			"clier sprint context",
 			"clier message send",
 		} {
@@ -43,7 +43,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 		}
 
 		// user prompts come before bundled protocol
-		protoIdx := strings.Index(got, "## Team Protocol")
+		protoIdx := strings.Index(got, "# Team Protocol")
 		if idx := strings.Index(got, "Be concise."); idx > protoIdx {
 			t.Errorf("user prompt should precede protocol:\n%s", got)
 		}
@@ -69,7 +69,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if !strings.Contains(got, "## Team Protocol") {
+		if !strings.Contains(got, "# Team Protocol") {
 			t.Errorf("missing protocol:\n%s", got)
 		}
 	})

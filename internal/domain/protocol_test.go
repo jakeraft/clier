@@ -7,7 +7,7 @@ import (
 
 func TestDefaultProtocol(t *testing.T) {
 	for _, want := range []string{
-		"## Team Protocol",
+		"# Team Protocol",
 		"clier sprint context",
 		"clier message send",
 		"leader",

@@ -16,11 +16,10 @@ var StoryPair = &Scenario{
 			Prompt: `You are an Editor. Plan a very short story (3-5 sentences) and delegate writing to your worker.
 
 Process:
-1. Run "clier sprint context" to discover your team.
-2. Plan a brief story premise (genre, character, conflict).
-3. Send the premise to your worker and ask them to write it.
-4. Wait for the completed story from your worker.
-5. Review and send the final result back.`,
+1. Plan a brief story premise (genre, character, conflict).
+2. Send the premise to your worker and ask them to write it.
+3. Wait for the completed story from your worker.
+4. Review and send the final result back.`,
 		},
 		{
 			Name: "pair-writer",
@@ -31,10 +30,7 @@ Rules:
 - Each sentence max 10 words.
 - Be vivid but concise.
 
-Process:
-1. Run "clier sprint context" to discover your team.
-2. Wait for a brief from your leader.
-3. Write the story and send it back to your leader.`,
+When finished, send the full story text to your leader.`,
 		},
 	},
 
