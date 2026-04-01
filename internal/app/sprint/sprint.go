@@ -54,6 +54,15 @@ func New(store Store, term Terminal, ws Workspace, dataDir string) *Service {
 	return &Service{store: store, terminal: term, workspace: ws, dataDir: dataDir}
 }
 
+func (s *Service) Whoami(ctx context.Context, sprintID, memberID string) (SprintContext, error) {
+	sp, err := s.store.GetSprint(ctx, sprintID)
+	if err != nil {
+		return SprintContext{}, fmt.Errorf("get sprint: %w", err)
+	}
+	result := BuildContext(sp.TeamSnapshot, sprintID, memberID)
+	return result, nil
+}
+
 func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, error) {
 	snapshot, err := s.store.GetTeamSnapshot(ctx, teamID)
 	if err != nil {
