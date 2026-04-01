@@ -267,17 +267,17 @@ func TestTeam(t *testing.T) {
 			}
 		})
 
-		t.Run("NoRelations_ReturnsNilSlices", func(t *testing.T) {
+		t.Run("NoRelations_ReturnsEmptySlices", func(t *testing.T) {
 			team := createTeamWithMembers(t, "member-2")
 			rel := team.MemberRelations("member-2")
-			if rel.Leaders != nil {
-				t.Errorf("Leaders = %v, want nil", rel.Leaders)
+			if len(rel.Leaders) != 0 {
+				t.Errorf("Leaders = %v, want []", rel.Leaders)
 			}
-			if rel.Workers != nil {
-				t.Errorf("Workers = %v, want nil", rel.Workers)
+			if len(rel.Workers) != 0 {
+				t.Errorf("Workers = %v, want []", rel.Workers)
 			}
-			if rel.Peers != nil {
-				t.Errorf("Peers = %v, want nil", rel.Peers)
+			if len(rel.Peers) != 0 {
+				t.Errorf("Peers = %v, want []", rel.Peers)
 			}
 		})
 	})

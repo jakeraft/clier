@@ -5,12 +5,18 @@ import (
 	"os"
 	"path/filepath"
 
-	db "github.com/jakeraft/clier/internal/adapter/db"
+	"github.com/jakeraft/clier/internal/adapter/db"
+	"github.com/jakeraft/clier/internal/adapter/dashboard"
 	"github.com/jakeraft/clier/internal/adapter/settings"
+	"github.com/jakeraft/clier/web"
 	"github.com/spf13/cobra"
 )
 
 const configDirName = ".clier"
+
+// mutates is the annotation key that marks commands which modify data.
+// PersistentPostRunE checks this to decide whether to regenerate the dashboard.
+const mutates = "mutates"
 
 func dataDir() (string, error) {
 	if dir := os.Getenv("CLIER_DATA_DIR"); dir != "" {
@@ -40,6 +46,22 @@ var rootCmd = &cobra.Command{
 	Short: "Orchestrate AI coding agent teams in isolated workspaces",
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
+	},
+	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+		if cmd.Annotations[mutates] == "" {
+			return nil
+		}
+		cfg, err := newSettings()
+		if err != nil {
+			return nil
+		}
+		store, err := newStore(cfg)
+		if err != nil {
+			return nil
+		}
+		defer store.Close()
+		_, _ = dashboard.Generate(cmd.Context(), store, cfg.Paths.Base(), web.DistFS, web.DistRoot)
+		return nil
 	},
 }
 

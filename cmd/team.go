@@ -27,8 +27,9 @@ func newTeamCreateCmd() *cobra.Command {
 	var name, rootMemberID string
 
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create a team",
+		Use:         "create",
+		Short:       "Create a team",
+		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -85,8 +86,9 @@ func newTeamUpdateCmd() *cobra.Command {
 	var name, rootMemberID string
 
 	cmd := &cobra.Command{
-		Use:   "update <id>",
-		Short: "Update a team",
+		Use:         "update <id>",
+		Short:       "Update a team",
+		Annotations: map[string]string{mutates: "true"},
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
@@ -129,8 +131,9 @@ func newTeamUpdateCmd() *cobra.Command {
 
 func newTeamDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <id>",
-		Short: "Delete a team",
+		Use:         "delete <id>",
+		Short:       "Delete a team",
+		Annotations: map[string]string{mutates: "true"},
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
@@ -164,8 +167,9 @@ func newTeamMemberCmd() *cobra.Command {
 
 func newTeamMemberAddCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "add <team-id> <member-id>",
-		Short: "Add a member to a team",
+		Use:         "add <team-id> <member-id>",
+		Short:       "Add a member to a team",
+		Annotations: map[string]string{mutates: "true"},
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			teamID, memberID := args[0], args[1]
@@ -197,8 +201,9 @@ func newTeamMemberAddCmd() *cobra.Command {
 
 func newTeamMemberRemoveCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "remove <team-id> <member-id>",
-		Short: "Remove a member from a team",
+		Use:         "remove <team-id> <member-id>",
+		Short:       "Remove a member from a team",
+		Annotations: map[string]string{mutates: "true"},
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			teamID, memberID := args[0], args[1]
@@ -268,8 +273,9 @@ func newTeamRelationAddCmd() *cobra.Command {
 	var from, to, relType string
 
 	cmd := &cobra.Command{
-		Use:   "add <team-id>",
-		Short: "Add a relation to a team",
+		Use:         "add <team-id>",
+		Short:       "Add a relation to a team",
+		Annotations: map[string]string{mutates: "true"},
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			teamID := args[0]
@@ -311,8 +317,9 @@ func newTeamRelationRemoveCmd() *cobra.Command {
 	var from, to, relType string
 
 	cmd := &cobra.Command{
-		Use:   "remove <team-id>",
-		Short: "Remove a relation from a team",
+		Use:         "remove <team-id>",
+		Short:       "Remove a relation from a team",
+		Annotations: map[string]string{mutates: "true"},
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			teamID := args[0]

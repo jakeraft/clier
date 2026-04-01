@@ -25,8 +25,9 @@ func newPromptCreateCmd() *cobra.Command {
 	var name, prompt string
 
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create a system prompt",
+		Use:         "create",
+		Short:       "Create a system prompt",
+		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -83,9 +84,10 @@ func newPromptUpdateCmd() *cobra.Command {
 	var name, prompt string
 
 	cmd := &cobra.Command{
-		Use:   "update <id>",
-		Short: "Update a system prompt",
-		Args:  cobra.ExactArgs(1),
+		Use:         "update <id>",
+		Short:       "Update a system prompt",
+		Annotations: map[string]string{mutates: "true"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -127,9 +129,10 @@ func newPromptUpdateCmd() *cobra.Command {
 
 func newPromptDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <id>",
-		Short: "Delete a system prompt",
-		Args:  cobra.ExactArgs(1),
+		Use:         "delete <id>",
+		Short:       "Delete a system prompt",
+		Annotations: map[string]string{mutates: "true"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {

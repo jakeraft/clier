@@ -26,8 +26,9 @@ func newSprintStartCmd() *cobra.Command {
 	var teamID string
 
 	cmd := &cobra.Command{
-		Use:   "start",
-		Short: "Start a sprint",
+		Use:         "start",
+		Short:       "Start a sprint",
+		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -57,9 +58,10 @@ func newSprintStartCmd() *cobra.Command {
 
 func newSprintStopCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "stop <id>",
-		Short: "Stop a sprint",
-		Args:  cobra.ExactArgs(1),
+		Use:         "stop <id>",
+		Short:       "Stop a sprint",
+		Annotations: map[string]string{mutates: "true"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {

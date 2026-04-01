@@ -25,8 +25,9 @@ func newRepoCreateCmd() *cobra.Command {
 	var name, url string
 
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create a git repo",
+		Use:         "create",
+		Short:       "Create a git repo",
+		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -83,9 +84,10 @@ func newRepoUpdateCmd() *cobra.Command {
 	var name, url string
 
 	cmd := &cobra.Command{
-		Use:   "update <id>",
-		Short: "Update a git repo",
-		Args:  cobra.ExactArgs(1),
+		Use:         "update <id>",
+		Short:       "Update a git repo",
+		Annotations: map[string]string{mutates: "true"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -127,9 +129,10 @@ func newRepoUpdateCmd() *cobra.Command {
 
 func newRepoDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <id>",
-		Short: "Delete a git repo",
-		Args:  cobra.ExactArgs(1),
+		Use:         "delete <id>",
+		Short:       "Delete a git repo",
+		Annotations: map[string]string{mutates: "true"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {

@@ -26,8 +26,9 @@ func newMemberCreateCmd() *cobra.Command {
 	var prompts []string
 
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create a member",
+		Use:         "create",
+		Short:       "Create a member",
+		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -87,9 +88,10 @@ func newMemberUpdateCmd() *cobra.Command {
 	var prompts []string
 
 	cmd := &cobra.Command{
-		Use:   "update <id>",
-		Short: "Update a member",
-		Args:  cobra.ExactArgs(1),
+		Use:         "update <id>",
+		Short:       "Update a member",
+		Annotations: map[string]string{mutates: "true"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -141,9 +143,10 @@ func newMemberUpdateCmd() *cobra.Command {
 
 func newMemberDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <id>",
-		Short: "Delete a member",
-		Args:  cobra.ExactArgs(1),
+		Use:         "delete <id>",
+		Short:       "Delete a member",
+		Annotations: map[string]string{mutates: "true"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {

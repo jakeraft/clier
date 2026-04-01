@@ -26,8 +26,9 @@ func newProfileCreateCmd() *cobra.Command {
 	var customArgs []string
 
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create a CLI profile",
+		Use:         "create",
+		Short:       "Create a CLI profile",
+		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -86,9 +87,10 @@ func newProfileUpdateCmd() *cobra.Command {
 	var customArgs []string
 
 	cmd := &cobra.Command{
-		Use:   "update <id>",
-		Short: "Update a CLI profile",
-		Args:  cobra.ExactArgs(1),
+		Use:         "update <id>",
+		Short:       "Update a CLI profile",
+		Annotations: map[string]string{mutates: "true"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -130,9 +132,10 @@ func newProfileUpdateCmd() *cobra.Command {
 
 func newProfileDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <id>",
-		Short: "Delete a CLI profile",
-		Args:  cobra.ExactArgs(1),
+		Use:         "delete <id>",
+		Short:       "Delete a CLI profile",
+		Annotations: map[string]string{mutates: "true"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
