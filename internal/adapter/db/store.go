@@ -362,6 +362,12 @@ func unmarshalCliProfile(row generated.CliProfile) (domain.CliProfile, error) {
 	if err := json.Unmarshal([]byte(row.DotConfig), &dotConfig); err != nil {
 		return domain.CliProfile{}, fmt.Errorf("unmarshal dot_config: %w", err)
 	}
+	if systemArgs == nil {
+		systemArgs = []string{}
+	}
+	if customArgs == nil {
+		customArgs = []string{}
+	}
 	return domain.CliProfile{
 		ID:         row.ID,
 		Name:       row.Name,

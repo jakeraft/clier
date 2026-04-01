@@ -165,7 +165,9 @@ func (t *Team) RemoveRelation(from, to string, relType RelationType) error {
 }
 
 func (t *Team) MemberRelations(memberID string) MemberRelations {
-	var leaders, workers, peers []string
+	leaders := []string{}
+	workers := []string{}
+	peers := []string{}
 
 	for _, r := range t.Relations {
 		switch r.Type {
