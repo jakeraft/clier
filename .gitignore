@@ -40,3 +40,7 @@ mise.toml
 
 # internal planning docs
 docs/
+
+# frontend
+web/node_modules/
+web/dist/
