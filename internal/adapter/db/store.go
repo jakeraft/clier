@@ -596,6 +596,7 @@ func (s *Store) GetTeamSnapshot(ctx context.Context, teamID string) (domain.Team
 			return domain.TeamSnapshot{}, fmt.Errorf("load member %s: %w", id, err)
 		}
 		ms.Relations = team.MemberRelations(id)
+		ms.Protocol = domain.DefaultProtocol
 		members = append(members, ms)
 	}
 

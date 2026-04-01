@@ -18,6 +18,7 @@ type MemberSnapshot struct {
 	SystemPrompts  []PromptSnapshot `json:"system_prompts"`
 	GitRepo        *GitRepoSnapshot `json:"git_repo"` // nil means not set
 	Relations      MemberRelations  `json:"relations"`
+	Protocol       string           `json:"protocol"`
 }
 
 type PromptSnapshot struct {
