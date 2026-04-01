@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jakeraft/clier/internal/app/team"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
 // Store defines the DB operations needed by the sprint engine.
 type Store interface {
-	GetTeamSnapshot(ctx context.Context, teamID string) (domain.TeamSnapshot, error)
 	GetSprint(ctx context.Context, id string) (domain.Sprint, error)
 	CreateSprint(ctx context.Context, sprint *domain.Sprint) error
 	UpdateSprintState(ctx context.Context, sprintID string, state domain.SprintState, sprintErr string) error
@@ -44,14 +44,15 @@ type Workspace interface {
 
 // Service orchestrates sprint lifecycle.
 type Service struct {
+	team      *team.Service
 	store     Store
 	terminal  Terminal
 	workspace Workspace
 	dataDir   string
 }
 
-func New(store Store, term Terminal, ws Workspace, dataDir string) *Service {
-	return &Service{store: store, terminal: term, workspace: ws, dataDir: dataDir}
+func New(teamSvc *team.Service, store Store, term Terminal, ws Workspace, dataDir string) *Service {
+	return &Service{team: teamSvc, store: store, terminal: term, workspace: ws, dataDir: dataDir}
 }
 
 func (s *Service) Whoami(ctx context.Context, sprintID, memberID string) (SprintContext, error) {
@@ -64,7 +65,7 @@ func (s *Service) Whoami(ctx context.Context, sprintID, memberID string) (Sprint
 }
 
 func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, error) {
-	snapshot, err := s.store.GetTeamSnapshot(ctx, teamID)
+	snapshot, err := s.team.Snapshot(ctx, teamID)
 	if err != nil {
 		return nil, fmt.Errorf("get team snapshot: %w", err)
 	}

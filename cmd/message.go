@@ -6,6 +6,7 @@ import (
 
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/app/sprint"
+	"github.com/jakeraft/clier/internal/app/team"
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -53,8 +54,9 @@ func newMessageSendCmd() *cobra.Command {
 			}
 			defer store.Close()
 
+			teamSvc := team.New(store)
 			term := terminal.NewCmuxTerminal(store)
-			svc := sprint.New(store, term, nil, cfg.Paths.Base())
+			svc := sprint.New(teamSvc, store, term, nil, cfg.Paths.Base())
 
 			if err := svc.DeliverMessage(cmd.Context(), sprintID, fromMemberID, toMemberID, args[0]); err != nil {
 				return err
