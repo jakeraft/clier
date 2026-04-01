@@ -1,92 +1,96 @@
-// --- API types (auto-generated from OpenAPI spec) ---
-// Run `pnpm generate:api` to regenerate api-types.ts from the backend's OpenAPI spec.
+import type {
+  DashboardData,
+  TeamView,
+  MemberView,
+  SprintView,
+  CliProfileView,
+  SystemPromptView,
+  GitRepoView,
+} from "@/types";
 
-import type { operations } from "@/lib/api-types";
-
-type ResponseBody<T extends keyof operations> =
-  operations[T] extends { responses: { 200: { content: { "application/json": infer R } } } } ? R :
-  operations[T] extends { responses: { 201: { content: { "application/json": infer R } } } } ? R :
-  never;
-
-export type CliProfileView = ResponseBody<"listCliProfiles">[number];
-export type SystemPromptView = ResponseBody<"listSystemPrompts">[number];
-export type EnvironmentView = ResponseBody<"listEnvironments">[number];
-export type GitRepoView = ResponseBody<"listGitRepos">[number];
-export type MemberView = ResponseBody<"listMembers">[number];
-export type TeamView = ResponseBody<"listTeams">[number];
-export type SprintView = ResponseBody<"listSprints">[number];
-export type BrandInfo = ResponseBody<"getSystemInfo">;
-
-// --- Request layer --
-
-interface ProblemDetail {
-  type?: string;
-  title?: string;
-  status?: number;
-  detail?: string;
-}
-
-interface StructureResponse {
-  rootMemberId: string;
-  members: MemberView[];
-  relations: Array<{ from: string; to: string; type: string }>;
-}
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const headers: HeadersInit = options?.body ? { "Content-Type": "application/json" } : {};
-  const response = await fetch(`/api${path}`, { headers, ...options });
-  if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as ProblemDetail;
-    throw new Error(body.detail ?? body.title ?? `${response.status} ${response.statusText}`);
-  }
-  if (response.status === 204) return undefined as T;
-  try {
-    return (await response.json()) as T;
-  } catch {
-    throw new Error("Invalid response from server");
+declare global {
+  interface Window {
+    __CLIER_DATA__: DashboardData;
   }
 }
 
-function get<T>(path: string, signal?: AbortSignal) {
-  return request<T>(path, signal ? { signal } : undefined);
+function getData(): DashboardData {
+  return window.__CLIER_DATA__;
 }
 
-// --- API client --
+function findById<T extends { id: string }>(items: T[], id: string): T | undefined {
+  return items.find((item) => item.id === id);
+}
+
+export type { CliProfileView, SystemPromptView, GitRepoView, MemberView, TeamView, SprintView };
 
 export const api = {
-  system: {
-    info: (signal?: AbortSignal) => get<BrandInfo>("/system/info", signal),
-  },
   cliProfiles: {
-    list: (signal?: AbortSignal) => get<CliProfileView[]>("/cli-profile", signal),
-    get: (id: string, signal?: AbortSignal) => get<CliProfileView>(`/cli-profile/${id}`, signal),
-  },
-  environments: {
-    list: (signal?: AbortSignal) => get<EnvironmentView[]>("/env", signal),
-    get: (id: string, signal?: AbortSignal) => get<EnvironmentView>(`/env/${id}`, signal),
+    list: (): Promise<CliProfileView[]> => Promise.resolve(getData().cliProfiles),
+    get: (id: string): Promise<CliProfileView> => {
+      const item = findById(getData().cliProfiles, id);
+      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
+    },
   },
   systemPrompts: {
-    list: (signal?: AbortSignal) => get<SystemPromptView[]>("/system-prompt", signal),
-    get: (id: string, signal?: AbortSignal) => get<SystemPromptView>(`/system-prompt/${id}`, signal),
+    list: (): Promise<SystemPromptView[]> => Promise.resolve(getData().systemPrompts),
+    get: (id: string): Promise<SystemPromptView> => {
+      const item = findById(getData().systemPrompts, id);
+      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
+    },
   },
   members: {
-    list: (signal?: AbortSignal) => get<MemberView[]>("/member", signal),
-    get: (id: string, signal?: AbortSignal) => get<MemberView>(`/member/${id}`, signal),
+    list: (): Promise<MemberView[]> => Promise.resolve(getData().members),
+    get: (id: string): Promise<MemberView> => {
+      const item = findById(getData().members, id);
+      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
+    },
   },
   teams: {
-    list: (signal?: AbortSignal) => get<TeamView[]>("/team", signal),
-    get: (id: string, signal?: AbortSignal) => get<TeamView>(`/team/${id}`, signal),
-    getStructure: (id: string, signal?: AbortSignal) => get<StructureResponse>(`/team/${id}/structure`, signal),
-    getMembers: (id: string, signal?: AbortSignal) => get<MemberView[]>(`/team/${id}/members`, signal),
-    getRelations: (id: string, signal?: AbortSignal) =>
-      get<Array<{ from: string; to: string; type: string }>>(`/team/${id}/relations`, signal),
+    list: (): Promise<TeamView[]> => Promise.resolve(getData().teams),
+    get: (id: string): Promise<TeamView> => {
+      const item = findById(getData().teams, id);
+      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
+    },
+    getStructure: (id: string): Promise<{
+      rootMemberId: string;
+      members: Array<MemberView & { cliProfileName: string; systemPromptNames: string[] }>;
+      relations: Array<{ from: string; to: string; type: string }>;
+    }> => {
+      const data = getData();
+      const team = findById(data.teams, id);
+      if (!team) return Promise.reject(new Error("Not found"));
+      const teamMembers = data.members.filter((m) => team.memberIds.includes(m.id));
+      return Promise.resolve({
+        rootMemberId: team.rootMemberId,
+        members: teamMembers,
+        relations: team.relations,
+      });
+    },
+    getMembers: (id: string): Promise<MemberView[]> => {
+      const data = getData();
+      const team = findById(data.teams, id);
+      if (!team) return Promise.reject(new Error("Not found"));
+      return Promise.resolve(data.members.filter((m) => team.memberIds.includes(m.id)));
+    },
+    getRelations: (id: string): Promise<Array<{ from: string; to: string; type: string }>> => {
+      const team = findById(getData().teams, id);
+      if (!team) return Promise.reject(new Error("Not found"));
+      return Promise.resolve(team.relations);
+    },
   },
   sprints: {
-    list: (signal?: AbortSignal) => get<SprintView[]>("/sprint", signal),
-    get: (id: string, signal?: AbortSignal) => get<SprintView>(`/sprint/${id}`, signal),
+    list: (): Promise<SprintView[]> => Promise.resolve(getData().sprints),
+    get: (id: string): Promise<SprintView> => {
+      const item = findById(getData().sprints, id);
+      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
+    },
   },
   gitRepos: {
-    list: (signal?: AbortSignal) => get<GitRepoView[]>("/git-repo", signal),
-    get: (id: string, signal?: AbortSignal) => get<GitRepoView>(`/git-repo/${id}`, signal),
+    list: (): Promise<GitRepoView[]> => Promise.resolve(getData().gitRepos),
+    get: (id: string): Promise<GitRepoView> => {
+      const item = findById(getData().gitRepos, id);
+      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
+    },
   },
 };
