@@ -15,7 +15,7 @@ import (
 
 const jsonPlaceholder = "/* JSON_DATA */"
 
-func Open(ctx context.Context, store *db.Store, distFS embed.FS, distRoot string) error {
+func Open(ctx context.Context, store *db.Store, dataDir string, distFS embed.FS, distRoot string) error {
 	data, err := Collect(ctx, store)
 	if err != nil {
 		return fmt.Errorf("collect data: %w", err)
@@ -37,17 +37,11 @@ func Open(ctx context.Context, store *db.Store, distFS embed.FS, distRoot string
 		return fmt.Errorf("placeholder %q not found in index.html", jsonPlaceholder)
 	}
 
-	tmpFile, err := os.CreateTemp("", "clier-dashboard-*.html")
-	if err != nil {
-		return fmt.Errorf("create temp file: %w", err)
+	outPath := filepath.Join(dataDir, "dashboard.html")
+	if err := os.WriteFile(outPath, []byte(injected), 0644); err != nil {
+		return fmt.Errorf("write dashboard.html: %w", err)
 	}
 
-	if _, err := tmpFile.WriteString(injected); err != nil {
-		tmpFile.Close()
-		return fmt.Errorf("write temp file: %w", err)
-	}
-	tmpFile.Close()
-
-	fmt.Printf("Dashboard: %s\n", tmpFile.Name())
-	return exec.Command("open", tmpFile.Name()).Run()
+	fmt.Printf("Dashboard: %s\n", outPath)
+	return exec.Command("open", outPath).Run()
 }

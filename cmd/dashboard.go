@@ -24,7 +24,7 @@ func newDashboardCmd() *cobra.Command {
 				return err
 			}
 			defer store.Close()
-			return dashboard.Open(cmd.Context(), store, web.DistFS, web.DistRoot)
+			return dashboard.Open(cmd.Context(), store, cfg.Paths.Base(), web.DistFS, web.DistRoot)
 		},
 	}
 }
