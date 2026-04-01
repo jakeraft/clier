@@ -71,6 +71,7 @@ type MemberSnapshotView struct {
 	SystemPrompts  []PromptSnapshotView `json:"systemPrompts"`
 	GitRepo        *GitRepoSnapshotView `json:"gitRepo"`
 	Relations      RelationsView        `json:"relations"`
+	Protocol       string               `json:"protocol"`
 }
 
 type PromptSnapshotView struct {

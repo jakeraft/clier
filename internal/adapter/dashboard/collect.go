@@ -159,6 +159,7 @@ func convertMemberSnapshots(members []domain.MemberSnapshot) []MemberSnapshotVie
 				Workers: emptyIfNil(m.Relations.Workers),
 				Peers:   emptyIfNil(m.Relations.Peers),
 			},
+			Protocol: m.Protocol,
 		}
 		if m.GitRepo != nil {
 			mv.GitRepo = &GitRepoSnapshotView{Name: m.GitRepo.Name, URL: m.GitRepo.URL}

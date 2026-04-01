@@ -71,6 +71,7 @@ export interface MemberSnapshotView {
     workers: string[];
     peers: string[];
   };
+  protocol: string;
 }
 
 export interface CliProfileView {
