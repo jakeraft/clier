@@ -17,7 +17,7 @@ SELECT * FROM system_prompts ORDER BY built_in DESC, created_at;
 SELECT * FROM system_prompts WHERE built_in = 1 ORDER BY created_at;
 
 -- name: UpdateSystemPrompt :execresult
-UPDATE system_prompts SET name = ?, prompt = ?, updated_at = ? WHERE id = ?;
+UPDATE system_prompts SET name = ?, prompt = ?, updated_at = ? WHERE id = ? AND built_in = 0;
 
 -- name: DeleteSystemPrompt :execresult
 DELETE FROM system_prompts WHERE id = ? AND built_in = 0;

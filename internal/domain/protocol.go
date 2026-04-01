@@ -21,14 +21,6 @@ func BuiltInProtocolPrompt() SystemPrompt {
 	}
 }
 
-// BuiltInProtocolSnapshot returns the team protocol as a PromptSnapshot.
-func BuiltInProtocolSnapshot() PromptSnapshot {
-	return PromptSnapshot{
-		Name:   BuiltInProtocolName,
-		Prompt: DefaultProtocol,
-	}
-}
-
 // DefaultProtocol is the static team protocol system prompt.
 // It is the same for all teams and all members.
 // Dynamic context (team structure, own position) is discovered

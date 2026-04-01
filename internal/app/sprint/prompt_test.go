@@ -8,7 +8,7 @@ import (
 )
 
 func TestBuildMemberPrompt(t *testing.T) {
-	t.Run("BundledProtocolAppendedAfterUserPrompts", func(t *testing.T) {
+	t.Run("BuiltInProtocolAppendedAfterUserPrompts", func(t *testing.T) {
 		team := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
@@ -42,7 +42,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 			}
 		}
 
-		// user prompts come before bundled protocol
+		// user prompts come before built-in protocol
 		protoIdx := strings.Index(got, "# Team Protocol")
 		if idx := strings.Index(got, "Be concise."); idx > protoIdx {
 			t.Errorf("user prompt should precede protocol:\n%s", got)

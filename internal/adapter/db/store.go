@@ -480,6 +480,7 @@ func (s *Store) GetSystemPrompt(ctx context.Context, id string) (domain.SystemPr
 		ID:        row.ID,
 		Name:      row.Name,
 		Prompt:    row.Prompt,
+		BuiltIn:   row.BuiltIn == 1,
 		CreatedAt: time.Unix(row.CreatedAt, 0),
 		UpdatedAt: time.Unix(row.UpdatedAt, 0),
 	}, nil
@@ -505,13 +506,23 @@ func (s *Store) ListSystemPrompts(ctx context.Context) ([]domain.SystemPrompt, e
 }
 
 func (s *Store) UpdateSystemPrompt(ctx context.Context, sp *domain.SystemPrompt) error {
-	_, err := s.queries.UpdateSystemPrompt(ctx, generated.UpdateSystemPromptParams{
+	result, err := s.queries.UpdateSystemPrompt(ctx, generated.UpdateSystemPromptParams{
 		Name:      sp.Name,
 		Prompt:    sp.Prompt,
 		UpdatedAt: sp.UpdatedAt.Unix(),
 		ID:        sp.ID,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("cannot update built-in system prompt: %s", sp.ID)
+	}
+	return nil
 }
 
 // DeleteSystemPrompt deletes a system prompt. RESTRICT: fails if referenced by a member.
@@ -642,11 +653,16 @@ func (s *Store) getMemberSnapshot(ctx context.Context, memberID string) (domain.
 	if err != nil {
 		return domain.MemberSnapshot{}, fmt.Errorf("list built-in prompts: %w", err)
 	}
+	builtInIDs := make(map[string]bool, len(builtInRows))
 	prompts := make([]domain.PromptSnapshot, 0, len(builtInRows)+len(member.SystemPromptIDs))
 	for _, row := range builtInRows {
+		builtInIDs[row.ID] = true
 		prompts = append(prompts, domain.PromptSnapshot{Name: row.Name, Prompt: row.Prompt})
 	}
 	for _, id := range member.SystemPromptIDs {
+		if builtInIDs[id] {
+			continue // already included as built-in
+		}
 		sp, err := s.GetSystemPrompt(ctx, id)
 		if err != nil {
 			return domain.MemberSnapshot{}, fmt.Errorf("get prompt %s: %w", id, err)

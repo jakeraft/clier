@@ -128,7 +128,7 @@ func (q *Queries) ListSystemPrompts(ctx context.Context) ([]SystemPrompt, error)
 }
 
 const updateSystemPrompt = `-- name: UpdateSystemPrompt :execresult
-UPDATE system_prompts SET name = ?, prompt = ?, updated_at = ? WHERE id = ?
+UPDATE system_prompts SET name = ?, prompt = ?, updated_at = ? WHERE id = ? AND built_in = 0
 `
 
 type UpdateSystemPromptParams struct {
