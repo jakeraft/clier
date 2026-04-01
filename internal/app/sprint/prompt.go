@@ -8,7 +8,7 @@ import (
 )
 
 // BuildMemberPrompt generates the full prompt for a member by combining
-// system prompts and the team protocol.
+// all system prompts (including the bundled team protocol) into a single string.
 func BuildMemberPrompt(team domain.TeamSnapshot, memberID string) (string, error) {
 	member, ok := findMember(team.Members, memberID)
 	if !ok {
@@ -18,9 +18,6 @@ func BuildMemberPrompt(team domain.TeamSnapshot, memberID string) (string, error
 	var parts []string
 	for _, sp := range member.SystemPrompts {
 		parts = append(parts, sp.Prompt)
-	}
-	if member.Protocol != "" {
-		parts = append(parts, member.Protocol)
 	}
 
 	return strings.Join(parts, "\n\n"), nil

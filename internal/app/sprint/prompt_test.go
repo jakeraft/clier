@@ -8,7 +8,7 @@ import (
 )
 
 func TestBuildMemberPrompt(t *testing.T) {
-	t.Run("ProtocolAppendedAfterSystemPrompts", func(t *testing.T) {
+	t.Run("BundledProtocolAppendedAfterUserPrompts", func(t *testing.T) {
 		team := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
@@ -19,8 +19,8 @@ func TestBuildMemberPrompt(t *testing.T) {
 					SystemPrompts: []domain.PromptSnapshot{
 						{Name: "style", Prompt: "Be concise."},
 						{Name: "testing", Prompt: "Write tests."},
+						{Name: "Team Protocol", Prompt: domain.DefaultProtocol},
 					},
-					Protocol: domain.DefaultProtocol,
 				},
 			},
 		}
@@ -42,14 +42,14 @@ func TestBuildMemberPrompt(t *testing.T) {
 			}
 		}
 
-		// system prompts come before protocol
+		// user prompts come before bundled protocol
 		protoIdx := strings.Index(got, "## Team Protocol")
 		if idx := strings.Index(got, "Be concise."); idx > protoIdx {
-			t.Errorf("system prompt should precede protocol:\n%s", got)
+			t.Errorf("user prompt should precede protocol:\n%s", got)
 		}
 	})
 
-	t.Run("NoSystemPrompts_ProtocolOnly", func(t *testing.T) {
+	t.Run("ProtocolOnlyMember", func(t *testing.T) {
 		team := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
@@ -57,7 +57,9 @@ func TestBuildMemberPrompt(t *testing.T) {
 				{
 					MemberID:   "m-1",
 					MemberName: "Solo",
-					Protocol:   domain.DefaultProtocol,
+					SystemPrompts: []domain.PromptSnapshot{
+						{Name: "Team Protocol", Prompt: domain.DefaultProtocol},
+					},
 				},
 			},
 		}
@@ -72,7 +74,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 		}
 	})
 
-	t.Run("EmptyProtocol_SystemPromptsOnly", func(t *testing.T) {
+	t.Run("NoPrompts_ReturnsEmpty", func(t *testing.T) {
 		team := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
@@ -80,9 +82,6 @@ func TestBuildMemberPrompt(t *testing.T) {
 				{
 					MemberID:   "m-1",
 					MemberName: "Agent",
-					SystemPrompts: []domain.PromptSnapshot{
-						{Name: "style", Prompt: "Be concise."},
-					},
 				},
 			},
 		}
@@ -92,8 +91,8 @@ func TestBuildMemberPrompt(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if got != "Be concise." {
-			t.Errorf("expected only system prompt, got:\n%s", got)
+		if got != "" {
+			t.Errorf("expected empty prompt, got:\n%s", got)
 		}
 	})
 

@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"context"
+	"time"
 
 	"github.com/jakeraft/clier/internal/adapter/db"
 	"github.com/jakeraft/clier/internal/domain"
@@ -159,7 +160,6 @@ func convertMemberSnapshots(members []domain.MemberSnapshot) []MemberSnapshotVie
 				Workers: emptyIfNil(m.Relations.Workers),
 				Peers:   emptyIfNil(m.Relations.Peers),
 			},
-			Protocol: m.Protocol,
 		}
 		if m.GitRepo != nil {
 			mv.GitRepo = &GitRepoSnapshotView{Name: m.GitRepo.Name, URL: m.GitRepo.URL}
@@ -188,7 +188,17 @@ func convertCliProfiles(profiles []domain.CliProfile) []CliProfileView {
 }
 
 func convertSystemPrompts(prompts []domain.SystemPrompt) []SystemPromptView {
-	views := make([]SystemPromptView, 0, len(prompts))
+	bundledAt := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	views := []SystemPromptView{
+		{
+			ID:        "bundled-team-protocol",
+			Name:      "Team Protocol",
+			Prompt:    domain.DefaultProtocol,
+			Bundled:   true,
+			CreatedAt: bundledAt,
+			UpdatedAt: bundledAt,
+		},
+	}
 	for _, p := range prompts {
 		views = append(views, SystemPromptView{
 			ID:        p.ID,

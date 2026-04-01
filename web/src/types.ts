@@ -71,7 +71,6 @@ export interface MemberSnapshotView {
     workers: string[];
     peers: string[];
   };
-  protocol: string;
 }
 
 export interface CliProfileView {
@@ -90,6 +89,7 @@ export interface SystemPromptView {
   id: string;
   name: string;
   prompt: string;
+  bundled?: boolean;
   createdAt: string;
   updatedAt: string;
 }

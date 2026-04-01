@@ -71,7 +71,6 @@ type MemberSnapshotView struct {
 	SystemPrompts  []PromptSnapshotView `json:"systemPrompts"`
 	GitRepo        *GitRepoSnapshotView `json:"gitRepo"`
 	Relations      RelationsView        `json:"relations"`
-	Protocol       string               `json:"protocol"`
 }
 
 type PromptSnapshotView struct {
@@ -106,6 +105,7 @@ type SystemPromptView struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Prompt    string    `json:"prompt"`
+	Bundled   bool      `json:"bundled"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

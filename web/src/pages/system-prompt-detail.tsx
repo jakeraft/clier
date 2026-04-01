@@ -1,5 +1,5 @@
 import { useParams } from "react-router";
-import { BookOpen, ClipboardList } from "lucide-react";
+import { BookOpen, ClipboardList, Lock } from "lucide-react";
 import { api } from "@/api";
 import { typography } from "@/lib/typography";
 import { SectionCard as Section } from "@/components/section-card";
@@ -23,7 +23,12 @@ export function SystemPromptDetail() {
           rows={[
             {
               label: "Name",
-              children: <span className={typography[5]}>{systemPrompt.name}</span>,
+              children: (
+                <span className="flex items-center gap-1.5">
+                  {systemPrompt.bundled && <Lock className="size-3.5 shrink-0" />}
+                  <span className={typography[5]}>{systemPrompt.name}</span>
+                </span>
+              ),
             },
           ]}
         />
