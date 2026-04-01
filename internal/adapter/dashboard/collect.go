@@ -88,17 +88,22 @@ func convertTeams(teams []domain.Team, memberNames map[string]string) []TeamView
 }
 
 func convertMembers(members []domain.Member, profileNames, promptNames, repoNames map[string]string) []MemberView {
+	const bundledID = "bundled-team-protocol"
+	const bundledName = "Team Protocol"
+
 	views := make([]MemberView, 0, len(members))
 	for _, m := range members {
-		spNames := make([]string, 0, len(m.SystemPromptIDs))
+		spIDs := []string{bundledID}
+		spNames := []string{bundledName}
 		for _, id := range m.SystemPromptIDs {
+			spIDs = append(spIDs, id)
 			spNames = append(spNames, promptNames[id])
 		}
 		mv := MemberView{
 			ID:                m.ID,
 			Name:              m.Name,
 			CliProfileID:      m.CliProfileID,
-			SystemPromptIDs:   m.SystemPromptIDs,
+			SystemPromptIDs:   spIDs,
 			CliProfileName:    profileNames[m.CliProfileID],
 			SystemPromptNames: spNames,
 			CreatedAt:         m.CreatedAt,

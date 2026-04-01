@@ -596,10 +596,6 @@ func (s *Store) GetTeamSnapshot(ctx context.Context, teamID string) (domain.Team
 			return domain.TeamSnapshot{}, fmt.Errorf("load member %s: %w", id, err)
 		}
 		ms.Relations = team.MemberRelations(id)
-		ms.SystemPrompts = append(ms.SystemPrompts, domain.PromptSnapshot{
-			Name:   "Team Protocol",
-			Prompt: domain.DefaultProtocol,
-		})
 		members = append(members, ms)
 	}
 
@@ -621,7 +617,10 @@ func (s *Store) getMemberSnapshot(ctx context.Context, memberID string) (domain.
 		return domain.MemberSnapshot{}, fmt.Errorf("get cli profile: %w", err)
 	}
 
-	prompts := make([]domain.PromptSnapshot, 0, len(member.SystemPromptIDs))
+	// Bundled prompts first, then user-assigned prompts.
+	prompts := []domain.PromptSnapshot{
+		{Name: "Team Protocol", Prompt: domain.DefaultProtocol},
+	}
 	for _, id := range member.SystemPromptIDs {
 		sp, err := s.GetSystemPrompt(ctx, id)
 		if err != nil {
