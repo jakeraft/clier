@@ -89,7 +89,7 @@ export interface SystemPromptView {
   id: string;
   name: string;
   prompt: string;
-  bundled?: boolean;
+  builtIn?: boolean;
   createdAt: string;
   updatedAt: string;
 }

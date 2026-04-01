@@ -49,10 +49,29 @@ func NewStore(dbPath string) (*Store, error) {
 		return nil, fmt.Errorf("init schema: %w", err)
 	}
 
-	return &Store{
+	s := &Store{
 		db:      db,
 		queries: generated.New(db),
-	}, nil
+	}
+
+	if err := s.seedBuiltInPrompts(context.Background()); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("seed built-in prompts: %w", err)
+	}
+
+	return s, nil
+}
+
+func (s *Store) seedBuiltInPrompts(ctx context.Context) error {
+	p := domain.BuiltInProtocolPrompt()
+	_, err := s.queries.UpsertBuiltInSystemPrompt(ctx, generated.UpsertBuiltInSystemPromptParams{
+		ID:        p.ID,
+		Name:      p.Name,
+		Prompt:    p.Prompt,
+		CreatedAt: p.CreatedAt.Unix(),
+		UpdatedAt: p.UpdatedAt.Unix(),
+	})
+	return err
 }
 
 func (s *Store) Close() error {
@@ -477,6 +496,7 @@ func (s *Store) ListSystemPrompts(ctx context.Context) ([]domain.SystemPrompt, e
 			ID:        row.ID,
 			Name:      row.Name,
 			Prompt:    row.Prompt,
+			BuiltIn:   row.BuiltIn == 1,
 			CreatedAt: time.Unix(row.CreatedAt, 0),
 			UpdatedAt: time.Unix(row.UpdatedAt, 0),
 		})
@@ -617,9 +637,14 @@ func (s *Store) getMemberSnapshot(ctx context.Context, memberID string) (domain.
 		return domain.MemberSnapshot{}, fmt.Errorf("get cli profile: %w", err)
 	}
 
-	// Bundled prompts first, then user-assigned prompts.
-	prompts := []domain.PromptSnapshot{
-		{Name: "Team Protocol", Prompt: domain.DefaultProtocol},
+	// Built-in prompts first, then user-assigned prompts.
+	builtInRows, err := s.queries.ListBuiltInSystemPrompts(ctx)
+	if err != nil {
+		return domain.MemberSnapshot{}, fmt.Errorf("list built-in prompts: %w", err)
+	}
+	prompts := make([]domain.PromptSnapshot, 0, len(builtInRows)+len(member.SystemPromptIDs))
+	for _, row := range builtInRows {
+		prompts = append(prompts, domain.PromptSnapshot{Name: row.Name, Prompt: row.Prompt})
 	}
 	for _, id := range member.SystemPromptIDs {
 		sp, err := s.GetSystemPrompt(ctx, id)

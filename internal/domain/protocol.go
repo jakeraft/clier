@@ -1,5 +1,34 @@
 package domain
 
+import "time"
+
+const (
+	// BuiltInProtocolID is the well-known ID for the built-in team protocol.
+	BuiltInProtocolID   = "built-in-team-protocol"
+	BuiltInProtocolName = "Team Protocol"
+)
+
+// BuiltInProtocolPrompt returns the team protocol as a SystemPrompt.
+func BuiltInProtocolPrompt() SystemPrompt {
+	t := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	return SystemPrompt{
+		ID:        BuiltInProtocolID,
+		Name:      BuiltInProtocolName,
+		Prompt:    DefaultProtocol,
+		BuiltIn:   true,
+		CreatedAt: t,
+		UpdatedAt: t,
+	}
+}
+
+// BuiltInProtocolSnapshot returns the team protocol as a PromptSnapshot.
+func BuiltInProtocolSnapshot() PromptSnapshot {
+	return PromptSnapshot{
+		Name:   BuiltInProtocolName,
+		Prompt: DefaultProtocol,
+	}
+}
+
 // DefaultProtocol is the static team protocol system prompt.
 // It is the same for all teams and all members.
 // Dynamic context (team structure, own position) is discovered

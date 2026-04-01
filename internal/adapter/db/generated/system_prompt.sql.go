@@ -34,7 +34,7 @@ func (q *Queries) CreateSystemPrompt(ctx context.Context, arg CreateSystemPrompt
 }
 
 const deleteSystemPrompt = `-- name: DeleteSystemPrompt :execresult
-DELETE FROM system_prompts WHERE id = ?
+DELETE FROM system_prompts WHERE id = ? AND built_in = 0
 `
 
 func (q *Queries) DeleteSystemPrompt(ctx context.Context, id string) (sql.Result, error) {
@@ -42,7 +42,7 @@ func (q *Queries) DeleteSystemPrompt(ctx context.Context, id string) (sql.Result
 }
 
 const getSystemPrompt = `-- name: GetSystemPrompt :one
-SELECT id, name, prompt, created_at, updated_at FROM system_prompts WHERE id = ?
+SELECT id, name, prompt, built_in, created_at, updated_at FROM system_prompts WHERE id = ?
 `
 
 func (q *Queries) GetSystemPrompt(ctx context.Context, id string) (SystemPrompt, error) {
@@ -52,14 +52,49 @@ func (q *Queries) GetSystemPrompt(ctx context.Context, id string) (SystemPrompt,
 		&i.ID,
 		&i.Name,
 		&i.Prompt,
+		&i.BuiltIn,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
+const listBuiltInSystemPrompts = `-- name: ListBuiltInSystemPrompts :many
+SELECT id, name, prompt, built_in, created_at, updated_at FROM system_prompts WHERE built_in = 1 ORDER BY created_at
+`
+
+func (q *Queries) ListBuiltInSystemPrompts(ctx context.Context) ([]SystemPrompt, error) {
+	rows, err := q.db.QueryContext(ctx, listBuiltInSystemPrompts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SystemPrompt
+	for rows.Next() {
+		var i SystemPrompt
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Prompt,
+			&i.BuiltIn,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSystemPrompts = `-- name: ListSystemPrompts :many
-SELECT id, name, prompt, created_at, updated_at FROM system_prompts ORDER BY created_at
+SELECT id, name, prompt, built_in, created_at, updated_at FROM system_prompts ORDER BY built_in DESC, created_at
 `
 
 func (q *Queries) ListSystemPrompts(ctx context.Context) ([]SystemPrompt, error) {
@@ -75,6 +110,7 @@ func (q *Queries) ListSystemPrompts(ctx context.Context) ([]SystemPrompt, error)
 			&i.ID,
 			&i.Name,
 			&i.Prompt,
+			&i.BuiltIn,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -108,5 +144,29 @@ func (q *Queries) UpdateSystemPrompt(ctx context.Context, arg UpdateSystemPrompt
 		arg.Prompt,
 		arg.UpdatedAt,
 		arg.ID,
+	)
+}
+
+const upsertBuiltInSystemPrompt = `-- name: UpsertBuiltInSystemPrompt :execresult
+INSERT INTO system_prompts (id, name, prompt, built_in, created_at, updated_at)
+VALUES (?, ?, ?, 1, ?, ?)
+ON CONFLICT (id) DO UPDATE SET name = excluded.name, prompt = excluded.prompt, updated_at = excluded.updated_at
+`
+
+type UpsertBuiltInSystemPromptParams struct {
+	ID        string
+	Name      string
+	Prompt    string
+	CreatedAt int64
+	UpdatedAt int64
+}
+
+func (q *Queries) UpsertBuiltInSystemPrompt(ctx context.Context, arg UpsertBuiltInSystemPromptParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, upsertBuiltInSystemPrompt,
+		arg.ID,
+		arg.Name,
+		arg.Prompt,
+		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
 }

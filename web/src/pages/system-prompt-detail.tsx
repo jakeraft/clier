@@ -25,7 +25,7 @@ export function SystemPromptDetail() {
               label: "Name",
               children: (
                 <span className="flex items-center gap-1.5">
-                  {systemPrompt.bundled && <Lock className="size-3.5 shrink-0" />}
+                  {systemPrompt.builtIn && <Lock className="size-3.5 shrink-0" />}
                   <span className={typography[5]}>{systemPrompt.name}</span>
                 </span>
               ),

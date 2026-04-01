@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"context"
-	"time"
 
 	"github.com/jakeraft/clier/internal/adapter/db"
 	"github.com/jakeraft/clier/internal/domain"
@@ -51,9 +50,17 @@ func Collect(ctx context.Context, store *db.Store) (DashboardData, error) {
 		repoNames[r.ID] = r.Name
 	}
 
+	// Collect built-in prompt IDs to prepend to every member.
+	var builtInIDs []string
+	for _, p := range prompts {
+		if p.BuiltIn {
+			builtInIDs = append(builtInIDs, p.ID)
+		}
+	}
+
 	return DashboardData{
 		Teams:         convertTeams(teams, memberNames),
-		Members:       convertMembers(members, profileNames, promptNames, repoNames),
+		Members:       convertMembers(members, builtInIDs, profileNames, promptNames, repoNames),
 		Sprints:       convertSprints(sprints),
 		CliProfiles:   convertCliProfiles(profiles),
 		SystemPrompts: convertSystemPrompts(prompts),
@@ -87,14 +94,15 @@ func convertTeams(teams []domain.Team, memberNames map[string]string) []TeamView
 	return views
 }
 
-func convertMembers(members []domain.Member, profileNames, promptNames, repoNames map[string]string) []MemberView {
-	const bundledID = "bundled-team-protocol"
-	const bundledName = "Team Protocol"
-
+func convertMembers(members []domain.Member, builtInIDs []string, profileNames, promptNames, repoNames map[string]string) []MemberView {
 	views := make([]MemberView, 0, len(members))
 	for _, m := range members {
-		spIDs := []string{bundledID}
-		spNames := []string{bundledName}
+		// Built-in prompts first, then user-assigned.
+		spIDs := append([]string{}, builtInIDs...)
+		spNames := make([]string, 0, len(builtInIDs)+len(m.SystemPromptIDs))
+		for _, id := range builtInIDs {
+			spNames = append(spNames, promptNames[id])
+		}
 		for _, id := range m.SystemPromptIDs {
 			spIDs = append(spIDs, id)
 			spNames = append(spNames, promptNames[id])
@@ -193,22 +201,13 @@ func convertCliProfiles(profiles []domain.CliProfile) []CliProfileView {
 }
 
 func convertSystemPrompts(prompts []domain.SystemPrompt) []SystemPromptView {
-	bundledAt := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
-	views := []SystemPromptView{
-		{
-			ID:        "bundled-team-protocol",
-			Name:      "Team Protocol",
-			Prompt:    domain.DefaultProtocol,
-			Bundled:   true,
-			CreatedAt: bundledAt,
-			UpdatedAt: bundledAt,
-		},
-	}
+	views := make([]SystemPromptView, 0, len(prompts))
 	for _, p := range prompts {
 		views = append(views, SystemPromptView{
 			ID:        p.ID,
 			Name:      p.Name,
 			Prompt:    p.Prompt,
+			BuiltIn:   p.BuiltIn,
 			CreatedAt: p.CreatedAt,
 			UpdatedAt: p.UpdatedAt,
 		})

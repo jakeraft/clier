@@ -18,7 +18,7 @@ export function SystemPrompts() {
       routeBase="/system-prompts"
       renderName={(c) => (
         <span className="flex items-center gap-1.5">
-          {c.bundled && <Lock className="size-3.5 shrink-0" />}
+          {c.builtIn && <Lock className="size-3.5 shrink-0" />}
           {c.name}
         </span>
       )}
