@@ -14,6 +14,10 @@ import (
 
 const configDirName = ".clier"
 
+// mutates is the annotation key that marks commands which modify data.
+// PersistentPostRunE checks this to decide whether to regenerate the dashboard.
+const mutates = "mutates"
+
 func dataDir() (string, error) {
 	if dir := os.Getenv("CLIER_DATA_DIR"); dir != "" {
 		return dir, nil
@@ -44,16 +48,18 @@ var rootCmd = &cobra.Command{
 		DisableDefaultCmd: true,
 	},
 	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+		if cmd.Annotations[mutates] == "" {
+			return nil
+		}
 		cfg, err := newSettings()
 		if err != nil {
-			return nil // don't fail the main command
+			return nil
 		}
 		store, err := newStore(cfg)
 		if err != nil {
 			return nil
 		}
 		defer store.Close()
-		// silently regenerate dashboard; ignore errors
 		_, _ = dashboard.Generate(cmd.Context(), store, cfg.Paths.Base(), web.DistFS, web.DistRoot)
 		return nil
 	},

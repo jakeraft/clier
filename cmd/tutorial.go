@@ -42,9 +42,10 @@ func newTutorialListCmd() *cobra.Command {
 
 func newTutorialRunCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "run <scenario>",
-		Short: "Run a tutorial scenario (clean + create)",
-		Args:  cobra.ExactArgs(1),
+		Use:         "run <scenario>",
+		Short:       "Run a tutorial scenario (clean + create)",
+		Annotations: map[string]string{mutates: "true"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			scenario, err := tutorial.Get(args[0])
 			if err != nil {
@@ -73,9 +74,10 @@ func newTutorialRunCmd() *cobra.Command {
 
 func newTutorialCleanCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "clean <scenario>",
-		Short: "Delete tutorial scenario data",
-		Args:  cobra.ExactArgs(1),
+		Use:         "clean <scenario>",
+		Short:       "Delete tutorial scenario data",
+		Annotations: map[string]string{mutates: "true"},
+		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			scenario, err := tutorial.Get(args[0])
 			if err != nil {
