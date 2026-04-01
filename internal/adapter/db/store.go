@@ -108,9 +108,9 @@ func (s *Store) GetTeam(ctx context.Context, id string) (domain.Team, error) {
 	if err != nil {
 		return domain.Team{}, err
 	}
-	relations := make([]domain.Relation, len(relRows))
-	for i, r := range relRows {
-		relations[i] = domain.Relation{From: r.FromMemberID, To: r.ToMemberID, Type: domain.RelationType(r.Type)}
+	relations := make([]domain.Relation, 0, len(relRows))
+	for _, r := range relRows {
+		relations = append(relations, domain.Relation{From: r.FromMemberID, To: r.ToMemberID, Type: domain.RelationType(r.Type)})
 	}
 	if memberIDs == nil {
 		memberIDs = []string{}
