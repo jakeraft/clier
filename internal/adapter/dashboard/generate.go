@@ -5,7 +5,6 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,19 +26,9 @@ func Open(ctx context.Context, store *db.Store, distFS embed.FS, distRoot string
 		return fmt.Errorf("marshal data: %w", err)
 	}
 
-	tmpDir, err := os.MkdirTemp("", "clier-dashboard-*")
+	indexBytes, err := distFS.ReadFile(filepath.Join(distRoot, "index.html"))
 	if err != nil {
-		return fmt.Errorf("create temp dir: %w", err)
-	}
-
-	if err := copyEmbedDir(distFS, distRoot, tmpDir); err != nil {
-		return fmt.Errorf("copy assets: %w", err)
-	}
-
-	indexPath := filepath.Join(tmpDir, "index.html")
-	indexBytes, err := os.ReadFile(indexPath)
-	if err != nil {
-		return fmt.Errorf("read index.html: %w", err)
+		return fmt.Errorf("read embedded index.html: %w", err)
 	}
 
 	original := string(indexBytes)
@@ -48,34 +37,17 @@ func Open(ctx context.Context, store *db.Store, distFS embed.FS, distRoot string
 		return fmt.Errorf("placeholder %q not found in index.html", jsonPlaceholder)
 	}
 
-	if err := os.WriteFile(indexPath, []byte(injected), 0644); err != nil {
-		return fmt.Errorf("write index.html: %w", err)
+	tmpFile, err := os.CreateTemp("", "clier-dashboard-*.html")
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
 	}
 
-	fmt.Printf("Dashboard: %s\n", indexPath)
-	return exec.Command("open", indexPath).Run()
-}
+	if _, err := tmpFile.WriteString(injected); err != nil {
+		tmpFile.Close()
+		return fmt.Errorf("write temp file: %w", err)
+	}
+	tmpFile.Close()
 
-func copyEmbedDir(fsys embed.FS, root, dest string) error {
-	return fs.WalkDir(fsys, root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		relPath, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-		targetPath := filepath.Join(dest, relPath)
-
-		if d.IsDir() {
-			return os.MkdirAll(targetPath, 0755)
-		}
-
-		content, err := fsys.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(targetPath, content, 0644)
-	})
+	fmt.Printf("Dashboard: %s\n", tmpFile.Name())
+	return exec.Command("open", tmpFile.Name()).Run()
 }
