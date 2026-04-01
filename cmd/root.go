@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	db "github.com/jakeraft/clier/internal/adapter/db"
+	"github.com/jakeraft/clier/internal/adapter/db"
 	"github.com/jakeraft/clier/internal/adapter/dashboard"
 	"github.com/jakeraft/clier/internal/adapter/settings"
 	"github.com/jakeraft/clier/web"

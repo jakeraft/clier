@@ -27,10 +27,9 @@ func newMessageSendCmd() *cobra.Command {
 	var sprintFlag, toMemberID string
 
 	cmd := &cobra.Command{
-		Use:         "send <content>",
-		Short:       "Send a message to a teammate",
-		Annotations: map[string]string{mutates: "true"},
-		Args:        cobra.ExactArgs(1),
+		Use:   "send <content>",
+		Short: "Send a message to a teammate",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sprintID := sprintFlag
 			if sprintID == "" {
