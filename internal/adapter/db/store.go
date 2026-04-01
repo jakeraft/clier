@@ -112,6 +112,9 @@ func (s *Store) GetTeam(ctx context.Context, id string) (domain.Team, error) {
 	for i, r := range relRows {
 		relations[i] = domain.Relation{From: r.FromMemberID, To: r.ToMemberID, Type: domain.RelationType(r.Type)}
 	}
+	if memberIDs == nil {
+		memberIDs = []string{}
+	}
 	return domain.Team{
 		ID:           row.ID,
 		Name:         row.Name,
@@ -231,6 +234,9 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 	promptIDs, err := s.queries.ListMemberSystemPromptIDs(ctx, id)
 	if err != nil {
 		return domain.Member{}, err
+	}
+	if promptIDs == nil {
+		promptIDs = []string{}
 	}
 	return domain.Member{
 		ID:              row.ID,
