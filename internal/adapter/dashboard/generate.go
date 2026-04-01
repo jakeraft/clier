@@ -15,7 +15,8 @@ import (
 
 const jsonPlaceholder = "/* JSON_DATA */"
 
-func Open(ctx context.Context, store *db.Store, dataDir string, distFS embed.FS, distRoot string) error {
+// Generate writes dashboard.html to dataDir. Does not open the browser.
+func Generate(ctx context.Context, store *db.Store, dataDir string, distFS embed.FS, distRoot string) error {
 	data, err := Collect(ctx, store)
 	if err != nil {
 		return fmt.Errorf("collect data: %w", err)
@@ -42,6 +43,16 @@ func Open(ctx context.Context, store *db.Store, dataDir string, distFS embed.FS,
 		return fmt.Errorf("write dashboard.html: %w", err)
 	}
 
+	return nil
+}
+
+// Open generates dashboard.html and opens it in the browser.
+func Open(ctx context.Context, store *db.Store, dataDir string, distFS embed.FS, distRoot string) error {
+	if err := Generate(ctx, store, dataDir, distFS, distRoot); err != nil {
+		return err
+	}
+
+	outPath := filepath.Join(dataDir, "dashboard.html")
 	fmt.Printf("Dashboard: %s\n", outPath)
 	return exec.Command("open", outPath).Run()
 }
