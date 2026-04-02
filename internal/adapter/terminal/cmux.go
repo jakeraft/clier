@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
 	"github.com/jakeraft/clier/internal/app/sprint"
 	"github.com/jakeraft/clier/internal/domain"
 )
