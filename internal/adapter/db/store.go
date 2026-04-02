@@ -698,18 +698,16 @@ func (s *Store) DeleteGitRepo(ctx context.Context, id string) error {
 // Sprint
 
 func unmarshalSprint(row generated.Sprint) (domain.Sprint, error) {
-	var snapshot domain.TeamSnapshot
-	if err := json.Unmarshal([]byte(row.TeamSnapshot), &snapshot); err != nil {
-		return domain.Sprint{}, fmt.Errorf("unmarshal team_snapshot: %w", err)
+	var snapshot domain.SprintSnapshot
+	if err := json.Unmarshal([]byte(row.Snapshot), &snapshot); err != nil {
+		return domain.Sprint{}, fmt.Errorf("unmarshal snapshot: %w", err)
 	}
 	return domain.Sprint{
-		ID:           row.ID,
-		Name:         row.Name,
-		TeamSnapshot: snapshot,
-		State:        domain.SprintState(row.State),
-		Error:        row.Error,
-		CreatedAt:    time.Unix(row.CreatedAt, 0),
-		UpdatedAt:    time.Unix(row.UpdatedAt, 0),
+		ID:        row.ID,
+		Name:      row.Name,
+		Snapshot:  snapshot,
+		CreatedAt: time.Unix(row.CreatedAt, 0),
+		UpdatedAt: time.Unix(row.UpdatedAt, 0),
 	}, nil
 }
 
@@ -722,28 +720,16 @@ func (s *Store) GetSprint(ctx context.Context, id string) (domain.Sprint, error)
 }
 
 func (s *Store) CreateSprint(ctx context.Context, sprint *domain.Sprint) error {
-	snapshotJSON, err := json.Marshal(sprint.TeamSnapshot)
+	snapshotJSON, err := json.Marshal(sprint.Snapshot)
 	if err != nil {
 		return fmt.Errorf("marshal snapshot: %w", err)
 	}
 	_, err = s.queries.CreateSprint(ctx, generated.CreateSprintParams{
-		ID:           sprint.ID,
-		Name:         sprint.Name,
-		TeamSnapshot: string(snapshotJSON),
-		State:        string(sprint.State),
-		Error:        sprint.Error,
-		CreatedAt:    sprint.CreatedAt.Unix(),
-		UpdatedAt:    sprint.UpdatedAt.Unix(),
-	})
-	return err
-}
-
-func (s *Store) UpdateSprintState(ctx context.Context, sprintID string, state domain.SprintState, sprintErr string) error {
-	_, err := s.queries.UpdateSprintState(ctx, generated.UpdateSprintStateParams{
-		State:     string(state),
-		Error:     sprintErr,
-		UpdatedAt: time.Now().Unix(),
-		ID:        sprintID,
+		ID:        sprint.ID,
+		Name:      sprint.Name,
+		Snapshot:  string(snapshotJSON),
+		CreatedAt: sprint.CreatedAt.Unix(),
+		UpdatedAt: sprint.UpdatedAt.Unix(),
 	})
 	return err
 }

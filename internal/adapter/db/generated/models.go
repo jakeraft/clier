@@ -66,13 +66,11 @@ type Message struct {
 }
 
 type Sprint struct {
-	ID           string
-	Name         string
-	TeamSnapshot string
-	State        string
-	Error        string
-	CreatedAt    int64
-	UpdatedAt    int64
+	ID        string
+	Name      string
+	Snapshot  string
+	CreatedAt int64
+	UpdatedAt int64
 }
 
 type SprintSurface struct {

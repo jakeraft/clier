@@ -44,13 +44,11 @@ CREATE TABLE IF NOT EXISTS teams (
 );
 
 CREATE TABLE IF NOT EXISTS sprints (
-    id            TEXT PRIMARY KEY,
-    name          TEXT NOT NULL,
-    team_snapshot TEXT NOT NULL DEFAULT '{}',
-    state         TEXT NOT NULL DEFAULT 'running',
-    error         TEXT NOT NULL DEFAULT '',
-    created_at    INTEGER NOT NULL,
-    updated_at    INTEGER NOT NULL
+    id         TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    snapshot   TEXT NOT NULL DEFAULT '{}',
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS messages (
