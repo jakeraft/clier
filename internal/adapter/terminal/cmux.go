@@ -83,9 +83,25 @@ func (c *CmuxTerminal) Send(sprintID, memberID, text string) error {
 func (c *CmuxTerminal) Terminate(sprintID string) error {
 	wsRef, err := c.getWorkspaceRef(sprintID)
 	if err == nil {
+		// Gracefully exit each agent before closing the workspace.
+		c.exitAllSurfaces(wsRef)
 		_, _ = c.run("close-workspace", "--workspace", wsRef)
 	}
 	return c.deleteSurfaces(sprintID)
+}
+
+// exitAllSurfaces sends /exit to every surface in the workspace so agents
+// shut down gracefully and don't recreate config dirs after cleanup.
+func (c *CmuxTerminal) exitAllSurfaces(wsRef string) {
+	out, err := c.run("list-pane-surfaces", "--workspace", wsRef)
+	if err != nil {
+		return
+	}
+	for ref := range strings.FieldsSeq(out) {
+		if strings.HasPrefix(ref, "surface:") {
+			_ = c.sendAndEnter(wsRef, ref, "/exit")
+		}
+	}
 }
 
 // setupSurface renames the tab and sends the launch command.

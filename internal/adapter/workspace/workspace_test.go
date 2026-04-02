@@ -50,14 +50,14 @@ func TestWorkspace(t *testing.T) {
 			// Then: returns 2 member dirs with the following structure:
 			//   {baseDir}/sprint-1/
 			//   ├── m1/                  ← alice's Home
-			//   │   ├── .claude/
-			//   │   │   └── settings.json
-			//   │   ├── .claude.json
+			//   │   ├── .claude/         ← CLAUDE_CONFIG_DIR points here
+			//   │   │   ├── settings.json
+			//   │   │   └── .claude.json
 			//   │   └── project/         ← alice's WorkDir
 			//   └── m2/                  ← bob's Home
-			//       ├── .claude/
-			//       │   └── settings.json
-			//       ├── .claude.json
+			//       ├── .claude/         ← CLAUDE_CONFIG_DIR points here
+			//       │   ├── settings.json
+			//       │   └── .claude.json
 			//       └── project/         ← bob's WorkDir
 			if len(dirs) != 2 {
 				t.Fatalf("expected 2 member dirs, got %d", len(dirs))
@@ -152,9 +152,9 @@ func TestWriteConfigs(t *testing.T) {
 
 			// Then: creates the following files:
 			//   {home}/
-			//   ├── .claude/
-			//   │   └── settings.json   ← contains DotConfig values
-			//   └── .claude.json        ← trust config for workDir
+			//   └── .claude/
+			//       ├── settings.json   ← contains DotConfig values
+			//       └── .claude.json    ← trust config for workDir
 			data, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
 			if err != nil {
 				t.Fatalf("read settings.json: %v", err)
@@ -167,7 +167,7 @@ func TestWriteConfigs(t *testing.T) {
 				t.Errorf("settings missing skipDangerousModePermissionPrompt")
 			}
 
-			data, err = os.ReadFile(filepath.Join(home, ".claude.json"))
+			data, err = os.ReadFile(filepath.Join(home, ".claude", ".claude.json"))
 			if err != nil {
 				t.Fatalf("read .claude.json: %v", err)
 			}
@@ -198,13 +198,13 @@ func TestWriteConfigs(t *testing.T) {
 
 			// Then: both files are still created (settings.json will be empty object)
 			//   {home}/
-			//   ├── .claude/
-			//   │   └── settings.json   ← {} (empty but present)
-			//   └── .claude.json        ← trust config
+			//   └── .claude/
+			//       ├── settings.json   ← {} (empty but present)
+			//       └── .claude.json    ← trust config
 			if _, err := os.Stat(filepath.Join(home, ".claude", "settings.json")); err != nil {
 				t.Errorf("settings.json should always be created: %v", err)
 			}
-			if _, err := os.Stat(filepath.Join(home, ".claude.json")); err != nil {
+			if _, err := os.Stat(filepath.Join(home, ".claude", ".claude.json")); err != nil {
 				t.Errorf(".claude.json should always be created: %v", err)
 			}
 		})

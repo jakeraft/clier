@@ -40,7 +40,7 @@ export function CliProfileDetail() {
       </Section>
       <Section icon={Cog} title="Config">
         <ArgumentsBadge
-          args={Object.entries(profile.dotConfig ?? {}).map(([k, v]) => `${k}: ${String(v)}`)}
+          args={Object.entries(profile.dotConfig ?? {}).map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`)}
           variant="secondary"
         />
       </Section>

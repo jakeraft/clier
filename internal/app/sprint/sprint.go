@@ -125,11 +125,6 @@ func (s *Service) Stop(ctx context.Context, sprintID string) error {
 		return fmt.Errorf("update sprint state: %w", err)
 	}
 
-	// Cleanup may leave empty .cache/starship dirs behind.
-	// Cause: cmux surfaces start zsh with the user's .zshrc (starship init)
-	// before HOME is overridden via sendAndEnter. The dying starship process
-	// can recreate $HOME/.cache/starship after RemoveAll. These are 0-byte
-	// empty dirs with no functional impact.
 	if err := s.workspace.Cleanup(sprintID); err != nil {
 		return fmt.Errorf("cleanup workspace: %w", err)
 	}

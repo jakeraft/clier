@@ -134,6 +134,7 @@ func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) err
 		return fmt.Errorf("write settings.json: %w", err)
 	}
 
+	// CLAUDE_CONFIG_DIR points to .claude/, so .claude.json lives inside it.
 	trust := map[string]any{
 		"hasCompletedOnboarding": true,
 		"projects": map[string]any{
@@ -147,7 +148,7 @@ func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) err
 	if err != nil {
 		return fmt.Errorf("marshal trust config: %w", err)
 	}
-	return os.WriteFile(filepath.Join(memberHome, ".claude.json"), data, 0644)
+	return os.WriteFile(filepath.Join(claudeDir, ".claude.json"), data, 0600)
 }
 
 func expandTildePaths(data []byte) []byte {
