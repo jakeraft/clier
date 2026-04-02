@@ -6,8 +6,8 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func testMembers() []domain.MemberSnapshot {
-	return []domain.MemberSnapshot{
+func testMembers() []domain.SprintMemberSnapshot {
+	return []domain.SprintMemberSnapshot{
 		{
 			MemberID:   "leader-1",
 			MemberName: "leader",
@@ -74,8 +74,7 @@ func TestValidateDelivery(t *testing.T) {
 	})
 
 	t.Run("UnconnectedMembers_Rejected", func(t *testing.T) {
-		// worker→leader is not connected (worker has leader as leader, not as worker)
-		members := []domain.MemberSnapshot{
+		members := []domain.SprintMemberSnapshot{
 			{MemberID: "a", MemberName: "A"},
 			{MemberID: "b", MemberName: "B"},
 		}

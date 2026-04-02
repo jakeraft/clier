@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
@@ -11,33 +12,19 @@ import (
 type Store interface {
 	GetSprint(ctx context.Context, id string) (domain.Sprint, error)
 	CreateSprint(ctx context.Context, sprint *domain.Sprint) error
-	UpdateSprintState(ctx context.Context, sprintID string, state domain.SprintState, sprintErr string) error
 	CreateMessage(ctx context.Context, msg *domain.Message) error
-}
-
-// MemberSpec describes what to run for a member in a terminal session.
-type MemberSpec struct {
-	ID      string
-	Name    string
-	Command string
 }
 
 // Terminal defines the terminal operations needed by the sprint engine.
 type Terminal interface {
-	Launch(sprintID, sprintName string, members []MemberSpec) error
+	Launch(sprintID, sprintName string, snapshot domain.SprintSnapshot) error
 	Send(sprintID, memberID, text string) error
 	Terminate(sprintID string) error
 }
 
-// MemberDir holds the prepared directory paths for a member.
-type MemberDir struct {
-	Home    string
-	WorkDir string
-}
-
 // Workspace defines the filesystem operations for sprint environments.
 type Workspace interface {
-	Prepare(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) (map[string]MemberDir, error)
+	Prepare(ctx context.Context, snapshot domain.SprintSnapshot) error
 	Cleanup(sprintID string) error
 }
 
@@ -52,10 +39,11 @@ type Service struct {
 	store     Store
 	terminal  Terminal
 	workspace Workspace
+	baseDir   string
 }
 
-func New(teamSvc TeamSnapshotter, store Store, term Terminal, ws Workspace) *Service {
-	return &Service{team: teamSvc, store: store, terminal: term, workspace: ws}
+func New(teamSvc TeamSnapshotter, store Store, term Terminal, ws Workspace, baseDir string) *Service {
+	return &Service{team: teamSvc, store: store, terminal: term, workspace: ws, baseDir: baseDir}
 }
 
 func (s *Service) Whoami(ctx context.Context, sprintID, memberID string) (SprintPosition, error) {
@@ -63,66 +51,57 @@ func (s *Service) Whoami(ctx context.Context, sprintID, memberID string) (Sprint
 	if err != nil {
 		return SprintPosition{}, fmt.Errorf("get sprint: %w", err)
 	}
-	return BuildPosition(sp.TeamSnapshot, sprintID, memberID)
+	return BuildPosition(sp.Snapshot, sprintID, memberID)
 }
 
 func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, error) {
-	snapshot, err := s.team.Snapshot(ctx, teamID)
+	teamSnap, err := s.team.Snapshot(ctx, teamID)
 	if err != nil {
 		return nil, fmt.Errorf("get team snapshot: %w", err)
 	}
 
-	sprint, err := domain.NewSprint(snapshot)
+	sprintID := uuid.NewString()
+
+	snapshot, err := BuildSprintSnapshot(sprintID, s.baseDir, teamSnap)
+	if err != nil {
+		return nil, fmt.Errorf("build sprint snapshot: %w", err)
+	}
+
+	sp, err := domain.NewSprint(sprintID, snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("new sprint: %w", err)
 	}
 
-	dirs, err := s.workspace.Prepare(ctx, sprint.ID, snapshot)
-	if err != nil {
-		return nil, fmt.Errorf("prepare workspace: %w", err)
+	if err := s.store.CreateSprint(ctx, sp); err != nil {
+		return nil, fmt.Errorf("save sprint: %w", err)
 	}
 
 	success := false
 	defer func() {
 		if !success {
-			_ = s.workspace.Cleanup(sprint.ID)
+			_ = s.workspace.Cleanup(sprintID)
 		}
 	}()
 
-	members, err := buildMemberSpecs(sprint.ID, snapshot, dirs)
-	if err != nil {
-		return nil, fmt.Errorf("build member specs: %w", err)
+	if err := s.workspace.Prepare(ctx, snapshot); err != nil {
+		return nil, fmt.Errorf("prepare workspace: %w", err)
 	}
 
-	if err := s.store.CreateSprint(ctx, sprint); err != nil {
-		return nil, fmt.Errorf("save sprint: %w", err)
-	}
-
-	if err := s.terminal.Launch(sprint.ID, sprint.Name, members); err != nil {
-		_ = sprint.Fail(err.Error())
-		_ = s.store.UpdateSprintState(ctx, sprint.ID, sprint.State, sprint.Error)
+	if err := s.terminal.Launch(sp.ID, sp.Name, snapshot); err != nil {
 		return nil, fmt.Errorf("launch terminal: %w", err)
 	}
 
 	success = true
-	return sprint, nil
+	return sp, nil
 }
 
 func (s *Service) Stop(ctx context.Context, sprintID string) error {
-	sp, err := s.store.GetSprint(ctx, sprintID)
-	if err != nil {
+	if _, err := s.store.GetSprint(ctx, sprintID); err != nil {
 		return fmt.Errorf("get sprint: %w", err)
-	}
-	if err := sp.Complete(); err != nil {
-		return err
 	}
 
 	if err := s.terminal.Terminate(sprintID); err != nil {
 		return fmt.Errorf("terminate terminal: %w", err)
-	}
-
-	if err := s.store.UpdateSprintState(ctx, sprintID, sp.State, sp.Error); err != nil {
-		return fmt.Errorf("update sprint state: %w", err)
 	}
 
 	if err := s.workspace.Cleanup(sprintID); err != nil {
@@ -130,28 +109,4 @@ func (s *Service) Stop(ctx context.Context, sprintID string) error {
 	}
 
 	return nil
-}
-
-func buildMemberSpecs(sprintID string, snapshot domain.TeamSnapshot, dirs map[string]MemberDir) ([]MemberSpec, error) {
-	var members []MemberSpec
-
-	for _, m := range snapshot.Members {
-		dir := dirs[m.MemberID]
-		prompt, err := BuildMemberPrompt(snapshot, m.MemberID)
-		if err != nil {
-			return nil, fmt.Errorf("build prompt for %s: %w", m.MemberName, err)
-		}
-		cmd, err := BuildCommand(m, prompt, dir.WorkDir, sprintID, dir.Home)
-		if err != nil {
-			return nil, fmt.Errorf("build command for %s: %w", m.MemberName, err)
-		}
-
-		members = append(members, MemberSpec{
-			ID:      m.MemberID,
-			Name:    m.MemberName,
-			Command: cmd,
-		})
-	}
-
-	return members, nil
 }

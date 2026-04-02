@@ -8,10 +8,10 @@ import (
 
 func TestBuildPosition(t *testing.T) {
 	t.Run("RootWithWorker", func(t *testing.T) {
-		snapshot := domain.TeamSnapshot{
+		snapshot := domain.SprintSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "boss-1",
-			Members: []domain.MemberSnapshot{
+			Members: []domain.SprintMemberSnapshot{
 				{
 					MemberID:   "boss-1",
 					MemberName: "Boss",
@@ -48,10 +48,10 @@ func TestBuildPosition(t *testing.T) {
 	})
 
 	t.Run("NonRootWithLeaderAndPeer", func(t *testing.T) {
-		snapshot := domain.TeamSnapshot{
+		snapshot := domain.SprintSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "leader-1",
-			Members: []domain.MemberSnapshot{
+			Members: []domain.SprintMemberSnapshot{
 				{MemberID: "leader-1", MemberName: "Editor"},
 				{
 					MemberID:   "writer-1",
@@ -82,10 +82,10 @@ func TestBuildPosition(t *testing.T) {
 	})
 
 	t.Run("UserMemberID_ReturnsAllMembers", func(t *testing.T) {
-		snapshot := domain.TeamSnapshot{
+		snapshot := domain.SprintSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
-			Members: []domain.MemberSnapshot{
+			Members: []domain.SprintMemberSnapshot{
 				{MemberID: "m-1", MemberName: "Agent1"},
 				{MemberID: "m-2", MemberName: "Agent2"},
 			},
@@ -111,10 +111,10 @@ func TestBuildPosition(t *testing.T) {
 	})
 
 	t.Run("UnknownMemberID_ReturnsError", func(t *testing.T) {
-		snapshot := domain.TeamSnapshot{
+		snapshot := domain.SprintSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
-			Members: []domain.MemberSnapshot{
+			Members: []domain.SprintMemberSnapshot{
 				{MemberID: "m-1", MemberName: "Agent"},
 			},
 		}

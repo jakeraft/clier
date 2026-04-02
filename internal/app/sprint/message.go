@@ -13,12 +13,9 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 	if err != nil {
 		return fmt.Errorf("get sprint: %w", err)
 	}
-	if sp.State != domain.SprintRunning {
-		return fmt.Errorf("sprint is not running (state: %s)", sp.State)
-	}
 
-	senderName := resolveSender(sp.TeamSnapshot.Members, fromMemberID)
-	if err := validateDelivery(sp.TeamSnapshot.Members, fromMemberID, toMemberID); err != nil {
+	senderName := resolveSender(sp.Snapshot.Members, fromMemberID)
+	if err := validateDelivery(sp.Snapshot.Members, fromMemberID, toMemberID); err != nil {
 		return err
 	}
 
@@ -34,14 +31,14 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 	return s.terminal.Send(sprintID, toMemberID, text)
 }
 
-func resolveSender(members []domain.MemberSnapshot, fromMemberID string) string {
+func resolveSender(members []domain.SprintMemberSnapshot, fromMemberID string) string {
 	if from, ok := findMember(members, fromMemberID); ok {
 		return from.MemberName
 	}
 	return domain.UserMemberID
 }
 
-func validateDelivery(members []domain.MemberSnapshot, fromMemberID, toMemberID string) error {
+func validateDelivery(members []domain.SprintMemberSnapshot, fromMemberID, toMemberID string) error {
 	isUserSender := fromMemberID == domain.UserMemberID
 	isUserRecipient := toMemberID == domain.UserMemberID
 

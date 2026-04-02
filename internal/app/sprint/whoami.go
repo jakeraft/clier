@@ -22,8 +22,8 @@ type SprintPosition struct {
 	Peers    []MemberRef `json:"peers"`
 }
 
-// BuildPosition builds a SprintPosition for the given member from a team snapshot.
-func BuildPosition(snapshot domain.TeamSnapshot, sprintID, memberID string) (SprintPosition, error) {
+// BuildPosition builds a SprintPosition for the given member from a sprint snapshot.
+func BuildPosition(snapshot domain.SprintSnapshot, sprintID, memberID string) (SprintPosition, error) {
 	nameOf := make(map[string]string, len(snapshot.Members))
 	for _, m := range snapshot.Members {
 		nameOf[m.MemberID] = m.MemberName
@@ -66,4 +66,13 @@ func BuildPosition(snapshot domain.TeamSnapshot, sprintID, memberID string) (Spr
 		Workers:  toRefs(member.Relations.Workers),
 		Peers:    toRefs(member.Relations.Peers),
 	}, nil
+}
+
+func findMember(members []domain.SprintMemberSnapshot, memberID string) (domain.SprintMemberSnapshot, bool) {
+	for _, m := range members {
+		if m.MemberID == memberID {
+			return m, true
+		}
+	}
+	return domain.SprintMemberSnapshot{}, false
 }
