@@ -31,7 +31,7 @@ func newSprintWhoamiCmd() *cobra.Command {
 
 			teamSvc := team.New(store)
 			term := terminal.NewCmuxTerminal(store)
-			svc := sprint.New(teamSvc, store, term, nil)
+			svc := sprint.New(teamSvc, store, term, nil, "")
 
 			result, err := svc.Whoami(cmd.Context(), sprintID, memberID)
 			if err != nil {
