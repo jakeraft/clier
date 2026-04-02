@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jakeraft/clier/internal/app/team"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
@@ -42,20 +41,21 @@ type Workspace interface {
 	Cleanup(sprintID string) error
 }
 
+// TeamSnapshotter aggregates a team's complete state from normalised entities.
+type TeamSnapshotter interface {
+	Snapshot(ctx context.Context, teamID string) (domain.TeamSnapshot, error)
+}
+
 // Service orchestrates sprint lifecycle.
-//
-// TODO: team field uses a concrete *team.Service; extract a TeamSnapshotter
-// interface (Snapshot method) to stay consistent with Store/Terminal/Workspace
-// and to decouple the sprint package from the team package.
 type Service struct {
-	team      *team.Service
+	team      TeamSnapshotter
 	store     Store
 	terminal  Terminal
 	workspace Workspace
 	dataDir   string
 }
 
-func New(teamSvc *team.Service, store Store, term Terminal, ws Workspace, dataDir string) *Service {
+func New(teamSvc TeamSnapshotter, store Store, term Terminal, ws Workspace, dataDir string) *Service {
 	return &Service{team: teamSvc, store: store, terminal: term, workspace: ws, dataDir: dataDir}
 }
 
@@ -64,8 +64,7 @@ func (s *Service) Whoami(ctx context.Context, sprintID, memberID string) (Sprint
 	if err != nil {
 		return SprintContext{}, fmt.Errorf("get sprint: %w", err)
 	}
-	result := BuildContext(sp.TeamSnapshot, sprintID, memberID)
-	return result, nil
+	return BuildContext(sp.TeamSnapshot, sprintID, memberID)
 }
 
 func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, error) {

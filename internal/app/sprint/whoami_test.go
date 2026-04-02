@@ -25,7 +25,10 @@ func TestBuildContext(t *testing.T) {
 			},
 		}
 
-		ctx := BuildContext(snapshot, "sprint-1", "boss-1")
+		ctx, err := BuildContext(snapshot, "sprint-1", "boss-1")
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		if ctx.SprintID != "sprint-1" {
 			t.Errorf("expected SprintID=sprint-1, got %s", ctx.SprintID)
@@ -62,7 +65,10 @@ func TestBuildContext(t *testing.T) {
 			},
 		}
 
-		ctx := BuildContext(snapshot, "sprint-1", "writer-1")
+		ctx, err := BuildContext(snapshot, "sprint-1", "writer-1")
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		if ctx.SprintID != "sprint-1" {
 			t.Errorf("expected SprintID=sprint-1, got %s", ctx.SprintID)
@@ -85,7 +91,10 @@ func TestBuildContext(t *testing.T) {
 			},
 		}
 
-		ctx := BuildContext(snapshot, "sprint-1", domain.UserMemberID)
+		ctx, err := BuildContext(snapshot, "sprint-1", domain.UserMemberID)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		if ctx.SprintID != "sprint-1" {
 			t.Errorf("expected SprintID=sprint-1, got %s", ctx.SprintID)
@@ -98,6 +107,21 @@ func TestBuildContext(t *testing.T) {
 		}
 		if len(ctx.Workers) != len(snapshot.Members) {
 			t.Errorf("user should see all members as workers: %+v", ctx.Workers)
+		}
+	})
+
+	t.Run("UnknownMemberID_ReturnsError", func(t *testing.T) {
+		snapshot := domain.TeamSnapshot{
+			TeamName:     "MyTeam",
+			RootMemberID: "m-1",
+			Members: []domain.MemberSnapshot{
+				{MemberID: "m-1", MemberName: "Agent"},
+			},
+		}
+
+		_, err := BuildContext(snapshot, "sprint-1", "nonexistent")
+		if err == nil {
+			t.Error("should return error for unknown member ID")
 		}
 	})
 }

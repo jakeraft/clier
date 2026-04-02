@@ -1,6 +1,10 @@
 package sprint
 
-import "github.com/jakeraft/clier/internal/domain"
+import (
+	"fmt"
+
+	"github.com/jakeraft/clier/internal/domain"
+)
 
 // MemberRef is a lightweight member reference for context output.
 type MemberRef struct {
@@ -19,7 +23,7 @@ type SprintContext struct {
 }
 
 // BuildContext builds a SprintContext for the given member from a team snapshot.
-func BuildContext(snapshot domain.TeamSnapshot, sprintID, memberID string) SprintContext {
+func BuildContext(snapshot domain.TeamSnapshot, sprintID, memberID string) (SprintContext, error) {
 	nameOf := make(map[string]string, len(snapshot.Members))
 	for _, m := range snapshot.Members {
 		nameOf[m.MemberID] = m.MemberName
@@ -38,19 +42,12 @@ func BuildContext(snapshot domain.TeamSnapshot, sprintID, memberID string) Sprin
 			Leaders:  []MemberRef{},
 			Workers:  workers,
 			Peers:    []MemberRef{},
-		}
+		}, nil
 	}
 
 	member, ok := findMember(snapshot.Members, memberID)
 	if !ok {
-		return SprintContext{
-			SprintID: sprintID,
-			TeamName: snapshot.TeamName,
-			Me:       MemberRef{MemberID: memberID},
-			Leaders:  []MemberRef{},
-			Workers:  []MemberRef{},
-			Peers:    []MemberRef{},
-		}
+		return SprintContext{}, fmt.Errorf("member %q not found in team %q", memberID, snapshot.TeamName)
 	}
 
 	toRefs := func(ids []string) []MemberRef {
@@ -68,5 +65,5 @@ func BuildContext(snapshot domain.TeamSnapshot, sprintID, memberID string) Sprin
 		Leaders:  toRefs(member.Relations.Leaders),
 		Workers:  toRefs(member.Relations.Workers),
 		Peers:    toRefs(member.Relations.Peers),
-	}
+	}, nil
 }
