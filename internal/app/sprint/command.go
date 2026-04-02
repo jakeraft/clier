@@ -90,9 +90,22 @@ func quoteArgs(args []string) []string {
 	return quoted
 }
 
+// configDirEnv returns the environment variable assignment that controls
+// where each CLI stores its dotfiles, avoiding a full HOME override.
+func configDirEnv(binary domain.CliBinary, memberHome string) string {
+	switch binary {
+	case domain.BinaryClaude:
+		return "CLAUDE_CONFIG_DIR=" + filepath.Join(memberHome, ".claude")
+	case domain.BinaryCodex:
+		return "CODEX_HOME=" + filepath.Join(memberHome, ".codex")
+	default:
+		return "HOME=" + memberHome
+	}
+}
+
 func buildEnv(m domain.MemberSnapshot, sprintID, memberHome string) []string {
 	env := []string{
-		"HOME=" + memberHome,
+		configDirEnv(m.Binary, memberHome),
 		"CLIER_SPRINT_ID=" + sprintID,
 		"CLIER_MEMBER_ID=" + m.MemberID,
 	}

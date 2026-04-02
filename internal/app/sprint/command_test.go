@@ -98,7 +98,7 @@ func TestBuildCommand(t *testing.T) {
 				"--dangerously-skip-permissions",
 				"--verbose",
 				"--append-system-prompt",
-				"export HOME='/home/m1'",
+				"export CLAUDE_CONFIG_DIR='/home/m1/.claude'",
 				"export CLIER_SPRINT_ID='sprint-1'",
 				"export CLIER_MEMBER_ID='m1'",
 			} {
@@ -195,9 +195,10 @@ func TestBuildEnvCommand(t *testing.T) {
 }
 
 func TestBuildEnv(t *testing.T) {
-	t.Run("SystemVars_IncludesAllVars", func(t *testing.T) {
+	t.Run("Claude_UsesClaudeConfigDir", func(t *testing.T) {
 		m := domain.MemberSnapshot{
 			MemberID: "m1",
+			Binary:   domain.BinaryClaude,
 		}
 
 		env := buildEnv(m, "sprint-1", "/home/m1")
@@ -209,19 +210,45 @@ func TestBuildEnv(t *testing.T) {
 		}
 
 		for k, want := range map[string]string{
-			"HOME":            "/home/m1",
-			"CLIER_SPRINT_ID": "sprint-1",
-			"CLIER_MEMBER_ID": "m1",
+			"CLAUDE_CONFIG_DIR": "/home/m1/.claude",
+			"CLIER_SPRINT_ID":   "sprint-1",
+			"CLIER_MEMBER_ID":   "m1",
 		} {
 			if envMap[k] != want {
 				t.Errorf("%s = %q, want %q", k, envMap[k], want)
 			}
+		}
+		if _, ok := envMap["HOME"]; ok {
+			t.Error("HOME should not be set for claude")
+		}
+	})
+
+	t.Run("Codex_UsesCodexHome", func(t *testing.T) {
+		m := domain.MemberSnapshot{
+			MemberID: "m1",
+			Binary:   domain.BinaryCodex,
+		}
+
+		env := buildEnv(m, "sprint-1", "/home/m1")
+
+		envMap := make(map[string]string)
+		for _, e := range env {
+			parts := strings.SplitN(e, "=", 2)
+			envMap[parts[0]] = parts[1]
+		}
+
+		if envMap["CODEX_HOME"] != "/home/m1/.codex" {
+			t.Errorf("CODEX_HOME = %q, want %q", envMap["CODEX_HOME"], "/home/m1/.codex")
+		}
+		if _, ok := envMap["HOME"]; ok {
+			t.Error("HOME should not be set for codex")
 		}
 	})
 
 	t.Run("WithEnvs_AppendsCustomEnvVars", func(t *testing.T) {
 		m := domain.MemberSnapshot{
 			MemberID: "m1",
+			Binary:   domain.BinaryClaude,
 			Envs: []domain.EnvSnapshot{
 				{Name: "github-token", Key: "GITHUB_TOKEN", Value: "ghp_xxx"},
 				{Name: "ssh-sock", Key: "SSH_AUTH_SOCK", Value: "/tmp/ssh.sock"},
@@ -236,9 +263,9 @@ func TestBuildEnv(t *testing.T) {
 			envMap[parts[0]] = parts[1]
 		}
 
-		// system vars still present
-		if envMap["HOME"] != "/home/m1" {
-			t.Errorf("HOME = %q, want %q", envMap["HOME"], "/home/m1")
+		// config dir var present
+		if envMap["CLAUDE_CONFIG_DIR"] != "/home/m1/.claude" {
+			t.Errorf("CLAUDE_CONFIG_DIR = %q, want %q", envMap["CLAUDE_CONFIG_DIR"], "/home/m1/.claude")
 		}
 
 		// custom vars appended
@@ -253,6 +280,7 @@ func TestBuildEnv(t *testing.T) {
 	t.Run("NoEnvs_OnlySystemVars", func(t *testing.T) {
 		m := domain.MemberSnapshot{
 			MemberID: "m1",
+			Binary:   domain.BinaryClaude,
 			Envs:     nil,
 		}
 
