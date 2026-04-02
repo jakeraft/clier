@@ -59,12 +59,12 @@ func New(teamSvc TeamSnapshotter, store Store, term Terminal, ws Workspace, data
 	return &Service{team: teamSvc, store: store, terminal: term, workspace: ws, dataDir: dataDir}
 }
 
-func (s *Service) Whoami(ctx context.Context, sprintID, memberID string) (SprintContext, error) {
+func (s *Service) Whoami(ctx context.Context, sprintID, memberID string) (SprintPosition, error) {
 	sp, err := s.store.GetSprint(ctx, sprintID)
 	if err != nil {
-		return SprintContext{}, fmt.Errorf("get sprint: %w", err)
+		return SprintPosition{}, fmt.Errorf("get sprint: %w", err)
 	}
-	return BuildContext(sp.TeamSnapshot, sprintID, memberID)
+	return BuildPosition(sp.TeamSnapshot, sprintID, memberID)
 }
 
 func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, error) {

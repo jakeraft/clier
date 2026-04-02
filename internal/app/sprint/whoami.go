@@ -6,14 +6,14 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-// MemberRef is a lightweight member reference for context output.
+// MemberRef is a lightweight member reference for position output.
 type MemberRef struct {
 	MemberID   string `json:"member_id"`
 	MemberName string `json:"member_name"`
 }
 
-// SprintContext describes a member's position within a sprint team.
-type SprintContext struct {
+// SprintPosition describes a member's position within a sprint team.
+type SprintPosition struct {
 	SprintID string      `json:"sprint_id"`
 	TeamName string      `json:"team_name"`
 	Me       MemberRef   `json:"me"`
@@ -22,8 +22,8 @@ type SprintContext struct {
 	Peers    []MemberRef `json:"peers"`
 }
 
-// BuildContext builds a SprintContext for the given member from a team snapshot.
-func BuildContext(snapshot domain.TeamSnapshot, sprintID, memberID string) (SprintContext, error) {
+// BuildPosition builds a SprintPosition for the given member from a team snapshot.
+func BuildPosition(snapshot domain.TeamSnapshot, sprintID, memberID string) (SprintPosition, error) {
 	nameOf := make(map[string]string, len(snapshot.Members))
 	for _, m := range snapshot.Members {
 		nameOf[m.MemberID] = m.MemberName
@@ -35,7 +35,7 @@ func BuildContext(snapshot domain.TeamSnapshot, sprintID, memberID string) (Spri
 		for _, m := range snapshot.Members {
 			workers = append(workers, MemberRef{MemberID: m.MemberID, MemberName: m.MemberName})
 		}
-		return SprintContext{
+		return SprintPosition{
 			SprintID: sprintID,
 			TeamName: snapshot.TeamName,
 			Me:       MemberRef{MemberID: domain.UserMemberID, MemberName: "user"},
@@ -47,7 +47,7 @@ func BuildContext(snapshot domain.TeamSnapshot, sprintID, memberID string) (Spri
 
 	member, ok := findMember(snapshot.Members, memberID)
 	if !ok {
-		return SprintContext{}, fmt.Errorf("member %q not found in team %q", memberID, snapshot.TeamName)
+		return SprintPosition{}, fmt.Errorf("member %q not found in team %q", memberID, snapshot.TeamName)
 	}
 
 	toRefs := func(ids []string) []MemberRef {
@@ -58,7 +58,7 @@ func BuildContext(snapshot domain.TeamSnapshot, sprintID, memberID string) (Spri
 		return refs
 	}
 
-	return SprintContext{
+	return SprintPosition{
 		SprintID: sprintID,
 		TeamName: snapshot.TeamName,
 		Me:       MemberRef{MemberID: member.MemberID, MemberName: member.MemberName},

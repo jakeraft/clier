@@ -6,7 +6,7 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func TestBuildContext(t *testing.T) {
+func TestBuildPosition(t *testing.T) {
 	t.Run("RootWithWorker", func(t *testing.T) {
 		snapshot := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
@@ -25,25 +25,25 @@ func TestBuildContext(t *testing.T) {
 			},
 		}
 
-		ctx, err := BuildContext(snapshot, "sprint-1", "boss-1")
+		pos, err := BuildPosition(snapshot, "sprint-1", "boss-1")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if ctx.SprintID != "sprint-1" {
-			t.Errorf("expected SprintID=sprint-1, got %s", ctx.SprintID)
+		if pos.SprintID != "sprint-1" {
+			t.Errorf("expected SprintID=sprint-1, got %s", pos.SprintID)
 		}
-		if ctx.TeamName != "MyTeam" {
-			t.Errorf("expected TeamName=MyTeam, got %s", ctx.TeamName)
+		if pos.TeamName != "MyTeam" {
+			t.Errorf("expected TeamName=MyTeam, got %s", pos.TeamName)
 		}
-		if ctx.Me.MemberID != "boss-1" || ctx.Me.MemberName != "Boss" {
-			t.Errorf("unexpected Me: %+v", ctx.Me)
+		if pos.Me.MemberID != "boss-1" || pos.Me.MemberName != "Boss" {
+			t.Errorf("unexpected Me: %+v", pos.Me)
 		}
-		if len(ctx.Workers) != 1 || ctx.Workers[0].MemberName != "Writer" {
-			t.Errorf("unexpected Workers: %+v", ctx.Workers)
+		if len(pos.Workers) != 1 || pos.Workers[0].MemberName != "Writer" {
+			t.Errorf("unexpected Workers: %+v", pos.Workers)
 		}
-		if len(ctx.Leaders) != 0 {
-			t.Errorf("root should have no leaders: %+v", ctx.Leaders)
+		if len(pos.Leaders) != 0 {
+			t.Errorf("root should have no leaders: %+v", pos.Leaders)
 		}
 	})
 
@@ -65,19 +65,19 @@ func TestBuildContext(t *testing.T) {
 			},
 		}
 
-		ctx, err := BuildContext(snapshot, "sprint-1", "writer-1")
+		pos, err := BuildPosition(snapshot, "sprint-1", "writer-1")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if ctx.SprintID != "sprint-1" {
-			t.Errorf("expected SprintID=sprint-1, got %s", ctx.SprintID)
+		if pos.SprintID != "sprint-1" {
+			t.Errorf("expected SprintID=sprint-1, got %s", pos.SprintID)
 		}
-		if len(ctx.Leaders) != 1 || ctx.Leaders[0].MemberName != "Editor" {
-			t.Errorf("unexpected Leaders: %+v", ctx.Leaders)
+		if len(pos.Leaders) != 1 || pos.Leaders[0].MemberName != "Editor" {
+			t.Errorf("unexpected Leaders: %+v", pos.Leaders)
 		}
-		if len(ctx.Peers) != 1 || ctx.Peers[0].MemberName != "Reviewer" {
-			t.Errorf("unexpected Peers: %+v", ctx.Peers)
+		if len(pos.Peers) != 1 || pos.Peers[0].MemberName != "Reviewer" {
+			t.Errorf("unexpected Peers: %+v", pos.Peers)
 		}
 	})
 
@@ -91,22 +91,22 @@ func TestBuildContext(t *testing.T) {
 			},
 		}
 
-		ctx, err := BuildContext(snapshot, "sprint-1", domain.UserMemberID)
+		pos, err := BuildPosition(snapshot, "sprint-1", domain.UserMemberID)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if ctx.SprintID != "sprint-1" {
-			t.Errorf("expected SprintID=sprint-1, got %s", ctx.SprintID)
+		if pos.SprintID != "sprint-1" {
+			t.Errorf("expected SprintID=sprint-1, got %s", pos.SprintID)
 		}
-		if ctx.Me.MemberID != domain.UserMemberID {
-			t.Errorf("expected UserMemberID, got %s", ctx.Me.MemberID)
+		if pos.Me.MemberID != domain.UserMemberID {
+			t.Errorf("expected UserMemberID, got %s", pos.Me.MemberID)
 		}
-		if ctx.Me.MemberName != "user" {
-			t.Errorf("expected name=user, got %s", ctx.Me.MemberName)
+		if pos.Me.MemberName != "user" {
+			t.Errorf("expected name=user, got %s", pos.Me.MemberName)
 		}
-		if len(ctx.Workers) != len(snapshot.Members) {
-			t.Errorf("user should see all members as workers: %+v", ctx.Workers)
+		if len(pos.Workers) != len(snapshot.Members) {
+			t.Errorf("user should see all members as workers: %+v", pos.Workers)
 		}
 	})
 
@@ -119,7 +119,7 @@ func TestBuildContext(t *testing.T) {
 			},
 		}
 
-		_, err := BuildContext(snapshot, "sprint-1", "nonexistent")
+		_, err := BuildPosition(snapshot, "sprint-1", "nonexistent")
 		if err == nil {
 			t.Error("should return error for unknown member ID")
 		}
