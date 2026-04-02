@@ -43,6 +43,10 @@ type Workspace interface {
 }
 
 // Service orchestrates sprint lifecycle.
+//
+// TODO: team field uses a concrete *team.Service; extract a TeamSnapshotter
+// interface (Snapshot method) to stay consistent with Store/Terminal/Workspace
+// and to decouple the sprint package from the team package.
 type Service struct {
 	team      *team.Service
 	store     Store
