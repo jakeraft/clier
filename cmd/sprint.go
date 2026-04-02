@@ -4,6 +4,7 @@ import (
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/adapter/workspace"
 	"github.com/jakeraft/clier/internal/app/sprint"
+	"github.com/jakeraft/clier/internal/app/team"
 	"github.com/spf13/cobra"
 )
 
@@ -41,9 +42,10 @@ func newSprintStartCmd() *cobra.Command {
 			}
 			defer store.Close()
 
+			teamSvc := team.New(store)
 			term := terminal.NewCmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces(), cfg.Auth)
-			svc := sprint.New(store, term, ws, cfg.Paths.Base())
+			svc := sprint.New(teamSvc, store, term, ws, cfg.Paths.Base())
 
 			sp, err := svc.Start(cmd.Context(), teamID)
 			if err != nil {
@@ -74,9 +76,10 @@ func newSprintStopCmd() *cobra.Command {
 			}
 			defer store.Close()
 
+			teamSvc := team.New(store)
 			term := terminal.NewCmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces(), cfg.Auth)
-			svc := sprint.New(store, term, ws, cfg.Paths.Base())
+			svc := sprint.New(teamSvc, store, term, ws, cfg.Paths.Base())
 
 			if err := svc.Stop(cmd.Context(), args[0]); err != nil {
 				return err
