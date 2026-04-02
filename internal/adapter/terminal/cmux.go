@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/jakeraft/clier/internal/app/sprint"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
@@ -29,12 +28,11 @@ func NewCmuxTerminal(surfaces SurfaceStore) *CmuxTerminal {
 	return &CmuxTerminal{binary: "cmux", surfaces: surfaces}
 }
 
-func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.MemberSpec) error {
-	if len(members) == 0 {
+func (c *CmuxTerminal) Launch(sprintID, sprintName string, snapshot domain.SprintSnapshot) error {
+	if len(snapshot.Members) == 0 {
 		return errors.New("no members to launch")
 	}
 
-	// Save the caller's surface as "user" so agents can message back.
 	if err := c.saveCallerSurface(sprintID); err != nil {
 		return fmt.Errorf("save caller surface: %w", err)
 	}
@@ -44,7 +42,6 @@ func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.Memb
 		return fmt.Errorf("create workspace: %w", err)
 	}
 
-	// Cleanup workspace and saved surfaces on any subsequent failure
 	success := false
 	defer func() {
 		if !success {
@@ -53,17 +50,17 @@ func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.Memb
 		}
 	}()
 
-	for i, m := range members {
+	for i, m := range snapshot.Members {
 		surfaceRef, err := c.ensureSurface(wsRef, i)
 		if err != nil {
 			return fmt.Errorf("ensure surface: %w", err)
 		}
 
-		if err := c.setupSurface(wsRef, surfaceRef, m); err != nil {
+		if err := c.setupMemberSurface(wsRef, surfaceRef, m); err != nil {
 			return err
 		}
 
-		if err := c.saveSurface(sprintID, m.ID, wsRef, surfaceRef); err != nil {
+		if err := c.saveSurface(sprintID, m.MemberID, wsRef, surfaceRef); err != nil {
 			return fmt.Errorf("save surface: %w", err)
 		}
 	}
@@ -104,9 +101,8 @@ func (c *CmuxTerminal) exitAllSurfaces(wsRef string) {
 	}
 }
 
-// setupSurface renames the tab and sends the launch command.
-func (c *CmuxTerminal) setupSurface(wsRef, surfaceRef string, m sprint.MemberSpec) error {
-	if err := c.renameTab(wsRef, surfaceRef, m.Name); err != nil {
+func (c *CmuxTerminal) setupMemberSurface(wsRef, surfaceRef string, m domain.SprintMemberSnapshot) error {
+	if err := c.renameTab(wsRef, surfaceRef, m.MemberName); err != nil {
 		return fmt.Errorf("rename tab: %w", err)
 	}
 	if m.Command != "" {
