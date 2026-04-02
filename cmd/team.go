@@ -424,7 +424,7 @@ func newTeamExportCmd() *cobra.Command {
 				if err := os.WriteFile(output, data, 0644); err != nil {
 					return fmt.Errorf("write file: %w", err)
 				}
-				fmt.Fprintf(cmd.ErrOrStderr(), "Exported to %s\n", output)
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Exported to %s\n", output)
 				return nil
 			}
 
@@ -482,7 +482,7 @@ func readSource(src string) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("fetch URL: %w", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("fetch URL: %s", resp.Status)
 		}

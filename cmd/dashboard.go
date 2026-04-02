@@ -33,7 +33,7 @@ func newDashboardCmd() *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintln(cmd.OutOrStdout(), "Dashboard:", outPath)
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "Dashboard:", outPath)
 			return exec.Command("open", outPath).Run() // macOS only
 		},
 	}

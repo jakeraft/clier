@@ -1,6 +1,9 @@
 package domain
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type TeamExport struct {
 	TeamName       string           `json:"team_name"`
@@ -111,14 +114,14 @@ func ExportFromSnapshot(snap TeamSnapshot) (TeamExport, error) {
 // Returns a descriptive error for the first violation found.
 func (e TeamExport) Validate() error {
 	if e.TeamName == "" {
-		return fmt.Errorf("team name must not be empty")
+		return errors.New("team name must not be empty")
 	}
 	if e.RootMemberName == "" {
-		return fmt.Errorf("root member name must not be empty")
+		return errors.New("root member name must not be empty")
 	}
 
 	if len(e.Members) == 0 {
-		return fmt.Errorf("members must not be empty")
+		return errors.New("members must not be empty")
 	}
 
 	// Build set of member names and check for duplicates
