@@ -2,7 +2,6 @@ package sprint
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -19,10 +18,6 @@ func shellQuote(s string) string {
 // BuildCommand returns the full shell command to launch an agent,
 // including environment variable exports.
 // Result format: "export K='V' && ... && cd <workDir> && <binary> <args...>"
-//
-// NOTE: For Codex, this writes a codex-instructions.md file to memberHome
-// because Codex reads prompts from a file, unlike Claude which accepts inline args.
-// The file is cleaned up by workspace.Cleanup along with the rest of the sprint directory.
 func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome string) (string, error) {
 	var cmd string
 
@@ -30,11 +25,7 @@ func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome
 	case domain.BinaryClaude:
 		cmd = buildClaudeCommand(m, prompt, workDir)
 	case domain.BinaryCodex:
-		var err error
-		cmd, err = buildCodexCommand(m, prompt, workDir, memberHome)
-		if err != nil {
-			return "", err
-		}
+		cmd = buildCodexCommand(m, prompt, workDir)
 	default:
 		return "", fmt.Errorf("unknown binary: %s", m.Binary)
 	}
@@ -55,18 +46,15 @@ func buildClaudeCommand(m domain.MemberSnapshot, prompt, workDir string) string 
 	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " "))
 }
 
-func buildCodexCommand(m domain.MemberSnapshot, prompt, workDir, memberHome string) (string, error) {
-	instructionsFile := filepath.Join(memberHome, "codex-instructions.md")
-	if err := os.WriteFile(instructionsFile, []byte(prompt), 0644); err != nil {
-		return "", fmt.Errorf("write codex instructions: %w", err)
-	}
-
+func buildCodexCommand(m domain.MemberSnapshot, prompt, workDir string) string {
 	args := []string{string(m.Binary)}
 	args = append(args, quoteArgs(m.SystemArgs)...)
 	args = append(args, "--model", q(m.Model))
-	args = append(args, "-c", "model_instructions_file="+q(instructionsFile))
+	if prompt != "" {
+		args = append(args, "-c", "developer_instructions="+q(prompt))
+	}
 	args = append(args, quoteArgs(m.CustomArgs)...)
-	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " ")), nil
+	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " "))
 }
 
 func buildEnvCommand(command string, env []string) string {

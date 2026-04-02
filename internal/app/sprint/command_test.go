@@ -1,7 +1,6 @@
 package sprint
 
 import (
-	"os"
 	"strings"
 	"testing"
 
@@ -111,9 +110,8 @@ func TestBuildCommand(t *testing.T) {
 	})
 
 	t.Run("Codex", func(t *testing.T) {
-		t.Run("WithPrompt_WritesInstructionsInMemberHome", func(t *testing.T) {
-			// given: Codex member with temp home dir
-			memberHome := t.TempDir()
+		t.Run("WithPrompt_UsesDeveloperInstructions", func(t *testing.T) {
+			// given: Codex member with prompt
 			m := domain.MemberSnapshot{
 				MemberID:   "m2",
 				Binary:     domain.BinaryCodex,
@@ -123,23 +121,17 @@ func TestBuildCommand(t *testing.T) {
 			}
 
 			// when
-			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", memberHome)
+			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", "/home/m2")
 			if err != nil {
 				t.Fatalf("BuildCommand: %v", err)
 			}
 
-			// then: instructions file is in member home
-			instructionsFile := memberHome + "/codex-instructions.md"
-			if !strings.Contains(cmd, "model_instructions_file=") {
-				t.Errorf("command should contain instructions file: %s", cmd)
+			// then: uses developer_instructions inline, no file written
+			if !strings.Contains(cmd, "developer_instructions=") {
+				t.Errorf("should use developer_instructions: %s", cmd)
 			}
-
-			data, err := os.ReadFile(instructionsFile)
-			if err != nil {
-				t.Fatalf("read instructions file: %v", err)
-			}
-			if string(data) != "you are a coder" {
-				t.Errorf("instructions content = %q, want %q", string(data), "you are a coder")
+			if strings.Contains(cmd, "model_instructions_file") {
+				t.Errorf("should NOT use model_instructions_file: %s", cmd)
 			}
 		})
 	})
