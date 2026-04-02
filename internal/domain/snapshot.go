@@ -36,3 +36,29 @@ type EnvSnapshot struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
+
+// SprintSnapshot is the resolved execution plan stored in a Sprint.
+// Built from TeamSnapshot by the sprint service.
+type SprintSnapshot struct {
+	TeamName     string                 `json:"team_name"`
+	RootMemberID string                 `json:"root_member_id"`
+	Members      []SprintMemberSnapshot `json:"members"`
+}
+
+// SprintMemberSnapshot is a fully resolved member execution plan.
+type SprintMemberSnapshot struct {
+	// Identity + relations (whoami, message validation)
+	MemberID   string          `json:"member_id"`
+	MemberName string          `json:"member_name"`
+	Relations  MemberRelations `json:"relations"`
+
+	// Workspace preparation (filesystem materialization)
+	Home      string           `json:"home"`
+	WorkDir   string           `json:"work_dir"`
+	Binary    CliBinary        `json:"binary"`
+	DotConfig DotConfig        `json:"dot_config"`
+	GitRepo   *GitRepoSnapshot `json:"git_repo"`
+
+	// Execution (fully resolved shell command)
+	Command string `json:"command"`
+}
