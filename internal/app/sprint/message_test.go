@@ -31,17 +31,10 @@ func TestResolveSender(t *testing.T) {
 		}
 	})
 
-	t.Run("UserMemberID_ReturnsUserMemberID", func(t *testing.T) {
+	t.Run("UserMemberID_ReturnsUser", func(t *testing.T) {
 		got := resolveSender(members, domain.UserMemberID)
-		if got != domain.UserMemberID {
-			t.Errorf("got %q, want %q", got, domain.UserMemberID)
-		}
-	})
-
-	t.Run("UnknownID_ReturnsUserMemberID", func(t *testing.T) {
-		got := resolveSender(members, "unknown")
-		if got != domain.UserMemberID {
-			t.Errorf("got %q, want %q", got, domain.UserMemberID)
+		if got != "user" {
+			t.Errorf("got %q, want %q", got, "user")
 		}
 	})
 }

@@ -31,12 +31,12 @@ func New(baseDir string, auth AuthCopier) *Workspace {
 }
 
 // Prepare creates the sprint directory and sets up isolated environments for all members.
-func (w *Workspace) Prepare(ctx context.Context, snapshot domain.SprintSnapshot) error {
+func (w *Workspace) Prepare(ctx context.Context, sprintID string, snapshot domain.SprintSnapshot) error {
 	if len(snapshot.Members) == 0 {
 		return nil
 	}
 
-	sprintDir := filepath.Dir(snapshot.Members[0].Home)
+	sprintDir := filepath.Join(w.baseDir, sprintID)
 	if err := os.MkdirAll(sprintDir, 0755); err != nil {
 		return fmt.Errorf("create sprint dir: %w", err)
 	}

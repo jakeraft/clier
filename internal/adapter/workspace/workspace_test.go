@@ -43,7 +43,7 @@ func TestWorkspace(t *testing.T) {
 			}
 
 			// When: Prepare is called
-			err := ws.Prepare(context.Background(), snapshot)
+			err := ws.Prepare(context.Background(), "sprint-1", snapshot)
 			if err != nil {
 				t.Fatalf("Prepare: %v", err)
 			}
@@ -85,7 +85,7 @@ func TestWorkspace(t *testing.T) {
 			}
 
 			// When: Prepare fails
-			err := ws.Prepare(context.Background(), snapshot)
+			err := ws.Prepare(context.Background(), "sprint-1", snapshot)
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}

@@ -24,7 +24,7 @@ type Terminal interface {
 
 // Workspace defines the filesystem operations for sprint environments.
 type Workspace interface {
-	Prepare(ctx context.Context, snapshot domain.SprintSnapshot) error
+	Prepare(ctx context.Context, sprintID string, snapshot domain.SprintSnapshot) error
 	Cleanup(sprintID string) error
 }
 
@@ -72,10 +72,6 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		return nil, fmt.Errorf("new sprint: %w", err)
 	}
 
-	if err := s.store.CreateSprint(ctx, sp); err != nil {
-		return nil, fmt.Errorf("save sprint: %w", err)
-	}
-
 	success := false
 	defer func() {
 		if !success {
@@ -83,12 +79,16 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		}
 	}()
 
-	if err := s.workspace.Prepare(ctx, snapshot); err != nil {
+	if err := s.workspace.Prepare(ctx, sprintID, snapshot); err != nil {
 		return nil, fmt.Errorf("prepare workspace: %w", err)
 	}
 
 	if err := s.terminal.Launch(sp.ID, sp.Name, snapshot); err != nil {
 		return nil, fmt.Errorf("launch terminal: %w", err)
+	}
+
+	if err := s.store.CreateSprint(ctx, sp); err != nil {
+		return nil, fmt.Errorf("save sprint: %w", err)
 	}
 
 	success = true

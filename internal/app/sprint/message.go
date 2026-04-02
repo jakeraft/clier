@@ -14,10 +14,10 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 		return fmt.Errorf("get sprint: %w", err)
 	}
 
-	senderName := resolveSender(sp.Snapshot.Members, fromMemberID)
 	if err := validateDelivery(sp.Snapshot.Members, fromMemberID, toMemberID); err != nil {
 		return err
 	}
+	senderName := resolveSender(sp.Snapshot.Members, fromMemberID)
 
 	msg, err := domain.NewMessage(sprintID, fromMemberID, toMemberID, content)
 	if err != nil {
@@ -35,7 +35,7 @@ func resolveSender(members []domain.SprintMemberSnapshot, fromMemberID string) s
 	if from, ok := findMember(members, fromMemberID); ok {
 		return from.MemberName
 	}
-	return domain.UserMemberID
+	return "user"
 }
 
 func validateDelivery(members []domain.SprintMemberSnapshot, fromMemberID, toMemberID string) error {
