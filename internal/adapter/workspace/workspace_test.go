@@ -27,27 +27,28 @@ func (s *stubAuth) CopyTo(_ domain.CliBinary, _ string) error {
 
 func TestWorkspace(t *testing.T) {
 	t.Run("Prepare", func(t *testing.T) {
-		t.Run("ValidTeam_CreatesSprintAndMemberDirs", func(t *testing.T) {
-			// Given: a team with 2 Claude members (alice, bob)
+		t.Run("ValidSnapshot_CreatesSprintAndMemberDirs", func(t *testing.T) {
+			// Given: a snapshot with 2 Claude members (alice, bob)
 			baseDir := t.TempDir()
+			sprintDir := filepath.Join(baseDir, "sprint-1")
 			ws := New(baseDir, &stubAuth{})
 
-			snapshot := domain.TeamSnapshot{
+			snapshot := domain.SprintSnapshot{
 				TeamName:     "team-1",
 				RootMemberID: "m1",
-				Members: []domain.MemberSnapshot{
-					{MemberID: "m1", MemberName: "alice", Binary: domain.BinaryClaude},
-					{MemberID: "m2", MemberName: "bob", Binary: domain.BinaryClaude},
+				Members: []domain.SprintMemberSnapshot{
+					{MemberID: "m1", MemberName: "alice", Binary: domain.BinaryClaude, Home: filepath.Join(sprintDir, "m1"), WorkDir: filepath.Join(sprintDir, "m1", "project")},
+					{MemberID: "m2", MemberName: "bob", Binary: domain.BinaryClaude, Home: filepath.Join(sprintDir, "m2"), WorkDir: filepath.Join(sprintDir, "m2", "project")},
 				},
 			}
 
 			// When: Prepare is called
-			dirs, err := ws.Prepare(context.Background(), "sprint-1", snapshot)
+			err := ws.Prepare(context.Background(), snapshot)
 			if err != nil {
 				t.Fatalf("Prepare: %v", err)
 			}
 
-			// Then: returns 2 member dirs with the following structure:
+			// Then: creates member dirs with the following structure:
 			//   {baseDir}/sprint-1/
 			//   ├── m1/                  ← alice's Home
 			//   │   ├── .claude/         ← CLAUDE_CONFIG_DIR points here
@@ -59,21 +60,12 @@ func TestWorkspace(t *testing.T) {
 			//       │   ├── settings.json
 			//       │   └── .claude.json
 			//       └── project/         ← bob's WorkDir
-			if len(dirs) != 2 {
-				t.Fatalf("expected 2 member dirs, got %d", len(dirs))
-			}
-
-			for _, id := range []string{"m1", "m2"} {
-				dir, ok := dirs[id]
-				if !ok {
-					t.Errorf("missing dir for member %s", id)
-					continue
+			for _, m := range snapshot.Members {
+				if _, err := os.Stat(m.Home); err != nil {
+					t.Errorf("member home not created for %s: %v", m.MemberID, err)
 				}
-				if _, err := os.Stat(dir.Home); err != nil {
-					t.Errorf("member home not created: %v", err)
-				}
-				if _, err := os.Stat(dir.WorkDir); err != nil {
-					t.Errorf("member workdir not created: %v", err)
+				if _, err := os.Stat(m.WorkDir); err != nil {
+					t.Errorf("member workdir not created for %s: %v", m.MemberID, err)
 				}
 			}
 		})
@@ -81,25 +73,25 @@ func TestWorkspace(t *testing.T) {
 		t.Run("AuthFailure_CleansUpSprintDir", func(t *testing.T) {
 			// Given: auth that always fails
 			baseDir := t.TempDir()
+			sprintDir := filepath.Join(baseDir, "sprint-1")
 			ws := New(baseDir, &stubAuth{err: errors.New("auth failed")})
 
-			snapshot := domain.TeamSnapshot{
+			snapshot := domain.SprintSnapshot{
 				TeamName:     "team-1",
 				RootMemberID: "m1",
-				Members: []domain.MemberSnapshot{
-					{MemberID: "m1", MemberName: "alice", Binary: domain.BinaryClaude},
+				Members: []domain.SprintMemberSnapshot{
+					{MemberID: "m1", MemberName: "alice", Binary: domain.BinaryClaude, Home: filepath.Join(sprintDir, "m1"), WorkDir: filepath.Join(sprintDir, "m1", "project")},
 				},
 			}
 
 			// When: Prepare fails
-			_, err := ws.Prepare(context.Background(), "sprint-1", snapshot)
+			err := ws.Prepare(context.Background(), snapshot)
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 
 			// Then: entire sprint directory is rolled back (nothing left on disk)
 			//   {baseDir}/sprint-1/  ← should NOT exist
-			sprintDir := filepath.Join(baseDir, "sprint-1")
 			if _, err := os.Stat(sprintDir); !os.IsNotExist(err) {
 				t.Error("sprint dir should be cleaned up on failure")
 			}
@@ -140,7 +132,7 @@ func TestWriteConfigs(t *testing.T) {
 			home := t.TempDir()
 			workDir := filepath.Join(home, "project")
 
-			m := domain.MemberSnapshot{
+			m := domain.SprintMemberSnapshot{
 				Binary:    domain.BinaryClaude,
 				DotConfig: domain.DotConfig{"skipDangerousModePermissionPrompt": true},
 			}
@@ -186,7 +178,7 @@ func TestWriteConfigs(t *testing.T) {
 			home := t.TempDir()
 			workDir := filepath.Join(home, "project")
 
-			m := domain.MemberSnapshot{
+			m := domain.SprintMemberSnapshot{
 				Binary:    domain.BinaryClaude,
 				DotConfig: domain.DotConfig{},
 			}
@@ -216,7 +208,7 @@ func TestWriteConfigs(t *testing.T) {
 			home := t.TempDir()
 			workDir := filepath.Join(home, "project")
 
-			m := domain.MemberSnapshot{
+			m := domain.SprintMemberSnapshot{
 				Binary:    domain.BinaryCodex,
 				DotConfig: domain.DotConfig{"sandbox_mode": "danger-full-access"},
 			}
@@ -248,7 +240,7 @@ func TestWriteConfigs(t *testing.T) {
 		home := t.TempDir()
 		workDir := filepath.Join(home, "project")
 
-		m := domain.MemberSnapshot{
+		m := domain.SprintMemberSnapshot{
 			Binary: domain.BinaryClaude,
 			DotConfig: domain.DotConfig{
 				"claudeMdExcludes": []string{"~/.claude/**"},

@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jakeraft/clier/internal/app/sprint"
 	"github.com/jakeraft/clier/internal/domain"
 	toml "github.com/pelletier/go-toml/v2"
 )
@@ -32,10 +31,14 @@ func New(baseDir string, auth AuthCopier) *Workspace {
 }
 
 // Prepare creates the sprint directory and sets up isolated environments for all members.
-func (w *Workspace) Prepare(ctx context.Context, sprintID string, snapshot domain.TeamSnapshot) (map[string]sprint.MemberDir, error) {
-	sprintDir := filepath.Join(w.baseDir, sprintID)
+func (w *Workspace) Prepare(ctx context.Context, snapshot domain.SprintSnapshot) error {
+	if len(snapshot.Members) == 0 {
+		return nil
+	}
+
+	sprintDir := filepath.Dir(snapshot.Members[0].Home)
 	if err := os.MkdirAll(sprintDir, 0755); err != nil {
-		return nil, fmt.Errorf("create sprint dir: %w", err)
+		return fmt.Errorf("create sprint dir: %w", err)
 	}
 
 	// Cleanup entire sprint directory on any failure
@@ -52,22 +55,19 @@ func (w *Workspace) Prepare(ctx context.Context, sprintID string, snapshot domai
 		if !checked[m.Binary] {
 			checked[m.Binary] = true
 			if err := w.auth.Check(m.Binary); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
 
-	dirs := make(map[string]sprint.MemberDir, len(snapshot.Members))
 	for _, m := range snapshot.Members {
-		dir, err := w.prepareMember(ctx, sprintDir, m)
-		if err != nil {
-			return nil, fmt.Errorf("prepare member %s: %w", m.MemberName, err)
+		if err := w.prepareMember(ctx, m); err != nil {
+			return fmt.Errorf("prepare member %s: %w", m.MemberName, err)
 		}
-		dirs[m.MemberID] = dir
 	}
 
 	success = true
-	return dirs, nil
+	return nil
 }
 
 // Cleanup removes all workspace files for a sprint.
@@ -75,30 +75,27 @@ func (w *Workspace) Cleanup(sprintID string) error {
 	return os.RemoveAll(filepath.Join(w.baseDir, sprintID))
 }
 
-func (w *Workspace) prepareMember(ctx context.Context, sprintDir string, m domain.MemberSnapshot) (sprint.MemberDir, error) {
-	memberHome := filepath.Join(sprintDir, m.MemberID)
-	workDir := filepath.Join(memberHome, "project")
-
-	if err := os.MkdirAll(workDir, 0755); err != nil {
-		return sprint.MemberDir{}, fmt.Errorf("create member dir: %w", err)
+func (w *Workspace) prepareMember(ctx context.Context, m domain.SprintMemberSnapshot) error {
+	if err := os.MkdirAll(m.WorkDir, 0755); err != nil {
+		return fmt.Errorf("create member dir: %w", err)
 	}
 
-	if err := w.auth.CopyTo(m.Binary, memberHome); err != nil {
-		return sprint.MemberDir{}, fmt.Errorf("copy auth: %w", err)
+	if err := w.auth.CopyTo(m.Binary, m.Home); err != nil {
+		return fmt.Errorf("copy auth: %w", err)
 	}
 
-	if err := writeConfigs(m, memberHome, workDir); err != nil {
-		return sprint.MemberDir{}, fmt.Errorf("write configs: %w", err)
+	if err := writeConfigs(m, m.Home, m.WorkDir); err != nil {
+		return fmt.Errorf("write configs: %w", err)
 	}
 
-	if err := w.setupGit(ctx, m, workDir); err != nil {
-		return sprint.MemberDir{}, fmt.Errorf("setup git: %w", err)
+	if err := w.setupGit(ctx, m, m.WorkDir); err != nil {
+		return fmt.Errorf("setup git: %w", err)
 	}
 
-	return sprint.MemberDir{Home: memberHome, WorkDir: workDir}, nil
+	return nil
 }
 
-func (w *Workspace) setupGit(ctx context.Context, m domain.MemberSnapshot, workDir string) error {
+func (w *Workspace) setupGit(ctx context.Context, m domain.SprintMemberSnapshot, workDir string) error {
 	if m.GitRepo == nil {
 		return exec.CommandContext(ctx, "git", "init", workDir).Run()
 	}
@@ -108,7 +105,7 @@ func (w *Workspace) setupGit(ctx context.Context, m domain.MemberSnapshot, workD
 	return nil
 }
 
-func writeConfigs(m domain.MemberSnapshot, memberHome, workDir string) error {
+func writeConfigs(m domain.SprintMemberSnapshot, memberHome, workDir string) error {
 	switch m.Binary {
 	case domain.BinaryClaude:
 		return writeClaudeConfigs(m, memberHome, workDir)
@@ -119,7 +116,7 @@ func writeConfigs(m domain.MemberSnapshot, memberHome, workDir string) error {
 	}
 }
 
-func writeClaudeConfigs(m domain.MemberSnapshot, memberHome, workDir string) error {
+func writeClaudeConfigs(m domain.SprintMemberSnapshot, memberHome, workDir string) error {
 	claudeDir := filepath.Join(memberHome, ".claude")
 	if err := os.MkdirAll(claudeDir, 0755); err != nil {
 		return fmt.Errorf("create .claude dir: %w", err)
@@ -159,7 +156,7 @@ func expandTildePaths(data []byte) []byte {
 	return []byte(strings.ReplaceAll(string(data), "~/", home+"/"))
 }
 
-func writeCodexConfigs(m domain.MemberSnapshot, memberHome, workDir string) error {
+func writeCodexConfigs(m domain.SprintMemberSnapshot, memberHome, workDir string) error {
 	codexDir := filepath.Join(memberHome, ".codex")
 	if err := os.MkdirAll(codexDir, 0755); err != nil {
 		return fmt.Errorf("create .codex dir: %w", err)
