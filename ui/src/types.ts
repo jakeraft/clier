@@ -13,10 +13,20 @@ export interface TeamView {
   rootMemberId: string;
   memberIds: string[];
   relations: RelationView[];
+  plan: MemberSessionPlanView[];
   rootMemberName: string;
   memberNames: string[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MemberSessionPlanView {
+  memberId: string;
+  memberName: string;
+  memberspace: string;
+  command: string;
+  gitRepo: { name: string; url: string } | null;
+  files: { path: string; content: string }[];
 }
 
 export interface RelationView {
@@ -76,3 +86,4 @@ export interface EnvView {
   createdAt: string;
   updatedAt: string;
 }
+

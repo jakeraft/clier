@@ -52,8 +52,26 @@ var rootCmd = &cobra.Command{
 }
 
 func Execute() {
+	if os.Getenv("CLIER_MEMBER_ID") != "" {
+		filterAgentCommands()
+	}
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+}
+
+// filterAgentCommands removes all commands except "session" when running as an agent.
+func filterAgentCommands() {
+	allowed := map[string]bool{"session": true}
+	var keep []*cobra.Command
+	for _, cmd := range rootCmd.Commands() {
+		if allowed[cmd.Name()] {
+			keep = append(keep, cmd)
+		}
+	}
+	rootCmd.ResetCommands()
+	for _, cmd := range keep {
+		rootCmd.AddCommand(cmd)
 	}
 }

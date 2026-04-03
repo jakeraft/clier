@@ -28,7 +28,7 @@ export function StructureSection({
   if (!ready) {
     return (
       <Section icon={Network} title="Structure">
-        <div className={cn(flex.center, "h-[40vh]")}>
+        <div className={cn(flex.center, "h-[60vh]")}>
           <Spinner />
         </div>
       </Section>

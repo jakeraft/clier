@@ -12,15 +12,35 @@ type DashboardData struct {
 }
 
 type TeamView struct {
-	ID             string         `json:"id"`
-	Name           string         `json:"name"`
-	RootMemberID   string         `json:"rootMemberId"`
-	MemberIDs      []string       `json:"memberIds"`
-	Relations      []RelationView `json:"relations"`
-	RootMemberName string         `json:"rootMemberName"`
-	MemberNames    []string       `json:"memberNames"`
-	CreatedAt      time.Time      `json:"createdAt"`
-	UpdatedAt      time.Time      `json:"updatedAt"`
+	ID             string              `json:"id"`
+	Name           string              `json:"name"`
+	RootMemberID   string              `json:"rootMemberId"`
+	MemberIDs      []string            `json:"memberIds"`
+	Relations      []RelationView      `json:"relations"`
+	Plan           []MemberSessionPlanView `json:"plan"`
+	RootMemberName string              `json:"rootMemberName"`
+	MemberNames    []string            `json:"memberNames"`
+	CreatedAt      time.Time           `json:"createdAt"`
+	UpdatedAt      time.Time           `json:"updatedAt"`
+}
+
+type MemberSessionPlanView struct {
+	MemberID    string          `json:"memberId"`
+	MemberName  string          `json:"memberName"`
+	Memberspace string          `json:"memberspace"`
+	Command     string          `json:"command"`
+	GitRepo     *GitRepoRef     `json:"gitRepo"`
+	Files       []FileEntryView `json:"files"`
+}
+
+type GitRepoRef struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type FileEntryView struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
 }
 
 type RelationView struct {
@@ -80,3 +100,5 @@ type EnvView struct {
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+

@@ -14,6 +14,7 @@ const columns: EntityTableColumn<GitRepoView>[] = [
         </a>
       );
     },
+    flex: 2,
   },
 ];
 

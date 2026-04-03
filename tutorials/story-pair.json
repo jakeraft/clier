@@ -1,73 +1,84 @@
 {
+  "team_id": "52ae1a61-0380-4713-b672-d359c96f2c26",
   "team_name": "story-pair",
   "root_member_name": "editor",
   "members": [
     {
+      "id": "2ca2e44f-ab04-4395-bc6a-451094e2f069",
       "name": "editor",
       "cli_profile": {
-        "name": "pair-sonnet",
+        "id": "c82b70df-a758-4844-bef9-e9d78913c324",
+        "name": "claude-sonnet",
         "model": "claude-sonnet-4-6",
         "binary": "claude",
-        "system_args": ["--dangerously-skip-permissions"],
+        "system_args": [
+          "--dangerously-skip-permissions"
+        ],
         "custom_args": [],
         "dot_config": {
-          "skipDangerousModePermissionPrompt": true,
-          "claudeMdExcludes": ["~/.claude/**"]
+          "claudeMdExcludes": [
+            "~/.claude/**"
+          ],
+          "skipDangerousModePermissionPrompt": true
         }
       },
       "system_prompts": [
         {
-          "name": "Team Protocol",
-          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
-        },
-        {
+          "id": "a7d9bb2b-e5f4-48c1-b3d5-9cb2a40fa707",
           "name": "pair-editor",
           "prompt": "You are an Editor. Plan a very short story (3-5 sentences) and collaborate with your peer to write it.\n\nProcess:\n1. Plan a brief story premise (genre, character, conflict).\n2. Send the premise to your peer and ask them to write it.\n3. Wait for the completed story from your peer.\n4. Review and send the final result back."
         }
       ],
       "envs": [
         {
+          "id": "b17c4429-8691-49cd-bf3f-ebb987ee2de1",
           "name": "greeting",
           "key": "GREETING",
           "value": "hello from clier"
         }
       ],
       "git_repo": {
+        "id": "a4de5e5c-6078-4c70-9a94-2de0a43a5ff2",
         "name": "pair-repo",
         "url": "https://github.com/jakeraft/clier_hello.git"
       }
     },
     {
+      "id": "6cb2b0df-93fd-433d-879e-dc42f15e9874",
       "name": "writer",
       "cli_profile": {
-        "name": "pair-sonnet",
-        "model": "claude-sonnet-4-6",
-        "binary": "claude",
-        "system_args": ["--dangerously-skip-permissions"],
+        "id": "e705e519-2955-4c33-a318-19017f6e049d",
+        "name": "gpt-5.4-mini",
+        "model": "gpt-5.1-codex-mini",
+        "binary": "codex",
+        "system_args": [],
         "custom_args": [],
         "dot_config": {
-          "skipDangerousModePermissionPrompt": true,
-          "claudeMdExcludes": ["~/.claude/**"]
+          "notice": {
+            "model_migrations": {
+              "gpt-5.1-codex-mini": "gpt-5.4"
+            }
+          },
+          "sandbox_mode": "danger-full-access"
         }
       },
       "system_prompts": [
         {
-          "name": "Team Protocol",
-          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
-        },
-        {
+          "id": "d6952961-e38f-450c-a903-4f1ab40b1cc2",
           "name": "pair-writer",
           "prompt": "You are a Writer. Write a very short story from the brief you receive.\n\nRules:\n- Write exactly 3-5 sentences.\n- Each sentence max 10 words.\n- Be vivid but concise.\n\nWhen finished, send the full story text to your peer."
         }
       ],
       "envs": [
         {
+          "id": "b17c4429-8691-49cd-bf3f-ebb987ee2de1",
           "name": "greeting",
           "key": "GREETING",
           "value": "hello from clier"
         }
       ],
       "git_repo": {
+        "id": "a4de5e5c-6078-4c70-9a94-2de0a43a5ff2",
         "name": "pair-repo",
         "url": "https://github.com/jakeraft/clier_hello.git"
       }

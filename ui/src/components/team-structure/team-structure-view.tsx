@@ -14,7 +14,7 @@ export function TeamStructure({
   className,
 }: Readonly<TeamStructureProperties>) {
   return (
-    <div className={cn("rounded-base bg-muted/50 h-[40vh] border", className)}>
+    <div className={cn("rounded-base bg-muted/50 h-[60vh] border", className)}>
       <ReactFlowProvider>
         <TeamStructureInner nodes={nodes} edges={edges} edgeTypes={customEdgeTypes} onNodeClick={onNodeClick}>
           {children}

@@ -58,25 +58,23 @@ type MemberSystemPrompt struct {
 
 type Message struct {
 	ID           string
-	SprintID     string
+	SessionID    string
 	FromMemberID string
 	ToMemberID   string
 	Content      string
 	CreatedAt    int64
 }
 
-type Sprint struct {
-	ID           string
-	Name         string
-	TeamSnapshot string
-	State        string
-	Error        string
-	CreatedAt    int64
-	UpdatedAt    int64
+type Session struct {
+	ID        string
+	TeamID    string
+	Status    string
+	CreatedAt int64
+	StoppedAt sql.NullInt64
 }
 
-type SprintSurface struct {
-	SprintID     string
+type SessionSurface struct {
+	SessionID    string
 	MemberID     string
 	WorkspaceRef string
 	SurfaceRef   string
@@ -94,6 +92,7 @@ type Team struct {
 	ID           string
 	Name         string
 	RootMemberID string
+	Plan         string
 	CreatedAt    int64
 	UpdatedAt    int64
 }

@@ -1,16 +1,18 @@
 package domain
 
 type TeamSnapshot struct {
-	TeamName     string           `json:"team_name"`
-	RootMemberID string           `json:"root_member_id"`
-	Members      []MemberSnapshot `json:"members"`
+	TeamID       string               `json:"team_id"`
+	TeamName     string               `json:"team_name"`
+	RootMemberID string               `json:"root_member_id"`
+	Members      []TeamMemberSnapshot `json:"members"`
 }
 
-type MemberSnapshot struct {
+type TeamMemberSnapshot struct {
 	MemberID       string           `json:"member_id"`
 	MemberName     string           `json:"member_name"`
 	Binary         CliBinary        `json:"binary"`
 	Model          string           `json:"model"`
+	CliProfileID   string           `json:"cli_profile_id"`
 	CliProfileName string           `json:"cli_profile_name"`
 	SystemArgs     []string         `json:"system_args"`
 	CustomArgs     []string         `json:"custom_args"`
@@ -22,17 +24,48 @@ type MemberSnapshot struct {
 }
 
 type PromptSnapshot struct {
+	ID     string `json:"id,omitempty"`
 	Name   string `json:"name"`
 	Prompt string `json:"prompt"`
 }
 
 type GitRepoSnapshot struct {
+	ID   string `json:"id,omitempty"`
 	Name string `json:"name"`
 	URL  string `json:"url"`
 }
 
 type EnvSnapshot struct {
+	ID    string `json:"id,omitempty"`
 	Name  string `json:"name"`
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
+
+// FindMember returns the member with the given ID, or false if not found.
+func (s TeamSnapshot) FindMember(id string) (TeamMemberSnapshot, bool) {
+	for _, m := range s.Members {
+		if m.MemberID == id {
+			return m, true
+		}
+	}
+	return TeamMemberSnapshot{}, false
+}
+
+// MemberName returns the name of the member with the given ID, or empty string.
+func (s TeamSnapshot) MemberName(id string) string {
+	if m, ok := s.FindMember(id); ok {
+		return m.MemberName
+	}
+	return ""
+}
+
+// IsConnected returns true if fromID has a relation to toID.
+func (s TeamSnapshot) IsConnected(fromID, toID string) bool {
+	from, ok := s.FindMember(fromID)
+	if !ok {
+		return false
+	}
+	return from.Relations.IsConnectedTo(toID)
+}
+

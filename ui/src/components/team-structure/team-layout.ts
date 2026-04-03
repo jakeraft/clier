@@ -45,16 +45,14 @@ export function teamLayout(
 ): { nodes: Node<MemberNodeData>[]; edges: Edge[] } {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: "LR", nodesep: 40, ranksep: 80 });
+  g.setGraph({ rankdir: "TB", nodesep: 40, ranksep: 80 });
 
   for (const member of members) {
     g.setNode(member.id, { width: NODE_W, height: NODE_H });
   }
 
   for (const relation of relations) {
-    if (relation.type === "leader") {
-      g.setEdge(relation.from, relation.to);
-    }
+    g.setEdge(relation.from, relation.to);
   }
 
   dagre.layout(g);
@@ -77,8 +75,8 @@ export function teamLayout(
           .map((id) => ({ id, name: spNames.get(id) }))
           .filter((index): index is { id: string; name: string } => index.name != undefined),
       },
-      sourcePosition: Position.Right,
-      targetPosition: Position.Left,
+      sourcePosition: Position.Bottom,
+      targetPosition: Position.Top,
     };
   });
 

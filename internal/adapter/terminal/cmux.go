@@ -8,16 +8,15 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/jakeraft/clier/internal/app/sprint"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-// SurfaceStore persists sprint surface refs across CLI invocations.
+// SurfaceStore persists session surface refs across CLI invocations.
 type SurfaceStore interface {
-	SaveSprintSurface(ctx context.Context, sprintID, memberID, workspaceRef, surfaceRef string) error
-	GetSprintSurface(ctx context.Context, sprintID, memberID string) (workspaceRef, surfaceRef string, err error)
-	GetSprintWorkspaceRef(ctx context.Context, sprintID, excludeMemberID string) (string, error)
-	DeleteSprintSurfaces(ctx context.Context, sprintID string) error
+	SaveSessionSurface(ctx context.Context, sessionID, memberID, workspaceRef, surfaceRef string) error
+	GetSessionSurface(ctx context.Context, sessionID, memberID string) (workspaceRef, surfaceRef string, err error)
+	GetSessionWorkspaceRef(ctx context.Context, sessionID, excludeMemberID string) (string, error)
+	DeleteSessionSurfaces(ctx context.Context, sessionID string) error
 }
 
 type CmuxTerminal struct {
@@ -29,27 +28,25 @@ func NewCmuxTerminal(surfaces SurfaceStore) *CmuxTerminal {
 	return &CmuxTerminal{binary: "cmux", surfaces: surfaces}
 }
 
-func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.MemberSpec) error {
+func (c *CmuxTerminal) Launch(sessionID, sessionName string, members []domain.MemberSessionPlan) error {
 	if len(members) == 0 {
 		return errors.New("no members to launch")
 	}
 
-	// Save the caller's surface as "user" so agents can message back.
-	if err := c.saveCallerSurface(sprintID); err != nil {
+	if err := c.saveCallerSurface(sessionID); err != nil {
 		return fmt.Errorf("save caller surface: %w", err)
 	}
 
-	wsRef, err := c.createWorkspace(sprintName)
+	wsRef, err := c.createWorkspace(sessionName)
 	if err != nil {
 		return fmt.Errorf("create workspace: %w", err)
 	}
 
-	// Cleanup workspace and saved surfaces on any subsequent failure
 	success := false
 	defer func() {
 		if !success {
 			_, _ = c.run("close-workspace", "--workspace", wsRef)
-			_ = c.deleteSurfaces(sprintID)
+			_ = c.deleteSurfaces(sessionID)
 		}
 	}()
 
@@ -59,11 +56,11 @@ func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.Memb
 			return fmt.Errorf("ensure surface: %w", err)
 		}
 
-		if err := c.setupSurface(wsRef, surfaceRef, m); err != nil {
+		if err := c.setupMemberSurface(wsRef, surfaceRef, m); err != nil {
 			return err
 		}
 
-		if err := c.saveSurface(sprintID, m.ID, wsRef, surfaceRef); err != nil {
+		if err := c.saveSurface(sessionID, m.MemberID, wsRef, surfaceRef); err != nil {
 			return fmt.Errorf("save surface: %w", err)
 		}
 	}
@@ -72,29 +69,44 @@ func (c *CmuxTerminal) Launch(sprintID, sprintName string, members []sprint.Memb
 	return nil
 }
 
-func (c *CmuxTerminal) Send(sprintID, memberID, text string) error {
-	wsRef, surfaceRef, err := c.getRefs(sprintID, memberID)
+func (c *CmuxTerminal) Send(sessionID, memberID, text string) error {
+	wsRef, surfaceRef, err := c.getRefs(sessionID, memberID)
 	if err != nil {
 		return fmt.Errorf("get refs for %s: %w", memberID, err)
 	}
 	return c.sendAndEnter(wsRef, surfaceRef, text)
 }
 
-func (c *CmuxTerminal) Terminate(sprintID string) error {
-	wsRef, err := c.getWorkspaceRef(sprintID)
+func (c *CmuxTerminal) Terminate(sessionID string) error {
+	wsRef, err := c.getWorkspaceRef(sessionID)
 	if err == nil {
+		// Gracefully exit each agent before closing the workspace.
+		c.exitAllSurfaces(wsRef)
 		_, _ = c.run("close-workspace", "--workspace", wsRef)
 	}
-	return c.deleteSurfaces(sprintID)
+	return c.deleteSurfaces(sessionID)
 }
 
-// setupSurface renames the tab and sends the launch command.
-func (c *CmuxTerminal) setupSurface(wsRef, surfaceRef string, m sprint.MemberSpec) error {
-	if err := c.renameTab(wsRef, surfaceRef, m.Name); err != nil {
+// exitAllSurfaces sends /exit to every surface in the workspace so agents
+// shut down gracefully and don't recreate config dirs after cleanup.
+func (c *CmuxTerminal) exitAllSurfaces(wsRef string) {
+	out, err := c.run("list-pane-surfaces", "--workspace", wsRef)
+	if err != nil {
+		return
+	}
+	for ref := range strings.FieldsSeq(out) {
+		if strings.HasPrefix(ref, "surface:") {
+			_ = c.sendAndEnter(wsRef, ref, "/exit")
+		}
+	}
+}
+
+func (c *CmuxTerminal) setupMemberSurface(wsRef, surfaceRef string, m domain.MemberSessionPlan) error {
+	if err := c.renameTab(wsRef, surfaceRef, m.MemberName); err != nil {
 		return fmt.Errorf("rename tab: %w", err)
 	}
-	if m.Command != "" {
-		if err := c.sendAndEnter(wsRef, surfaceRef, m.Command); err != nil {
+	if m.Terminal.Command != "" {
+		if err := c.sendAndEnter(wsRef, surfaceRef, m.Terminal.Command); err != nil {
 			return fmt.Errorf("send command: %w", err)
 		}
 	}
@@ -103,29 +115,29 @@ func (c *CmuxTerminal) setupSurface(wsRef, surfaceRef string, m sprint.MemberSpe
 
 // persistence — delegated to SurfaceStore
 
-func (c *CmuxTerminal) saveSurface(sprintID, memberID, workspaceRef, surfaceRef string) error {
-	return c.surfaces.SaveSprintSurface(context.Background(), sprintID, memberID, workspaceRef, surfaceRef)
+func (c *CmuxTerminal) saveSurface(sessionID, memberID, workspaceRef, surfaceRef string) error {
+	return c.surfaces.SaveSessionSurface(context.Background(), sessionID, memberID, workspaceRef, surfaceRef)
 }
 
-func (c *CmuxTerminal) getRefs(sprintID, memberID string) (wsRef, surfaceRef string, err error) {
-	return c.surfaces.GetSprintSurface(context.Background(), sprintID, memberID)
+func (c *CmuxTerminal) getRefs(sessionID, memberID string) (wsRef, surfaceRef string, err error) {
+	return c.surfaces.GetSessionSurface(context.Background(), sessionID, memberID)
 }
 
-func (c *CmuxTerminal) getWorkspaceRef(sprintID string) (string, error) {
-	return c.surfaces.GetSprintWorkspaceRef(context.Background(), sprintID, domain.UserMemberID)
+func (c *CmuxTerminal) getWorkspaceRef(sessionID string) (string, error) {
+	return c.surfaces.GetSessionWorkspaceRef(context.Background(), sessionID, domain.UserMemberID)
 }
 
-func (c *CmuxTerminal) deleteSurfaces(sprintID string) error {
-	return c.surfaces.DeleteSprintSurfaces(context.Background(), sprintID)
+func (c *CmuxTerminal) deleteSurfaces(sessionID string) error {
+	return c.surfaces.DeleteSessionSurfaces(context.Background(), sessionID)
 }
 
-func (c *CmuxTerminal) saveCallerSurface(sprintID string) error {
+func (c *CmuxTerminal) saveCallerSurface(sessionID string) error {
 	wsRef := os.Getenv("CMUX_WORKSPACE_ID")
 	surfaceRef := os.Getenv("CMUX_SURFACE_ID")
 	if wsRef == "" || surfaceRef == "" {
 		return nil
 	}
-	return c.saveSurface(sprintID, domain.UserMemberID, wsRef, surfaceRef)
+	return c.saveSurface(sessionID, domain.UserMemberID, wsRef, surfaceRef)
 }
 
 // cmux command helpers

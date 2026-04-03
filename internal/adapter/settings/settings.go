@@ -2,6 +2,7 @@ package settings
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -27,30 +28,39 @@ func New() (*Settings, error) {
 		return nil, fmt.Errorf("get current user: %w", err)
 	}
 	return &Settings{
-		Paths: &Paths{home: u.HomeDir},
+		Paths: &Paths{base: filepath.Join(u.HomeDir, dotDir)},
 		Auth:  &Auth{},
 	}, nil
 }
 
 // Paths resolves filesystem paths under ~/.clier.
 type Paths struct {
-	home string
+	base string
 }
 
-func (p *Paths) Home() string {
-	return p.home
+func (p *Paths) Base() string {
+	return p.base
 }
 
 func (p *Paths) DB() string {
-	return filepath.Join(p.home, dotDir, "clier.db")
+	return filepath.Join(p.base, "clier.db")
 }
 
 func (p *Paths) Workspaces() string {
-	return filepath.Join(p.home, dotDir, "workspaces")
+	return filepath.Join(p.base, "workspaces")
 }
 
 func (p *Paths) Dashboard() string {
-	return filepath.Join(p.home, dotDir, "dashboard.html")
+	return filepath.Join(p.base, "dashboard.html")
+}
+
+func (p *Paths) HomeDir() string {
+	return filepath.Dir(p.base)
+}
+
+// ExpandTilde replaces ~/ prefixes with the parent of the base directory (OS home).
+func (p *Paths) ExpandTilde(s string) string {
+	return strings.ReplaceAll(s, "~/", filepath.Dir(p.base)+"/")
 }
 
 // Auth manages CLI authentication for agent binaries.
@@ -83,36 +93,67 @@ var credentialSources = map[domain.CliBinary]credentialSource{
 	domain.BinaryClaude: {
 		keychainService: "Claude Code-credentials",
 		filePath:        ".claude/.credentials.json",
-		destPath:        ".claude/.credentials.json",
 	},
-	domain.BinaryCodex: {
-		filePath: ".codex/auth.json",
-		destPath: ".codex/auth.json",
-	},
+}
+
+// authFilePaths maps binaries that use file-based auth to their credential file
+// path relative to $HOME. Binaries using token-based auth (e.g. Claude) are absent.
+var authFilePaths = map[domain.CliBinary]string{
+	domain.BinaryCodex: ".codex/auth.json",
 }
 
 type credentialSource struct {
 	keychainService string // macOS Keychain service name (empty = skip)
 	filePath        string // path relative to user HOME
-	destPath        string // path relative to dest HOME
 }
 
-func (a *Auth) CopyTo(binary domain.CliBinary, destHome string) error {
+// ReadToken reads the env-based auth token for the given binary.
+// Claude: extracts the OAuth access token from keychain (macOS) or credential file.
+// Codex: returns empty string (uses file-based auth via ReadAuthFile).
+func (a *Auth) ReadToken(binary domain.CliBinary) (string, error) {
 	src, ok := credentialSources[binary]
 	if !ok {
-		return fmt.Errorf("unknown binary: %s", binary)
+		return "", nil // binary uses file-based auth, not token (e.g. Codex)
 	}
 
 	data, err := a.readCredentials(src)
 	if err != nil {
-		return fmt.Errorf("%s is not logged in — run: %s login", binary, binary)
+		return "", fmt.Errorf("%s is not logged in — run: %s login", binary, binary)
 	}
 
-	dest := filepath.Join(destHome, src.destPath)
-	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
-		return fmt.Errorf("create credential dir: %w", err)
+	return extractClaudeAccessToken(data)
+}
+
+// ReadAuthFile reads the raw auth file for binaries that use file-based auth.
+// Codex: returns the content of ~/.codex/auth.json.
+// Claude: returns nil (uses token-based auth via ReadToken).
+func (a *Auth) ReadAuthFile(binary domain.CliBinary) ([]byte, error) {
+	relPath, ok := authFilePaths[binary]
+	if !ok {
+		return nil, nil
 	}
-	return os.WriteFile(dest, data, 0600)
+	u, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadFile(filepath.Join(u.HomeDir, relPath))
+}
+
+// extractClaudeAccessToken extracts the accessToken from Claude credential JSON.
+// Credential format: {"claudeAiOauth":{"accessToken":"sk-ant-...", ...}}
+func extractClaudeAccessToken(data []byte) (string, error) {
+	var creds struct {
+		ClaudeAiOauth struct {
+			AccessToken string `json:"accessToken"`
+		} `json:"claudeAiOauth"`
+	}
+	if err := json.Unmarshal(data, &creds); err != nil {
+		return "", fmt.Errorf("parse claude credentials: %w", err)
+	}
+	if creds.ClaudeAiOauth.AccessToken == "" {
+		return "", errors.New("claude credentials missing accessToken")
+	}
+	return creds.ClaudeAiOauth.AccessToken, nil
 }
 
 // readCredentials tries keychain first (macOS), then falls back to file.

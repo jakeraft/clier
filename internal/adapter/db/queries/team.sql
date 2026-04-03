@@ -1,6 +1,6 @@
 -- name: CreateTeam :execresult
-INSERT INTO teams (id, name, root_member_id, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?);
+INSERT INTO teams (id, name, root_member_id, plan, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: GetTeam :one
 SELECT * FROM teams WHERE id = ?;
@@ -10,6 +10,9 @@ SELECT * FROM teams ORDER BY created_at;
 
 -- name: UpdateTeam :execresult
 UPDATE teams SET name = ?, root_member_id = ?, updated_at = ? WHERE id = ?;
+
+-- name: UpdateTeamPlan :execresult
+UPDATE teams SET plan = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeleteTeam :execresult
 DELETE FROM teams WHERE id = ?;

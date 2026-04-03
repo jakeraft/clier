@@ -1,11 +1,9 @@
 package domain
 
-import (
-	"errors"
-	"fmt"
-)
+import "fmt"
 
 type TeamExport struct {
+	TeamID         string           `json:"team_id,omitempty"`
 	TeamName       string           `json:"team_name"`
 	RootMemberName string           `json:"root_member_name"`
 	Members        []MemberExport   `json:"members"`
@@ -13,6 +11,7 @@ type TeamExport struct {
 }
 
 type MemberExport struct {
+	ID            string           `json:"id,omitempty"`
 	Name          string           `json:"name"`
 	CliProfile    CliProfileExport `json:"cli_profile"`
 	SystemPrompts []PromptSnapshot `json:"system_prompts"`
@@ -21,6 +20,7 @@ type MemberExport struct {
 }
 
 type CliProfileExport struct {
+	ID         string    `json:"id,omitempty"`
 	Name       string    `json:"name"`
 	Model      string    `json:"model"`
 	Binary     CliBinary `json:"binary"`
@@ -49,12 +49,14 @@ func ExportFromSnapshot(snap TeamSnapshot) (TeamExport, error) {
 		return TeamExport{}, fmt.Errorf("root member ID not found in snapshot: %s", snap.RootMemberID)
 	}
 
-	// 3. Convert each MemberSnapshot to MemberExport
+	// 3. Convert each TeamMemberSnapshot to MemberExport
 	members := make([]MemberExport, 0, len(snap.Members))
 	for _, m := range snap.Members {
 		members = append(members, MemberExport{
+			ID:   m.MemberID,
 			Name: m.MemberName,
 			CliProfile: CliProfileExport{
+				ID:         m.CliProfileID,
 				Name:       m.CliProfileName,
 				Model:      m.Model,
 				Binary:     m.Binary,
@@ -68,7 +70,7 @@ func ExportFromSnapshot(snap TeamSnapshot) (TeamExport, error) {
 		})
 	}
 
-	// 4. Extract relations from MemberSnapshot.Relations
+	// 4. Extract relations from TeamMemberSnapshot.Relations
 	var relations []RelationExport
 	for _, m := range snap.Members {
 		memberName := m.MemberName
@@ -103,6 +105,7 @@ func ExportFromSnapshot(snap TeamSnapshot) (TeamExport, error) {
 	}
 
 	return TeamExport{
+		TeamID:         snap.TeamID,
 		TeamName:       snap.TeamName,
 		RootMemberName: rootMemberName,
 		Members:        members,
@@ -110,49 +113,3 @@ func ExportFromSnapshot(snap TeamSnapshot) (TeamExport, error) {
 	}, nil
 }
 
-// Validate checks that the TeamExport is well-formed.
-// Returns a descriptive error for the first violation found.
-func (e TeamExport) Validate() error {
-	if e.TeamName == "" {
-		return errors.New("team name must not be empty")
-	}
-	if e.RootMemberName == "" {
-		return errors.New("root member name must not be empty")
-	}
-
-	if len(e.Members) == 0 {
-		return errors.New("members must not be empty")
-	}
-
-	// Build set of member names and check for duplicates
-	memberSet := make(map[string]struct{}, len(e.Members))
-	for _, m := range e.Members {
-		if _, exists := memberSet[m.Name]; exists {
-			return fmt.Errorf("duplicate member name: %s", m.Name)
-		}
-		memberSet[m.Name] = struct{}{}
-	}
-
-	// RootMemberName must exist in Members
-	if _, exists := memberSet[e.RootMemberName]; !exists {
-		return fmt.Errorf("root member %q not found in members", e.RootMemberName)
-	}
-
-	// All relation From/To must reference existing members, and Type must be valid
-	for _, r := range e.Relations {
-		if _, exists := memberSet[r.From]; !exists {
-			return fmt.Errorf("relation references unknown member: %s", r.From)
-		}
-		if _, exists := memberSet[r.To]; !exists {
-			return fmt.Errorf("relation references unknown member: %s", r.To)
-		}
-		if r.From == r.To {
-			return fmt.Errorf("self-referencing relation: %s", r.From)
-		}
-		if r.Type != RelationLeader && r.Type != RelationPeer {
-			return fmt.Errorf("invalid relation type: %s", r.Type)
-		}
-	}
-
-	return nil
-}

@@ -20,7 +20,7 @@ type MemberNodeType = Node<MemberNodeData, "member">;
 const MemberNode = memo(function MemberNode({ id, data }: NodeProps<MemberNodeType>) {
   return (
     <>
-      <Handle type="target" position={Position.Left} className={"!size-0 !opacity-0"} />
+      <Handle type="target" position={Position.Top} className={"!size-0 !opacity-0"} />
       <div
         className={cn(
           flex.col,
@@ -46,7 +46,7 @@ const MemberNode = memo(function MemberNode({ id, data }: NodeProps<MemberNodeTy
           <EntityBadge to={`/members/${id}`}>{data.name}</EntityBadge>
         </div>
       </div>
-      <Handle type="source" position={Position.Right} className={"!size-0 !opacity-0"} />
+      <Handle type="source" position={Position.Bottom} className={"!size-0 !opacity-0"} />
     </>
   );
 });

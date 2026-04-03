@@ -190,6 +190,39 @@ func (p *CliProfile) Update(name *string, customArgs *[]string) error {
 	return nil
 }
 
+// UpdateRaw replaces all mutable fields with validated, deep-copied values.
+// Used by import to fully overwrite an existing profile from exported data.
+func (p *CliProfile) UpdateRaw(name, model string, binary CliBinary, systemArgs, customArgs []string, dotConfig DotConfig) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("cli profile name must not be empty")
+	}
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return errors.New("cli profile model must not be empty")
+	}
+	switch binary {
+	case BinaryClaude, BinaryCodex:
+	default:
+		return fmt.Errorf("invalid binary: %s (must be claude or codex)", binary)
+	}
+	if systemArgs == nil {
+		systemArgs = []string{}
+	}
+	if customArgs == nil {
+		customArgs = []string{}
+	}
+
+	p.Name = name
+	p.Model = model
+	p.Binary = binary
+	p.SystemArgs = append([]string{}, systemArgs...)
+	p.CustomArgs = append([]string{}, customArgs...)
+	p.DotConfig = copyDotConfig(dotConfig)
+	p.UpdatedAt = time.Now()
+	return nil
+}
+
 func copyDotConfig(src DotConfig) DotConfig {
 	if src == nil {
 		return nil

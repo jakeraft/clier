@@ -1,197 +1,272 @@
 {
+  "team_id": "ebfc4588-b1a9-45a6-a725-457eb4bbe875",
   "team_name": "story-team",
-  "root_member_name": "chief",
+  "root_member_name": "chief-editor",
   "members": [
     {
-      "name": "chief",
+      "id": "0764d1ec-206c-4e26-82a5-c4127fe32126",
+      "name": "chief-editor",
       "cli_profile": {
+        "id": "c82b70df-a758-4844-bef9-e9d78913c324",
         "name": "claude-sonnet",
         "model": "claude-sonnet-4-6",
         "binary": "claude",
-        "system_args": ["--dangerously-skip-permissions"],
+        "system_args": [
+          "--dangerously-skip-permissions"
+        ],
         "custom_args": [],
         "dot_config": {
-          "skipDangerousModePermissionPrompt": true,
-          "claudeMdExcludes": ["~/.claude/**"]
+          "claudeMdExcludes": [
+            "~/.claude/**"
+          ],
+          "skipDangerousModePermissionPrompt": true
         }
       },
       "system_prompts": [
         {
-          "name": "Team Protocol",
-          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
-        },
-        {
+          "id": "14cbc330-3354-44fd-be07-185bb0adaa6a",
           "name": "editor-in-chief",
           "prompt": "You are the Editor in Chief. Plan a short story and delegate chapters to your workers.\n\nRules:\n- Every sentence must be short — max 10 words.\n- The entire story should fit in one screen.\n\nProcess:\n1. Plan a 2-chapter story arc: genre, protagonist, conflict, resolution.\n2. Send chapter briefs to your workers in parallel (Chapter 1: setup + rising action; Chapter 2: climax + resolution).\n3. Wait for ALL workers to report back before continuing.\n4. Combine all chapters into the final story and send the complete result back."
         }
       ],
+      "envs": [
+        {
+          "id": "abfec5e6-18d9-4d72-99b8-328c4e004c43",
+          "name": "story-genre",
+          "key": "STORY_GENRE",
+          "value": "mystery"
+        }
+      ],
       "git_repo": {
+        "id": "05405876-f4d9-4eb0-881c-7d7527065736",
         "name": "story-repo",
         "url": "https://github.com/jakeraft/clier_hello.git"
       }
     },
     {
-      "name": "se-1",
+      "id": "bdbe0a55-c29d-4a82-875c-dc8b709f4094",
+      "name": "section-editor-1",
       "cli_profile": {
+        "id": "c82b70df-a758-4844-bef9-e9d78913c324",
         "name": "claude-sonnet",
         "model": "claude-sonnet-4-6",
         "binary": "claude",
-        "system_args": ["--dangerously-skip-permissions"],
+        "system_args": [
+          "--dangerously-skip-permissions"
+        ],
         "custom_args": [],
         "dot_config": {
-          "skipDangerousModePermissionPrompt": true,
-          "claudeMdExcludes": ["~/.claude/**"]
+          "claudeMdExcludes": [
+            "~/.claude/**"
+          ],
+          "skipDangerousModePermissionPrompt": true
         }
       },
       "system_prompts": [
         {
-          "name": "Team Protocol",
-          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
-        },
-        {
+          "id": "f2b80dc2-5b02-43aa-9c7e-6bf950580d03",
           "name": "section-editor",
           "prompt": "You are a Section Editor. You receive a chapter brief and delegate scenes to your workers.\n\nRules:\n- Every sentence must be short — max 10 words.\n\nProcess:\n1. Plan 2 scenes from the chapter brief (1 sentence each).\n2. Send scene briefs to your workers in parallel.\n3. Wait for ALL workers to report back before continuing.\n4. Combine all scenes into a single cohesive chapter and send the full chapter text to your leader."
         }
       ],
+      "envs": [
+        {
+          "id": "abfec5e6-18d9-4d72-99b8-328c4e004c43",
+          "name": "story-genre",
+          "key": "STORY_GENRE",
+          "value": "mystery"
+        }
+      ],
       "git_repo": {
+        "id": "05405876-f4d9-4eb0-881c-7d7527065736",
         "name": "story-repo",
         "url": "https://github.com/jakeraft/clier_hello.git"
       }
     },
     {
-      "name": "se-2",
+      "id": "1638ea03-37b8-4a51-a4be-5edbefe93052",
+      "name": "section-editor-2",
       "cli_profile": {
+        "id": "c82b70df-a758-4844-bef9-e9d78913c324",
         "name": "claude-sonnet",
         "model": "claude-sonnet-4-6",
         "binary": "claude",
-        "system_args": ["--dangerously-skip-permissions"],
+        "system_args": [
+          "--dangerously-skip-permissions"
+        ],
         "custom_args": [],
         "dot_config": {
-          "skipDangerousModePermissionPrompt": true,
-          "claudeMdExcludes": ["~/.claude/**"]
+          "claudeMdExcludes": [
+            "~/.claude/**"
+          ],
+          "skipDangerousModePermissionPrompt": true
         }
       },
       "system_prompts": [
         {
-          "name": "Team Protocol",
-          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
-        },
-        {
+          "id": "f2b80dc2-5b02-43aa-9c7e-6bf950580d03",
           "name": "section-editor",
           "prompt": "You are a Section Editor. You receive a chapter brief and delegate scenes to your workers.\n\nRules:\n- Every sentence must be short — max 10 words.\n\nProcess:\n1. Plan 2 scenes from the chapter brief (1 sentence each).\n2. Send scene briefs to your workers in parallel.\n3. Wait for ALL workers to report back before continuing.\n4. Combine all scenes into a single cohesive chapter and send the full chapter text to your leader."
         }
       ],
+      "envs": [
+        {
+          "id": "abfec5e6-18d9-4d72-99b8-328c4e004c43",
+          "name": "story-genre",
+          "key": "STORY_GENRE",
+          "value": "mystery"
+        }
+      ],
       "git_repo": {
+        "id": "05405876-f4d9-4eb0-881c-7d7527065736",
         "name": "story-repo",
         "url": "https://github.com/jakeraft/clier_hello.git"
       }
     },
     {
+      "id": "e65f03ed-8d55-488b-afaa-2acfca9deaac",
       "name": "writer-1",
       "cli_profile": {
+        "id": "c82b70df-a758-4844-bef9-e9d78913c324",
         "name": "claude-sonnet",
         "model": "claude-sonnet-4-6",
         "binary": "claude",
-        "system_args": ["--dangerously-skip-permissions"],
+        "system_args": [
+          "--dangerously-skip-permissions"
+        ],
         "custom_args": [],
         "dot_config": {
-          "skipDangerousModePermissionPrompt": true,
-          "claudeMdExcludes": ["~/.claude/**"]
+          "claudeMdExcludes": [
+            "~/.claude/**"
+          ],
+          "skipDangerousModePermissionPrompt": true
         }
       },
       "system_prompts": [
         {
-          "name": "Team Protocol",
-          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
-        },
-        {
+          "id": "e3d5305a-a108-44be-a138-cb118a611cf5",
           "name": "writer",
           "prompt": "You are a Writer. Write a single scene from the brief you receive.\n\nRules:\n- Write exactly 2-3 sentences. Each sentence max 10 words.\n- Be vivid but concise.\n\nWhen finished, send the full scene text to your leader."
         }
       ],
+      "envs": [
+        {
+          "id": "abfec5e6-18d9-4d72-99b8-328c4e004c43",
+          "name": "story-genre",
+          "key": "STORY_GENRE",
+          "value": "mystery"
+        }
+      ],
       "git_repo": {
+        "id": "05405876-f4d9-4eb0-881c-7d7527065736",
         "name": "story-repo",
         "url": "https://github.com/jakeraft/clier_hello.git"
       }
     },
     {
+      "id": "3d3d7af6-f228-443d-b563-fa03a909142c",
       "name": "writer-2",
       "cli_profile": {
+        "id": "c82b70df-a758-4844-bef9-e9d78913c324",
         "name": "claude-sonnet",
         "model": "claude-sonnet-4-6",
         "binary": "claude",
-        "system_args": ["--dangerously-skip-permissions"],
+        "system_args": [
+          "--dangerously-skip-permissions"
+        ],
         "custom_args": [],
         "dot_config": {
-          "skipDangerousModePermissionPrompt": true,
-          "claudeMdExcludes": ["~/.claude/**"]
+          "claudeMdExcludes": [
+            "~/.claude/**"
+          ],
+          "skipDangerousModePermissionPrompt": true
         }
       },
       "system_prompts": [
         {
-          "name": "Team Protocol",
-          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
-        },
-        {
+          "id": "e3d5305a-a108-44be-a138-cb118a611cf5",
           "name": "writer",
           "prompt": "You are a Writer. Write a single scene from the brief you receive.\n\nRules:\n- Write exactly 2-3 sentences. Each sentence max 10 words.\n- Be vivid but concise.\n\nWhen finished, send the full scene text to your leader."
         }
       ],
+      "envs": [
+        {
+          "id": "abfec5e6-18d9-4d72-99b8-328c4e004c43",
+          "name": "story-genre",
+          "key": "STORY_GENRE",
+          "value": "mystery"
+        }
+      ],
       "git_repo": {
+        "id": "05405876-f4d9-4eb0-881c-7d7527065736",
         "name": "story-repo",
         "url": "https://github.com/jakeraft/clier_hello.git"
       }
     },
     {
+      "id": "e67708f9-98bf-41f3-bf62-b59f56e6be2b",
       "name": "writer-3",
       "cli_profile": {
-        "name": "codex",
+        "id": "16266d16-0166-4326-9fe4-0f3cba180460",
+        "name": "gpt-5.4",
         "model": "gpt-5.4",
         "binary": "codex",
         "system_args": [],
         "custom_args": [],
         "dot_config": {
-          "sandbox_mode": "danger-full-access",
           "notice": {
             "model_migrations": {}
-          }
+          },
+          "sandbox_mode": "danger-full-access"
         }
       },
       "system_prompts": [
         {
-          "name": "Team Protocol",
-          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
-        },
-        {
+          "id": "e3d5305a-a108-44be-a138-cb118a611cf5",
           "name": "writer",
           "prompt": "You are a Writer. Write a single scene from the brief you receive.\n\nRules:\n- Write exactly 2-3 sentences. Each sentence max 10 words.\n- Be vivid but concise.\n\nWhen finished, send the full scene text to your leader."
+        }
+      ],
+      "envs": [
+        {
+          "id": "abfec5e6-18d9-4d72-99b8-328c4e004c43",
+          "name": "story-genre",
+          "key": "STORY_GENRE",
+          "value": "mystery"
         }
       ],
       "git_repo": null
     },
     {
+      "id": "fd3ff322-6f29-4f5b-96c1-7164af430c85",
       "name": "writer-4",
       "cli_profile": {
-        "name": "codex",
+        "id": "16266d16-0166-4326-9fe4-0f3cba180460",
+        "name": "gpt-5.4",
         "model": "gpt-5.4",
         "binary": "codex",
         "system_args": [],
         "custom_args": [],
         "dot_config": {
-          "sandbox_mode": "danger-full-access",
           "notice": {
             "model_migrations": {}
-          }
+          },
+          "sandbox_mode": "danger-full-access"
         }
       },
       "system_prompts": [
         {
-          "name": "Team Protocol",
-          "prompt": "# Team Protocol\n\nYou are a member of a team managed by clier.\nBefore taking any action, run the following command to discover your role and teammates:\n\n```bash\nclier sprint whoami\n```\n\nThis returns your member ID, name, team name, and relations (leaders, workers, peers).\n\n## Communication\n\nSend a message to a teammate:\n\n```bash\nclier message send --to <member-id> \"<message>\"\n```\n\nReplies arrive directly in your terminal input. Do not poll or call any receive command.\n\n## Behavioral Rules\n\n- **If you have a leader** — report your results to them when done.\n- **If you have workers** — delegate sub-tasks to them and wait for all responses before wrapping up.\n- **If you have peers** — coordinate with them when tasks overlap.\n- **If you have no leader** — you were started by a human user. Report final results with:\n\n```bash\nclier message send --to 00000000-0000-0000-0000-000000000000 \"<message>\"\n```\n"
-        },
-        {
+          "id": "e3d5305a-a108-44be-a138-cb118a611cf5",
           "name": "writer",
           "prompt": "You are a Writer. Write a single scene from the brief you receive.\n\nRules:\n- Write exactly 2-3 sentences. Each sentence max 10 words.\n- Be vivid but concise.\n\nWhen finished, send the full scene text to your leader."
+        }
+      ],
+      "envs": [
+        {
+          "id": "abfec5e6-18d9-4d72-99b8-328c4e004c43",
+          "name": "story-genre",
+          "key": "STORY_GENRE",
+          "value": "mystery"
         }
       ],
       "git_repo": null
@@ -199,32 +274,32 @@
   ],
   "relations": [
     {
-      "from": "chief",
-      "to": "se-1",
+      "from": "chief-editor",
+      "to": "section-editor-1",
       "type": "leader"
     },
     {
-      "from": "chief",
-      "to": "se-2",
+      "from": "chief-editor",
+      "to": "section-editor-2",
       "type": "leader"
     },
     {
-      "from": "se-1",
+      "from": "section-editor-1",
       "to": "writer-1",
       "type": "leader"
     },
     {
-      "from": "se-1",
+      "from": "section-editor-1",
       "to": "writer-2",
       "type": "leader"
     },
     {
-      "from": "se-2",
+      "from": "section-editor-2",
       "to": "writer-3",
       "type": "leader"
     },
     {
-      "from": "se-2",
+      "from": "section-editor-2",
       "to": "writer-4",
       "type": "leader"
     }

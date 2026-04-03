@@ -2,6 +2,7 @@ import type {
   DashboardData,
   TeamView,
   MemberView,
+  MemberSessionPlanView,
   CliProfileView,
   SystemPromptView,
   GitRepoView,
@@ -22,7 +23,15 @@ function findById<T extends { id: string }>(items: T[], id: string): T | undefin
   return items.find((item) => item.id === id);
 }
 
-export type { CliProfileView, SystemPromptView, GitRepoView, MemberView, TeamView, EnvView };
+export type {
+  CliProfileView,
+  SystemPromptView,
+  GitRepoView,
+  MemberView,
+  MemberSessionPlanView,
+  TeamView,
+  EnvView,
+};
 
 export const api = {
   cliProfiles: {
@@ -52,7 +61,9 @@ export const api = {
       const item = findById(getData().teams, id);
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
-    getStructure: (id: string): Promise<{
+    getStructure: (
+      id: string,
+    ): Promise<{
       rootMemberId: string;
       members: Array<MemberView & { cliProfileName: string; systemPromptNames: string[] }>;
       relations: Array<{ from: string; to: string; type: string }>;

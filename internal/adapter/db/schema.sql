@@ -39,23 +39,22 @@ CREATE TABLE IF NOT EXISTS teams (
     id             TEXT PRIMARY KEY,
     name           TEXT NOT NULL,
     root_member_id TEXT NOT NULL REFERENCES members(id) ON DELETE RESTRICT,
+    plan           TEXT NOT NULL DEFAULT '[]',
     created_at     INTEGER NOT NULL,
     updated_at     INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS sprints (
+CREATE TABLE IF NOT EXISTS sessions (
     id            TEXT PRIMARY KEY,
-    name          TEXT NOT NULL,
-    team_snapshot TEXT NOT NULL DEFAULT '{}',
-    state         TEXT NOT NULL DEFAULT 'running',
-    error         TEXT NOT NULL DEFAULT '',
+    team_id       TEXT NOT NULL REFERENCES teams(id),
+    status        TEXT NOT NULL DEFAULT 'running',
     created_at    INTEGER NOT NULL,
-    updated_at    INTEGER NOT NULL
+    stopped_at    INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS messages (
     id             TEXT PRIMARY KEY,
-    sprint_id      TEXT NOT NULL REFERENCES sprints(id) ON DELETE CASCADE,
+    session_id     TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     from_member_id TEXT NOT NULL,
     to_member_id   TEXT NOT NULL,
     content        TEXT NOT NULL,
@@ -76,12 +75,12 @@ CREATE TABLE IF NOT EXISTS team_relations (
     PRIMARY KEY (team_id, from_member_id, to_member_id, type)
 );
 
-CREATE TABLE IF NOT EXISTS sprint_surfaces (
-    sprint_id     TEXT NOT NULL REFERENCES sprints(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS session_surfaces (
+    session_id    TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
     member_id     TEXT NOT NULL,
     workspace_ref TEXT NOT NULL,
     surface_ref   TEXT NOT NULL,
-    PRIMARY KEY (sprint_id, member_id)
+    PRIMARY KEY (session_id, member_id)
 );
 
 CREATE TABLE IF NOT EXISTS member_system_prompts (

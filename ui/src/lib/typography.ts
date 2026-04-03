@@ -22,10 +22,10 @@
 //   Level 5 (micro)         :                                    icon size-2.5 (10px)  ← typographyIcon ← graph node inline controls
 
 export const typography = {
-  1: "text-lg font-bold leading-none",
-  2: "text-lg font-semibold leading-none",
-  3: "text-sm font-semibold leading-none",
-  4: "text-sm font-medium leading-none",
+  1: "text-lg font-bold",
+  2: "text-lg font-semibold",
+  3: "text-sm font-semibold",
+  4: "text-sm font-medium",
   5: "text-sm",
   6: "text-sm text-muted-foreground",
   7: "text-xs text-muted-foreground",

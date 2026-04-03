@@ -68,11 +68,17 @@ func (s *Store) CreateTeam(ctx context.Context, t *domain.Team) error {
 	}
 	defer tx.Rollback()
 
+	planJSON, err := json.Marshal(t.Plan)
+	if err != nil {
+		return fmt.Errorf("marshal plan: %w", err)
+	}
+
 	qtx := generated.New(tx)
 	if _, err := qtx.CreateTeam(ctx, generated.CreateTeamParams{
 		ID:           t.ID,
 		Name:         t.Name,
 		RootMemberID: t.RootMemberID,
+		Plan:         string(planJSON),
 		CreatedAt:    t.CreatedAt.Unix(),
 		UpdatedAt:    t.UpdatedAt.Unix(),
 	}); err != nil {
@@ -115,12 +121,20 @@ func (s *Store) GetTeam(ctx context.Context, id string) (domain.Team, error) {
 	if memberIDs == nil {
 		memberIDs = []string{}
 	}
+	var plan []domain.MemberSessionPlan
+	if err := json.Unmarshal([]byte(row.Plan), &plan); err != nil {
+		return domain.Team{}, fmt.Errorf("unmarshal plan: %w", err)
+	}
+	if plan == nil {
+		plan = []domain.MemberSessionPlan{}
+	}
 	return domain.Team{
 		ID:           row.ID,
 		Name:         row.Name,
 		RootMemberID: row.RootMemberID,
 		MemberIDs:    memberIDs,
 		Relations:    relations,
+		Plan:         plan,
 		CreatedAt:    time.Unix(row.CreatedAt, 0),
 		UpdatedAt:    time.Unix(row.UpdatedAt, 0),
 	}, nil
@@ -208,6 +222,54 @@ func (s *Store) RemoveTeamRelation(ctx context.Context, teamID string, r domain.
 		TeamID: teamID, FromMemberID: r.From, ToMemberID: r.To, Type: string(r.Type),
 	})
 	return err
+}
+
+func (s *Store) DeleteTeamMembers(ctx context.Context, teamID string) error {
+	_, err := s.queries.DeleteTeamMembers(ctx, teamID)
+	return err
+}
+
+func (s *Store) DeleteTeamRelations(ctx context.Context, teamID string) error {
+	_, err := s.queries.DeleteTeamRelations(ctx, teamID)
+	return err
+}
+
+// ReplaceTeamComposition atomically updates a team's basic info,
+// clears all members and relations, and re-adds them.
+func (s *Store) ReplaceTeamComposition(ctx context.Context, t *domain.Team) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	qtx := generated.New(tx)
+	if _, err := qtx.UpdateTeam(ctx, generated.UpdateTeamParams{
+		Name: t.Name, RootMemberID: t.RootMemberID, UpdatedAt: t.UpdatedAt.Unix(), ID: t.ID,
+	}); err != nil {
+		return err
+	}
+	if _, err := qtx.DeleteTeamRelations(ctx, t.ID); err != nil {
+		return err
+	}
+	if _, err := qtx.DeleteTeamMembers(ctx, t.ID); err != nil {
+		return err
+	}
+	for _, memberID := range t.MemberIDs {
+		if _, err := qtx.AddTeamMember(ctx, generated.AddTeamMemberParams{
+			TeamID: t.ID, MemberID: memberID,
+		}); err != nil {
+			return err
+		}
+	}
+	for _, r := range t.Relations {
+		if _, err := qtx.AddTeamRelation(ctx, generated.AddTeamRelationParams{
+			TeamID: t.ID, FromMemberID: r.From, ToMemberID: r.To, Type: string(r.Type),
+		}); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // Member
@@ -695,78 +757,84 @@ func (s *Store) DeleteGitRepo(ctx context.Context, id string) error {
 	return nil
 }
 
-// Sprint
-
-func unmarshalSprint(row generated.Sprint) (domain.Sprint, error) {
-	var snapshot domain.TeamSnapshot
-	if err := json.Unmarshal([]byte(row.TeamSnapshot), &snapshot); err != nil {
-		return domain.Sprint{}, fmt.Errorf("unmarshal team_snapshot: %w", err)
-	}
-	return domain.Sprint{
-		ID:           row.ID,
-		Name:         row.Name,
-		TeamSnapshot: snapshot,
-		State:        domain.SprintState(row.State),
-		Error:        row.Error,
-		CreatedAt:    time.Unix(row.CreatedAt, 0),
-		UpdatedAt:    time.Unix(row.UpdatedAt, 0),
-	}, nil
-}
-
-func (s *Store) GetSprint(ctx context.Context, id string) (domain.Sprint, error) {
-	row, err := s.queries.GetSprint(ctx, id)
+// UpdateTeamPlan updates only the plan JSON on a team.
+func (s *Store) UpdateTeamPlan(ctx context.Context, t *domain.Team) error {
+	planJSON, err := json.Marshal(t.Plan)
 	if err != nil {
-		return domain.Sprint{}, err
+		return fmt.Errorf("marshal plan: %w", err)
 	}
-	return unmarshalSprint(row)
-}
-
-func (s *Store) CreateSprint(ctx context.Context, sprint *domain.Sprint) error {
-	snapshotJSON, err := json.Marshal(sprint.TeamSnapshot)
-	if err != nil {
-		return fmt.Errorf("marshal snapshot: %w", err)
-	}
-	_, err = s.queries.CreateSprint(ctx, generated.CreateSprintParams{
-		ID:           sprint.ID,
-		Name:         sprint.Name,
-		TeamSnapshot: string(snapshotJSON),
-		State:        string(sprint.State),
-		Error:        sprint.Error,
-		CreatedAt:    sprint.CreatedAt.Unix(),
-		UpdatedAt:    sprint.UpdatedAt.Unix(),
+	_, err = s.queries.UpdateTeamPlan(ctx, generated.UpdateTeamPlanParams{
+		Plan:      string(planJSON),
+		UpdatedAt: t.UpdatedAt.Unix(),
+		ID:        t.ID,
 	})
 	return err
 }
 
-func (s *Store) UpdateSprintState(ctx context.Context, sprintID string, state domain.SprintState, sprintErr string) error {
-	_, err := s.queries.UpdateSprintState(ctx, generated.UpdateSprintStateParams{
-		State:     string(state),
-		Error:     sprintErr,
-		UpdatedAt: time.Now().Unix(),
-		ID:        sprintID,
-	})
+// Session
+
+func unmarshalSession(row generated.Session) domain.Session {
+	s := domain.Session{
+		ID:        row.ID,
+		TeamID:    row.TeamID,
+		Status:    domain.SessionStatus(row.Status),
+		CreatedAt: time.Unix(row.CreatedAt, 0),
+	}
+	if row.StoppedAt.Valid {
+		t := time.Unix(row.StoppedAt.Int64, 0)
+		s.StoppedAt = &t
+	}
+	return s
+}
+
+func (s *Store) CreateSession(ctx context.Context, session *domain.Session) error {
+	params := generated.CreateSessionParams{
+		ID:        session.ID,
+		TeamID:    session.TeamID,
+		Status:    string(session.Status),
+		CreatedAt: session.CreatedAt.Unix(),
+	}
+	if session.StoppedAt != nil {
+		params.StoppedAt = sql.NullInt64{Int64: session.StoppedAt.Unix(), Valid: true}
+	}
+	_, err := s.queries.CreateSession(ctx, params)
 	return err
 }
 
-func (s *Store) ListSprints(ctx context.Context) ([]domain.Sprint, error) {
-	rows, err := s.queries.ListSprints(ctx)
+func (s *Store) GetSession(ctx context.Context, id string) (domain.Session, error) {
+	row, err := s.queries.GetSession(ctx, id)
+	if err != nil {
+		return domain.Session{}, err
+	}
+	return unmarshalSession(row), nil
+}
+
+func (s *Store) ListSessions(ctx context.Context) ([]domain.Session, error) {
+	rows, err := s.queries.ListSessions(ctx)
 	if err != nil {
 		return nil, err
 	}
-	sprints := make([]domain.Sprint, 0, len(rows))
+	sessions := make([]domain.Session, 0, len(rows))
 	for _, row := range rows {
-		sp, err := unmarshalSprint(row)
-		if err != nil {
-			return nil, err
-		}
-		sprints = append(sprints, sp)
+		sessions = append(sessions, unmarshalSession(row))
 	}
-	return sprints, nil
+	return sessions, nil
 }
 
-// DeleteSprint deletes a sprint. CASCADE: sprint_surfaces, messages.
-func (s *Store) DeleteSprint(ctx context.Context, id string) error {
-	result, err := s.queries.DeleteSprint(ctx, id)
+func (s *Store) UpdateSessionStatus(ctx context.Context, session *domain.Session) error {
+	params := generated.UpdateSessionStatusParams{
+		Status: string(session.Status),
+		ID:     session.ID,
+	}
+	if session.StoppedAt != nil {
+		params.StoppedAt = sql.NullInt64{Int64: session.StoppedAt.Unix(), Valid: true}
+	}
+	_, err := s.queries.UpdateSessionStatus(ctx, params)
+	return err
+}
+
+func (s *Store) DeleteSession(ctx context.Context, id string) error {
+	result, err := s.queries.DeleteSession(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -775,7 +843,7 @@ func (s *Store) DeleteSprint(ctx context.Context, id string) error {
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("sprint not found: %s", id)
+		return fmt.Errorf("session not found: %s", id)
 	}
 	return nil
 }
@@ -785,7 +853,7 @@ func (s *Store) DeleteSprint(ctx context.Context, id string) error {
 func (s *Store) CreateMessage(ctx context.Context, msg *domain.Message) error {
 	_, err := s.queries.CreateMessage(ctx, generated.CreateMessageParams{
 		ID:           msg.ID,
-		SprintID:     msg.SprintID,
+		SessionID:    msg.SessionID,
 		FromMemberID: msg.FromMemberID,
 		ToMemberID:   msg.ToMemberID,
 		Content:      msg.Content,
@@ -794,8 +862,8 @@ func (s *Store) CreateMessage(ctx context.Context, msg *domain.Message) error {
 	return err
 }
 
-func (s *Store) ListMessagesBySprintID(ctx context.Context, sprintID string) ([]domain.Message, error) {
-	rows, err := s.queries.ListMessagesBySprintID(ctx, sprintID)
+func (s *Store) ListMessagesBySessionID(ctx context.Context, sessionID string) ([]domain.Message, error) {
+	rows, err := s.queries.ListMessagesBySessionID(ctx, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -803,7 +871,7 @@ func (s *Store) ListMessagesBySprintID(ctx context.Context, sprintID string) ([]
 	for _, row := range rows {
 		msgs = append(msgs, domain.Message{
 			ID:           row.ID,
-			SprintID:     row.SprintID,
+			SessionID:    row.SessionID,
 			FromMemberID: row.FromMemberID,
 			ToMemberID:   row.ToMemberID,
 			Content:      row.Content,
@@ -813,18 +881,39 @@ func (s *Store) ListMessagesBySprintID(ctx context.Context, sprintID string) ([]
 	return msgs, nil
 }
 
-// SprintSurface (infra state for terminal adapter)
+func (s *Store) ListMessagesBySessionAndMember(ctx context.Context, sessionID, memberID string) ([]domain.Message, error) {
+	rows, err := s.queries.ListMessagesBySessionAndMember(ctx, generated.ListMessagesBySessionAndMemberParams{
+		SessionID: sessionID, FromMemberID: memberID, ToMemberID: memberID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	msgs := make([]domain.Message, 0, len(rows))
+	for _, row := range rows {
+		msgs = append(msgs, domain.Message{
+			ID:           row.ID,
+			SessionID:    row.SessionID,
+			FromMemberID: row.FromMemberID,
+			ToMemberID:   row.ToMemberID,
+			Content:      row.Content,
+			CreatedAt:    time.Unix(row.CreatedAt, 0),
+		})
+	}
+	return msgs, nil
+}
 
-func (s *Store) SaveSprintSurface(ctx context.Context, sprintID, memberID, workspaceRef, surfaceRef string) error {
-	_, err := s.queries.SaveSprintSurface(ctx, generated.SaveSprintSurfaceParams{
-		SprintID: sprintID, MemberID: memberID, WorkspaceRef: workspaceRef, SurfaceRef: surfaceRef,
+// SessionSurface (infra state for terminal adapter)
+
+func (s *Store) SaveSessionSurface(ctx context.Context, sessionID, memberID, workspaceRef, surfaceRef string) error {
+	_, err := s.queries.SaveSessionSurface(ctx, generated.SaveSessionSurfaceParams{
+		SessionID: sessionID, MemberID: memberID, WorkspaceRef: workspaceRef, SurfaceRef: surfaceRef,
 	})
 	return err
 }
 
-func (s *Store) GetSprintSurface(ctx context.Context, sprintID, memberID string) (workspaceRef, surfaceRef string, err error) {
-	row, err := s.queries.GetSprintSurface(ctx, generated.GetSprintSurfaceParams{
-		SprintID: sprintID, MemberID: memberID,
+func (s *Store) GetSessionSurface(ctx context.Context, sessionID, memberID string) (workspaceRef, surfaceRef string, err error) {
+	row, err := s.queries.GetSessionSurface(ctx, generated.GetSessionSurfaceParams{
+		SessionID: sessionID, MemberID: memberID,
 	})
 	if err != nil {
 		return "", "", err
@@ -832,13 +921,13 @@ func (s *Store) GetSprintSurface(ctx context.Context, sprintID, memberID string)
 	return row.WorkspaceRef, row.SurfaceRef, nil
 }
 
-func (s *Store) GetSprintWorkspaceRef(ctx context.Context, sprintID, excludeMemberID string) (string, error) {
-	return s.queries.GetSprintWorkspaceRef(ctx, generated.GetSprintWorkspaceRefParams{
-		SprintID: sprintID, MemberID: excludeMemberID,
+func (s *Store) GetSessionWorkspaceRef(ctx context.Context, sessionID, excludeMemberID string) (string, error) {
+	return s.queries.GetSessionWorkspaceRef(ctx, generated.GetSessionWorkspaceRefParams{
+		SessionID: sessionID, MemberID: excludeMemberID,
 	})
 }
 
-func (s *Store) DeleteSprintSurfaces(ctx context.Context, sprintID string) error {
-	_, err := s.queries.DeleteSprintSurfaces(ctx, sprintID)
+func (s *Store) DeleteSessionSurfaces(ctx context.Context, sessionID string) error {
+	_, err := s.queries.DeleteSessionSurfaces(ctx, sessionID)
 	return err
 }

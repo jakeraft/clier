@@ -1,12 +1,4 @@
-import {
-  Users,
-  User,
-  Bot,
-  BookOpen,
-  FolderGit2,
-  KeyRound,
-  type LucideIcon,
-} from "lucide-react";
+import { Users, User, Bot, BookOpen, FolderGit2, KeyRound, type LucideIcon } from "lucide-react";
 type Entity = "team" | "member" | "cli-profile" | "system-prompt" | "git-repo" | "env";
 
 const ENTITY_STYLE = new Map<Entity, string>([

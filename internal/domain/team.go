@@ -36,13 +36,14 @@ func (r MemberRelations) IsConnectedTo(memberID string) bool {
 }
 
 type Team struct {
-	ID           string     `json:"id"`
-	Name         string     `json:"name"`
-	RootMemberID string     `json:"root_member_id"`
-	MemberIDs    []string   `json:"member_ids"`
-	Relations    []Relation `json:"relations"`
-	CreatedAt    time.Time  `json:"created_at"`
-	UpdatedAt    time.Time  `json:"updated_at"`
+	ID           string           `json:"id"`
+	Name         string           `json:"name"`
+	RootMemberID string           `json:"root_member_id"`
+	MemberIDs    []string         `json:"member_ids"`
+	Relations    []Relation       `json:"relations"`
+	Plan         []MemberSessionPlan `json:"plan"`
+	CreatedAt    time.Time        `json:"created_at"`
+	UpdatedAt    time.Time        `json:"updated_at"`
 }
 
 func NewTeam(name, rootMemberID string) (*Team, error) {
@@ -81,6 +82,48 @@ func (t *Team) Update(name *string, rootMemberID *string) error {
 		}
 		t.RootMemberID = *rootMemberID
 	}
+	t.UpdatedAt = time.Now()
+	return nil
+}
+
+// ReplaceComposition replaces the team's name, root, members, and relations atomically.
+// Validates all invariants: name non-empty, root in members, relation types, no self-relations, etc.
+func (t *Team) ReplaceComposition(name string, rootMemberID string, memberIDs []string, relations []Relation) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return errors.New("team name must not be empty")
+	}
+	rootMemberID = strings.TrimSpace(rootMemberID)
+	if rootMemberID == "" {
+		return errors.New("root member id must not be empty")
+	}
+
+	// Build a temporary team to leverage existing AddMember/AddRelation validation.
+	tmp := &Team{
+		ID:           t.ID,
+		Name:         name,
+		RootMemberID: rootMemberID,
+		MemberIDs:    []string{rootMemberID},
+		Relations:    []Relation{},
+	}
+	for _, id := range memberIDs {
+		if id == rootMemberID {
+			continue
+		}
+		if err := tmp.AddMember(id); err != nil {
+			return err
+		}
+	}
+	for _, r := range relations {
+		if err := tmp.AddRelation(r); err != nil {
+			return err
+		}
+	}
+
+	t.Name = tmp.Name
+	t.RootMemberID = tmp.RootMemberID
+	t.MemberIDs = tmp.MemberIDs
+	t.Relations = tmp.Relations
 	t.UpdatedAt = time.Now()
 	return nil
 }

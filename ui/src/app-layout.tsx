@@ -1,14 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
-import {
-  Moon,
-  Sun,
-  Users,
-  User,
-  BookOpen,
-  Bot,
-  FolderGit2,
-  KeyRound,
-} from "lucide-react";
+import { Moon, Sun, Users, User, BookOpen, Bot, FolderGit2, KeyRound } from "lucide-react";
 import { typography, typographyIcon } from "@/lib/typography";
 import { cn } from "@/lib/utilities";
 import { flex, gap } from "@/lib/layout";

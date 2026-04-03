@@ -4,7 +4,7 @@
 
 **Design your agent team. Run them in real terminals, not API calls.**
 
-Define your team in JSON — roles, hierarchy, scoped environments. Start a sprint, and agents collaborate while you watch and intervene in real time.
+Define your team in JSON — roles, hierarchy, scoped environments. Start a session, and agents collaborate while you watch and intervene in real time.
 
 ## Why Clier?
 
@@ -37,11 +37,11 @@ Open your CLI agent and give it these instructions:
 > [!NOTE]
 > Explore the clier CLI and import the tutorial team from
 > `https://raw.githubusercontent.com/jakeraft/clier/main/tutorials/story-team.json`.
-> Show me the team on the dashboard, then start a sprint and tell the chief:
+> Show me the team on the dashboard, then start a session and tell the chief:
 > "Write a short story about a mysterious animal."
-> Show me the running sprints. When the story arrives, stop the sprint and clean up.
+> Show me the running sessions. When the story arrives, stop the session and clean up.
 
-The agent discovers commands, parses outputs, and chains them on its own. `sprint start` opens a [cmux](https://cmux.com/) workspace with one terminal per member, and the final result arrives in your terminal as a message.
+The agent discovers commands, parses outputs, and chains them on its own. `session start` opens a [cmux](https://cmux.com/) workspace with one terminal per member, and the final result arrives in your terminal as a message.
 
 Under the hood, the agent runs something like:
 
@@ -49,10 +49,10 @@ Under the hood, the agent runs something like:
 clier team import <url>
 clier team list
 clier dashboard
-clier sprint start --team <team-id>
-clier sprint list
-clier message send "..." --sprint <sprint-id> --to <chief-member-id>
-clier sprint stop <sprint-id>
+clier session start <team-id>
+clier session list
+clier session send "..." --session <session-id> --to <chief-member-id>
+clier session stop <session-id>
 ```
 
 ### Tutorial Walkthrough
@@ -65,7 +65,7 @@ clier sprint stop <sprint-id>
 
 <img src="assets/02-explore.png" width="800">
 
-**3. It imports the team, opens the dashboard, and starts a sprint**
+**3. It imports the team, opens the dashboard, and starts a session**
 
 <img src="assets/03-dashboard.png" width="800">
 

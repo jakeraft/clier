@@ -4,25 +4,28 @@ import "testing"
 
 func TestExportFromSnapshot(t *testing.T) {
 	snap := TeamSnapshot{
+		TeamID:       "team-001",
 		TeamName:     "my-team",
 		RootMemberID: "id-alice",
-		Members: []MemberSnapshot{
+		Members: []TeamMemberSnapshot{
 			{
 				MemberID:       "id-alice",
 				MemberName:     "alice",
 				Binary:         BinaryClaude,
 				Model:          "claude-sonnet-4-6",
+				CliProfileID:   "prof-alice",
 				CliProfileName: "claude-sonnet",
 				SystemArgs:     []string{"--dangerously-skip-permissions"},
 				CustomArgs:     []string{"--verbose"},
 				DotConfig:      DotConfig{"key": "value"},
 				SystemPrompts: []PromptSnapshot{
-					{Name: "default", Prompt: "you are helpful"},
+					{ID: "sp-1", Name: "default", Prompt: "you are helpful"},
 				},
 				Envs: []EnvSnapshot{
-					{Name: "greeting", Key: "GREETING", Value: "hello"},
+					{ID: "env-1", Name: "greeting", Key: "GREETING", Value: "hello"},
 				},
 				GitRepo: &GitRepoSnapshot{
+					ID:   "repo-1",
 					Name: "my-repo",
 					URL:  "https://github.com/example/repo",
 				},
@@ -37,6 +40,7 @@ func TestExportFromSnapshot(t *testing.T) {
 				MemberName:     "bob",
 				Binary:         BinaryClaude,
 				Model:          "claude-haiku-4-5-20251001",
+				CliProfileID:   "prof-bob",
 				CliProfileName: "claude-haiku",
 				SystemArgs:     []string{"--dangerously-skip-permissions"},
 				CustomArgs:     []string{},
@@ -57,6 +61,11 @@ func TestExportFromSnapshot(t *testing.T) {
 		t.Fatalf("ExportFromSnapshot() returned unexpected error: %v", err)
 	}
 
+	// TeamID
+	if export.TeamID != "team-001" {
+		t.Errorf("TeamID = %q, want %q", export.TeamID, "team-001")
+	}
+
 	// TeamName
 	if export.TeamName != "my-team" {
 		t.Errorf("TeamName = %q, want %q", export.TeamName, "my-team")
@@ -74,8 +83,14 @@ func TestExportFromSnapshot(t *testing.T) {
 
 	// Alice member
 	alice := export.Members[0]
+	if alice.ID != "id-alice" {
+		t.Errorf("Members[0].ID = %q, want %q", alice.ID, "id-alice")
+	}
 	if alice.Name != "alice" {
 		t.Errorf("Members[0].Name = %q, want %q", alice.Name, "alice")
+	}
+	if alice.CliProfile.ID != "prof-alice" {
+		t.Errorf("alice.CliProfile.ID = %q, want %q", alice.CliProfile.ID, "prof-alice")
 	}
 	if alice.CliProfile.Name != "claude-sonnet" {
 		t.Errorf("alice.CliProfile.Name = %q, want %q", alice.CliProfile.Name, "claude-sonnet")
@@ -95,11 +110,20 @@ func TestExportFromSnapshot(t *testing.T) {
 	if len(alice.SystemPrompts) != 1 || alice.SystemPrompts[0].Name != "default" {
 		t.Errorf("alice.SystemPrompts = %v, unexpected", alice.SystemPrompts)
 	}
+	if alice.SystemPrompts[0].ID != "sp-1" {
+		t.Errorf("alice.SystemPrompts[0].ID = %q, want %q", alice.SystemPrompts[0].ID, "sp-1")
+	}
 	if len(alice.Envs) != 1 || alice.Envs[0].Name != "greeting" || alice.Envs[0].Key != "GREETING" || alice.Envs[0].Value != "hello" {
 		t.Errorf("alice.Envs = %v, unexpected", alice.Envs)
 	}
+	if alice.Envs[0].ID != "env-1" {
+		t.Errorf("alice.Envs[0].ID = %q, want %q", alice.Envs[0].ID, "env-1")
+	}
 	if alice.GitRepo == nil {
 		t.Fatal("alice.GitRepo should not be nil")
+	}
+	if alice.GitRepo.ID != "repo-1" {
+		t.Errorf("alice.GitRepo.ID = %q, want %q", alice.GitRepo.ID, "repo-1")
 	}
 	if alice.GitRepo.Name != "my-repo" {
 		t.Errorf("alice.GitRepo.Name = %q, want %q", alice.GitRepo.Name, "my-repo")
@@ -134,7 +158,7 @@ func TestExportFromSnapshot_PeerDedup(t *testing.T) {
 	snap := TeamSnapshot{
 		TeamName:     "peer-team",
 		RootMemberID: "id-alice",
-		Members: []MemberSnapshot{
+		Members: []TeamMemberSnapshot{
 			{
 				MemberID:       "id-alice",
 				MemberName:     "alice",
@@ -188,124 +212,11 @@ func TestExportFromSnapshot_PeerDedup(t *testing.T) {
 	}
 }
 
-func TestTeamExport_Validate(t *testing.T) {
-	validExport := func() TeamExport {
-		return TeamExport{
-			TeamName:       "my-team",
-			RootMemberName: "alice",
-			Members: []MemberExport{
-				{
-					Name: "alice",
-					CliProfile: CliProfileExport{
-						Name:       "claude-sonnet",
-						Model:      "claude-sonnet-4-6",
-						Binary:     BinaryClaude,
-						SystemArgs: []string{},
-						CustomArgs: []string{},
-						DotConfig:  DotConfig{},
-					},
-					SystemPrompts: []PromptSnapshot{},
-					GitRepo:       nil,
-				},
-				{
-					Name: "bob",
-					CliProfile: CliProfileExport{
-						Name:       "claude-haiku",
-						Model:      "claude-haiku-4-5-20251001",
-						Binary:     BinaryClaude,
-						SystemArgs: []string{},
-						CustomArgs: []string{},
-						DotConfig:  DotConfig{},
-					},
-					SystemPrompts: []PromptSnapshot{},
-					GitRepo:       nil,
-				},
-			},
-			Relations: []RelationExport{
-				{From: "alice", To: "bob", Type: RelationLeader},
-			},
-		}
-	}
-
-	t.Run("valid export passes", func(t *testing.T) {
-		e := validExport()
-		if err := e.Validate(); err != nil {
-			t.Errorf("Validate() returned error for valid export: %v", err)
-		}
-	})
-
-	t.Run("empty team name", func(t *testing.T) {
-		e := validExport()
-		e.TeamName = ""
-		if err := e.Validate(); err == nil {
-			t.Error("Validate() should return error for empty team name")
-		}
-	})
-
-	t.Run("unknown root member", func(t *testing.T) {
-		e := validExport()
-		e.RootMemberName = "unknown"
-		if err := e.Validate(); err == nil {
-			t.Error("Validate() should return error for unknown root member")
-		}
-	})
-
-	t.Run("duplicate member names", func(t *testing.T) {
-		e := validExport()
-		e.Members[1].Name = "alice"
-		if err := e.Validate(); err == nil {
-			t.Error("Validate() should return error for duplicate member names")
-		}
-	})
-
-	t.Run("unknown relation member", func(t *testing.T) {
-		e := validExport()
-		e.Relations = []RelationExport{
-			{From: "alice", To: "unknown", Type: RelationLeader},
-		}
-		if err := e.Validate(); err == nil {
-			t.Error("Validate() should return error for unknown relation member")
-		}
-	})
-
-	t.Run("invalid relation type", func(t *testing.T) {
-		e := validExport()
-		e.Relations = []RelationExport{
-			{From: "alice", To: "bob", Type: RelationType("invalid")},
-		}
-		if err := e.Validate(); err == nil {
-			t.Error("Validate() should return error for invalid relation type")
-		}
-	})
-
-	t.Run("EmptyMembers", func(t *testing.T) {
-		e := TeamExport{
-			TeamName:       "my-team",
-			RootMemberName: "alice",
-			Members:        []MemberExport{},
-			Relations:      []RelationExport{},
-		}
-		if err := e.Validate(); err == nil {
-			t.Error("Validate() should return error for empty members")
-		}
-	})
-
-	t.Run("SelfReferencingRelation", func(t *testing.T) {
-		e := validExport()
-		e.Relations = []RelationExport{
-			{From: "alice", To: "alice", Type: RelationLeader},
-		}
-		if err := e.Validate(); err == nil {
-			t.Error("Validate() should return error for self-referencing relation")
-		}
-	})
-}
-
 func TestExportFromSnapshot_UnknownRootID(t *testing.T) {
 	snap := TeamSnapshot{
 		TeamName:     "my-team",
 		RootMemberID: "nonexistent",
-		Members: []MemberSnapshot{
+		Members: []TeamMemberSnapshot{
 			{
 				MemberID:       "id-alice",
 				MemberName:     "alice",

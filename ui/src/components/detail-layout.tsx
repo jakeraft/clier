@@ -1,6 +1,6 @@
 import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utilities";
-import { gap } from "@/lib/layout";
+import { flex, gap } from "@/lib/layout";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -12,7 +12,7 @@ interface DetailLayoutProperties {
 
 export function DetailLayout({ error, loading, children }: Readonly<DetailLayoutProperties>) {
   return (
-    <div className={cn("grid", gap[4])}>
+    <div className={cn(flex.col, gap[4])}>
       {error && (
         <Alert className="bg-destructive/10 text-destructive border-destructive/20">
           <AlertCircle className="size-4" />

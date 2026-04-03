@@ -25,7 +25,9 @@ export function SectionCard({ icon: Icon, title, actions, children, className, e
         </CardTitle>
         <CardAction>{actions}</CardAction>
       </CardHeader>
-      <CardContent>{empty ? <EmptyState title={empty.title} description={empty.description} /> : children}</CardContent>
+      <CardContent className={cn(flex.col, gap[4])}>
+        {empty ? <EmptyState title={empty.title} description={empty.description} /> : children}
+      </CardContent>
     </Card>
   );
 }

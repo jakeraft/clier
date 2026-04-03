@@ -53,18 +53,18 @@ store, err := db.NewStore("~/.clier/data.db")
 
 ```go
 // Store methods accept/return domain types, not generated types.
-sprint, err := store.GetSprint(ctx, sprintID)    // returns domain.Sprint
-err := store.CreateSprint(ctx, &sprint)           // accepts *domain.Sprint
-err := store.CreateMessage(ctx, &msg)             // accepts *domain.Message
+session, err := store.GetSession(ctx, sessionID)   // returns domain.Session
+err := store.CreateSession(ctx, &session)          // accepts *domain.Session
+err := store.CreateMessage(ctx, &msg)              // accepts *domain.Message
 ```
 
 Consumers (app layer) define their own port interfaces satisfied by `*Store`:
 
 ```go
-// app/sprint/sprint.go
-type Store interface {
-    GetTeam(ctx context.Context, id string) (domain.Team, error)
-    CreateSprint(ctx context.Context, sprint *domain.Sprint) error
+// app/session/service.go
+type SessionStore interface {
+    CreateSession(ctx context.Context, session *domain.Session) error
+    GetSession(ctx context.Context, id string) (domain.Session, error)
     // ...
 }
 ```

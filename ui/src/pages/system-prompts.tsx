@@ -4,7 +4,7 @@ import { EntityListPage } from "@/components/entity-list-page";
 import type { EntityTableColumn } from "@/components/entity-table";
 
 const columns: EntityTableColumn<SystemPromptView>[] = [
-  { header: "Prompt", className: "max-w-md truncate", cell: (c) => c.prompt },
+  { header: "Prompt", cell: (c) => c.prompt, flex: 2 },
 ];
 
 export function SystemPrompts() {

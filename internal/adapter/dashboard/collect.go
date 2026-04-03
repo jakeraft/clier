@@ -75,12 +75,32 @@ func convertTeams(teams []domain.Team, memberNames map[string]string) []TeamView
 		for _, r := range t.Relations {
 			relations = append(relations, RelationView{From: r.From, To: r.To, Type: string(r.Type)})
 		}
+		plan := make([]MemberSessionPlanView, 0, len(t.Plan))
+		for _, m := range t.Plan {
+			files := make([]FileEntryView, 0, len(m.Workspace.Files))
+			for _, f := range m.Workspace.Files {
+				files = append(files, FileEntryView{Path: f.Path, Content: f.Content})
+			}
+			mv := MemberSessionPlanView{
+				MemberID:    m.MemberID,
+				MemberName:  m.MemberName,
+				Memberspace: m.Workspace.Memberspace,
+				Command:     m.Terminal.Command,
+				Files:       files,
+			}
+			if m.Workspace.GitRepo != nil {
+				mv.GitRepo = &GitRepoRef{Name: m.Workspace.GitRepo.Name, URL: m.Workspace.GitRepo.URL}
+			}
+			plan = append(plan, mv)
+		}
+
 		views = append(views, TeamView{
 			ID:             t.ID,
 			Name:           t.Name,
 			RootMemberID:   t.RootMemberID,
 			MemberIDs:      t.MemberIDs,
 			Relations:      relations,
+			Plan:           plan,
 			RootMemberName: memberNames[t.RootMemberID],
 			MemberNames:    names,
 			CreatedAt:      t.CreatedAt,

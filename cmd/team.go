@@ -470,7 +470,12 @@ func newTeamImportCmd() *cobra.Command {
 				return err
 			}
 
-			return printJSON(imported)
+			updated, err := svc.BuildPlan(cmd.Context(), imported.ID)
+			if err != nil {
+				return err
+			}
+
+			return printJSON(updated)
 		},
 	}
 }

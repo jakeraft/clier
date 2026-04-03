@@ -155,9 +155,9 @@ export function EntityTable<T extends EntityRow>({
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
-                    className={cn("px-4", (cell.column.columnDef.meta as CellMeta | undefined)?.className)}
+                    className={cn("px-4 truncate", (cell.column.columnDef.meta as CellMeta | undefined)?.className)}
                   >
-                    <div className="truncate">{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
                 ))}
               </TableRow>

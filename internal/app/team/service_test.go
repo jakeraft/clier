@@ -86,18 +86,18 @@ func TestService_Export(t *testing.T) {
 	}
 
 	// alice should have git repo, bob should not
-	var alice, bob *domain.MemberExport
-	for i := range export.Members {
-		switch export.Members[i].Name {
-		case "alice":
-			alice = &export.Members[i]
-		case "bob":
-			bob = &export.Members[i]
+	findMember := func(name string) domain.MemberExport {
+		for _, m := range export.Members {
+			if m.Name == name {
+				return m
+			}
 		}
+		t.Fatalf("member %q not found", name)
+		return domain.MemberExport{}
 	}
-	if alice == nil || bob == nil {
-		t.Fatal("expected alice and bob in members")
-	}
+	alice := findMember("alice")
+	bob := findMember("bob")
+
 	if alice.GitRepo == nil {
 		t.Error("alice.GitRepo should not be nil")
 	}
@@ -206,19 +206,55 @@ func TestService_Import(t *testing.T) {
 	}
 }
 
-func TestService_Import_ValidationFails(t *testing.T) {
+func TestService_Import_ReimportSkipsExisting(t *testing.T) {
 	ctx := context.Background()
 	store := setupTestStore(t)
 	svc := New(store)
 
 	export := domain.TeamExport{
-		TeamName:       "bad-team",
-		RootMemberName: "nobody",
-		Members:        []domain.MemberExport{},
+		TeamName:       "reimport-team",
+		RootMemberName: "alice",
+		Members: []domain.MemberExport{
+			{
+				Name: "alice",
+				CliProfile: domain.CliProfileExport{
+					Name:       "sonnet-profile",
+					Model:      "claude-sonnet-4-6",
+					Binary:     domain.BinaryClaude,
+					SystemArgs: []string{},
+					CustomArgs: []string{},
+					DotConfig:  domain.DotConfig{},
+				},
+				SystemPrompts: []domain.PromptSnapshot{
+					{Name: "test-prompt", Prompt: "do things"},
+				},
+				GitRepo: nil,
+			},
+		},
+		Relations: []domain.RelationExport{},
 	}
 
-	_, err := svc.Import(ctx, export)
-	if err == nil {
-		t.Error("expected error for invalid export")
+	// First import: creates everything
+	team1, err := svc.Import(ctx, export)
+	if err != nil {
+		t.Fatalf("first Import: %v", err)
+	}
+
+	// Export to get UUIDs
+	exported, err := svc.Export(ctx, team1.ID)
+	if err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	// Re-import the exported JSON (now with UUIDs)
+	team2, err := svc.Import(ctx, exported)
+	if err != nil {
+		t.Fatalf("re-Import: %v", err)
+	}
+
+	// Same team ID — no duplicate created
+	if team2.ID != team1.ID {
+		t.Errorf("re-import created new team: got %s, want %s", team2.ID, team1.ID)
 	}
 }
+

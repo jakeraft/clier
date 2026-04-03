@@ -3,9 +3,14 @@ import type { EnvView } from "@/api";
 import { EntityListPage } from "@/components/entity-list-page";
 import type { EntityTableColumn } from "@/components/entity-table";
 
+function maskValue(value: string): string {
+  if (value.length <= 3) return "***";
+  return value.slice(0, 3) + "***";
+}
+
 const columns: EntityTableColumn<EnvView>[] = [
-  { header: "Key", className: "max-w-xs truncate", cell: (c) => c.key },
-  { header: "Value", className: "max-w-xs truncate", cell: (c) => c.value },
+  { header: "Key", cell: (c) => c.key, flex: 1 },
+  { header: "Value", cell: (c) => maskValue(c.value), flex: 2 },
 ];
 
 export function Envs() {

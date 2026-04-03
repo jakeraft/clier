@@ -1,0 +1,240 @@
+{
+  "team_id": "a1b2c3d4-0001-4000-8000-000000000001",
+  "team_name": "clier-dev-team",
+  "root_member_name": "tech-lead",
+  "members": [
+    {
+      "id": "a1b2c3d4-1001-4000-8000-000000000001",
+      "name": "tech-lead",
+      "cli_profile": {
+        "id": "a1b2c3d4-2001-4000-8000-000000000001",
+        "name": "claude-opus",
+        "model": "claude-opus-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "claudeMdExcludes": ["~/.claude/**"],
+          "skipDangerousModePermissionPrompt": true
+        }
+      },
+      "system_prompts": [
+        {
+          "id": "a1b2c3d4-3001-4000-8000-000000000001",
+          "name": "dev-leader",
+          "prompt": "You are the Development Leader. You receive tasks from the user and coordinate the team.\n\nProcess:\n1. Analyze the task and break it into backend and frontend work items.\n2. Delegate backend work to the Go CLI Developer and frontend work to the React UI Developer.\n3. After development is done, delegate QA testing to the QA Engineer.\n4. Wait for QA results and report the final status back to the user.\n\nRules:\n- Always clarify requirements before delegating.\n- Coordinate sequencing: dev first, then QA.\n- Synthesize all results into a clear summary for the user."
+        }
+      ],
+      "envs": [],
+      "git_repo": {
+        "id": "a1b2c3d4-4001-4000-8000-000000000001",
+        "name": "clier-repo",
+        "url": "https://github.com/jakeraft/clier.git"
+      }
+    },
+    {
+      "id": "a1b2c3d4-1002-4000-8000-000000000002",
+      "name": "go-cli-dev",
+      "cli_profile": {
+        "id": "a1b2c3d4-2001-4000-8000-000000000001",
+        "name": "claude-opus",
+        "model": "claude-opus-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "claudeMdExcludes": ["~/.claude/**"],
+          "skipDangerousModePermissionPrompt": true
+        }
+      },
+      "system_prompts": [
+        {
+          "id": "a1b2c3d4-3002-4000-8000-000000000002",
+          "name": "backend-dev",
+          "prompt": "You are the Backend Developer. You work on the Go codebase (cmd/, internal/).\n\nProcess:\n1. Receive a task from the Leader.\n2. Implement the changes in Go code.\n3. When done, send your changes to your reviewer peer for review.\n4. Address review feedback and iterate until approved.\n5. Report completion to the Leader.\n\nRules:\n- Follow existing code patterns and conventions.\n- Write tests for new functionality.\n- Keep changes focused on the assigned task."
+        }
+      ],
+      "envs": [],
+      "git_repo": {
+        "id": "a1b2c3d4-4001-4000-8000-000000000001",
+        "name": "clier-repo",
+        "url": "https://github.com/jakeraft/clier.git"
+      }
+    },
+    {
+      "id": "a1b2c3d4-1003-4000-8000-000000000003",
+      "name": "react-ui-dev",
+      "cli_profile": {
+        "id": "a1b2c3d4-2001-4000-8000-000000000001",
+        "name": "claude-opus",
+        "model": "claude-opus-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "claudeMdExcludes": ["~/.claude/**"],
+          "skipDangerousModePermissionPrompt": true
+        }
+      },
+      "system_prompts": [
+        {
+          "id": "a1b2c3d4-3003-4000-8000-000000000003",
+          "name": "frontend-dev",
+          "prompt": "You are the Frontend Developer. You work on the React + Tailwind codebase (ui/).\n\nProcess:\n1. Receive a task from the Leader.\n2. Implement the changes in React/TypeScript code.\n3. When done, send your changes to your reviewer peer for review.\n4. Address review feedback and iterate until approved.\n5. Report completion to the Leader.\n\nRules:\n- Follow existing component patterns and conventions.\n- Use Tailwind for styling.\n- Keep changes focused on the assigned task."
+        }
+      ],
+      "envs": [],
+      "git_repo": {
+        "id": "a1b2c3d4-4001-4000-8000-000000000001",
+        "name": "clier-repo",
+        "url": "https://github.com/jakeraft/clier.git"
+      }
+    },
+    {
+      "id": "a1b2c3d4-1004-4000-8000-000000000004",
+      "name": "go-reviewer",
+      "cli_profile": {
+        "id": "a1b2c3d4-2001-4000-8000-000000000001",
+        "name": "claude-opus",
+        "model": "claude-opus-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "claudeMdExcludes": ["~/.claude/**"],
+          "skipDangerousModePermissionPrompt": true
+        }
+      },
+      "system_prompts": [
+        {
+          "id": "a1b2c3d4-3004-4000-8000-000000000004",
+          "name": "code-reviewer",
+          "prompt": "You are a Code Reviewer. Review the code changes you receive.\n\nProcess:\n1. Receive code to review from your peer.\n2. Analyze for bugs, logic errors, security issues, and violations of project conventions.\n3. Check test coverage and edge cases.\n4. Send your detailed review back to your peer.\n\nRules:\n- Be specific: reference file paths and line numbers.\n- Categorize issues: critical / suggestion / nit.\n- Acknowledge what is done well."
+        }
+      ],
+      "envs": [],
+      "git_repo": {
+        "id": "a1b2c3d4-4001-4000-8000-000000000001",
+        "name": "clier-repo",
+        "url": "https://github.com/jakeraft/clier.git"
+      }
+    },
+    {
+      "id": "a1b2c3d4-1005-4000-8000-000000000005",
+      "name": "go-reviewer-2",
+      "cli_profile": {
+        "id": "16266d16-0166-4326-9fe4-0f3cba180460",
+        "name": "gpt-5.4",
+        "model": "gpt-5.4",
+        "binary": "codex",
+        "system_args": [],
+        "custom_args": [],
+        "dot_config": {
+          "notice": { "model_migrations": {} },
+          "sandbox_mode": "danger-full-access"
+        }
+      },
+      "system_prompts": [
+        {
+          "id": "a1b2c3d4-3004-4000-8000-000000000004",
+          "name": "code-reviewer",
+          "prompt": "You are a Code Reviewer. Review the code changes you receive.\n\nProcess:\n1. Receive code to review from your peer.\n2. Analyze for bugs, logic errors, security issues, and violations of project conventions.\n3. Check test coverage and edge cases.\n4. Send your detailed review back to your peer.\n\nRules:\n- Be specific: reference file paths and line numbers.\n- Categorize issues: critical / suggestion / nit.\n- Acknowledge what is done well."
+        }
+      ],
+      "envs": [],
+      "git_repo": null
+    },
+    {
+      "id": "a1b2c3d4-1006-4000-8000-000000000006",
+      "name": "react-reviewer",
+      "cli_profile": {
+        "id": "a1b2c3d4-2001-4000-8000-000000000001",
+        "name": "claude-opus",
+        "model": "claude-opus-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "claudeMdExcludes": ["~/.claude/**"],
+          "skipDangerousModePermissionPrompt": true
+        }
+      },
+      "system_prompts": [
+        {
+          "id": "a1b2c3d4-3004-4000-8000-000000000004",
+          "name": "code-reviewer",
+          "prompt": "You are a Code Reviewer. Review the code changes you receive.\n\nProcess:\n1. Receive code to review from your peer.\n2. Analyze for bugs, logic errors, security issues, and violations of project conventions.\n3. Check test coverage and edge cases.\n4. Send your detailed review back to your peer.\n\nRules:\n- Be specific: reference file paths and line numbers.\n- Categorize issues: critical / suggestion / nit.\n- Acknowledge what is done well."
+        }
+      ],
+      "envs": [],
+      "git_repo": {
+        "id": "a1b2c3d4-4001-4000-8000-000000000001",
+        "name": "clier-repo",
+        "url": "https://github.com/jakeraft/clier.git"
+      }
+    },
+    {
+      "id": "a1b2c3d4-1007-4000-8000-000000000007",
+      "name": "react-reviewer-2",
+      "cli_profile": {
+        "id": "16266d16-0166-4326-9fe4-0f3cba180460",
+        "name": "gpt-5.4",
+        "model": "gpt-5.4",
+        "binary": "codex",
+        "system_args": [],
+        "custom_args": [],
+        "dot_config": {
+          "notice": { "model_migrations": {} },
+          "sandbox_mode": "danger-full-access"
+        }
+      },
+      "system_prompts": [
+        {
+          "id": "a1b2c3d4-3004-4000-8000-000000000004",
+          "name": "code-reviewer",
+          "prompt": "You are a Code Reviewer. Review the code changes you receive.\n\nProcess:\n1. Receive code to review from your peer.\n2. Analyze for bugs, logic errors, security issues, and violations of project conventions.\n3. Check test coverage and edge cases.\n4. Send your detailed review back to your peer.\n\nRules:\n- Be specific: reference file paths and line numbers.\n- Categorize issues: critical / suggestion / nit.\n- Acknowledge what is done well."
+        }
+      ],
+      "envs": [],
+      "git_repo": null
+    },
+    {
+      "id": "a1b2c3d4-1008-4000-8000-000000000008",
+      "name": "qa-engineer",
+      "cli_profile": {
+        "id": "a1b2c3d4-2001-4000-8000-000000000001",
+        "name": "claude-opus",
+        "model": "claude-opus-4-6",
+        "binary": "claude",
+        "system_args": ["--dangerously-skip-permissions"],
+        "custom_args": [],
+        "dot_config": {
+          "claudeMdExcludes": ["~/.claude/**"],
+          "skipDangerousModePermissionPrompt": true
+        }
+      },
+      "system_prompts": [
+        {
+          "id": "a1b2c3d4-3005-4000-8000-000000000005",
+          "name": "qa-engineer",
+          "prompt": "You are the QA Engineer. You test the application after development is complete.\n\nProcess:\n1. Receive a task description and completed changes from the Leader.\n2. Build and run the application to verify it works.\n3. Test the specific functionality that was changed.\n4. Check for regressions in related areas.\n5. Report test results back to the Leader: pass/fail with details.\n\nRules:\n- Test both happy paths and edge cases.\n- Include exact steps to reproduce any bugs found.\n- Verify the build succeeds before testing functionality."
+        }
+      ],
+      "envs": [],
+      "git_repo": {
+        "id": "a1b2c3d4-4001-4000-8000-000000000001",
+        "name": "clier-repo",
+        "url": "https://github.com/jakeraft/clier.git"
+      }
+    }
+  ],
+  "relations": [
+    { "from": "tech-lead", "to": "go-cli-dev", "type": "leader" },
+    { "from": "tech-lead", "to": "react-ui-dev", "type": "leader" },
+    { "from": "tech-lead", "to": "qa-engineer", "type": "leader" },
+    { "from": "go-cli-dev", "to": "go-reviewer", "type": "peer" },
+    { "from": "go-reviewer", "to": "go-reviewer-2", "type": "peer" },
+    { "from": "react-ui-dev", "to": "react-reviewer", "type": "peer" },
+    { "from": "react-reviewer", "to": "react-reviewer-2", "type": "peer" }
+  ]
+}

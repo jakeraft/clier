@@ -11,13 +11,13 @@ import (
 )
 
 const createMessage = `-- name: CreateMessage :execresult
-INSERT INTO messages (id, sprint_id, from_member_id, to_member_id, content, created_at)
+INSERT INTO messages (id, session_id, from_member_id, to_member_id, content, created_at)
 VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateMessageParams struct {
 	ID           string
-	SprintID     string
+	SessionID    string
 	FromMemberID string
 	ToMemberID   string
 	Content      string
@@ -27,7 +27,7 @@ type CreateMessageParams struct {
 func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (sql.Result, error) {
 	return q.db.ExecContext(ctx, createMessage,
 		arg.ID,
-		arg.SprintID,
+		arg.SessionID,
 		arg.FromMemberID,
 		arg.ToMemberID,
 		arg.Content,
@@ -35,20 +35,20 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (s
 	)
 }
 
-const listMessagesBySprintAndMember = `-- name: ListMessagesBySprintAndMember :many
-SELECT id, sprint_id, from_member_id, to_member_id, content, created_at FROM messages
-WHERE sprint_id = ? AND (from_member_id = ? OR to_member_id = ?)
+const listMessagesBySessionAndMember = `-- name: ListMessagesBySessionAndMember :many
+SELECT id, session_id, from_member_id, to_member_id, content, created_at FROM messages
+WHERE session_id = ? AND (from_member_id = ? OR to_member_id = ?)
 ORDER BY created_at
 `
 
-type ListMessagesBySprintAndMemberParams struct {
-	SprintID     string
+type ListMessagesBySessionAndMemberParams struct {
+	SessionID    string
 	FromMemberID string
 	ToMemberID   string
 }
 
-func (q *Queries) ListMessagesBySprintAndMember(ctx context.Context, arg ListMessagesBySprintAndMemberParams) ([]Message, error) {
-	rows, err := q.db.QueryContext(ctx, listMessagesBySprintAndMember, arg.SprintID, arg.FromMemberID, arg.ToMemberID)
+func (q *Queries) ListMessagesBySessionAndMember(ctx context.Context, arg ListMessagesBySessionAndMemberParams) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, listMessagesBySessionAndMember, arg.SessionID, arg.FromMemberID, arg.ToMemberID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (q *Queries) ListMessagesBySprintAndMember(ctx context.Context, arg ListMes
 		var i Message
 		if err := rows.Scan(
 			&i.ID,
-			&i.SprintID,
+			&i.SessionID,
 			&i.FromMemberID,
 			&i.ToMemberID,
 			&i.Content,
@@ -77,12 +77,12 @@ func (q *Queries) ListMessagesBySprintAndMember(ctx context.Context, arg ListMes
 	return items, nil
 }
 
-const listMessagesBySprintID = `-- name: ListMessagesBySprintID :many
-SELECT id, sprint_id, from_member_id, to_member_id, content, created_at FROM messages WHERE sprint_id = ? ORDER BY created_at
+const listMessagesBySessionID = `-- name: ListMessagesBySessionID :many
+SELECT id, session_id, from_member_id, to_member_id, content, created_at FROM messages WHERE session_id = ? ORDER BY created_at
 `
 
-func (q *Queries) ListMessagesBySprintID(ctx context.Context, sprintID string) ([]Message, error) {
-	rows, err := q.db.QueryContext(ctx, listMessagesBySprintID, sprintID)
+func (q *Queries) ListMessagesBySessionID(ctx context.Context, sessionID string) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, listMessagesBySessionID, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (q *Queries) ListMessagesBySprintID(ctx context.Context, sprintID string) (
 		var i Message
 		if err := rows.Scan(
 			&i.ID,
-			&i.SprintID,
+			&i.SessionID,
 			&i.FromMemberID,
 			&i.ToMemberID,
 			&i.Content,
