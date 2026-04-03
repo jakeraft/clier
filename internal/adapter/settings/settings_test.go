@@ -1,8 +1,6 @@
 package settings
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -73,30 +71,36 @@ func TestAuth(t *testing.T) {
 		})
 	})
 
-	t.Run("CopyTo", func(t *testing.T) {
-		t.Run("UnknownBinary_ReturnsError", func(t *testing.T) {
-			if err := auth.CopyTo(domain.CliBinary("unknown"), t.TempDir()); err == nil {
-				t.Error("CopyTo() should return error for unknown binary")
+	t.Run("ReadToken", func(t *testing.T) {
+		t.Run("UnknownBinary_ReturnsEmptyString", func(t *testing.T) {
+			token, err := auth.ReadToken(domain.CliBinary("unknown"))
+			if err != nil {
+				t.Errorf("ReadToken() should not return error for unknown binary, got: %v", err)
+			}
+			if token != "" {
+				t.Errorf("ReadToken() = %q, want empty string", token)
 			}
 		})
 
-		t.Run("Claude_CopiesToDest", func(t *testing.T) {
-			destHome := t.TempDir()
+		t.Run("Codex_ReturnsEmptyString", func(t *testing.T) {
+			token, err := auth.ReadToken(domain.BinaryCodex)
+			if err != nil {
+				t.Errorf("ReadToken(Codex) should not return error, got: %v", err)
+			}
+			if token != "" {
+				t.Errorf("ReadToken(Codex) = %q, want empty string", token)
+			}
+		})
 
+		t.Run("Claude_ReturnsToken", func(t *testing.T) {
 			// This test relies on either keychain or ~/.claude/.credentials.json existing.
 			// If neither is available, the test is skipped.
-			err := auth.CopyTo(domain.BinaryClaude, destHome)
+			token, err := auth.ReadToken(domain.BinaryClaude)
 			if err != nil {
 				t.Skipf("skipping: no claude credentials available: %v", err)
 			}
-
-			credPath := filepath.Join(destHome, ".claude", ".credentials.json")
-			data, err := os.ReadFile(credPath)
-			if err != nil {
-				t.Fatalf("read copied credentials: %v", err)
-			}
-			if len(data) == 0 {
-				t.Error("copied credentials file is empty")
+			if token == "" {
+				t.Error("ReadToken(Claude) returned empty token")
 			}
 		})
 	})

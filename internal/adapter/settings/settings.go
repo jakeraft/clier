@@ -83,36 +83,28 @@ var credentialSources = map[domain.CliBinary]credentialSource{
 	domain.BinaryClaude: {
 		keychainService: "Claude Code-credentials",
 		filePath:        ".claude/.credentials.json",
-		destPath:        ".claude/.credentials.json",
-	},
-	domain.BinaryCodex: {
-		filePath: ".codex/auth.json",
-		destPath: ".codex/auth.json",
 	},
 }
 
 type credentialSource struct {
 	keychainService string // macOS Keychain service name (empty = skip)
 	filePath        string // path relative to user HOME
-	destPath        string // path relative to dest HOME
 }
 
-func (a *Auth) CopyTo(binary domain.CliBinary, destHome string) error {
+// ReadToken reads the auth token for the given binary.
+// Claude: reads from keychain (macOS) or credential file.
+// Codex: returns empty string (auth is independent of CODEX_HOME).
+func (a *Auth) ReadToken(binary domain.CliBinary) (string, error) {
 	src, ok := credentialSources[binary]
 	if !ok {
-		return fmt.Errorf("unknown binary: %s", binary)
+		return "", nil // binary doesn't need a token (e.g. Codex)
 	}
 
 	data, err := a.readCredentials(src)
 	if err != nil {
-		return fmt.Errorf("%s is not logged in — run: %s login", binary, binary)
+		return "", fmt.Errorf("%s is not logged in — run: %s login", binary, binary)
 	}
-
-	dest := filepath.Join(destHome, src.destPath)
-	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
-		return fmt.Errorf("create credential dir: %w", err)
-	}
-	return os.WriteFile(dest, data, 0600)
+	return string(data), nil
 }
 
 // readCredentials tries keychain first (macOS), then falls back to file.
