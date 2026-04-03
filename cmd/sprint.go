@@ -48,7 +48,7 @@ func newSprintStartCmd() *cobra.Command {
 
 			teamSvc := team.New(store)
 			term := terminal.NewCmuxTerminal(store)
-			ws := workspace.New(cfg.Paths.Workspaces(), cfg.Auth)
+			ws := workspace.New(cfg.Paths.Workspaces())
 			svc := sprint.New(teamSvc, store, term, ws, cfg.Auth, cfg.Paths.Workspaces())
 
 			sp, err := svc.Start(cmd.Context(), teamID)
@@ -82,8 +82,8 @@ func newSprintStopCmd() *cobra.Command {
 
 			teamSvc := team.New(store)
 			term := terminal.NewCmuxTerminal(store)
-			ws := workspace.New(cfg.Paths.Workspaces(), cfg.Auth)
-			svc := sprint.New(teamSvc, store, term, ws, cfg.Auth, cfg.Paths.Workspaces())
+			ws := workspace.New(cfg.Paths.Workspaces())
+			svc := sprint.New(teamSvc, store, term, ws, nil, cfg.Paths.Workspaces())
 
 			if err := svc.Stop(cmd.Context(), args[0]); err != nil {
 				return err
