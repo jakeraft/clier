@@ -1,6 +1,6 @@
 -- name: CreateSprint :execresult
-INSERT INTO sprints (id, name, snapshot, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?);
+INSERT INTO sprints (id, name, team_snapshot, snapshot, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: GetSprint :one
 SELECT * FROM sprints WHERE id = ?;

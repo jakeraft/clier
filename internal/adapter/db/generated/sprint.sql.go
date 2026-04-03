@@ -11,22 +11,24 @@ import (
 )
 
 const createSprint = `-- name: CreateSprint :execresult
-INSERT INTO sprints (id, name, snapshot, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO sprints (id, name, team_snapshot, snapshot, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateSprintParams struct {
-	ID        string
-	Name      string
-	Snapshot  string
-	CreatedAt int64
-	UpdatedAt int64
+	ID           string
+	Name         string
+	TeamSnapshot string
+	Snapshot     string
+	CreatedAt    int64
+	UpdatedAt    int64
 }
 
 func (q *Queries) CreateSprint(ctx context.Context, arg CreateSprintParams) (sql.Result, error) {
 	return q.db.ExecContext(ctx, createSprint,
 		arg.ID,
 		arg.Name,
+		arg.TeamSnapshot,
 		arg.Snapshot,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -42,7 +44,7 @@ func (q *Queries) DeleteSprint(ctx context.Context, id string) (sql.Result, erro
 }
 
 const getSprint = `-- name: GetSprint :one
-SELECT id, name, snapshot, created_at, updated_at FROM sprints WHERE id = ?
+SELECT id, name, team_snapshot, snapshot, created_at, updated_at FROM sprints WHERE id = ?
 `
 
 func (q *Queries) GetSprint(ctx context.Context, id string) (Sprint, error) {
@@ -51,6 +53,7 @@ func (q *Queries) GetSprint(ctx context.Context, id string) (Sprint, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
+		&i.TeamSnapshot,
 		&i.Snapshot,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -59,7 +62,7 @@ func (q *Queries) GetSprint(ctx context.Context, id string) (Sprint, error) {
 }
 
 const listSprints = `-- name: ListSprints :many
-SELECT id, name, snapshot, created_at, updated_at FROM sprints ORDER BY created_at
+SELECT id, name, team_snapshot, snapshot, created_at, updated_at FROM sprints ORDER BY created_at
 `
 
 func (q *Queries) ListSprints(ctx context.Context) ([]Sprint, error) {
@@ -74,6 +77,7 @@ func (q *Queries) ListSprints(ctx context.Context) ([]Sprint, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.TeamSnapshot,
 			&i.Snapshot,
 			&i.CreatedAt,
 			&i.UpdatedAt,

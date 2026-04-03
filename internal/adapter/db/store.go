@@ -698,16 +698,21 @@ func (s *Store) DeleteGitRepo(ctx context.Context, id string) error {
 // Sprint
 
 func unmarshalSprint(row generated.Sprint) (domain.Sprint, error) {
+	var teamSnap domain.TeamSnapshot
+	if err := json.Unmarshal([]byte(row.TeamSnapshot), &teamSnap); err != nil {
+		return domain.Sprint{}, fmt.Errorf("unmarshal team_snapshot: %w", err)
+	}
 	var snapshot domain.SprintSnapshot
 	if err := json.Unmarshal([]byte(row.Snapshot), &snapshot); err != nil {
 		return domain.Sprint{}, fmt.Errorf("unmarshal snapshot: %w", err)
 	}
 	return domain.Sprint{
-		ID:        row.ID,
-		Name:      row.Name,
-		Snapshot:  snapshot,
-		CreatedAt: time.Unix(row.CreatedAt, 0),
-		UpdatedAt: time.Unix(row.UpdatedAt, 0),
+		ID:           row.ID,
+		Name:         row.Name,
+		TeamSnapshot: teamSnap,
+		Snapshot:     snapshot,
+		CreatedAt:    time.Unix(row.CreatedAt, 0),
+		UpdatedAt:    time.Unix(row.UpdatedAt, 0),
 	}, nil
 }
 
@@ -720,16 +725,21 @@ func (s *Store) GetSprint(ctx context.Context, id string) (domain.Sprint, error)
 }
 
 func (s *Store) CreateSprint(ctx context.Context, sprint *domain.Sprint) error {
+	teamSnapJSON, err := json.Marshal(sprint.TeamSnapshot)
+	if err != nil {
+		return fmt.Errorf("marshal team_snapshot: %w", err)
+	}
 	snapshotJSON, err := json.Marshal(sprint.Snapshot)
 	if err != nil {
 		return fmt.Errorf("marshal snapshot: %w", err)
 	}
 	_, err = s.queries.CreateSprint(ctx, generated.CreateSprintParams{
-		ID:        sprint.ID,
-		Name:      sprint.Name,
-		Snapshot:  string(snapshotJSON),
-		CreatedAt: sprint.CreatedAt.Unix(),
-		UpdatedAt: sprint.UpdatedAt.Unix(),
+		ID:           sprint.ID,
+		Name:         sprint.Name,
+		TeamSnapshot: string(teamSnapJSON),
+		Snapshot:     string(snapshotJSON),
+		CreatedAt:    sprint.CreatedAt.Unix(),
+		UpdatedAt:    sprint.UpdatedAt.Unix(),
 	})
 	return err
 }
