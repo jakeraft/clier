@@ -6,15 +6,20 @@ import (
 )
 
 func TestNewSprint(t *testing.T) {
-	snapshot := SprintSnapshot{
+	teamSnap := TeamSnapshot{
+		TeamName:     "alpha",
+		RootMemberID: "root-1",
+		Members:      []MemberSnapshot{},
+	}
+	snap := SprintSnapshot{
 		TeamName:     "alpha",
 		RootMemberID: "root-1",
 		Members:      []SprintMemberSnapshot{},
 	}
 
-	t.Run("ValidInputs_CreatesSprintWithName", func(t *testing.T) {
+	t.Run("ValidInputs_CreatesSprintWithBothSnapshots", func(t *testing.T) {
 		id := "abcdef12-0000-0000-0000-000000000000"
-		s, err := NewSprint(id, snapshot)
+		s, err := NewSprint(id, teamSnap, snap)
 		if err != nil {
 			t.Fatalf("NewSprint: %v", err)
 		}
@@ -24,24 +29,23 @@ func TestNewSprint(t *testing.T) {
 		if !strings.HasPrefix(s.Name, "alpha_abcdef12") {
 			t.Errorf("Name = %q, want prefix 'alpha_abcdef12'", s.Name)
 		}
+		if s.TeamSnapshot.TeamName != "alpha" {
+			t.Errorf("TeamSnapshot.TeamName = %q, want alpha", s.TeamSnapshot.TeamName)
+		}
+		if s.Snapshot.TeamName != "alpha" {
+			t.Errorf("Snapshot.TeamName = %q, want alpha", s.Snapshot.TeamName)
+		}
 	})
 
 	t.Run("EmptyID_ReturnsError", func(t *testing.T) {
-		_, err := NewSprint("", snapshot)
+		_, err := NewSprint("", teamSnap, snap)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
 	t.Run("EmptyTeamName_ReturnsError", func(t *testing.T) {
-		_, err := NewSprint("some-id", SprintSnapshot{TeamName: "", RootMemberID: "root-1"})
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-	})
-
-	t.Run("EmptyRootMemberID_ReturnsError", func(t *testing.T) {
-		_, err := NewSprint("some-id", SprintSnapshot{TeamName: "alpha", RootMemberID: ""})
+		_, err := NewSprint("some-id", TeamSnapshot{}, snap)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
