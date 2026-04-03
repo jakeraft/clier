@@ -47,8 +47,12 @@ func TestBuildSprintSnapshot(t *testing.T) {
 		},
 	}
 
+	tokens := map[domain.CliBinary]string{
+		domain.BinaryClaude: "test-claude-token",
+	}
+
 	t.Run("BuildsAllMembers", func(t *testing.T) {
-		snap, err := BuildSprintSnapshot("sprint-1", "/base", team)
+		snap, err := BuildSprintSnapshot("sprint-1", "/base", team, tokens)
 		if err != nil {
 			t.Fatalf("BuildSprintSnapshot: %v", err)
 		}
@@ -64,8 +68,8 @@ func TestBuildSprintSnapshot(t *testing.T) {
 		}
 	})
 
-	t.Run("ClaudeMember_ResolvesCommandAndPaths", func(t *testing.T) {
-		snap, err := BuildSprintSnapshot("sprint-1", "/base", team)
+	t.Run("ClaudeMember_ResolvesCommandPathsAndFiles", func(t *testing.T) {
+		snap, err := BuildSprintSnapshot("sprint-1", "/base", team, tokens)
 		if err != nil {
 			t.Fatalf("BuildSprintSnapshot: %v", err)
 		}
@@ -88,31 +92,35 @@ func TestBuildSprintSnapshot(t *testing.T) {
 			"GITHUB_TOKEN",
 			"CLIER_SPRINT_ID='sprint-1'",
 			"CLIER_MEMBER_ID='m1'",
+			"CLAUDE_CODE_OAUTH_TOKEN",
 		} {
 			if !strings.Contains(m.Command, want) {
 				t.Errorf("Command missing %q:\n%s", want, m.Command)
 			}
 		}
 
-		// Workspace fields preserved
-		if m.Binary != domain.BinaryClaude {
-			t.Errorf("Binary = %q, want claude", m.Binary)
+		// Files resolved from config.go
+		if len(m.Files) == 0 {
+			t.Fatal("expected Files to have entries for Claude member")
 		}
-		if m.DotConfig["skipDangerousModePermissionPrompt"] != true {
-			t.Error("DotConfig not preserved")
+		hasSettings := false
+		for _, f := range m.Files {
+			if f.Path == ".claude/settings.json" {
+				hasSettings = true
+			}
 		}
+		if !hasSettings {
+			t.Error("expected .claude/settings.json in Files")
+		}
+
+		// GitRepo preserved
 		if m.GitRepo == nil || m.GitRepo.URL != "https://github.com/test/repo" {
 			t.Error("GitRepo not preserved")
 		}
-
-		// Relations preserved
-		if len(m.Relations.Workers) != 1 || m.Relations.Workers[0] != "m2" {
-			t.Errorf("Relations not preserved: %+v", m.Relations)
-		}
 	})
 
-	t.Run("CodexMember_UsesDeveloperInstructions", func(t *testing.T) {
-		snap, err := BuildSprintSnapshot("sprint-1", "/base", team)
+	t.Run("CodexMember_UsesDeveloperInstructionsAndFiles", func(t *testing.T) {
+		snap, err := BuildSprintSnapshot("sprint-1", "/base", team, tokens)
 		if err != nil {
 			t.Fatalf("BuildSprintSnapshot: %v", err)
 		}
@@ -125,6 +133,20 @@ func TestBuildSprintSnapshot(t *testing.T) {
 		if m.GitRepo != nil {
 			t.Errorf("GitRepo should be nil for worker")
 		}
+
+		// Files resolved from config.go
+		if len(m.Files) == 0 {
+			t.Fatal("expected Files to have entries for Codex member")
+		}
+		hasConfig := false
+		for _, f := range m.Files {
+			if f.Path == ".codex/config.toml" {
+				hasConfig = true
+			}
+		}
+		if !hasConfig {
+			t.Error("expected .codex/config.toml in Files")
+		}
 	})
 
 	t.Run("EmptyMembers_ReturnsEmptySnapshot", func(t *testing.T) {
@@ -134,7 +156,7 @@ func TestBuildSprintSnapshot(t *testing.T) {
 			Members:      []domain.MemberSnapshot{},
 		}
 
-		snap, err := BuildSprintSnapshot("sprint-1", "/base", emptyTeam)
+		snap, err := BuildSprintSnapshot("sprint-1", "/base", emptyTeam, nil)
 		if err != nil {
 			t.Fatalf("BuildSprintSnapshot: %v", err)
 		}

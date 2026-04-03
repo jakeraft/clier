@@ -33,17 +33,24 @@ type TeamSnapshotter interface {
 	Snapshot(ctx context.Context, teamID string) (domain.TeamSnapshot, error)
 }
 
+// AuthChecker validates CLI login status and reads auth tokens.
+type AuthChecker interface {
+	Check(binary domain.CliBinary) error
+	ReadToken(binary domain.CliBinary) (string, error)
+}
+
 // Service orchestrates sprint lifecycle.
 type Service struct {
 	team      TeamSnapshotter
 	store     Store
 	terminal  Terminal
 	workspace Workspace
+	auth      AuthChecker
 	baseDir   string
 }
 
-func New(teamSvc TeamSnapshotter, store Store, term Terminal, ws Workspace, baseDir string) *Service {
-	return &Service{team: teamSvc, store: store, terminal: term, workspace: ws, baseDir: baseDir}
+func New(teamSvc TeamSnapshotter, store Store, term Terminal, ws Workspace, auth AuthChecker, baseDir string) *Service {
+	return &Service{team: teamSvc, store: store, terminal: term, workspace: ws, auth: auth, baseDir: baseDir}
 }
 
 func (s *Service) Whoami(ctx context.Context, sprintID, memberID string) (SprintPosition, error) {
@@ -51,7 +58,7 @@ func (s *Service) Whoami(ctx context.Context, sprintID, memberID string) (Sprint
 	if err != nil {
 		return SprintPosition{}, fmt.Errorf("get sprint: %w", err)
 	}
-	return BuildPosition(sp.Snapshot, sprintID, memberID)
+	return BuildPosition(sp.TeamSnapshot, sprintID, memberID)
 }
 
 func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, error) {
@@ -60,14 +67,19 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		return nil, fmt.Errorf("get team snapshot: %w", err)
 	}
 
+	tokens, err := s.resolveAuthTokens(teamSnap)
+	if err != nil {
+		return nil, fmt.Errorf("resolve auth: %w", err)
+	}
+
 	sprintID := uuid.NewString()
 
-	snapshot, err := BuildSprintSnapshot(sprintID, s.baseDir, teamSnap)
+	snapshot, err := BuildSprintSnapshot(sprintID, s.baseDir, teamSnap, tokens)
 	if err != nil {
 		return nil, fmt.Errorf("build sprint snapshot: %w", err)
 	}
 
-	sp, err := domain.NewSprint(sprintID, snapshot)
+	sp, err := domain.NewSprint(sprintID, teamSnap, snapshot)
 	if err != nil {
 		return nil, fmt.Errorf("new sprint: %w", err)
 	}
@@ -109,4 +121,31 @@ func (s *Service) Stop(ctx context.Context, sprintID string) error {
 	}
 
 	return nil
+}
+
+// resolveAuthTokens reads auth tokens for all unique binaries in the team.
+func (s *Service) resolveAuthTokens(team domain.TeamSnapshot) (map[domain.CliBinary]string, error) {
+	tokens := make(map[domain.CliBinary]string)
+	checked := make(map[domain.CliBinary]bool)
+
+	for _, m := range team.Members {
+		if checked[m.Binary] {
+			continue
+		}
+		checked[m.Binary] = true
+
+		if err := s.auth.Check(m.Binary); err != nil {
+			return nil, err
+		}
+
+		token, err := s.auth.ReadToken(m.Binary)
+		if err != nil {
+			return nil, err
+		}
+		if token != "" {
+			tokens[m.Binary] = token
+		}
+	}
+
+	return tokens, nil
 }

@@ -18,7 +18,7 @@ func shellQuote(s string) string {
 // BuildCommand returns the full shell command to launch an agent,
 // including environment variable exports.
 // Result format: "export K='V' && ... && cd <workDir> && <binary> <args...>"
-func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome string) (string, error) {
+func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome, authToken string) (string, error) {
 	var cmd string
 
 	switch m.Binary {
@@ -30,7 +30,7 @@ func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome
 		return "", fmt.Errorf("unknown binary: %s", m.Binary)
 	}
 
-	env := buildEnv(m, sprintID, memberHome)
+	env := buildEnv(m, sprintID, memberHome, authToken)
 	return buildEnvCommand(cmd, env), nil
 }
 
@@ -91,11 +91,14 @@ func configDirEnv(binary domain.CliBinary, memberHome string) string {
 	}
 }
 
-func buildEnv(m domain.MemberSnapshot, sprintID, memberHome string) []string {
+func buildEnv(m domain.MemberSnapshot, sprintID, memberHome, authToken string) []string {
 	env := []string{
 		configDirEnv(m.Binary, memberHome),
 		"CLIER_SPRINT_ID=" + sprintID,
 		"CLIER_MEMBER_ID=" + m.MemberID,
+	}
+	if authToken != "" {
+		env = append(env, "CLAUDE_CODE_OAUTH_TOKEN="+authToken)
 	}
 	for _, e := range m.Envs {
 		env = append(env, e.Key+"="+e.Value)

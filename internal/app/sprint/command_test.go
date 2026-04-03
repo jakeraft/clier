@@ -80,7 +80,7 @@ func TestBuildCommand(t *testing.T) {
 			}
 
 			// when
-			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", "/home/m1")
+			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", "/home/m1", "")
 			if err != nil {
 				t.Fatalf("BuildCommand: %v", err)
 			}
@@ -121,7 +121,7 @@ func TestBuildCommand(t *testing.T) {
 			}
 
 			// when
-			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", "/home/m2")
+			cmd, err := BuildCommand(m, "you are a coder", "/work", "sprint-1", "/home/m2", "")
 			if err != nil {
 				t.Fatalf("BuildCommand: %v", err)
 			}
@@ -193,7 +193,7 @@ func TestBuildEnv(t *testing.T) {
 			Binary:   domain.BinaryClaude,
 		}
 
-		env := buildEnv(m, "sprint-1", "/home/m1")
+		env := buildEnv(m, "sprint-1", "/home/m1", "")
 
 		envMap := make(map[string]string)
 		for _, e := range env {
@@ -221,7 +221,7 @@ func TestBuildEnv(t *testing.T) {
 			Binary:   domain.BinaryCodex,
 		}
 
-		env := buildEnv(m, "sprint-1", "/home/m1")
+		env := buildEnv(m, "sprint-1", "/home/m1", "")
 
 		envMap := make(map[string]string)
 		for _, e := range env {
@@ -247,7 +247,7 @@ func TestBuildEnv(t *testing.T) {
 			},
 		}
 
-		env := buildEnv(m, "sprint-1", "/home/m1")
+		env := buildEnv(m, "sprint-1", "/home/m1", "")
 
 		envMap := make(map[string]string)
 		for _, e := range env {
@@ -276,10 +276,39 @@ func TestBuildEnv(t *testing.T) {
 			Envs:     nil,
 		}
 
-		env := buildEnv(m, "sprint-1", "/home/m1")
+		env := buildEnv(m, "sprint-1", "/home/m1", "")
 
 		if len(env) != 3 {
 			t.Errorf("env length = %d, want 3", len(env))
+		}
+	})
+
+	t.Run("Claude_WithAuthToken_IncludesOAuthEnv", func(t *testing.T) {
+		m := domain.MemberSnapshot{
+			MemberID: "m1",
+			Binary:   domain.BinaryClaude,
+		}
+		env := buildEnv(m, "sprint-1", "/home/m1", "test-token-123")
+		envMap := make(map[string]string)
+		for _, e := range env {
+			parts := strings.SplitN(e, "=", 2)
+			envMap[parts[0]] = parts[1]
+		}
+		if envMap["CLAUDE_CODE_OAUTH_TOKEN"] != "test-token-123" {
+			t.Errorf("CLAUDE_CODE_OAUTH_TOKEN = %q, want test-token-123", envMap["CLAUDE_CODE_OAUTH_TOKEN"])
+		}
+	})
+
+	t.Run("Codex_EmptyToken_NoOAuthEnv", func(t *testing.T) {
+		m := domain.MemberSnapshot{
+			MemberID: "m1",
+			Binary:   domain.BinaryCodex,
+		}
+		env := buildEnv(m, "sprint-1", "/home/m1", "")
+		for _, e := range env {
+			if strings.HasPrefix(e, "CLAUDE_CODE_OAUTH_TOKEN=") {
+				t.Error("codex should not have CLAUDE_CODE_OAUTH_TOKEN")
+			}
 		}
 	})
 }

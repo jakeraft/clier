@@ -14,10 +14,14 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 		return fmt.Errorf("get sprint: %w", err)
 	}
 
-	if err := validateDelivery(sp.Snapshot.Members, fromMemberID, toMemberID); err != nil {
+	if err := validateDelivery(sp.TeamSnapshot, fromMemberID, toMemberID); err != nil {
 		return err
 	}
-	senderName := resolveSender(sp.Snapshot.Members, fromMemberID)
+
+	senderName := sp.TeamSnapshot.MemberName(fromMemberID)
+	if senderName == "" {
+		senderName = "user"
+	}
 
 	msg, err := domain.NewMessage(sprintID, fromMemberID, toMemberID, content)
 	if err != nil {
@@ -31,36 +35,26 @@ func (s *Service) DeliverMessage(ctx context.Context, sprintID, fromMemberID, to
 	return s.terminal.Send(sprintID, toMemberID, text)
 }
 
-func resolveSender(members []domain.SprintMemberSnapshot, fromMemberID string) string {
-	if from, ok := findMember(members, fromMemberID); ok {
-		return from.MemberName
-	}
-	return "user"
-}
-
-func validateDelivery(members []domain.SprintMemberSnapshot, fromMemberID, toMemberID string) error {
+func validateDelivery(team domain.TeamSnapshot, fromMemberID, toMemberID string) error {
 	isUserSender := fromMemberID == domain.UserMemberID
 	isUserRecipient := toMemberID == domain.UserMemberID
 
-	// User can message any member; any member can message user.
 	if isUserSender || isUserRecipient {
 		if !isUserRecipient {
-			if _, ok := findMember(members, toMemberID); !ok {
+			if _, ok := team.FindMember(toMemberID); !ok {
 				return fmt.Errorf("recipient not found: %s", toMemberID)
 			}
 		}
 		return nil
 	}
 
-	// Between team members: both must exist and be connected.
-	from, ok := findMember(members, fromMemberID)
-	if !ok {
+	if _, ok := team.FindMember(fromMemberID); !ok {
 		return fmt.Errorf("sender not found: %s", fromMemberID)
 	}
-	if _, ok := findMember(members, toMemberID); !ok {
+	if _, ok := team.FindMember(toMemberID); !ok {
 		return fmt.Errorf("recipient not found: %s", toMemberID)
 	}
-	if !from.Relations.IsConnectedTo(toMemberID) {
+	if !team.IsConnected(fromMemberID, toMemberID) {
 		return fmt.Errorf("no relation from %s to %s", fromMemberID, toMemberID)
 	}
 	return nil

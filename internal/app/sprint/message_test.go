@@ -6,88 +6,67 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func testMembers() []domain.SprintMemberSnapshot {
-	return []domain.SprintMemberSnapshot{
-		{
-			MemberID:   "leader-1",
-			MemberName: "leader",
-			Relations:  domain.MemberRelations{Workers: []string{"worker-1"}},
-		},
-		{
-			MemberID:   "worker-1",
-			MemberName: "worker",
-			Relations:  domain.MemberRelations{Leaders: []string{"leader-1"}},
+func testTeam() domain.TeamSnapshot {
+	return domain.TeamSnapshot{
+		TeamName:     "test",
+		RootMemberID: "leader-1",
+		Members: []domain.MemberSnapshot{
+			{
+				MemberID:   "leader-1",
+				MemberName: "leader",
+				Relations:  domain.MemberRelations{Workers: []string{"worker-1"}},
+			},
+			{
+				MemberID:   "worker-1",
+				MemberName: "worker",
+				Relations:  domain.MemberRelations{Leaders: []string{"leader-1"}},
+			},
 		},
 	}
 }
 
-func TestResolveSender(t *testing.T) {
-	members := testMembers()
-
-	t.Run("KnownMember_ReturnsMemberName", func(t *testing.T) {
-		got := resolveSender(members, "leader-1")
-		if got != "leader" {
-			t.Errorf("got %q, want %q", got, "leader")
-		}
-	})
-
-	t.Run("UserMemberID_ReturnsUser", func(t *testing.T) {
-		got := resolveSender(members, domain.UserMemberID)
-		if got != "user" {
-			t.Errorf("got %q, want %q", got, "user")
-		}
-	})
-}
-
 func TestValidateDelivery(t *testing.T) {
-	members := testMembers()
+	team := testTeam()
 
 	t.Run("UserToMember_Allowed", func(t *testing.T) {
-		if err := validateDelivery(members, domain.UserMemberID, "leader-1"); err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-	})
-
-	t.Run("UserToUser_Allowed", func(t *testing.T) {
-		if err := validateDelivery(members, domain.UserMemberID, domain.UserMemberID); err != nil {
+		if err := validateDelivery(team, domain.UserMemberID, "leader-1"); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 	})
 
 	t.Run("MemberToUser_Allowed", func(t *testing.T) {
-		if err := validateDelivery(members, "leader-1", domain.UserMemberID); err != nil {
+		if err := validateDelivery(team, "leader-1", domain.UserMemberID); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 	})
 
 	t.Run("ConnectedMembers_Allowed", func(t *testing.T) {
-		if err := validateDelivery(members, "leader-1", "worker-1"); err != nil {
+		if err := validateDelivery(team, "leader-1", "worker-1"); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
 	})
 
 	t.Run("UnconnectedMembers_Rejected", func(t *testing.T) {
-		members := []domain.SprintMemberSnapshot{
-			{MemberID: "a", MemberName: "A"},
-			{MemberID: "b", MemberName: "B"},
+		team := domain.TeamSnapshot{
+			Members: []domain.MemberSnapshot{
+				{MemberID: "a", MemberName: "A"},
+				{MemberID: "b", MemberName: "B"},
+			},
 		}
-		err := validateDelivery(members, "a", "b")
-		if err == nil {
+		if err := validateDelivery(team, "a", "b"); err == nil {
 			t.Error("expected error for unconnected members")
 		}
 	})
 
-	t.Run("UserToUnknownMember_Rejected", func(t *testing.T) {
-		err := validateDelivery(members, domain.UserMemberID, "unknown")
-		if err == nil {
-			t.Error("expected error for unknown recipient")
+	t.Run("UnknownSender_Rejected", func(t *testing.T) {
+		if err := validateDelivery(team, "unknown", "leader-1"); err == nil {
+			t.Error("expected error for unknown sender")
 		}
 	})
 
-	t.Run("UnknownSender_Rejected", func(t *testing.T) {
-		err := validateDelivery(members, "unknown", "leader-1")
-		if err == nil {
-			t.Error("expected error for unknown sender")
+	t.Run("UserToUnknownMember_Rejected", func(t *testing.T) {
+		if err := validateDelivery(team, domain.UserMemberID, "unknown"); err == nil {
+			t.Error("expected error for unknown recipient")
 		}
 	})
 }

@@ -22,22 +22,16 @@ type SprintPosition struct {
 	Peers    []MemberRef `json:"peers"`
 }
 
-// BuildPosition builds a SprintPosition for the given member from a sprint snapshot.
-func BuildPosition(snapshot domain.SprintSnapshot, sprintID, memberID string) (SprintPosition, error) {
-	nameOf := make(map[string]string, len(snapshot.Members))
-	for _, m := range snapshot.Members {
-		nameOf[m.MemberID] = m.MemberName
-	}
-
-	// User caller: sees all members as workers.
+// BuildPosition builds a SprintPosition for the given member from a team snapshot.
+func BuildPosition(team domain.TeamSnapshot, sprintID, memberID string) (SprintPosition, error) {
 	if memberID == domain.UserMemberID {
-		workers := make([]MemberRef, 0, len(snapshot.Members))
-		for _, m := range snapshot.Members {
+		workers := make([]MemberRef, 0, len(team.Members))
+		for _, m := range team.Members {
 			workers = append(workers, MemberRef{MemberID: m.MemberID, MemberName: m.MemberName})
 		}
 		return SprintPosition{
 			SprintID: sprintID,
-			TeamName: snapshot.TeamName,
+			TeamName: team.TeamName,
 			Me:       MemberRef{MemberID: domain.UserMemberID, MemberName: "user"},
 			Leaders:  []MemberRef{},
 			Workers:  workers,
@@ -45,34 +39,25 @@ func BuildPosition(snapshot domain.SprintSnapshot, sprintID, memberID string) (S
 		}, nil
 	}
 
-	member, ok := findMember(snapshot.Members, memberID)
+	member, ok := team.FindMember(memberID)
 	if !ok {
-		return SprintPosition{}, fmt.Errorf("member %q not found in team %q", memberID, snapshot.TeamName)
+		return SprintPosition{}, fmt.Errorf("member %q not found in team %q", memberID, team.TeamName)
 	}
 
 	toRefs := func(ids []string) []MemberRef {
 		refs := make([]MemberRef, 0, len(ids))
 		for _, id := range ids {
-			refs = append(refs, MemberRef{MemberID: id, MemberName: nameOf[id]})
+			refs = append(refs, MemberRef{MemberID: id, MemberName: team.MemberName(id)})
 		}
 		return refs
 	}
 
 	return SprintPosition{
 		SprintID: sprintID,
-		TeamName: snapshot.TeamName,
+		TeamName: team.TeamName,
 		Me:       MemberRef{MemberID: member.MemberID, MemberName: member.MemberName},
 		Leaders:  toRefs(member.Relations.Leaders),
 		Workers:  toRefs(member.Relations.Workers),
 		Peers:    toRefs(member.Relations.Peers),
 	}, nil
-}
-
-func findMember(members []domain.SprintMemberSnapshot, memberID string) (domain.SprintMemberSnapshot, bool) {
-	for _, m := range members {
-		if m.MemberID == memberID {
-			return m, true
-		}
-	}
-	return domain.SprintMemberSnapshot{}, false
 }

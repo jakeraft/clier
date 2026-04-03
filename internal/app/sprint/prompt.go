@@ -10,7 +10,7 @@ import (
 // BuildMemberPrompt generates the full prompt for a member by combining
 // all system prompts into a single string.
 func BuildMemberPrompt(team domain.TeamSnapshot, memberID string) (string, error) {
-	member, ok := findTeamMember(team.Members, memberID)
+	member, ok := team.FindMember(memberID)
 	if !ok {
 		return "", fmt.Errorf("member %q not found in team %q", memberID, team.TeamName)
 	}
@@ -21,13 +21,4 @@ func BuildMemberPrompt(team domain.TeamSnapshot, memberID string) (string, error
 	}
 
 	return strings.Join(parts, "\n\n"), nil
-}
-
-func findTeamMember(members []domain.MemberSnapshot, memberID string) (domain.MemberSnapshot, bool) {
-	for _, m := range members {
-		if m.MemberID == memberID {
-			return m, true
-		}
-	}
-	return domain.MemberSnapshot{}, false
 }
