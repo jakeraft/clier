@@ -96,12 +96,12 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 		return nil, fmt.Errorf("prepare workspace: %w", err)
 	}
 
-	if err := s.terminal.Launch(sp.ID, sp.Name, snapshot); err != nil {
-		return nil, fmt.Errorf("launch terminal: %w", err)
-	}
-
 	if err := s.store.CreateSprint(ctx, sp); err != nil {
 		return nil, fmt.Errorf("save sprint: %w", err)
+	}
+
+	if err := s.terminal.Launch(sp.ID, sp.Name, snapshot); err != nil {
+		return nil, fmt.Errorf("launch terminal: %w", err)
 	}
 
 	success = true

@@ -2,6 +2,7 @@ package settings
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -92,7 +93,7 @@ type credentialSource struct {
 }
 
 // ReadToken reads the auth token for the given binary.
-// Claude: reads from keychain (macOS) or credential file.
+// Claude: extracts the OAuth access token from keychain (macOS) or credential file.
 // Codex: returns empty string (auth is independent of CODEX_HOME).
 func (a *Auth) ReadToken(binary domain.CliBinary) (string, error) {
 	src, ok := credentialSources[binary]
@@ -104,7 +105,25 @@ func (a *Auth) ReadToken(binary domain.CliBinary) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("%s is not logged in — run: %s login", binary, binary)
 	}
-	return string(data), nil
+
+	return extractClaudeAccessToken(data)
+}
+
+// extractClaudeAccessToken extracts the accessToken from Claude credential JSON.
+// Credential format: {"claudeAiOauth":{"accessToken":"sk-ant-...", ...}}
+func extractClaudeAccessToken(data []byte) (string, error) {
+	var creds struct {
+		ClaudeAiOauth struct {
+			AccessToken string `json:"accessToken"`
+		} `json:"claudeAiOauth"`
+	}
+	if err := json.Unmarshal(data, &creds); err != nil {
+		return "", fmt.Errorf("parse claude credentials: %w", err)
+	}
+	if creds.ClaudeAiOauth.AccessToken == "" {
+		return "", errors.New("claude credentials missing accessToken")
+	}
+	return creds.ClaudeAiOauth.AccessToken, nil
 }
 
 // readCredentials tries keychain first (macOS), then falls back to file.
