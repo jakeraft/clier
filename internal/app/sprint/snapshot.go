@@ -33,6 +33,8 @@ func BuildSprintSnapshot(sprintID, baseDir, homeDir string, team domain.TeamSnap
 			files, err = buildClaudeFiles(m.DotConfig, workDir, homeDir)
 		case domain.BinaryCodex:
 			files, err = buildCodexFiles(m.DotConfig, workDir)
+		default:
+			return domain.SprintSnapshot{}, fmt.Errorf("unknown binary: %s", m.Binary)
 		}
 		if err != nil {
 			return domain.SprintSnapshot{}, fmt.Errorf("build config files for %s: %w", m.MemberName, err)
