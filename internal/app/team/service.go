@@ -44,7 +44,7 @@ func (s *Service) Snapshot(ctx context.Context, teamID string) (domain.TeamSnaps
 		return domain.TeamSnapshot{}, fmt.Errorf("get team: %w", err)
 	}
 
-	members := make([]domain.MemberSnapshot, 0, len(team.MemberIDs))
+	members := make([]domain.TeamMemberSnapshot, 0, len(team.MemberIDs))
 	for _, id := range team.MemberIDs {
 		ms, err := s.memberSnapshot(ctx, id)
 		if err != nil {
@@ -70,22 +70,22 @@ func (s *Service) Export(ctx context.Context, teamID string) (domain.TeamExport,
 	return domain.ExportFromSnapshot(snap)
 }
 
-func (s *Service) memberSnapshot(ctx context.Context, memberID string) (domain.MemberSnapshot, error) {
+func (s *Service) memberSnapshot(ctx context.Context, memberID string) (domain.TeamMemberSnapshot, error) {
 	member, err := s.store.GetMember(ctx, memberID)
 	if err != nil {
-		return domain.MemberSnapshot{}, fmt.Errorf("get member: %w", err)
+		return domain.TeamMemberSnapshot{}, fmt.Errorf("get member: %w", err)
 	}
 
 	profile, err := s.store.GetCliProfile(ctx, member.CliProfileID)
 	if err != nil {
-		return domain.MemberSnapshot{}, fmt.Errorf("get cli profile: %w", err)
+		return domain.TeamMemberSnapshot{}, fmt.Errorf("get cli profile: %w", err)
 	}
 
 	prompts := make([]domain.PromptSnapshot, 0, len(member.SystemPromptIDs))
 	for _, id := range member.SystemPromptIDs {
 		sp, err := s.store.GetSystemPrompt(ctx, id)
 		if err != nil {
-			return domain.MemberSnapshot{}, fmt.Errorf("get prompt %s: %w", id, err)
+			return domain.TeamMemberSnapshot{}, fmt.Errorf("get prompt %s: %w", id, err)
 		}
 		prompts = append(prompts, domain.PromptSnapshot{Name: sp.Name, Prompt: sp.Prompt})
 	}
@@ -94,7 +94,7 @@ func (s *Service) memberSnapshot(ctx context.Context, memberID string) (domain.M
 	for _, id := range member.EnvIDs {
 		env, err := s.store.GetEnv(ctx, id)
 		if err != nil {
-			return domain.MemberSnapshot{}, fmt.Errorf("get env %s: %w", id, err)
+			return domain.TeamMemberSnapshot{}, fmt.Errorf("get env %s: %w", id, err)
 		}
 		envs = append(envs, domain.EnvSnapshot{Name: env.Name, Key: env.Key, Value: env.Value})
 	}
@@ -103,12 +103,12 @@ func (s *Service) memberSnapshot(ctx context.Context, memberID string) (domain.M
 	if member.GitRepoID != "" {
 		repo, err := s.store.GetGitRepo(ctx, member.GitRepoID)
 		if err != nil {
-			return domain.MemberSnapshot{}, fmt.Errorf("get git repo: %w", err)
+			return domain.TeamMemberSnapshot{}, fmt.Errorf("get git repo: %w", err)
 		}
 		gitRepo = &domain.GitRepoSnapshot{Name: repo.Name, URL: repo.URL}
 	}
 
-	return domain.MemberSnapshot{
+	return domain.TeamMemberSnapshot{
 		MemberID:       memberID,
 		MemberName:     member.Name,
 		Binary:         profile.Binary,

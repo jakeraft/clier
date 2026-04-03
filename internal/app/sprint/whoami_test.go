@@ -11,7 +11,7 @@ func TestBuildPosition(t *testing.T) {
 		team := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "boss-1",
-			Members: []domain.MemberSnapshot{
+			Members: []domain.TeamMemberSnapshot{
 				{
 					MemberID:   "boss-1",
 					MemberName: "Boss",
@@ -46,7 +46,7 @@ func TestBuildPosition(t *testing.T) {
 		team := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
-			Members: []domain.MemberSnapshot{
+			Members: []domain.TeamMemberSnapshot{
 				{MemberID: "m-1", MemberName: "Agent1"},
 				{MemberID: "m-2", MemberName: "Agent2"},
 			},
@@ -67,7 +67,7 @@ func TestBuildPosition(t *testing.T) {
 		team := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
-			Members:      []domain.MemberSnapshot{{MemberID: "m-1", MemberName: "Agent"}},
+			Members:      []domain.TeamMemberSnapshot{{MemberID: "m-1", MemberName: "Agent"}},
 		}
 		_, err := BuildPosition(team, "sprint-1", "nonexistent")
 		if err == nil {

@@ -6,7 +6,7 @@ func TestExportFromSnapshot(t *testing.T) {
 	snap := TeamSnapshot{
 		TeamName:     "my-team",
 		RootMemberID: "id-alice",
-		Members: []MemberSnapshot{
+		Members: []TeamMemberSnapshot{
 			{
 				MemberID:       "id-alice",
 				MemberName:     "alice",
@@ -134,7 +134,7 @@ func TestExportFromSnapshot_PeerDedup(t *testing.T) {
 	snap := TeamSnapshot{
 		TeamName:     "peer-team",
 		RootMemberID: "id-alice",
-		Members: []MemberSnapshot{
+		Members: []TeamMemberSnapshot{
 			{
 				MemberID:       "id-alice",
 				MemberName:     "alice",
@@ -305,7 +305,7 @@ func TestExportFromSnapshot_UnknownRootID(t *testing.T) {
 	snap := TeamSnapshot{
 		TeamName:     "my-team",
 		RootMemberID: "nonexistent",
-		Members: []MemberSnapshot{
+		Members: []TeamMemberSnapshot{
 			{
 				MemberID:       "id-alice",
 				MemberName:     "alice",

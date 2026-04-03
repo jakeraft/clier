@@ -10,7 +10,7 @@ func testTeam() domain.TeamSnapshot {
 	return domain.TeamSnapshot{
 		TeamName:     "test",
 		RootMemberID: "leader-1",
-		Members: []domain.MemberSnapshot{
+		Members: []domain.TeamMemberSnapshot{
 			{
 				MemberID:   "leader-1",
 				MemberName: "leader",
@@ -48,7 +48,7 @@ func TestValidateDelivery(t *testing.T) {
 
 	t.Run("UnconnectedMembers_Rejected", func(t *testing.T) {
 		team := domain.TeamSnapshot{
-			Members: []domain.MemberSnapshot{
+			Members: []domain.TeamMemberSnapshot{
 				{MemberID: "a", MemberName: "A"},
 				{MemberID: "b", MemberName: "B"},
 			},

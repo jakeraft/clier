@@ -49,7 +49,7 @@ func ExportFromSnapshot(snap TeamSnapshot) (TeamExport, error) {
 		return TeamExport{}, fmt.Errorf("root member ID not found in snapshot: %s", snap.RootMemberID)
 	}
 
-	// 3. Convert each MemberSnapshot to MemberExport
+	// 3. Convert each TeamMemberSnapshot to MemberExport
 	members := make([]MemberExport, 0, len(snap.Members))
 	for _, m := range snap.Members {
 		members = append(members, MemberExport{
@@ -68,7 +68,7 @@ func ExportFromSnapshot(snap TeamSnapshot) (TeamExport, error) {
 		})
 	}
 
-	// 4. Extract relations from MemberSnapshot.Relations
+	// 4. Extract relations from TeamMemberSnapshot.Relations
 	var relations []RelationExport
 	for _, m := range snap.Members {
 		memberName := m.MemberName

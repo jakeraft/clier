@@ -47,10 +47,11 @@ type Service struct {
 	workspace Workspace
 	auth      AuthChecker
 	baseDir   string
+	homeDir   string
 }
 
-func New(teamSvc TeamSnapshotter, store Store, term Terminal, ws Workspace, auth AuthChecker, baseDir string) *Service {
-	return &Service{team: teamSvc, store: store, terminal: term, workspace: ws, auth: auth, baseDir: baseDir}
+func New(teamSvc TeamSnapshotter, store Store, term Terminal, ws Workspace, auth AuthChecker, baseDir, homeDir string) *Service {
+	return &Service{team: teamSvc, store: store, terminal: term, workspace: ws, auth: auth, baseDir: baseDir, homeDir: homeDir}
 }
 
 func (s *Service) Whoami(ctx context.Context, sprintID, memberID string) (SprintPosition, error) {
@@ -74,7 +75,7 @@ func (s *Service) Start(ctx context.Context, teamID string) (*domain.Sprint, err
 
 	sprintID := uuid.NewString()
 
-	snapshot, err := BuildSprintSnapshot(sprintID, s.baseDir, teamSnap, tokens)
+	snapshot, err := BuildSprintSnapshot(sprintID, s.baseDir, s.homeDir, teamSnap, tokens)
 	if err != nil {
 		return nil, fmt.Errorf("build sprint snapshot: %w", err)
 	}

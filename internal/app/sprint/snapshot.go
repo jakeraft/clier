@@ -9,7 +9,7 @@ import (
 
 // BuildSprintSnapshot transforms a TeamSnapshot into a fully resolved SprintSnapshot.
 // Pure function — no I/O. All paths, prompts, envs, configs are resolved into the snapshot.
-func BuildSprintSnapshot(sprintID, baseDir string, team domain.TeamSnapshot, tokens map[domain.CliBinary]string) (domain.SprintSnapshot, error) {
+func BuildSprintSnapshot(sprintID, baseDir, homeDir string, team domain.TeamSnapshot, tokens map[domain.CliBinary]string) (domain.SprintSnapshot, error) {
 	members := make([]domain.SprintMemberSnapshot, 0, len(team.Members))
 
 	for _, m := range team.Members {
@@ -30,9 +30,12 @@ func BuildSprintSnapshot(sprintID, baseDir string, team domain.TeamSnapshot, tok
 		var files []domain.FileEntry
 		switch m.Binary {
 		case domain.BinaryClaude:
-			files = buildClaudeFiles(m.DotConfig, workDir)
+			files, err = buildClaudeFiles(m.DotConfig, workDir, homeDir)
 		case domain.BinaryCodex:
-			files = buildCodexFiles(m.DotConfig, workDir)
+			files, err = buildCodexFiles(m.DotConfig, workDir)
+		}
+		if err != nil {
+			return domain.SprintSnapshot{}, fmt.Errorf("build config files for %s: %w", m.MemberName, err)
 		}
 
 		members = append(members, domain.SprintMemberSnapshot{
@@ -47,8 +50,6 @@ func BuildSprintSnapshot(sprintID, baseDir string, team domain.TeamSnapshot, tok
 	}
 
 	return domain.SprintSnapshot{
-		TeamName:     team.TeamName,
-		RootMemberID: team.RootMemberID,
-		Members:      members,
+		Members: members,
 	}, nil
 }

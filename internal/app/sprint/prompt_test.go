@@ -12,7 +12,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 		team := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
-			Members: []domain.MemberSnapshot{
+			Members: []domain.TeamMemberSnapshot{
 				{
 					MemberID:   "m-1",
 					MemberName: "Agent",
@@ -48,7 +48,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 		team := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
-			Members: []domain.MemberSnapshot{
+			Members: []domain.TeamMemberSnapshot{
 				{
 					MemberID:   "m-1",
 					MemberName: "Solo",
@@ -73,7 +73,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 		team := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
-			Members: []domain.MemberSnapshot{
+			Members: []domain.TeamMemberSnapshot{
 				{MemberID: "m-1", MemberName: "Agent"},
 			},
 		}
@@ -92,7 +92,7 @@ func TestBuildMemberPrompt(t *testing.T) {
 		team := domain.TeamSnapshot{
 			TeamName:     "MyTeam",
 			RootMemberID: "m-1",
-			Members: []domain.MemberSnapshot{
+			Members: []domain.TeamMemberSnapshot{
 				{MemberID: "m-1", MemberName: "Agent"},
 			},
 		}

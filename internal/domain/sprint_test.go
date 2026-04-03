@@ -9,12 +9,10 @@ func TestNewSprint(t *testing.T) {
 	teamSnap := TeamSnapshot{
 		TeamName:     "alpha",
 		RootMemberID: "root-1",
-		Members:      []MemberSnapshot{},
+		Members:      []TeamMemberSnapshot{},
 	}
 	snap := SprintSnapshot{
-		TeamName:     "alpha",
-		RootMemberID: "root-1",
-		Members:      []SprintMemberSnapshot{},
+		Members: []SprintMemberSnapshot{},
 	}
 
 	t.Run("ValidInputs_CreatesSprintWithBothSnapshots", func(t *testing.T) {
@@ -31,9 +29,6 @@ func TestNewSprint(t *testing.T) {
 		}
 		if s.TeamSnapshot.TeamName != "alpha" {
 			t.Errorf("TeamSnapshot.TeamName = %q, want alpha", s.TeamSnapshot.TeamName)
-		}
-		if s.Snapshot.TeamName != "alpha" {
-			t.Errorf("Snapshot.TeamName = %q, want alpha", s.Snapshot.TeamName)
 		}
 	})
 

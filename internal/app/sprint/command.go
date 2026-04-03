@@ -18,7 +18,7 @@ func shellQuote(s string) string {
 // BuildCommand returns the full shell command to launch an agent,
 // including environment variable exports.
 // Result format: "export K='V' && ... && cd <workDir> && <binary> <args...>"
-func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome, authToken string) (string, error) {
+func BuildCommand(m domain.TeamMemberSnapshot, prompt, workDir, sprintID, memberHome, authToken string) (string, error) {
 	var cmd string
 
 	switch m.Binary {
@@ -34,7 +34,7 @@ func BuildCommand(m domain.MemberSnapshot, prompt, workDir, sprintID, memberHome
 	return buildEnvCommand(cmd, env), nil
 }
 
-func buildClaudeCommand(m domain.MemberSnapshot, prompt, workDir string) string {
+func buildClaudeCommand(m domain.TeamMemberSnapshot, prompt, workDir string) string {
 	args := []string{string(m.Binary)}
 	args = append(args, quoteArgs(m.SystemArgs)...)
 	args = append(args, "--model", q(m.Model))
@@ -46,7 +46,7 @@ func buildClaudeCommand(m domain.MemberSnapshot, prompt, workDir string) string 
 	return fmt.Sprintf("cd %s && %s", q(workDir), strings.Join(args, " "))
 }
 
-func buildCodexCommand(m domain.MemberSnapshot, prompt, workDir string) string {
+func buildCodexCommand(m domain.TeamMemberSnapshot, prompt, workDir string) string {
 	args := []string{string(m.Binary)}
 	args = append(args, quoteArgs(m.SystemArgs)...)
 	args = append(args, "--model", q(m.Model))
@@ -91,13 +91,13 @@ func configDirEnv(binary domain.CliBinary, memberHome string) string {
 	}
 }
 
-func buildEnv(m domain.MemberSnapshot, sprintID, memberHome, authToken string) []string {
+func buildEnv(m domain.TeamMemberSnapshot, sprintID, memberHome, authToken string) []string {
 	env := []string{
 		configDirEnv(m.Binary, memberHome),
 		"CLIER_SPRINT_ID=" + sprintID,
 		"CLIER_MEMBER_ID=" + m.MemberID,
 	}
-	if authToken != "" {
+	if authToken != "" && m.Binary == domain.BinaryClaude {
 		env = append(env, "CLAUDE_CODE_OAUTH_TOKEN="+authToken)
 	}
 	for _, e := range m.Envs {

@@ -11,7 +11,7 @@ func TestBuildSprintSnapshot(t *testing.T) {
 	team := domain.TeamSnapshot{
 		TeamName:     "test-team",
 		RootMemberID: "m1",
-		Members: []domain.MemberSnapshot{
+		Members: []domain.TeamMemberSnapshot{
 			{
 				MemberID:   "m1",
 				MemberName: "leader",
@@ -52,24 +52,18 @@ func TestBuildSprintSnapshot(t *testing.T) {
 	}
 
 	t.Run("BuildsAllMembers", func(t *testing.T) {
-		snap, err := BuildSprintSnapshot("sprint-1", "/base", team, tokens)
+		snap, err := BuildSprintSnapshot("sprint-1", "/base", "/Users/test", team, tokens)
 		if err != nil {
 			t.Fatalf("BuildSprintSnapshot: %v", err)
 		}
 
-		if snap.TeamName != "test-team" {
-			t.Errorf("TeamName = %q, want %q", snap.TeamName, "test-team")
-		}
-		if snap.RootMemberID != "m1" {
-			t.Errorf("RootMemberID = %q, want %q", snap.RootMemberID, "m1")
-		}
 		if len(snap.Members) != 2 {
 			t.Fatalf("Members count = %d, want 2", len(snap.Members))
 		}
 	})
 
 	t.Run("ClaudeMember_ResolvesCommandPathsAndFiles", func(t *testing.T) {
-		snap, err := BuildSprintSnapshot("sprint-1", "/base", team, tokens)
+		snap, err := BuildSprintSnapshot("sprint-1", "/base", "/Users/test", team, tokens)
 		if err != nil {
 			t.Fatalf("BuildSprintSnapshot: %v", err)
 		}
@@ -120,7 +114,7 @@ func TestBuildSprintSnapshot(t *testing.T) {
 	})
 
 	t.Run("CodexMember_UsesDeveloperInstructionsAndFiles", func(t *testing.T) {
-		snap, err := BuildSprintSnapshot("sprint-1", "/base", team, tokens)
+		snap, err := BuildSprintSnapshot("sprint-1", "/base", "/Users/test", team, tokens)
 		if err != nil {
 			t.Fatalf("BuildSprintSnapshot: %v", err)
 		}
@@ -153,10 +147,10 @@ func TestBuildSprintSnapshot(t *testing.T) {
 		emptyTeam := domain.TeamSnapshot{
 			TeamName:     "empty",
 			RootMemberID: "root",
-			Members:      []domain.MemberSnapshot{},
+			Members:      []domain.TeamMemberSnapshot{},
 		}
 
-		snap, err := BuildSprintSnapshot("sprint-1", "/base", emptyTeam, nil)
+		snap, err := BuildSprintSnapshot("sprint-1", "/base", "/Users/test", emptyTeam, nil)
 		if err != nil {
 			t.Fatalf("BuildSprintSnapshot: %v", err)
 		}

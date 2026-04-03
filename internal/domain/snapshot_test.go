@@ -6,7 +6,7 @@ func TestTeamSnapshot_FindMember(t *testing.T) {
 	snap := TeamSnapshot{
 		TeamName:     "team-1",
 		RootMemberID: "m1",
-		Members: []MemberSnapshot{
+		Members: []TeamMemberSnapshot{
 			{MemberID: "m1", MemberName: "alice"},
 			{MemberID: "m2", MemberName: "bob"},
 		},
@@ -32,7 +32,7 @@ func TestTeamSnapshot_FindMember(t *testing.T) {
 
 func TestTeamSnapshot_MemberName(t *testing.T) {
 	snap := TeamSnapshot{
-		Members: []MemberSnapshot{
+		Members: []TeamMemberSnapshot{
 			{MemberID: "m1", MemberName: "alice"},
 		},
 	}
@@ -52,7 +52,7 @@ func TestTeamSnapshot_MemberName(t *testing.T) {
 
 func TestTeamSnapshot_IsConnected(t *testing.T) {
 	snap := TeamSnapshot{
-		Members: []MemberSnapshot{
+		Members: []TeamMemberSnapshot{
 			{
 				MemberID: "m1",
 				Relations: MemberRelations{Workers: []string{"m2"}},

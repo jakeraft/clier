@@ -13,7 +13,10 @@ func TestBuildClaudeFiles(t *testing.T) {
 		dotConfig := domain.DotConfig{"skipDangerousModePermissionPrompt": true}
 		workDir := "/base/sprint-1/m1/project"
 
-		files := buildClaudeFiles(dotConfig, workDir)
+		files, err := buildClaudeFiles(dotConfig, workDir, "/Users/test")
+		if err != nil {
+			t.Fatalf("buildClaudeFiles: %v", err)
+		}
 
 		if len(files) != 2 {
 			t.Fatalf("expected 2 files, got %d", len(files))
@@ -42,7 +45,10 @@ func TestBuildClaudeFiles(t *testing.T) {
 
 	t.Run("TildePaths_Expanded", func(t *testing.T) {
 		dotConfig := domain.DotConfig{"claudeMdExcludes": []string{"~/.claude/**"}}
-		files := buildClaudeFiles(dotConfig, "/work")
+		files, err := buildClaudeFiles(dotConfig, "/work", "/Users/test")
+		if err != nil {
+			t.Fatalf("buildClaudeFiles: %v", err)
+		}
 
 		if strings.Contains(files[0].Content, "~/") {
 			t.Error("tilde should be expanded")
@@ -55,7 +61,10 @@ func TestBuildCodexFiles(t *testing.T) {
 		dotConfig := domain.DotConfig{"sandbox_mode": "danger-full-access"}
 		workDir := "/base/sprint-1/m2/project"
 
-		files := buildCodexFiles(dotConfig, workDir)
+		files, err := buildCodexFiles(dotConfig, workDir)
+		if err != nil {
+			t.Fatalf("buildCodexFiles: %v", err)
+		}
 
 		if len(files) != 1 {
 			t.Fatalf("expected 1 file, got %d", len(files))

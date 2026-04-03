@@ -71,7 +71,7 @@ func TestBuildCommand(t *testing.T) {
 	t.Run("Claude", func(t *testing.T) {
 		t.Run("AllArgs_IncludesModelSessionPromptAndCustom", func(t *testing.T) {
 			// given: Claude member with all args
-			m := domain.MemberSnapshot{
+			m := domain.TeamMemberSnapshot{
 				MemberID:   "m1",
 				Binary:     domain.BinaryClaude,
 				Model:      "claude-sonnet-4-6",
@@ -112,7 +112,7 @@ func TestBuildCommand(t *testing.T) {
 	t.Run("Codex", func(t *testing.T) {
 		t.Run("WithPrompt_UsesDeveloperInstructions", func(t *testing.T) {
 			// given: Codex member with prompt
-			m := domain.MemberSnapshot{
+			m := domain.TeamMemberSnapshot{
 				MemberID:   "m2",
 				Binary:     domain.BinaryCodex,
 				Model:      "gpt-5.4",
@@ -188,7 +188,7 @@ func TestBuildEnvCommand(t *testing.T) {
 
 func TestBuildEnv(t *testing.T) {
 	t.Run("Claude_UsesClaudeConfigDir", func(t *testing.T) {
-		m := domain.MemberSnapshot{
+		m := domain.TeamMemberSnapshot{
 			MemberID: "m1",
 			Binary:   domain.BinaryClaude,
 		}
@@ -216,7 +216,7 @@ func TestBuildEnv(t *testing.T) {
 	})
 
 	t.Run("Codex_UsesCodexHome", func(t *testing.T) {
-		m := domain.MemberSnapshot{
+		m := domain.TeamMemberSnapshot{
 			MemberID: "m1",
 			Binary:   domain.BinaryCodex,
 		}
@@ -238,7 +238,7 @@ func TestBuildEnv(t *testing.T) {
 	})
 
 	t.Run("WithEnvs_AppendsCustomEnvVars", func(t *testing.T) {
-		m := domain.MemberSnapshot{
+		m := domain.TeamMemberSnapshot{
 			MemberID: "m1",
 			Binary:   domain.BinaryClaude,
 			Envs: []domain.EnvSnapshot{
@@ -270,7 +270,7 @@ func TestBuildEnv(t *testing.T) {
 	})
 
 	t.Run("NoEnvs_OnlySystemVars", func(t *testing.T) {
-		m := domain.MemberSnapshot{
+		m := domain.TeamMemberSnapshot{
 			MemberID: "m1",
 			Binary:   domain.BinaryClaude,
 			Envs:     nil,
@@ -284,7 +284,7 @@ func TestBuildEnv(t *testing.T) {
 	})
 
 	t.Run("Claude_WithAuthToken_IncludesOAuthEnv", func(t *testing.T) {
-		m := domain.MemberSnapshot{
+		m := domain.TeamMemberSnapshot{
 			MemberID: "m1",
 			Binary:   domain.BinaryClaude,
 		}
@@ -300,7 +300,7 @@ func TestBuildEnv(t *testing.T) {
 	})
 
 	t.Run("Codex_EmptyToken_NoOAuthEnv", func(t *testing.T) {
-		m := domain.MemberSnapshot{
+		m := domain.TeamMemberSnapshot{
 			MemberID: "m1",
 			Binary:   domain.BinaryCodex,
 		}
@@ -308,6 +308,19 @@ func TestBuildEnv(t *testing.T) {
 		for _, e := range env {
 			if strings.HasPrefix(e, "CLAUDE_CODE_OAUTH_TOKEN=") {
 				t.Error("codex should not have CLAUDE_CODE_OAUTH_TOKEN")
+			}
+		}
+	})
+
+	t.Run("Codex_WithAuthToken_NoOAuthEnv", func(t *testing.T) {
+		m := domain.TeamMemberSnapshot{
+			MemberID: "m1",
+			Binary:   domain.BinaryCodex,
+		}
+		env := buildEnv(m, "sprint-1", "/home/m1", "some-token")
+		for _, e := range env {
+			if strings.HasPrefix(e, "CLAUDE_CODE_OAUTH_TOKEN=") {
+				t.Error("codex should not have CLAUDE_CODE_OAUTH_TOKEN even with non-empty token")
 			}
 		}
 	})

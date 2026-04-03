@@ -2,8 +2,8 @@ package sprint
 
 import (
 	"encoding/json"
+	"fmt"
 	"maps"
-	"os"
 	"strings"
 
 	"github.com/jakeraft/clier/internal/domain"
@@ -11,9 +11,12 @@ import (
 )
 
 // buildClaudeFiles generates the Claude config files from DotConfig.
-func buildClaudeFiles(dotConfig domain.DotConfig, workDir string) []domain.FileEntry {
-	settingsData, _ := json.MarshalIndent(dotConfig, "", "  ")
-	settingsData = expandTildePaths(settingsData)
+func buildClaudeFiles(dotConfig domain.DotConfig, workDir, homeDir string) ([]domain.FileEntry, error) {
+	settingsData, err := json.MarshalIndent(dotConfig, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("marshal settings: %w", err)
+	}
+	settingsData = expandTildePaths(settingsData, homeDir)
 
 	trust := map[string]any{
 		"hasCompletedOnboarding": true,
@@ -24,16 +27,19 @@ func buildClaudeFiles(dotConfig domain.DotConfig, workDir string) []domain.FileE
 			},
 		},
 	}
-	trustData, _ := json.MarshalIndent(trust, "", "  ")
+	trustData, err := json.MarshalIndent(trust, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("marshal trust: %w", err)
+	}
 
 	return []domain.FileEntry{
 		{Path: ".claude/settings.json", Content: string(settingsData)},
 		{Path: ".claude/.claude.json", Content: string(trustData)},
-	}
+	}, nil
 }
 
 // buildCodexFiles generates the Codex config files from DotConfig.
-func buildCodexFiles(dotConfig domain.DotConfig, workDir string) []domain.FileEntry {
+func buildCodexFiles(dotConfig domain.DotConfig, workDir string) ([]domain.FileEntry, error) {
 	config := make(map[string]any, len(dotConfig))
 	maps.Copy(config, dotConfig)
 	config["projects"] = map[string]any{
@@ -42,17 +48,19 @@ func buildCodexFiles(dotConfig domain.DotConfig, workDir string) []domain.FileEn
 		},
 	}
 
-	data, _ := toml.Marshal(config)
+	data, err := toml.Marshal(config)
+	if err != nil {
+		return nil, fmt.Errorf("marshal codex config: %w", err)
+	}
 
 	return []domain.FileEntry{
 		{Path: ".codex/config.toml", Content: string(data)},
-	}
+	}, nil
 }
 
-func expandTildePaths(data []byte) []byte {
-	home, err := os.UserHomeDir()
-	if err != nil {
+func expandTildePaths(data []byte, homeDir string) []byte {
+	if homeDir == "" {
 		return data
 	}
-	return []byte(strings.ReplaceAll(string(data), "~/", home+"/"))
+	return []byte(strings.ReplaceAll(string(data), "~/", homeDir+"/"))
 }

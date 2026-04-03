@@ -3,10 +3,10 @@ package domain
 type TeamSnapshot struct {
 	TeamName     string           `json:"team_name"`
 	RootMemberID string           `json:"root_member_id"`
-	Members      []MemberSnapshot `json:"members"`
+	Members      []TeamMemberSnapshot `json:"members"`
 }
 
-type MemberSnapshot struct {
+type TeamMemberSnapshot struct {
 	MemberID       string           `json:"member_id"`
 	MemberName     string           `json:"member_name"`
 	Binary         CliBinary        `json:"binary"`
@@ -38,13 +38,13 @@ type EnvSnapshot struct {
 }
 
 // FindMember returns the member with the given ID, or false if not found.
-func (s TeamSnapshot) FindMember(id string) (MemberSnapshot, bool) {
+func (s TeamSnapshot) FindMember(id string) (TeamMemberSnapshot, bool) {
 	for _, m := range s.Members {
 		if m.MemberID == id {
 			return m, true
 		}
 	}
-	return MemberSnapshot{}, false
+	return TeamMemberSnapshot{}, false
 }
 
 // MemberName returns the name of the member with the given ID, or empty string.
@@ -73,9 +73,7 @@ type FileEntry struct {
 // SprintSnapshot is the resolved execution plan stored in a Sprint.
 // Built from TeamSnapshot by the sprint service.
 type SprintSnapshot struct {
-	TeamName     string                 `json:"team_name"`
-	RootMemberID string                 `json:"root_member_id"`
-	Members      []SprintMemberSnapshot `json:"members"`
+	Members []SprintMemberSnapshot `json:"members"`
 }
 
 // SprintMemberSnapshot is a fully resolved member execution plan.
