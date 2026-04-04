@@ -66,11 +66,11 @@ func TestMessage(t *testing.T) {
 			if m.SessionID != "session-1" {
 				t.Errorf("SessionID = %q, want %q", m.SessionID, "session-1")
 			}
-			if m.FromMemberID != "from-1" {
-				t.Errorf("FromMemberID = %q, want %q", m.FromMemberID, "from-1")
+			if m.FromTeamMemberID != "from-1" {
+				t.Errorf("FromTeamMemberID = %q, want %q", m.FromTeamMemberID, "from-1")
 			}
-			if m.ToMemberID != "to-1" {
-				t.Errorf("ToMemberID = %q, want %q", m.ToMemberID, "to-1")
+			if m.ToTeamMemberID != "to-1" {
+				t.Errorf("ToTeamMemberID = %q, want %q", m.ToTeamMemberID, "to-1")
 			}
 			if m.Content != "hello" {
 				t.Errorf("Content = %q, want %q", m.Content, "hello")
@@ -87,20 +87,20 @@ func TestMessage(t *testing.T) {
 			}
 		})
 
-		t.Run("EmptyToMemberID_ReturnsError", func(t *testing.T) {
+		t.Run("EmptyToTeamMemberID_ReturnsError", func(t *testing.T) {
 			_, err := domain.NewMessage("session-1", "from-1", "  ", "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
-		t.Run("EmptyFromMemberID_Allowed", func(t *testing.T) {
+		t.Run("EmptyFromTeamMemberID_Allowed", func(t *testing.T) {
 			m, err := domain.NewMessage("session-1", "", "to-1", "hello")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if m.FromMemberID != "" {
-				t.Errorf("FromMemberID = %q, want empty", m.FromMemberID)
+			if m.FromTeamMemberID != "" {
+				t.Errorf("FromTeamMemberID = %q, want empty", m.FromTeamMemberID)
 			}
 		})
 

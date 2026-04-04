@@ -50,19 +50,19 @@ func (s *Session) Stop() {
 
 // Message represents an inter-member message within a session.
 type Message struct {
-	ID           string    `json:"id"`
-	SessionID    string    `json:"session_id"`
-	FromMemberID string    `json:"from_member_id"`
-	ToMemberID   string    `json:"to_member_id"`
-	Content      string    `json:"content"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID               string    `json:"id"`
+	SessionID        string    `json:"session_id"`
+	FromTeamMemberID string    `json:"from_team_member_id"`
+	ToTeamMemberID   string    `json:"to_team_member_id"`
+	Content          string    `json:"content"`
+	CreatedAt        time.Time `json:"created_at"`
 }
 
-func NewMessage(sessionID, fromMemberID, toMemberID, content string) (*Message, error) {
+func NewMessage(sessionID, fromTeamMemberID, toTeamMemberID, content string) (*Message, error) {
 	if strings.TrimSpace(sessionID) == "" {
 		return nil, errors.New("message session id must not be empty")
 	}
-	if strings.TrimSpace(toMemberID) == "" {
+	if strings.TrimSpace(toTeamMemberID) == "" {
 		return nil, errors.New("message recipient must not be empty")
 	}
 	content = strings.TrimSpace(content)
@@ -71,11 +71,11 @@ func NewMessage(sessionID, fromMemberID, toMemberID, content string) (*Message, 
 	}
 
 	return &Message{
-		ID:           uuid.NewString(),
-		SessionID:    sessionID,
-		FromMemberID: fromMemberID,
-		ToMemberID:   toMemberID,
-		Content:      content,
-		CreatedAt:    time.Now(),
+		ID:               uuid.NewString(),
+		SessionID:        sessionID,
+		FromTeamMemberID: fromTeamMemberID,
+		ToTeamMemberID:   toTeamMemberID,
+		Content:          content,
+		CreatedAt:        time.Now(),
 	}, nil
 }

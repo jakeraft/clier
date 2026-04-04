@@ -1,0 +1,13 @@
+{
+  "files": [
+    "01-claude-sonnet.json",
+    "02-gpt-5.4-mini.json",
+    "03-pair-editor.json",
+    "04-pair-writer.json",
+    "05-greeting.json",
+    "06-pair-repo.json",
+    "07-editor.json",
+    "08-writer.json",
+    "09-team.json"
+  ]
+}

@@ -55,7 +55,7 @@ func Collect(ctx context.Context, store *db.Store) (DashboardData, error) {
 	}
 
 	return DashboardData{
-		Teams:         convertTeams(teams, memberNames),
+		Teams:         convertTeams(teams),
 		Members:       convertMembers(members, profileNames, promptNames, repoNames, envNames),
 		CliProfiles:   convertCliProfiles(profiles),
 		SystemPrompts: convertSystemPrompts(prompts),
@@ -64,25 +64,25 @@ func Collect(ctx context.Context, store *db.Store) (DashboardData, error) {
 	}, nil
 }
 
-func convertTeams(teams []domain.Team, memberNames map[string]string) []TeamView {
+func convertTeams(teams []domain.Team) []TeamView {
 	views := make([]TeamView, 0, len(teams))
 	for _, t := range teams {
-		names := make([]string, 0, len(t.MemberIDs))
-		for _, id := range t.MemberIDs {
-			names = append(names, memberNames[id])
+		names := make([]string, 0, len(t.TeamMembers))
+		for _, tm := range t.TeamMembers {
+			names = append(names, tm.Name)
 		}
 		relations := make([]RelationView, 0, len(t.Relations))
 		for _, r := range t.Relations {
 			relations = append(relations, RelationView{From: r.From, To: r.To, Type: string(r.Type)})
 		}
-		plan := make([]MemberSessionPlanView, 0, len(t.Plan))
+		plan := make([]MemberPlanView, 0, len(t.Plan))
 		for _, m := range t.Plan {
 			files := make([]FileEntryView, 0, len(m.Workspace.Files))
 			for _, f := range m.Workspace.Files {
 				files = append(files, FileEntryView{Path: f.Path, Content: f.Content})
 			}
-			mv := MemberSessionPlanView{
-				MemberID:    m.MemberID,
+			mv := MemberPlanView{
+				TeamMemberID: m.TeamMemberID,
 				MemberName:  m.MemberName,
 				Memberspace: m.Workspace.Memberspace,
 				Command:     m.Terminal.Command,
@@ -94,17 +94,38 @@ func convertTeams(teams []domain.Team, memberNames map[string]string) []TeamView
 			plan = append(plan, mv)
 		}
 
+		teamMemberIDs := make([]string, 0, len(t.TeamMembers))
+		teamMemberViews := make([]TeamMemberView, 0, len(t.TeamMembers))
+		for _, tm := range t.TeamMembers {
+			teamMemberIDs = append(teamMemberIDs, tm.ID)
+			teamMemberViews = append(teamMemberViews, TeamMemberView{
+				ID:       tm.ID,
+				MemberID: tm.MemberID,
+				Name:     tm.Name,
+			})
+		}
+
+		// Find root member name.
+		rootMemberName := ""
+		for _, tm := range t.TeamMembers {
+			if tm.ID == t.RootTeamMemberID {
+				rootMemberName = tm.Name
+				break
+			}
+		}
+
 		views = append(views, TeamView{
-			ID:             t.ID,
-			Name:           t.Name,
-			RootMemberID:   t.RootMemberID,
-			MemberIDs:      t.MemberIDs,
-			Relations:      relations,
-			Plan:           plan,
-			RootMemberName: memberNames[t.RootMemberID],
-			MemberNames:    names,
-			CreatedAt:      t.CreatedAt,
-			UpdatedAt:      t.UpdatedAt,
+			ID:               t.ID,
+			Name:             t.Name,
+			RootTeamMemberID: t.RootTeamMemberID,
+			TeamMemberIDs:    teamMemberIDs,
+			TeamMembers:      teamMemberViews,
+			Relations:        relations,
+			Plan:             plan,
+			RootMemberName:   rootMemberName,
+			MemberNames:      names,
+			CreatedAt:        t.CreatedAt,
+			UpdatedAt:        t.UpdatedAt,
 		})
 	}
 	return views

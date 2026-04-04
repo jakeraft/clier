@@ -35,8 +35,7 @@ go install github.com/jakeraft/clier@latest
 Open your CLI agent and give it these instructions:
 
 > [!NOTE]
-> Explore the clier CLI and import the tutorial team from
-> `https://raw.githubusercontent.com/jakeraft/clier/main/tutorials/story-team.json`.
+> Explore the clier CLI and import the tutorial team with `clier import tutorials/story-team`.
 > Show me the team on the dashboard, then start a session and tell the chief:
 > "Write a short story about a mysterious animal."
 > Show me the running sessions. When the story arrives, stop the session and clean up.
@@ -46,7 +45,7 @@ The agent discovers commands, parses outputs, and chains them on its own. `sessi
 Under the hood, the agent runs something like:
 
 ```bash
-clier team import <url>
+clier import tutorials/story-team
 clier team list
 clier dashboard
 clier session start <team-id>

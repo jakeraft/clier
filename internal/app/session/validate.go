@@ -2,32 +2,31 @@ package session
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func validateDelivery(team domain.Team, fromMemberID, toMemberID string) error {
-	isUserSender := fromMemberID == domain.UserMemberID
-	isUserRecipient := toMemberID == domain.UserMemberID
+func validateDelivery(team domain.Team, fromTeamMemberID, toTeamMemberID string) error {
+	isUserSender := fromTeamMemberID == domain.UserMemberID
+	isUserRecipient := toTeamMemberID == domain.UserMemberID
 
 	if isUserSender || isUserRecipient {
 		if !isUserRecipient {
-			if !slices.Contains(team.MemberIDs, toMemberID) {
-				return fmt.Errorf("recipient not found: %s", toMemberID)
+			if _, ok := team.FindTeamMember(toTeamMemberID); !ok {
+				return fmt.Errorf("recipient not found: %s", toTeamMemberID)
 			}
 		}
 		return nil
 	}
 
-	if !slices.Contains(team.MemberIDs, fromMemberID) {
-		return fmt.Errorf("sender not found: %s", fromMemberID)
+	if _, ok := team.FindTeamMember(fromTeamMemberID); !ok {
+		return fmt.Errorf("sender not found: %s", fromTeamMemberID)
 	}
-	if !slices.Contains(team.MemberIDs, toMemberID) {
-		return fmt.Errorf("recipient not found: %s", toMemberID)
+	if _, ok := team.FindTeamMember(toTeamMemberID); !ok {
+		return fmt.Errorf("recipient not found: %s", toTeamMemberID)
 	}
-	if !team.MemberRelations(fromMemberID).IsConnectedTo(toMemberID) {
-		return fmt.Errorf("no relation from %s to %s", fromMemberID, toMemberID)
+	if !team.MemberRelations(fromTeamMemberID).IsConnectedTo(toTeamMemberID) {
+		return fmt.Errorf("no relation from %s to %s", fromTeamMemberID, toTeamMemberID)
 	}
 	return nil
 }

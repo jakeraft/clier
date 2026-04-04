@@ -1,0 +1,19 @@
+{
+  "type": "cli_profile",
+  "data": {
+    "id": "c82b70df-a758-4844-bef9-e9d78913c324",
+    "name": "claude-sonnet",
+    "model": "claude-sonnet-4-6",
+    "binary": "claude",
+    "system_args": [
+      "--dangerously-skip-permissions"
+    ],
+    "custom_args": [],
+    "dot_config": {
+      "claudeMdExcludes": [
+        "~/.claude/**"
+      ],
+      "skipDangerousModePermissionPrompt": true
+    }
+  }
+}

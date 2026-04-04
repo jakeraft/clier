@@ -11,26 +11,33 @@ type DashboardData struct {
 	Envs          []EnvView          `json:"envs"`
 }
 
-type TeamView struct {
-	ID             string              `json:"id"`
-	Name           string              `json:"name"`
-	RootMemberID   string              `json:"rootMemberId"`
-	MemberIDs      []string            `json:"memberIds"`
-	Relations      []RelationView      `json:"relations"`
-	Plan           []MemberSessionPlanView `json:"plan"`
-	RootMemberName string              `json:"rootMemberName"`
-	MemberNames    []string            `json:"memberNames"`
-	CreatedAt      time.Time           `json:"createdAt"`
-	UpdatedAt      time.Time           `json:"updatedAt"`
+type TeamMemberView struct {
+	ID       string `json:"id"`
+	MemberID string `json:"memberId"`
+	Name     string `json:"name"`
 }
 
-type MemberSessionPlanView struct {
-	MemberID    string          `json:"memberId"`
-	MemberName  string          `json:"memberName"`
-	Memberspace string          `json:"memberspace"`
-	Command     string          `json:"command"`
-	GitRepo     *GitRepoRef     `json:"gitRepo"`
-	Files       []FileEntryView `json:"files"`
+type TeamView struct {
+	ID               string           `json:"id"`
+	Name             string           `json:"name"`
+	RootTeamMemberID string           `json:"rootTeamMemberId"`
+	TeamMemberIDs    []string         `json:"teamMemberIds"`
+	TeamMembers      []TeamMemberView `json:"teamMembers"`
+	Relations        []RelationView   `json:"relations"`
+	Plan             []MemberPlanView `json:"plan"`
+	RootMemberName   string           `json:"rootMemberName"`
+	MemberNames      []string         `json:"memberNames"`
+	CreatedAt        time.Time        `json:"createdAt"`
+	UpdatedAt        time.Time        `json:"updatedAt"`
+}
+
+type MemberPlanView struct {
+	TeamMemberID string          `json:"teamMemberId"`
+	MemberName   string          `json:"memberName"`
+	Memberspace  string          `json:"memberspace"`
+	Command      string          `json:"command"`
+	GitRepo      *GitRepoRef     `json:"gitRepo"`
+	Files        []FileEntryView `json:"files"`
 }
 
 type GitRepoRef struct {

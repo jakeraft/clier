@@ -36,12 +36,12 @@ CREATE TABLE IF NOT EXISTS members (
 );
 
 CREATE TABLE IF NOT EXISTS teams (
-    id             TEXT PRIMARY KEY,
-    name           TEXT NOT NULL,
-    root_member_id TEXT NOT NULL REFERENCES members(id) ON DELETE RESTRICT,
-    plan           TEXT NOT NULL DEFAULT '[]',
-    created_at     INTEGER NOT NULL,
-    updated_at     INTEGER NOT NULL
+    id                   TEXT PRIMARY KEY,
+    name                 TEXT NOT NULL,
+    root_team_member_id  TEXT NOT NULL,
+    plan                 TEXT NOT NULL DEFAULT '[]',
+    created_at           INTEGER NOT NULL,
+    updated_at           INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -53,34 +53,35 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE TABLE IF NOT EXISTS messages (
-    id             TEXT PRIMARY KEY,
-    session_id     TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    from_member_id TEXT NOT NULL,
-    to_member_id   TEXT NOT NULL,
-    content        TEXT NOT NULL,
-    created_at     INTEGER NOT NULL
+    id                    TEXT PRIMARY KEY,
+    session_id            TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    from_team_member_id   TEXT NOT NULL,
+    to_team_member_id     TEXT NOT NULL,
+    content               TEXT NOT NULL,
+    created_at            INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS team_members (
+    id        TEXT PRIMARY KEY,
     team_id   TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-    PRIMARY KEY (team_id, member_id)
+    name      TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS team_relations (
-    team_id        TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    from_member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-    to_member_id   TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-    type           TEXT NOT NULL,
-    PRIMARY KEY (team_id, from_member_id, to_member_id, type)
+    team_id              TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+    from_team_member_id  TEXT NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
+    to_team_member_id    TEXT NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
+    type                 TEXT NOT NULL,
+    PRIMARY KEY (team_id, from_team_member_id, to_team_member_id, type)
 );
 
 CREATE TABLE IF NOT EXISTS session_surfaces (
-    session_id    TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    member_id     TEXT NOT NULL,
-    workspace_ref TEXT NOT NULL,
-    surface_ref   TEXT NOT NULL,
-    PRIMARY KEY (session_id, member_id)
+    session_id       TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    team_member_id   TEXT NOT NULL,
+    workspace_ref    TEXT NOT NULL,
+    surface_ref      TEXT NOT NULL,
+    PRIMARY KEY (session_id, team_member_id)
 );
 
 CREATE TABLE IF NOT EXISTS member_system_prompts (

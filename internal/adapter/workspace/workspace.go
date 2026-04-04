@@ -19,9 +19,9 @@ func New(baseDir string) *Workspace {
 	return &Workspace{baseDir: baseDir}
 }
 
-// Prepare creates isolated environments for all members using resolved MemberSessionPlans.
-// File paths in each MemberSessionPlan are absolute (placeholders already resolved).
-func (w *Workspace) Prepare(ctx context.Context, members []domain.MemberSessionPlan) error {
+// Prepare creates isolated environments for all members using resolved MemberPlans.
+// File paths in each MemberPlan are absolute (placeholders already resolved).
+func (w *Workspace) Prepare(ctx context.Context, members []domain.MemberPlan) error {
 	if len(members) == 0 {
 		return nil
 	}
@@ -40,7 +40,7 @@ func (w *Workspace) Cleanup(planID string) error {
 	return os.RemoveAll(filepath.Join(w.baseDir, planID))
 }
 
-func (w *Workspace) prepareMember(ctx context.Context, m domain.MemberSessionPlan) error {
+func (w *Workspace) prepareMember(ctx context.Context, m domain.MemberPlan) error {
 	ws := m.Workspace
 	workDir := filepath.Join(ws.Memberspace, "project")
 	if err := os.MkdirAll(workDir, 0755); err != nil {

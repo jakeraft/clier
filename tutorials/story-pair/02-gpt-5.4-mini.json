@@ -1,0 +1,19 @@
+{
+  "type": "cli_profile",
+  "data": {
+    "id": "e705e519-2955-4c33-a318-19017f6e049d",
+    "name": "gpt-5.4-mini",
+    "model": "gpt-5.1-codex-mini",
+    "binary": "codex",
+    "system_args": [],
+    "custom_args": [],
+    "dot_config": {
+      "notice": {
+        "model_migrations": {
+          "gpt-5.1-codex-mini": "gpt-5.4"
+        }
+      },
+      "sandbox_mode": "danger-full-access"
+    }
+  }
+}

@@ -20,12 +20,12 @@ func (q *Queries) DeleteSessionSurfaces(ctx context.Context, sessionID string) (
 
 const getSessionSurface = `-- name: GetSessionSurface :one
 SELECT workspace_ref, surface_ref FROM session_surfaces
-WHERE session_id = ? AND member_id = ?
+WHERE session_id = ? AND team_member_id = ?
 `
 
 type GetSessionSurfaceParams struct {
-	SessionID string
-	MemberID  string
+	SessionID    string
+	TeamMemberID string
 }
 
 type GetSessionSurfaceRow struct {
@@ -34,7 +34,7 @@ type GetSessionSurfaceRow struct {
 }
 
 func (q *Queries) GetSessionSurface(ctx context.Context, arg GetSessionSurfaceParams) (GetSessionSurfaceRow, error) {
-	row := q.db.QueryRowContext(ctx, getSessionSurface, arg.SessionID, arg.MemberID)
+	row := q.db.QueryRowContext(ctx, getSessionSurface, arg.SessionID, arg.TeamMemberID)
 	var i GetSessionSurfaceRow
 	err := row.Scan(&i.WorkspaceRef, &i.SurfaceRef)
 	return i, err
@@ -42,29 +42,29 @@ func (q *Queries) GetSessionSurface(ctx context.Context, arg GetSessionSurfacePa
 
 const getSessionWorkspaceRef = `-- name: GetSessionWorkspaceRef :one
 SELECT workspace_ref FROM session_surfaces
-WHERE session_id = ? AND member_id != ? LIMIT 1
+WHERE session_id = ? AND team_member_id != ? LIMIT 1
 `
 
 type GetSessionWorkspaceRefParams struct {
-	SessionID string
-	MemberID  string
+	SessionID    string
+	TeamMemberID string
 }
 
 func (q *Queries) GetSessionWorkspaceRef(ctx context.Context, arg GetSessionWorkspaceRefParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getSessionWorkspaceRef, arg.SessionID, arg.MemberID)
+	row := q.db.QueryRowContext(ctx, getSessionWorkspaceRef, arg.SessionID, arg.TeamMemberID)
 	var workspace_ref string
 	err := row.Scan(&workspace_ref)
 	return workspace_ref, err
 }
 
 const saveSessionSurface = `-- name: SaveSessionSurface :execresult
-INSERT INTO session_surfaces (session_id, member_id, workspace_ref, surface_ref)
+INSERT INTO session_surfaces (session_id, team_member_id, workspace_ref, surface_ref)
 VALUES (?, ?, ?, ?)
 `
 
 type SaveSessionSurfaceParams struct {
 	SessionID    string
-	MemberID     string
+	TeamMemberID string
 	WorkspaceRef string
 	SurfaceRef   string
 }
@@ -72,7 +72,7 @@ type SaveSessionSurfaceParams struct {
 func (q *Queries) SaveSessionSurface(ctx context.Context, arg SaveSessionSurfaceParams) (sql.Result, error) {
 	return q.db.ExecContext(ctx, saveSessionSurface,
 		arg.SessionID,
-		arg.MemberID,
+		arg.TeamMemberID,
 		arg.WorkspaceRef,
 		arg.SurfaceRef,
 	)

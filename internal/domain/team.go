@@ -35,40 +35,58 @@ func (r MemberRelations) IsConnectedTo(memberID string) bool {
 		slices.Contains(r.Peers, memberID)
 }
 
-type Team struct {
-	ID           string           `json:"id"`
-	Name         string           `json:"name"`
-	RootMemberID string           `json:"root_member_id"`
-	MemberIDs    []string         `json:"member_ids"`
-	Relations    []Relation       `json:"relations"`
-	Plan         []MemberSessionPlan `json:"plan"`
-	CreatedAt    time.Time        `json:"created_at"`
-	UpdatedAt    time.Time        `json:"updated_at"`
+// TeamMember is an instance of a Member spec within a Team.
+// The same MemberID (spec reference) can appear in multiple TeamMembers.
+type TeamMember struct {
+	ID       string `json:"id"`        // unique instance ID (UUID)
+	MemberID string `json:"member_id"` // spec reference (Member.ID)
+	Name     string `json:"name"`      // display name
 }
 
-func NewTeam(name, rootMemberID string) (*Team, error) {
+type Team struct {
+	ID               string              `json:"id"`
+	Name             string              `json:"name"`
+	RootTeamMemberID string              `json:"root_team_member_id"`
+	TeamMembers      []TeamMember        `json:"team_members"`
+	Relations        []Relation          `json:"relations"`
+	Plan             []MemberPlan `json:"plan"`
+	CreatedAt        time.Time           `json:"created_at"`
+	UpdatedAt        time.Time           `json:"updated_at"`
+}
+
+func NewTeam(name, memberID, memberName string) (*Team, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("team name must not be empty")
 	}
-	rootMemberID = strings.TrimSpace(rootMemberID)
-	if rootMemberID == "" {
+	memberID = strings.TrimSpace(memberID)
+	if memberID == "" {
 		return nil, errors.New("root member id must not be empty")
+	}
+	memberName = strings.TrimSpace(memberName)
+	if memberName == "" {
+		return nil, errors.New("root member name must not be empty")
+	}
+
+	rootTeamMember := TeamMember{
+		ID:       uuid.NewString(),
+		MemberID: memberID,
+		Name:     memberName,
 	}
 
 	now := time.Now()
 	return &Team{
-		ID:           uuid.NewString(),
-		Name:         name,
-		RootMemberID: rootMemberID,
-		MemberIDs:    []string{rootMemberID},
-		Relations:    []Relation{},
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:               uuid.NewString(),
+		Name:             name,
+		RootTeamMemberID: rootTeamMember.ID,
+		TeamMembers:      []TeamMember{rootTeamMember},
+		Relations:        []Relation{},
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}, nil
 }
 
-func (t *Team) Update(name *string, rootMemberID *string) error {
+func (t *Team) Update(name *string, rootTeamMemberID *string) error {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
@@ -76,11 +94,11 @@ func (t *Team) Update(name *string, rootMemberID *string) error {
 		}
 		t.Name = trimmed
 	}
-	if rootMemberID != nil {
-		if !t.hasMember(*rootMemberID) {
-			return fmt.Errorf("root member must be in team: %s", *rootMemberID)
+	if rootTeamMemberID != nil {
+		if !t.hasTeamMember(*rootTeamMemberID) {
+			return fmt.Errorf("root member must be in team: %s", *rootTeamMemberID)
 		}
-		t.RootMemberID = *rootMemberID
+		t.RootTeamMemberID = *rootTeamMemberID
 	}
 	t.UpdatedAt = time.Now()
 	return nil
@@ -88,32 +106,41 @@ func (t *Team) Update(name *string, rootMemberID *string) error {
 
 // ReplaceComposition replaces the team's name, root, members, and relations atomically.
 // Validates all invariants: name non-empty, root in members, relation types, no self-relations, etc.
-func (t *Team) ReplaceComposition(name string, rootMemberID string, memberIDs []string, relations []Relation) error {
+func (t *Team) ReplaceComposition(name string, rootTeamMemberID string, teamMembers []TeamMember, relations []Relation) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return errors.New("team name must not be empty")
 	}
-	rootMemberID = strings.TrimSpace(rootMemberID)
-	if rootMemberID == "" {
-		return errors.New("root member id must not be empty")
+	rootTeamMemberID = strings.TrimSpace(rootTeamMemberID)
+	if rootTeamMemberID == "" {
+		return errors.New("root team member id must not be empty")
 	}
 
-	// Build a temporary team to leverage existing AddMember/AddRelation validation.
+	// Build a temporary team to leverage existing validation.
 	tmp := &Team{
-		ID:           t.ID,
-		Name:         name,
-		RootMemberID: rootMemberID,
-		MemberIDs:    []string{rootMemberID},
-		Relations:    []Relation{},
+		ID:               t.ID,
+		Name:             name,
+		RootTeamMemberID: rootTeamMemberID,
+		TeamMembers:      []TeamMember{},
+		Relations:        []Relation{},
 	}
-	for _, id := range memberIDs {
-		if id == rootMemberID {
-			continue
+
+	// Add all team members with validation.
+	for _, tm := range teamMembers {
+		if strings.TrimSpace(tm.ID) == "" {
+			return errors.New("team member id must not be empty")
 		}
-		if err := tmp.AddMember(id); err != nil {
-			return err
+		if strings.TrimSpace(tm.Name) == "" {
+			return errors.New("team member name must not be empty")
 		}
+		tmp.TeamMembers = append(tmp.TeamMembers, tm)
 	}
+
+	// Verify root is among team members.
+	if !tmp.hasTeamMember(rootTeamMemberID) {
+		return fmt.Errorf("root team member not found in team members: %s", rootTeamMemberID)
+	}
+
 	for _, r := range relations {
 		if err := tmp.AddRelation(r); err != nil {
 			return err
@@ -121,36 +148,52 @@ func (t *Team) ReplaceComposition(name string, rootMemberID string, memberIDs []
 	}
 
 	t.Name = tmp.Name
-	t.RootMemberID = tmp.RootMemberID
-	t.MemberIDs = tmp.MemberIDs
+	t.RootTeamMemberID = tmp.RootTeamMemberID
+	t.TeamMembers = tmp.TeamMembers
 	t.Relations = tmp.Relations
 	t.UpdatedAt = time.Now()
 	return nil
 }
 
-func (t *Team) AddMember(memberID string) error {
-	if t.hasMember(memberID) {
-		return fmt.Errorf("member already in team: %s", memberID)
+// AddTeamMember creates a new TeamMember instance for the given member spec.
+// The same memberID can be added multiple times (duplicate spec is allowed).
+func (t *Team) AddTeamMember(memberID, name string) (*TeamMember, error) {
+	memberID = strings.TrimSpace(memberID)
+	if memberID == "" {
+		return nil, errors.New("member id must not be empty")
 	}
-	t.MemberIDs = append(t.MemberIDs, memberID)
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, errors.New("member name must not be empty")
+	}
+
+	tm := TeamMember{
+		ID:       uuid.NewString(),
+		MemberID: memberID,
+		Name:     name,
+	}
+	t.TeamMembers = append(t.TeamMembers, tm)
 	t.UpdatedAt = time.Now()
-	return nil
+	return &tm, nil
 }
 
-func (t *Team) RemoveMember(memberID string) error {
-	if t.RootMemberID == memberID {
-		return fmt.Errorf("cannot remove root member: %s", memberID)
+// RemoveTeamMember removes a team member by its unique TeamMember.ID.
+// Cannot remove the root team member.
+// Also removes all relations involving this team member.
+func (t *Team) RemoveTeamMember(teamMemberID string) error {
+	if t.RootTeamMemberID == teamMemberID {
+		return fmt.Errorf("cannot remove root team member: %s", teamMemberID)
 	}
-	idx := t.memberIndex(memberID)
+	idx := t.teamMemberIndex(teamMemberID)
 	if idx == -1 {
-		return fmt.Errorf("member not in team: %s", memberID)
+		return fmt.Errorf("team member not in team: %s", teamMemberID)
 	}
-	t.MemberIDs = append(t.MemberIDs[:idx], t.MemberIDs[idx+1:]...)
+	t.TeamMembers = append(t.TeamMembers[:idx], t.TeamMembers[idx+1:]...)
 
-	// Remove all relations involving this member.
+	// Remove all relations involving this team member.
 	filtered := make([]Relation, 0, len(t.Relations))
 	for _, r := range t.Relations {
-		if r.From != memberID && r.To != memberID {
+		if r.From != teamMemberID && r.To != teamMemberID {
 			filtered = append(filtered, r)
 		}
 	}
@@ -168,11 +211,11 @@ func (t *Team) AddRelation(r Relation) error {
 	if r.From == r.To {
 		return errors.New("cannot create relation to self")
 	}
-	if !t.hasMember(r.From) {
-		return fmt.Errorf("member not in team: %s", r.From)
+	if !t.hasTeamMember(r.From) {
+		return fmt.Errorf("team member not in team: %s", r.From)
 	}
-	if !t.hasMember(r.To) {
-		return fmt.Errorf("member not in team: %s", r.To)
+	if !t.hasTeamMember(r.To) {
+		return fmt.Errorf("team member not in team: %s", r.To)
 	}
 
 	// Check duplicate (peer relations are bidirectional).
@@ -216,7 +259,7 @@ func (t *Team) RemoveRelation(from, to string, relType RelationType) error {
 	return errors.New("relation not found")
 }
 
-func (t *Team) MemberRelations(memberID string) MemberRelations {
+func (t *Team) MemberRelations(teamMemberID string) MemberRelations {
 	leaders := []string{}
 	workers := []string{}
 	peers := []string{}
@@ -224,16 +267,16 @@ func (t *Team) MemberRelations(memberID string) MemberRelations {
 	for _, r := range t.Relations {
 		switch r.Type {
 		case RelationLeader:
-			if r.To == memberID {
+			if r.To == teamMemberID {
 				leaders = append(leaders, r.From)
 			}
-			if r.From == memberID {
+			if r.From == teamMemberID {
 				workers = append(workers, r.To)
 			}
 		case RelationPeer:
-			if r.From == memberID {
+			if r.From == teamMemberID {
 				peers = append(peers, r.To)
-			} else if r.To == memberID {
+			} else if r.To == teamMemberID {
 				peers = append(peers, r.From)
 			}
 		}
@@ -246,15 +289,81 @@ func (t *Team) MemberRelations(memberID string) MemberRelations {
 	}
 }
 
-func (t *Team) hasMember(memberID string) bool {
-	return t.memberIndex(memberID) != -1
+// FindTeamMember looks up a TeamMember by its unique ID.
+func (t *Team) FindTeamMember(teamMemberID string) (*TeamMember, bool) {
+	for i, tm := range t.TeamMembers {
+		if tm.ID == teamMemberID {
+			return &t.TeamMembers[i], true
+		}
+	}
+	return nil, false
 }
 
-func (t *Team) memberIndex(memberID string) int {
-	for i, id := range t.MemberIDs {
-		if id == memberID {
+func (t *Team) hasTeamMember(teamMemberID string) bool {
+	return t.teamMemberIndex(teamMemberID) != -1
+}
+
+func (t *Team) teamMemberIndex(teamMemberID string) int {
+	for i, tm := range t.TeamMembers {
+		if tm.ID == teamMemberID {
 			return i
 		}
 	}
 	return -1
 }
+
+// MemberPlan is a fully-resolved execution plan for a single team member.
+// Binary, Model, Envs are NOT stored — they are already resolved into Command.
+// Relations are NOT stored — they are in Team.Relations and baked into the prompt.
+type MemberPlan struct {
+	TeamMemberID string        `json:"team_member_id"`
+	MemberName   string        `json:"member_name"`
+	Terminal     TerminalPlan  `json:"terminal"`
+	Workspace    WorkspacePlan `json:"workspace"`
+}
+
+// TerminalPlan holds the shell command that launches the member agent.
+type TerminalPlan struct {
+	Command string `json:"command"`
+}
+
+// WorkspacePlan holds the filesystem setup for a member's isolated environment.
+type WorkspacePlan struct {
+	Memberspace string      `json:"memberspace"`
+	Files       []FileEntry `json:"files"`
+	GitRepo     *GitRepoRef `json:"git_repo"`
+}
+
+type GitRepoRef struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+// FileEntry is a resolved config file to write to a member's workspace.
+type FileEntry struct {
+	Path    string `json:"path"`    // relative to memberspace
+	Content string `json:"content"`
+}
+
+// PromptSnapshot is a resolved system prompt used by plan build logic.
+type PromptSnapshot struct {
+	ID     string `json:"id,omitempty"`
+	Name   string `json:"name"`
+	Prompt string `json:"prompt"`
+}
+
+// GitRepoSnapshot is a resolved git repo reference used by plan build logic.
+type GitRepoSnapshot struct {
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+// EnvSnapshot is a resolved environment variable used by plan build logic.
+type EnvSnapshot struct {
+	ID    string `json:"id,omitempty"`
+	Name  string `json:"name"`
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+

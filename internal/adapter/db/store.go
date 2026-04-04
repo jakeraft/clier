@@ -75,25 +75,25 @@ func (s *Store) CreateTeam(ctx context.Context, t *domain.Team) error {
 
 	qtx := generated.New(tx)
 	if _, err := qtx.CreateTeam(ctx, generated.CreateTeamParams{
-		ID:           t.ID,
-		Name:         t.Name,
-		RootMemberID: t.RootMemberID,
-		Plan:         string(planJSON),
-		CreatedAt:    t.CreatedAt.Unix(),
-		UpdatedAt:    t.UpdatedAt.Unix(),
+		ID:               t.ID,
+		Name:             t.Name,
+		RootTeamMemberID: t.RootTeamMemberID,
+		Plan:             string(planJSON),
+		CreatedAt:        t.CreatedAt.Unix(),
+		UpdatedAt:        t.UpdatedAt.Unix(),
 	}); err != nil {
 		return err
 	}
-	for _, memberID := range t.MemberIDs {
+	for _, tm := range t.TeamMembers {
 		if _, err := qtx.AddTeamMember(ctx, generated.AddTeamMemberParams{
-			TeamID: t.ID, MemberID: memberID,
+			ID: tm.ID, TeamID: t.ID, MemberID: tm.MemberID, Name: tm.Name,
 		}); err != nil {
 			return err
 		}
 	}
 	for _, r := range t.Relations {
 		if _, err := qtx.AddTeamRelation(ctx, generated.AddTeamRelationParams{
-			TeamID: t.ID, FromMemberID: r.From, ToMemberID: r.To, Type: string(r.Type),
+			TeamID: t.ID, FromTeamMemberID: r.From, ToTeamMemberID: r.To, Type: string(r.Type),
 		}); err != nil {
 			return err
 		}
@@ -106,9 +106,13 @@ func (s *Store) GetTeam(ctx context.Context, id string) (domain.Team, error) {
 	if err != nil {
 		return domain.Team{}, err
 	}
-	memberIDs, err := s.queries.ListTeamMemberIDs(ctx, id)
+	tmRows, err := s.queries.ListTeamMembers(ctx, id)
 	if err != nil {
 		return domain.Team{}, err
+	}
+	teamMembers := make([]domain.TeamMember, 0, len(tmRows))
+	for _, r := range tmRows {
+		teamMembers = append(teamMembers, domain.TeamMember{ID: r.ID, MemberID: r.MemberID, Name: r.Name})
 	}
 	relRows, err := s.queries.ListTeamRelations(ctx, id)
 	if err != nil {
@@ -116,27 +120,24 @@ func (s *Store) GetTeam(ctx context.Context, id string) (domain.Team, error) {
 	}
 	relations := make([]domain.Relation, 0, len(relRows))
 	for _, r := range relRows {
-		relations = append(relations, domain.Relation{From: r.FromMemberID, To: r.ToMemberID, Type: domain.RelationType(r.Type)})
+		relations = append(relations, domain.Relation{From: r.FromTeamMemberID, To: r.ToTeamMemberID, Type: domain.RelationType(r.Type)})
 	}
-	if memberIDs == nil {
-		memberIDs = []string{}
-	}
-	var plan []domain.MemberSessionPlan
+	var plan []domain.MemberPlan
 	if err := json.Unmarshal([]byte(row.Plan), &plan); err != nil {
 		return domain.Team{}, fmt.Errorf("unmarshal plan: %w", err)
 	}
 	if plan == nil {
-		plan = []domain.MemberSessionPlan{}
+		plan = []domain.MemberPlan{}
 	}
 	return domain.Team{
-		ID:           row.ID,
-		Name:         row.Name,
-		RootMemberID: row.RootMemberID,
-		MemberIDs:    memberIDs,
-		Relations:    relations,
-		Plan:         plan,
-		CreatedAt:    time.Unix(row.CreatedAt, 0),
-		UpdatedAt:    time.Unix(row.UpdatedAt, 0),
+		ID:               row.ID,
+		Name:             row.Name,
+		RootTeamMemberID: row.RootTeamMemberID,
+		TeamMembers:      teamMembers,
+		Relations:        relations,
+		Plan:             plan,
+		CreatedAt:        time.Unix(row.CreatedAt, 0),
+		UpdatedAt:        time.Unix(row.UpdatedAt, 0),
 	}, nil
 }
 
@@ -158,10 +159,10 @@ func (s *Store) ListTeams(ctx context.Context) ([]domain.Team, error) {
 
 func (s *Store) UpdateTeam(ctx context.Context, t *domain.Team) error {
 	_, err := s.queries.UpdateTeam(ctx, generated.UpdateTeamParams{
-		Name:         t.Name,
-		RootMemberID: t.RootMemberID,
-		UpdatedAt:    t.UpdatedAt.Unix(),
-		ID:           t.ID,
+		Name:             t.Name,
+		RootTeamMemberID: t.RootTeamMemberID,
+		UpdatedAt:        t.UpdatedAt.Unix(),
+		ID:               t.ID,
 	})
 	return err
 }
@@ -182,14 +183,14 @@ func (s *Store) DeleteTeam(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *Store) AddTeamMember(ctx context.Context, teamID, memberID string) error {
+func (s *Store) AddTeamMember(ctx context.Context, teamID string, tm domain.TeamMember) error {
 	_, err := s.queries.AddTeamMember(ctx, generated.AddTeamMemberParams{
-		TeamID: teamID, MemberID: memberID,
+		ID: tm.ID, TeamID: teamID, MemberID: tm.MemberID, Name: tm.Name,
 	})
 	return err
 }
 
-func (s *Store) RemoveTeamMember(ctx context.Context, teamID, memberID string) error {
+func (s *Store) RemoveTeamMember(ctx context.Context, teamID, teamMemberID string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -198,13 +199,11 @@ func (s *Store) RemoveTeamMember(ctx context.Context, teamID, memberID string) e
 
 	qtx := generated.New(tx)
 	if _, err := qtx.RemoveTeamMemberRelations(ctx, generated.RemoveTeamMemberRelationsParams{
-		TeamID: teamID, FromMemberID: memberID, ToMemberID: memberID,
+		TeamID: teamID, FromTeamMemberID: teamMemberID, ToTeamMemberID: teamMemberID,
 	}); err != nil {
 		return err
 	}
-	if _, err := qtx.RemoveTeamMember(ctx, generated.RemoveTeamMemberParams{
-		TeamID: teamID, MemberID: memberID,
-	}); err != nil {
+	if _, err := qtx.RemoveTeamMember(ctx, teamMemberID); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -212,14 +211,14 @@ func (s *Store) RemoveTeamMember(ctx context.Context, teamID, memberID string) e
 
 func (s *Store) AddTeamRelation(ctx context.Context, teamID string, r domain.Relation) error {
 	_, err := s.queries.AddTeamRelation(ctx, generated.AddTeamRelationParams{
-		TeamID: teamID, FromMemberID: r.From, ToMemberID: r.To, Type: string(r.Type),
+		TeamID: teamID, FromTeamMemberID: r.From, ToTeamMemberID: r.To, Type: string(r.Type),
 	})
 	return err
 }
 
 func (s *Store) RemoveTeamRelation(ctx context.Context, teamID string, r domain.Relation) error {
 	_, err := s.queries.RemoveTeamRelation(ctx, generated.RemoveTeamRelationParams{
-		TeamID: teamID, FromMemberID: r.From, ToMemberID: r.To, Type: string(r.Type),
+		TeamID: teamID, FromTeamMemberID: r.From, ToTeamMemberID: r.To, Type: string(r.Type),
 	})
 	return err
 }
@@ -244,27 +243,27 @@ func (s *Store) ReplaceTeamComposition(ctx context.Context, t *domain.Team) erro
 	defer tx.Rollback()
 
 	qtx := generated.New(tx)
-	if _, err := qtx.UpdateTeam(ctx, generated.UpdateTeamParams{
-		Name: t.Name, RootMemberID: t.RootMemberID, UpdatedAt: t.UpdatedAt.Unix(), ID: t.ID,
-	}); err != nil {
-		return err
-	}
 	if _, err := qtx.DeleteTeamRelations(ctx, t.ID); err != nil {
 		return err
 	}
 	if _, err := qtx.DeleteTeamMembers(ctx, t.ID); err != nil {
 		return err
 	}
-	for _, memberID := range t.MemberIDs {
+	if _, err := qtx.UpdateTeam(ctx, generated.UpdateTeamParams{
+		Name: t.Name, RootTeamMemberID: t.RootTeamMemberID, UpdatedAt: t.UpdatedAt.Unix(), ID: t.ID,
+	}); err != nil {
+		return err
+	}
+	for _, tm := range t.TeamMembers {
 		if _, err := qtx.AddTeamMember(ctx, generated.AddTeamMemberParams{
-			TeamID: t.ID, MemberID: memberID,
+			ID: tm.ID, TeamID: t.ID, MemberID: tm.MemberID, Name: tm.Name,
 		}); err != nil {
 			return err
 		}
 	}
 	for _, r := range t.Relations {
 		if _, err := qtx.AddTeamRelation(ctx, generated.AddTeamRelationParams{
-			TeamID: t.ID, FromMemberID: r.From, ToMemberID: r.To, Type: string(r.Type),
+			TeamID: t.ID, FromTeamMemberID: r.From, ToTeamMemberID: r.To, Type: string(r.Type),
 		}); err != nil {
 			return err
 		}
@@ -398,7 +397,7 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 }
 
 // DeleteMember deletes a member. CASCADE: member_system_prompts, member_envs.
-// RESTRICT: teams.root_member_id — fails if member is a team's root.
+// RESTRICT: team_members.member_id — fails if member is referenced by a team.
 func (s *Store) DeleteMember(ctx context.Context, id string) error {
 	result, err := s.queries.DeleteMember(ctx, id)
 	if err != nil {
@@ -852,12 +851,12 @@ func (s *Store) DeleteSession(ctx context.Context, id string) error {
 
 func (s *Store) CreateMessage(ctx context.Context, msg *domain.Message) error {
 	_, err := s.queries.CreateMessage(ctx, generated.CreateMessageParams{
-		ID:           msg.ID,
-		SessionID:    msg.SessionID,
-		FromMemberID: msg.FromMemberID,
-		ToMemberID:   msg.ToMemberID,
-		Content:      msg.Content,
-		CreatedAt:    msg.CreatedAt.Unix(),
+		ID:               msg.ID,
+		SessionID:        msg.SessionID,
+		FromTeamMemberID: msg.FromTeamMemberID,
+		ToTeamMemberID:   msg.ToTeamMemberID,
+		Content:          msg.Content,
+		CreatedAt:        msg.CreatedAt.Unix(),
 	})
 	return err
 }
@@ -870,20 +869,20 @@ func (s *Store) ListMessagesBySessionID(ctx context.Context, sessionID string) (
 	msgs := make([]domain.Message, 0, len(rows))
 	for _, row := range rows {
 		msgs = append(msgs, domain.Message{
-			ID:           row.ID,
-			SessionID:    row.SessionID,
-			FromMemberID: row.FromMemberID,
-			ToMemberID:   row.ToMemberID,
-			Content:      row.Content,
-			CreatedAt:    time.Unix(row.CreatedAt, 0),
+			ID:               row.ID,
+			SessionID:        row.SessionID,
+			FromTeamMemberID: row.FromTeamMemberID,
+			ToTeamMemberID:   row.ToTeamMemberID,
+			Content:          row.Content,
+			CreatedAt:        time.Unix(row.CreatedAt, 0),
 		})
 	}
 	return msgs, nil
 }
 
-func (s *Store) ListMessagesBySessionAndMember(ctx context.Context, sessionID, memberID string) ([]domain.Message, error) {
+func (s *Store) ListMessagesBySessionAndMember(ctx context.Context, sessionID, teamMemberID string) ([]domain.Message, error) {
 	rows, err := s.queries.ListMessagesBySessionAndMember(ctx, generated.ListMessagesBySessionAndMemberParams{
-		SessionID: sessionID, FromMemberID: memberID, ToMemberID: memberID,
+		SessionID: sessionID, FromTeamMemberID: teamMemberID, ToTeamMemberID: teamMemberID,
 	})
 	if err != nil {
 		return nil, err
@@ -891,12 +890,12 @@ func (s *Store) ListMessagesBySessionAndMember(ctx context.Context, sessionID, m
 	msgs := make([]domain.Message, 0, len(rows))
 	for _, row := range rows {
 		msgs = append(msgs, domain.Message{
-			ID:           row.ID,
-			SessionID:    row.SessionID,
-			FromMemberID: row.FromMemberID,
-			ToMemberID:   row.ToMemberID,
-			Content:      row.Content,
-			CreatedAt:    time.Unix(row.CreatedAt, 0),
+			ID:               row.ID,
+			SessionID:        row.SessionID,
+			FromTeamMemberID: row.FromTeamMemberID,
+			ToTeamMemberID:   row.ToTeamMemberID,
+			Content:          row.Content,
+			CreatedAt:        time.Unix(row.CreatedAt, 0),
 		})
 	}
 	return msgs, nil
@@ -904,16 +903,16 @@ func (s *Store) ListMessagesBySessionAndMember(ctx context.Context, sessionID, m
 
 // SessionSurface (infra state for terminal adapter)
 
-func (s *Store) SaveSessionSurface(ctx context.Context, sessionID, memberID, workspaceRef, surfaceRef string) error {
+func (s *Store) SaveSessionSurface(ctx context.Context, sessionID, teamMemberID, workspaceRef, surfaceRef string) error {
 	_, err := s.queries.SaveSessionSurface(ctx, generated.SaveSessionSurfaceParams{
-		SessionID: sessionID, MemberID: memberID, WorkspaceRef: workspaceRef, SurfaceRef: surfaceRef,
+		SessionID: sessionID, TeamMemberID: teamMemberID, WorkspaceRef: workspaceRef, SurfaceRef: surfaceRef,
 	})
 	return err
 }
 
-func (s *Store) GetSessionSurface(ctx context.Context, sessionID, memberID string) (workspaceRef, surfaceRef string, err error) {
+func (s *Store) GetSessionSurface(ctx context.Context, sessionID, teamMemberID string) (workspaceRef, surfaceRef string, err error) {
 	row, err := s.queries.GetSessionSurface(ctx, generated.GetSessionSurfaceParams{
-		SessionID: sessionID, MemberID: memberID,
+		SessionID: sessionID, TeamMemberID: teamMemberID,
 	})
 	if err != nil {
 		return "", "", err
@@ -921,9 +920,9 @@ func (s *Store) GetSessionSurface(ctx context.Context, sessionID, memberID strin
 	return row.WorkspaceRef, row.SurfaceRef, nil
 }
 
-func (s *Store) GetSessionWorkspaceRef(ctx context.Context, sessionID, excludeMemberID string) (string, error) {
+func (s *Store) GetSessionWorkspaceRef(ctx context.Context, sessionID, excludeTeamMemberID string) (string, error) {
 	return s.queries.GetSessionWorkspaceRef(ctx, generated.GetSessionWorkspaceRefParams{
-		SessionID: sessionID, MemberID: excludeMemberID,
+		SessionID: sessionID, TeamMemberID: excludeTeamMemberID,
 	})
 }
 

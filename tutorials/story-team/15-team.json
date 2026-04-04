@@ -1,0 +1,78 @@
+{
+  "type": "team",
+  "data": {
+    "id": "ebfc4588-b1a9-45a6-a725-457eb4bbe875",
+    "name": "story-team",
+    "root_team_member_id": "ebfc4588-aa01-4000-8000-000000000001",
+    "team_members": [
+      {
+        "id": "ebfc4588-aa01-4000-8000-000000000001",
+        "member_id": "0764d1ec-206c-4e26-82a5-c4127fe32126",
+        "name": "chief-editor"
+      },
+      {
+        "id": "ebfc4588-aa02-4000-8000-000000000002",
+        "member_id": "bdbe0a55-c29d-4a82-875c-dc8b709f4094",
+        "name": "section-editor-1"
+      },
+      {
+        "id": "ebfc4588-aa03-4000-8000-000000000003",
+        "member_id": "1638ea03-37b8-4a51-a4be-5edbefe93052",
+        "name": "section-editor-2"
+      },
+      {
+        "id": "ebfc4588-aa04-4000-8000-000000000004",
+        "member_id": "e65f03ed-8d55-488b-afaa-2acfca9deaac",
+        "name": "writer-1"
+      },
+      {
+        "id": "ebfc4588-aa05-4000-8000-000000000005",
+        "member_id": "3d3d7af6-f228-443d-b563-fa03a909142c",
+        "name": "writer-2"
+      },
+      {
+        "id": "ebfc4588-aa06-4000-8000-000000000006",
+        "member_id": "e67708f9-98bf-41f3-bf62-b59f56e6be2b",
+        "name": "writer-3"
+      },
+      {
+        "id": "ebfc4588-aa07-4000-8000-000000000007",
+        "member_id": "fd3ff322-6f29-4f5b-96c1-7164af430c85",
+        "name": "writer-4"
+      }
+    ],
+    "relations": [
+      {
+        "from": "ebfc4588-aa01-4000-8000-000000000001",
+        "to": "ebfc4588-aa02-4000-8000-000000000002",
+        "type": "leader"
+      },
+      {
+        "from": "ebfc4588-aa01-4000-8000-000000000001",
+        "to": "ebfc4588-aa03-4000-8000-000000000003",
+        "type": "leader"
+      },
+      {
+        "from": "ebfc4588-aa02-4000-8000-000000000002",
+        "to": "ebfc4588-aa04-4000-8000-000000000004",
+        "type": "leader"
+      },
+      {
+        "from": "ebfc4588-aa02-4000-8000-000000000002",
+        "to": "ebfc4588-aa05-4000-8000-000000000005",
+        "type": "leader"
+      },
+      {
+        "from": "ebfc4588-aa03-4000-8000-000000000003",
+        "to": "ebfc4588-aa06-4000-8000-000000000006",
+        "type": "leader"
+      },
+      {
+        "from": "ebfc4588-aa03-4000-8000-000000000003",
+        "to": "ebfc4588-aa07-4000-8000-000000000007",
+        "type": "leader"
+      }
+    ],
+    "plan": []
+  }
+}

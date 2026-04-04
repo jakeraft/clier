@@ -1,0 +1,15 @@
+{
+  "type": "member",
+  "data": {
+    "id": "1638ea03-37b8-4a51-a4be-5edbefe93052",
+    "name": "section-editor-2",
+    "cli_profile_id": "c82b70df-a758-4844-bef9-e9d78913c324",
+    "system_prompt_ids": [
+      "f2b80dc2-5b02-43aa-9c7e-6bf950580d03"
+    ],
+    "env_ids": [
+      "abfec5e6-18d9-4d72-99b8-328c4e004c43"
+    ],
+    "git_repo_id": "05405876-f4d9-4eb0-881c-7d7527065736"
+  }
+}

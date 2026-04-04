@@ -7,7 +7,7 @@ import (
 )
 
 func TestResolvePlaceholders(t *testing.T) {
-	m := domain.MemberSessionPlan{
+	m := domain.MemberPlan{
 		Terminal: domain.TerminalPlan{
 			Command: "export CLIER_SESSION_ID='{{CLIER_SESSION_ID}}' && export CLAUDE_CODE_OAUTH_TOKEN='{{CLIER_AUTH_CLAUDE}}' && cd '{{CLIER_MEMBERSPACE}}/project'",
 		},

@@ -1,0 +1,28 @@
+{
+  "type": "team",
+  "data": {
+    "id": "52ae1a61-0380-4713-b672-d359c96f2c26",
+    "name": "story-pair",
+    "root_team_member_id": "52ae1a61-aa01-4000-8000-000000000001",
+    "team_members": [
+      {
+        "id": "52ae1a61-aa01-4000-8000-000000000001",
+        "member_id": "2ca2e44f-ab04-4395-bc6a-451094e2f069",
+        "name": "editor"
+      },
+      {
+        "id": "52ae1a61-aa02-4000-8000-000000000002",
+        "member_id": "6cb2b0df-93fd-433d-879e-dc42f15e9874",
+        "name": "writer"
+      }
+    ],
+    "relations": [
+      {
+        "from": "52ae1a61-aa01-4000-8000-000000000001",
+        "to": "52ae1a61-aa02-4000-8000-000000000002",
+        "type": "peer"
+      }
+    ],
+    "plan": []
+  }
+}

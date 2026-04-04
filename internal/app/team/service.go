@@ -4,8 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jakeraft/clier/internal/app/runplan"
 	"github.com/jakeraft/clier/internal/domain"
+)
+
+const (
+	PlaceholderBase        = "{{CLIER_BASE}}"
+	PlaceholderMemberspace = "{{CLIER_MEMBERSPACE}}"
+	PlaceholderSessionID   = "{{CLIER_SESSION_ID}}"
+	PlaceholderAuthClaude  = "{{CLIER_AUTH_CLAUDE}}"
+	PlaceholderAuthCodex   = "{{CLIER_AUTH_CODEX}}"
 )
 
 // Store defines the operations needed by the team service.
@@ -31,7 +38,7 @@ type Store interface {
 	UpdateCliProfile(ctx context.Context, p *domain.CliProfile) error
 	UpdateMember(ctx context.Context, m *domain.Member) error
 	UpdateTeam(ctx context.Context, t *domain.Team) error
-	AddTeamMember(ctx context.Context, teamID, memberID string) error
+	AddTeamMember(ctx context.Context, teamID string, tm domain.TeamMember) error
 	AddTeamRelation(ctx context.Context, teamID string, r domain.Relation) error
 	ReplaceTeamComposition(ctx context.Context, t *domain.Team) error
 	UpdateTeamPlan(ctx context.Context, t *domain.Team) error
@@ -46,140 +53,121 @@ func New(store Store) *Service {
 	return &Service{store: store}
 }
 
-// Snapshot aggregates a team's complete state from normalised entities.
-func (s *Service) Snapshot(ctx context.Context, teamID string) (domain.TeamSnapshot, error) {
-	team, err := s.store.GetTeam(ctx, teamID)
-	if err != nil {
-		return domain.TeamSnapshot{}, fmt.Errorf("get team: %w", err)
-	}
-
-	members := make([]domain.TeamMemberSnapshot, 0, len(team.MemberIDs))
-	for _, id := range team.MemberIDs {
-		ms, err := s.memberSnapshot(ctx, id)
-		if err != nil {
-			return domain.TeamSnapshot{}, fmt.Errorf("load member %s: %w", id, err)
-		}
-		ms.Relations = team.MemberRelations(id)
-		members = append(members, ms)
-	}
-
-	return domain.TeamSnapshot{
-		TeamID:       team.ID,
-		TeamName:     team.Name,
-		RootMemberID: team.RootMemberID,
-		Members:      members,
-	}, nil
-}
-
 // BuildPlan computes the execution plan from current team state and persists it.
+// For each TeamMember, loads the member spec, profile, prompts, envs, and repo,
+// then builds a MemberPlan directly.
 func (s *Service) BuildPlan(ctx context.Context, teamID string) (*domain.Team, error) {
-	snap, err := s.Snapshot(ctx, teamID)
-	if err != nil {
-		return nil, fmt.Errorf("snapshot: %w", err)
-	}
-
-	td := snapshotToTeamData(snap)
-	plan, err := runplan.BuildPlan(td)
-	if err != nil {
-		return nil, fmt.Errorf("build plan: %w", err)
-	}
-
-	t, err := s.store.GetTeam(ctx, teamID)
+	team, err := s.store.GetTeam(ctx, teamID)
 	if err != nil {
 		return nil, fmt.Errorf("get team: %w", err)
 	}
-	t.Plan = plan
-	if err := s.store.UpdateTeamPlan(ctx, &t); err != nil {
-		return nil, fmt.Errorf("update team plan: %w", err)
-	}
-	return &t, nil
-}
 
-// snapshotToTeamData converts a TeamSnapshot into runplan.TeamData.
-func snapshotToTeamData(snap domain.TeamSnapshot) runplan.TeamData {
-	members := make([]runplan.MemberData, 0, len(snap.Members))
-	for _, m := range snap.Members {
-		members = append(members, runplan.MemberData{
-			MemberID:      m.MemberID,
-			MemberName:    m.MemberName,
-			Binary:        m.Binary,
-			Model:         m.Model,
-			SystemArgs:    m.SystemArgs,
-			CustomArgs:    m.CustomArgs,
-			DotConfig:     m.DotConfig,
-			SystemPrompts: m.SystemPrompts,
-			GitRepo:       m.GitRepo,
-			Envs:          m.Envs,
-			Relations:     m.Relations,
+	// Build nameByID using TeamMember IDs.
+	nameByID := make(map[string]string, len(team.TeamMembers))
+	for _, tm := range team.TeamMembers {
+		nameByID[tm.ID] = tm.Name
+	}
+
+	plans := make([]domain.MemberPlan, 0, len(team.TeamMembers))
+
+	for _, tm := range team.TeamMembers {
+		member, err := s.store.GetMember(ctx, tm.MemberID)
+		if err != nil {
+			return nil, fmt.Errorf("get member %s: %w", tm.MemberID, err)
+		}
+
+		profile, err := s.store.GetCliProfile(ctx, member.CliProfileID)
+		if err != nil {
+			return nil, fmt.Errorf("get cli profile for %s: %w", tm.Name, err)
+		}
+
+		prompts := make([]domain.PromptSnapshot, 0, len(member.SystemPromptIDs))
+		for _, id := range member.SystemPromptIDs {
+			sp, err := s.store.GetSystemPrompt(ctx, id)
+			if err != nil {
+				return nil, fmt.Errorf("get prompt %s: %w", id, err)
+			}
+			prompts = append(prompts, domain.PromptSnapshot{ID: sp.ID, Name: sp.Name, Prompt: sp.Prompt})
+		}
+
+		envs := make([]domain.EnvSnapshot, 0, len(member.EnvIDs))
+		for _, id := range member.EnvIDs {
+			env, err := s.store.GetEnv(ctx, id)
+			if err != nil {
+				return nil, fmt.Errorf("get env %s: %w", id, err)
+			}
+			envs = append(envs, domain.EnvSnapshot{ID: env.ID, Name: env.Name, Key: env.Key, Value: env.Value})
+		}
+
+		var gitRepo *domain.GitRepoRef
+		if member.GitRepoID != "" {
+			repo, err := s.store.GetGitRepo(ctx, member.GitRepoID)
+			if err != nil {
+				return nil, fmt.Errorf("get git repo for %s: %w", tm.Name, err)
+			}
+			gitRepo = &domain.GitRepoRef{Name: repo.Name, URL: repo.URL}
+		}
+
+		// Build relations using TeamMember ID.
+		relations := team.MemberRelations(tm.ID)
+
+		memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, teamID, tm.ID)
+
+		clierPrompt := buildClierPrompt(team.Name, tm.Name, relations, nameByID)
+		userPrompt := joinPrompts(prompts)
+		prompt := "---\n\n" + clierPrompt + "\n---\n\n" + userPrompt
+
+		auth := setAuth(profile.Binary)
+
+		files, err := buildFiles(profile.Binary, profile.DotConfig, PlaceholderMemberspace)
+		if err != nil {
+			return nil, fmt.Errorf("build files for %s: %w", tm.Name, err)
+		}
+		files = append(files, auth.Files...)
+
+		cmd, err := buildCommand(
+			profile.Binary, profile.Model, profile.SystemArgs, profile.CustomArgs,
+			prompt, PlaceholderSessionID, tm.ID,
+			auth.CommandEnvs, envs,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("build command for %s: %w", tm.Name, err)
+		}
+
+		launchPath := PlaceholderMemberspace + "/launch.sh"
+		files = append(files, domain.FileEntry{Path: launchPath, Content: cmd})
+
+		plans = append(plans, domain.MemberPlan{
+			TeamMemberID: tm.ID,
+			MemberName:   tm.Name,
+			Terminal:     domain.TerminalPlan{Command: ". " + launchPath},
+			Workspace: domain.WorkspacePlan{
+				Memberspace: memberspace,
+				Files:       files,
+				GitRepo:     gitRepo,
+			},
 		})
 	}
-	return runplan.TeamData{
-		TeamID:       snap.TeamID,
-		TeamName:     snap.TeamName,
-		RootMemberID: snap.RootMemberID,
-		Members:      members,
+
+	team.Plan = plans
+	if err := s.store.UpdateTeamPlan(ctx, &team); err != nil {
+		return nil, fmt.Errorf("update team plan: %w", err)
 	}
+	return &team, nil
 }
 
-// Export returns a self-contained, name-based TeamExport for the given team.
-func (s *Service) Export(ctx context.Context, teamID string) (domain.TeamExport, error) {
-	snap, err := s.Snapshot(ctx, teamID)
-	if err != nil {
-		return domain.TeamExport{}, fmt.Errorf("snapshot: %w", err)
-	}
-	return domain.ExportFromSnapshot(snap)
-}
+// buildFiles dispatches to the binary-specific config file builder.
+func buildFiles(binary domain.CliBinary, dotConfig domain.DotConfig,
+	memberspacePlaceholder string) ([]domain.FileEntry, error) {
 
-func (s *Service) memberSnapshot(ctx context.Context, memberID string) (domain.TeamMemberSnapshot, error) {
-	member, err := s.store.GetMember(ctx, memberID)
-	if err != nil {
-		return domain.TeamMemberSnapshot{}, fmt.Errorf("get member: %w", err)
-	}
+	workDir := memberspacePlaceholder + "/project"
 
-	profile, err := s.store.GetCliProfile(ctx, member.CliProfileID)
-	if err != nil {
-		return domain.TeamMemberSnapshot{}, fmt.Errorf("get cli profile: %w", err)
+	switch binary {
+	case domain.BinaryClaude:
+		return buildClaudeFiles(dotConfig, workDir, memberspacePlaceholder)
+	case domain.BinaryCodex:
+		return buildCodexFiles(dotConfig, workDir, memberspacePlaceholder)
+	default:
+		return nil, fmt.Errorf("unknown binary: %s", binary)
 	}
-
-	prompts := make([]domain.PromptSnapshot, 0, len(member.SystemPromptIDs))
-	for _, id := range member.SystemPromptIDs {
-		sp, err := s.store.GetSystemPrompt(ctx, id)
-		if err != nil {
-			return domain.TeamMemberSnapshot{}, fmt.Errorf("get prompt %s: %w", id, err)
-		}
-		prompts = append(prompts, domain.PromptSnapshot{ID: sp.ID, Name: sp.Name, Prompt: sp.Prompt})
-	}
-
-	envs := make([]domain.EnvSnapshot, 0, len(member.EnvIDs))
-	for _, id := range member.EnvIDs {
-		env, err := s.store.GetEnv(ctx, id)
-		if err != nil {
-			return domain.TeamMemberSnapshot{}, fmt.Errorf("get env %s: %w", id, err)
-		}
-		envs = append(envs, domain.EnvSnapshot{ID: env.ID, Name: env.Name, Key: env.Key, Value: env.Value})
-	}
-
-	var gitRepo *domain.GitRepoSnapshot
-	if member.GitRepoID != "" {
-		repo, err := s.store.GetGitRepo(ctx, member.GitRepoID)
-		if err != nil {
-			return domain.TeamMemberSnapshot{}, fmt.Errorf("get git repo: %w", err)
-		}
-		gitRepo = &domain.GitRepoSnapshot{ID: repo.ID, Name: repo.Name, URL: repo.URL}
-	}
-
-	return domain.TeamMemberSnapshot{
-		MemberID:       memberID,
-		MemberName:     member.Name,
-		Binary:         profile.Binary,
-		Model:          profile.Model,
-		CliProfileID:   profile.ID,
-		CliProfileName: profile.Name,
-		SystemArgs:     profile.SystemArgs,
-		CustomArgs:     profile.CustomArgs,
-		DotConfig:      profile.DotConfig,
-		SystemPrompts:  prompts,
-		GitRepo:        gitRepo,
-		Envs:           envs,
-	}, nil
 }

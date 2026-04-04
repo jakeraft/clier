@@ -6,6 +6,7 @@ import type { MemberNodeData } from "@/components/team-structure/member-node";
 /** Minimal member shape consumed by team-layout. */
 export interface StructureMember {
   id: string;
+  memberId: string;
   name: string;
   cliProfileId: string;
   systemPromptIds: string[];
@@ -68,6 +69,7 @@ export function teamLayout(
       position: { x: pos.x - NODE_W / 2, y: pos.y - NODE_H / 2 },
       data: {
         name: member.name,
+        memberId: member.memberId,
         isRoot: options?.rootId === member.id,
         cliProfileId: member.cliProfileId,
         cliProfileName: member.cliProfileId ? cliProfileNames.get(member.cliProfileId) : undefined,
