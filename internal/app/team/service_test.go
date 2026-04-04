@@ -58,7 +58,7 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (stri
 	if err := store.AddTeamMember(ctx, team.ID, workerTM); err != nil {
 		t.Fatalf("AddTeamMember: %v", err)
 	}
-	rel := domain.Relation{From: team.RootTeamMemberID, To: workerTM.ID, Type: domain.RelationLeader}
+	rel := domain.Relation{From: team.RootTeamMemberID, To: workerTM.ID}
 	if err := store.AddTeamRelation(ctx, team.ID, rel); err != nil {
 		t.Fatalf("AddTeamRelation: %v", err)
 	}

@@ -34,8 +34,7 @@ func buildClierPrompt(teamName, memberName string, relations domain.MemberRelati
 	b.WriteString("\n## Team Structure\n")
 	writeRelNames(&b, "Leaders", relations.Leaders, nameByID)
 	writeRelNames(&b, "Workers", relations.Workers, nameByID)
-	writeRelNames(&b, "Peers", relations.Peers, nameByID)
-	if len(relations.Leaders) == 0 && len(relations.Workers) == 0 && len(relations.Peers) == 0 {
+	if len(relations.Leaders) == 0 && len(relations.Workers) == 0 {
 		b.WriteString("(none)\n")
 	}
 
@@ -61,18 +60,14 @@ func buildClierPrompt(teamName, memberName string, relations domain.MemberRelati
 	if len(relations.Leaders) > 0 {
 		b.WriteString("- You MUST report your results to your leader when done.\n")
 	}
-	if len(relations.Peers) > 0 {
-		b.WriteString("- Coordinate with your peers when tasks overlap.\n")
-	}
 	return b.String()
 }
 
 // writeSendCommands writes ready-to-use send commands for each related member.
 func writeSendCommands(b *strings.Builder, rel domain.MemberRelations, nameByID map[string]string) {
-	all := make([]string, 0, len(rel.Leaders)+len(rel.Workers)+len(rel.Peers))
+	all := make([]string, 0, len(rel.Leaders)+len(rel.Workers))
 	all = append(all, rel.Leaders...)
 	all = append(all, rel.Workers...)
-	all = append(all, rel.Peers...)
 	for _, id := range all {
 		fmt.Fprintf(b, "Send to %s:\n```bash\nclier session send --to %s \"<message>\"\n```\n", nameByID[id], id)
 	}

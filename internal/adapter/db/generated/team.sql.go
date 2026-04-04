@@ -31,23 +31,17 @@ func (q *Queries) AddTeamMember(ctx context.Context, arg AddTeamMemberParams) (s
 }
 
 const addTeamRelation = `-- name: AddTeamRelation :execresult
-INSERT INTO team_relations (team_id, from_team_member_id, to_team_member_id, type) VALUES (?, ?, ?, ?)
+INSERT INTO team_relations (team_id, from_team_member_id, to_team_member_id) VALUES (?, ?, ?)
 `
 
 type AddTeamRelationParams struct {
 	TeamID           string
 	FromTeamMemberID string
 	ToTeamMemberID   string
-	Type             string
 }
 
 func (q *Queries) AddTeamRelation(ctx context.Context, arg AddTeamRelationParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, addTeamRelation,
-		arg.TeamID,
-		arg.FromTeamMemberID,
-		arg.ToTeamMemberID,
-		arg.Type,
-	)
+	return q.db.ExecContext(ctx, addTeamRelation, arg.TeamID, arg.FromTeamMemberID, arg.ToTeamMemberID)
 }
 
 const createTeam = `-- name: CreateTeam :execresult
@@ -148,13 +142,12 @@ func (q *Queries) ListTeamMembers(ctx context.Context, teamID string) ([]ListTea
 }
 
 const listTeamRelations = `-- name: ListTeamRelations :many
-SELECT from_team_member_id, to_team_member_id, type FROM team_relations WHERE team_id = ? ORDER BY rowid
+SELECT from_team_member_id, to_team_member_id FROM team_relations WHERE team_id = ? ORDER BY rowid
 `
 
 type ListTeamRelationsRow struct {
 	FromTeamMemberID string
 	ToTeamMemberID   string
-	Type             string
 }
 
 func (q *Queries) ListTeamRelations(ctx context.Context, teamID string) ([]ListTeamRelationsRow, error) {
@@ -166,7 +159,7 @@ func (q *Queries) ListTeamRelations(ctx context.Context, teamID string) ([]ListT
 	var items []ListTeamRelationsRow
 	for rows.Next() {
 		var i ListTeamRelationsRow
-		if err := rows.Scan(&i.FromTeamMemberID, &i.ToTeamMemberID, &i.Type); err != nil {
+		if err := rows.Scan(&i.FromTeamMemberID, &i.ToTeamMemberID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -236,23 +229,17 @@ func (q *Queries) RemoveTeamMemberRelations(ctx context.Context, arg RemoveTeamM
 }
 
 const removeTeamRelation = `-- name: RemoveTeamRelation :execresult
-DELETE FROM team_relations WHERE team_id = ? AND from_team_member_id = ? AND to_team_member_id = ? AND type = ?
+DELETE FROM team_relations WHERE team_id = ? AND from_team_member_id = ? AND to_team_member_id = ?
 `
 
 type RemoveTeamRelationParams struct {
 	TeamID           string
 	FromTeamMemberID string
 	ToTeamMemberID   string
-	Type             string
 }
 
 func (q *Queries) RemoveTeamRelation(ctx context.Context, arg RemoveTeamRelationParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, removeTeamRelation,
-		arg.TeamID,
-		arg.FromTeamMemberID,
-		arg.ToTeamMemberID,
-		arg.Type,
-	)
+	return q.db.ExecContext(ctx, removeTeamRelation, arg.TeamID, arg.FromTeamMemberID, arg.ToTeamMemberID)
 }
 
 const updateTeam = `-- name: UpdateTeam :execresult

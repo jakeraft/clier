@@ -21,14 +21,10 @@ export interface LayoutOptions {
 export const NODE_W = 200;
 export const NODE_H = 120;
 
-type Relation = { from: string; to: string; type: string };
+type Relation = { from: string; to: string };
 
 export function buildFlowEdgeId(relation: Relation) {
-  if (relation.type === "peer") {
-    const [from, to] = [relation.from, relation.to].toSorted((a, b) => a.localeCompare(b));
-    return `${relation.type}:${from}:${to}`;
-  }
-  return `${relation.type}:${relation.from}:${relation.to}`;
+  return `${relation.from}:${relation.to}`;
 }
 
 export function buildGraphShapeKey(rootId: string, members: Array<Pick<StructureMember, "id">>, relations: Relation[]) {
@@ -89,10 +85,7 @@ export function teamLayout(
     target: relation.to,
     type: "smoothstep",
     markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: "var(--border)" },
-    style: relation.type === "peer" ? { ...edgeStyle, strokeDasharray: "6 4" } : edgeStyle,
-    ...(relation.type === "peer" && {
-      markerStart: { type: MarkerType.ArrowClosed, width: 16, height: 16, color: "var(--border)" },
-    }),
+    style: edgeStyle,
   }));
 
   return { nodes, edges: flowEdges };

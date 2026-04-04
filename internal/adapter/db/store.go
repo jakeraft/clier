@@ -87,7 +87,7 @@ func (s *Store) CreateTeam(ctx context.Context, t *domain.Team) error {
 	}
 	for _, r := range t.Relations {
 		if _, err := qtx.AddTeamRelation(ctx, generated.AddTeamRelationParams{
-			TeamID: t.ID, FromTeamMemberID: r.From, ToTeamMemberID: r.To, Type: string(r.Type),
+			TeamID: t.ID, FromTeamMemberID: r.From, ToTeamMemberID: r.To,
 		}); err != nil {
 			return err
 		}
@@ -114,7 +114,7 @@ func (s *Store) GetTeam(ctx context.Context, id string) (domain.Team, error) {
 	}
 	relations := make([]domain.Relation, 0, len(relRows))
 	for _, r := range relRows {
-		relations = append(relations, domain.Relation{From: r.FromTeamMemberID, To: r.ToTeamMemberID, Type: domain.RelationType(r.Type)})
+		relations = append(relations, domain.Relation{From: r.FromTeamMemberID, To: r.ToTeamMemberID})
 	}
 	return domain.Team{
 		ID:               row.ID,
@@ -197,14 +197,14 @@ func (s *Store) RemoveTeamMember(ctx context.Context, teamID, teamMemberID strin
 
 func (s *Store) AddTeamRelation(ctx context.Context, teamID string, r domain.Relation) error {
 	_, err := s.queries.AddTeamRelation(ctx, generated.AddTeamRelationParams{
-		TeamID: teamID, FromTeamMemberID: r.From, ToTeamMemberID: r.To, Type: string(r.Type),
+		TeamID: teamID, FromTeamMemberID: r.From, ToTeamMemberID: r.To,
 	})
 	return err
 }
 
 func (s *Store) RemoveTeamRelation(ctx context.Context, teamID string, r domain.Relation) error {
 	_, err := s.queries.RemoveTeamRelation(ctx, generated.RemoveTeamRelationParams{
-		TeamID: teamID, FromTeamMemberID: r.From, ToTeamMemberID: r.To, Type: string(r.Type),
+		TeamID: teamID, FromTeamMemberID: r.From, ToTeamMemberID: r.To,
 	})
 	return err
 }
@@ -249,7 +249,7 @@ func (s *Store) ReplaceTeamComposition(ctx context.Context, t *domain.Team) erro
 	}
 	for _, r := range t.Relations {
 		if _, err := qtx.AddTeamRelation(ctx, generated.AddTeamRelationParams{
-			TeamID: t.ID, FromTeamMemberID: r.From, ToTeamMemberID: r.To, Type: string(r.Type),
+			TeamID: t.ID, FromTeamMemberID: r.From, ToTeamMemberID: r.To,
 		}); err != nil {
 			return err
 		}

@@ -281,7 +281,7 @@ func newTeamRelationCmd() *cobra.Command {
 }
 
 func newTeamRelationAddCmd() *cobra.Command {
-	var from, to, relType string
+	var from, to string
 
 	cmd := &cobra.Command{
 		Use:         "add <team-id>",
@@ -305,7 +305,7 @@ func newTeamRelationAddCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			r := domain.Relation{From: from, To: to, Type: domain.RelationType(relType)}
+			r := domain.Relation{From: from, To: to}
 			if err := team.AddRelation(r); err != nil {
 				return err
 			}
@@ -317,15 +317,13 @@ func newTeamRelationAddCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&from, "from", "", "From member ID")
 	cmd.Flags().StringVar(&to, "to", "", "To member ID")
-	cmd.Flags().StringVar(&relType, "type", "", "Relation type (leader|peer)")
 	_ = cmd.MarkFlagRequired("from")
 	_ = cmd.MarkFlagRequired("to")
-	_ = cmd.MarkFlagRequired("type")
 	return cmd
 }
 
 func newTeamRelationRemoveCmd() *cobra.Command {
-	var from, to, relType string
+	var from, to string
 
 	cmd := &cobra.Command{
 		Use:         "remove <team-id>",
@@ -349,10 +347,10 @@ func newTeamRelationRemoveCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := team.RemoveRelation(from, to, domain.RelationType(relType)); err != nil {
+			if err := team.RemoveRelation(from, to); err != nil {
 				return err
 			}
-			if err := store.RemoveTeamRelation(cmd.Context(), teamID, domain.Relation{From: from, To: to, Type: domain.RelationType(relType)}); err != nil {
+			if err := store.RemoveTeamRelation(cmd.Context(), teamID, domain.Relation{From: from, To: to}); err != nil {
 				return err
 			}
 			return printJSON(team)
@@ -360,10 +358,8 @@ func newTeamRelationRemoveCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&from, "from", "", "From member ID")
 	cmd.Flags().StringVar(&to, "to", "", "To member ID")
-	cmd.Flags().StringVar(&relType, "type", "", "Relation type (leader|peer)")
 	_ = cmd.MarkFlagRequired("from")
 	_ = cmd.MarkFlagRequired("to")
-	_ = cmd.MarkFlagRequired("type")
 	return cmd
 }
 

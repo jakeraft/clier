@@ -27,13 +27,13 @@ SELECT id, member_id, name FROM team_members WHERE team_id = ? ORDER BY rowid;
 DELETE FROM team_members WHERE team_id = ?;
 
 -- name: AddTeamRelation :execresult
-INSERT INTO team_relations (team_id, from_team_member_id, to_team_member_id, type) VALUES (?, ?, ?, ?);
+INSERT INTO team_relations (team_id, from_team_member_id, to_team_member_id) VALUES (?, ?, ?);
 
 -- name: RemoveTeamRelation :execresult
-DELETE FROM team_relations WHERE team_id = ? AND from_team_member_id = ? AND to_team_member_id = ? AND type = ?;
+DELETE FROM team_relations WHERE team_id = ? AND from_team_member_id = ? AND to_team_member_id = ?;
 
 -- name: ListTeamRelations :many
-SELECT from_team_member_id, to_team_member_id, type FROM team_relations WHERE team_id = ? ORDER BY rowid;
+SELECT from_team_member_id, to_team_member_id FROM team_relations WHERE team_id = ? ORDER BY rowid;
 
 -- name: RemoveTeamMemberRelations :execresult
 DELETE FROM team_relations WHERE team_id = ? AND (from_team_member_id = ? OR to_team_member_id = ?);
