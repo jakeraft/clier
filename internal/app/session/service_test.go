@@ -63,6 +63,7 @@ func (t *stubTerminal) Send(_, _, text string) error {
 	t.sent = append(t.sent, text)
 	return nil
 }
+func (t *stubTerminal) Attach(_ string, _ *string) error { return nil }
 
 type stubWorkspace struct{}
 
@@ -170,3 +171,4 @@ type failTerminal struct{}
 func (t *failTerminal) Launch(_, _ string, _ []domain.MemberPlan) error { return nil }
 func (t *failTerminal) Terminate(_ string) error                        { return nil }
 func (t *failTerminal) Send(_, _, _ string) error                       { return errors.New("surface not found") }
+func (t *failTerminal) Attach(_ string, _ *string) error               { return nil }

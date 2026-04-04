@@ -32,6 +32,7 @@ type Terminal interface {
 	Launch(sessionID, sessionName string, members []domain.MemberPlan) error
 	Terminate(sessionID string) error
 	Send(sessionID, teamMemberID, text string) error
+	Attach(sessionID string, memberID *string) error
 }
 
 // Workspace prepares and cleans up member directories.
