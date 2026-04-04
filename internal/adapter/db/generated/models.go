@@ -116,5 +116,4 @@ type TeamRelation struct {
 	TeamID           string
 	FromTeamMemberID string
 	ToTeamMemberID   string
-	Type             string
 }

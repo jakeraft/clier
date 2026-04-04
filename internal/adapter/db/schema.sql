@@ -80,8 +80,7 @@ CREATE TABLE IF NOT EXISTS team_relations (
     team_id              TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
     from_team_member_id  TEXT NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
     to_team_member_id    TEXT NOT NULL REFERENCES team_members(id) ON DELETE CASCADE,
-    type                 TEXT NOT NULL,
-    PRIMARY KEY (team_id, from_team_member_id, to_team_member_id, type)
+    PRIMARY KEY (team_id, from_team_member_id, to_team_member_id)
 );
 
 CREATE TABLE IF NOT EXISTS session_surfaces (
