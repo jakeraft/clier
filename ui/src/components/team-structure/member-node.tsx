@@ -28,7 +28,7 @@ const MemberNode = memo(function MemberNode({ id, data }: NodeProps<MemberNodeTy
           flex.center,
           gap[1],
           "rounded-base bg-card relative h-full w-full border px-3 py-2 shadow-sm",
-          "cursor-pointer",
+          "cursor-pointer pointer-events-auto",
         )}
         style={{ width: NODE_W, height: NODE_H }}
         title={data.name}
