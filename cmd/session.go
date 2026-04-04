@@ -7,7 +7,6 @@ import (
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/adapter/workspace"
 	"github.com/jakeraft/clier/internal/app/session"
-	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -24,6 +23,8 @@ func newSessionCmd() *cobra.Command {
 	cmd.AddCommand(newSessionStopCmd())
 	cmd.AddCommand(newSessionListCmd())
 	cmd.AddCommand(newSessionSendCmd())
+	cmd.AddCommand(newSessionLogCmd())
+	cmd.AddCommand(newSessionLogsCmd())
 	return cmd
 }
 
@@ -120,9 +121,10 @@ func newSessionSendCmd() *cobra.Command {
 	var sessionFlag, toMemberID string
 
 	cmd := &cobra.Command{
-		Use:   "send <content>",
-		Short: "Send a message to a teammate",
-		Args:  cobra.ExactArgs(1),
+		Use:         "send <content>",
+		Short:       "Send a message to a teammate",
+		Args:        cobra.ExactArgs(1),
+		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sessionID, fromMemberID, err := resolveSessionContext(sessionFlag)
 			if err != nil {
@@ -159,6 +161,73 @@ func newSessionSendCmd() *cobra.Command {
 	return cmd
 }
 
+func newSessionLogCmd() *cobra.Command {
+	var sessionFlag string
+
+	cmd := &cobra.Command{
+		Use:         "log <content>",
+		Short:       "Record a session log entry",
+		Args:        cobra.ExactArgs(1),
+		Annotations: map[string]string{mutates: "true"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID, memberID, err := resolveSessionContext(sessionFlag)
+			if err != nil {
+				return err
+			}
+
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			term := terminal.NewCmuxTerminal(store)
+			ws := workspace.New(cfg.Paths.Workspaces())
+			svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
+
+			if err := svc.Log(cmd.Context(), sessionID, memberID, args[0]); err != nil {
+				return err
+			}
+			return printJSON(map[string]string{
+				"status":  "logged",
+				"member":  memberID,
+				"session": sessionID,
+			})
+		},
+	}
+	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session ID (defaults to CLIER_SESSION_ID)")
+	return cmd
+}
+
+func newSessionLogsCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "logs <session-id>",
+		Short: "List session logs",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			logs, err := store.ListLogsBySessionID(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			return printJSON(logs)
+		},
+	}
+}
+
 // resolveSessionContext resolves session ID and member ID from env vars set by clier.
 // CLIER_SESSION_ID identifies the session, CLIER_MEMBER_ID identifies the sender.
 func resolveSessionContext(sessionFlag string) (sessionID, memberID string, err error) {
@@ -170,8 +239,5 @@ func resolveSessionContext(sessionFlag string) (sessionID, memberID string, err 
 		return "", "", errors.New("--session flag or CLIER_SESSION_ID must be set")
 	}
 	memberID = os.Getenv("CLIER_MEMBER_ID")
-	if memberID == "" {
-		memberID = domain.UserMemberID
-	}
 	return sessionID, memberID, nil
 }

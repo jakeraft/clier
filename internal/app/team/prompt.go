@@ -45,9 +45,12 @@ func buildClierPrompt(teamName, memberName string, relations domain.MemberRelati
 	b.WriteString("Replies arrive directly in your terminal input — do not poll or call any receive command.\n")
 	b.WriteString("Keep each message substantive. Avoid short fragments like \"ok\" or \"hi\".\n\n")
 	writeSendCommands(&b, relations, nameByID)
-	if len(relations.Leaders) == 0 {
-		fmt.Fprintf(&b, "Send to user:\n```bash\nclier session send --to %s \"<message>\"\n```\n", domain.UserMemberID)
-	}
+
+	// Logging
+	b.WriteString("\n## Logging\n")
+	b.WriteString("Record your progress and results:\n")
+	b.WriteString("```bash\nclier session log \"<content>\"\n```\n")
+	b.WriteString("Log when you: start a task, complete a task, encounter issues, produce final results.\n")
 
 	// Operating Rules
 	b.WriteString("\n## Operating Rules\n")
@@ -61,10 +64,6 @@ func buildClierPrompt(teamName, memberName string, relations domain.MemberRelati
 	if len(relations.Peers) > 0 {
 		b.WriteString("- Coordinate with your peers when tasks overlap.\n")
 	}
-	if len(relations.Leaders) == 0 {
-		b.WriteString("- You MUST report final results to user when done.\n")
-	}
-
 	return b.String()
 }
 

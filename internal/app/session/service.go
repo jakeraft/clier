@@ -15,6 +15,7 @@ type SessionStore interface {
 	UpdateSessionStatus(ctx context.Context, session *domain.Session) error
 	GetTeam(ctx context.Context, id string) (domain.Team, error)
 	CreateMessage(ctx context.Context, msg *domain.Message) error
+	CreateLog(ctx context.Context, l *domain.Log) error
 }
 
 // Terminal launches and terminates member processes.
@@ -113,7 +114,8 @@ func (s *Service) Stop(ctx context.Context, sessionID string) error {
 	return nil
 }
 
-// Send validates the relation, persists the message, and delivers it to the recipient's terminal.
+// Send delivers a message to the recipient's terminal, then persists it.
+// Delivery happens first so that a bad recipient fails before anything is saved.
 func (s *Service) Send(ctx context.Context, sessionID, fromTeamMemberID, toTeamMemberID, content string) error {
 	session, err := s.store.GetSession(ctx, sessionID)
 	if err != nil {
@@ -125,16 +127,20 @@ func (s *Service) Send(ctx context.Context, sessionID, fromTeamMemberID, toTeamM
 		return fmt.Errorf("get team: %w", err)
 	}
 
-	if err := validateDelivery(team, fromTeamMemberID, toTeamMemberID); err != nil {
-		return err
+	text := content
+	if fromTeamMemberID != "" {
+		senderName := fromTeamMemberID
+		for _, m := range team.Plan {
+			if m.TeamMemberID == fromTeamMemberID {
+				senderName = m.MemberName
+				break
+			}
+		}
+		text = fmt.Sprintf("[Message from %s] %s", senderName, content)
 	}
 
-	senderName := "user"
-	for _, m := range team.Plan {
-		if m.TeamMemberID == fromTeamMemberID {
-			senderName = m.MemberName
-			break
-		}
+	if err := s.terminal.Send(sessionID, toTeamMemberID, text); err != nil {
+		return fmt.Errorf("deliver message: %w", err)
 	}
 
 	msg, err := domain.NewMessage(sessionID, fromTeamMemberID, toTeamMemberID, content)
@@ -144,9 +150,23 @@ func (s *Service) Send(ctx context.Context, sessionID, fromTeamMemberID, toTeamM
 	if err := s.store.CreateMessage(ctx, msg); err != nil {
 		return fmt.Errorf("save message: %w", err)
 	}
+	return nil
+}
 
-	text := fmt.Sprintf("[Message from %s] %s", senderName, content)
-	return s.terminal.Send(sessionID, toTeamMemberID, text)
+// Log persists a self-recorded entry by a team member.
+func (s *Service) Log(ctx context.Context, sessionID, teamMemberID, content string) error {
+	if _, err := s.store.GetSession(ctx, sessionID); err != nil {
+		return fmt.Errorf("get session: %w", err)
+	}
+
+	l, err := domain.NewLog(sessionID, teamMemberID, content)
+	if err != nil {
+		return fmt.Errorf("new log: %w", err)
+	}
+	if err := s.store.CreateLog(ctx, l); err != nil {
+		return fmt.Errorf("save log: %w", err)
+	}
+	return nil
 }
 
 // resolveAuth tries to read auth credentials for all known CLI binaries.

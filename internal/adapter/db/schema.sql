@@ -55,10 +55,18 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS messages (
     id                    TEXT PRIMARY KEY,
     session_id            TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    from_team_member_id   TEXT NOT NULL,
+    from_team_member_id   TEXT,
     to_team_member_id     TEXT NOT NULL,
     content               TEXT NOT NULL,
     created_at            INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS logs (
+    id              TEXT PRIMARY KEY,
+    session_id      TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    team_member_id  TEXT NOT NULL,
+    content         TEXT NOT NULL,
+    created_at      INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS team_members (

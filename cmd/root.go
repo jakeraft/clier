@@ -54,6 +54,8 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	if os.Getenv("CLIER_MEMBER_ID") != "" {
 		filterAgentCommands()
+	} else {
+		filterUserCommands()
 	}
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -61,7 +63,28 @@ func Execute() {
 	}
 }
 
-// filterAgentCommands removes all commands except "session" when running as an agent.
+// filterUserCommands removes agent-only subcommands from "session" in user context.
+func filterUserCommands() {
+	// Coupled to: newSessionLogCmd
+	hidden := map[string]bool{"log": true}
+	for _, cmd := range rootCmd.Commands() {
+		if cmd.Name() == "session" {
+			var keep []*cobra.Command
+			for _, sub := range cmd.Commands() {
+				if !hidden[sub.Name()] {
+					keep = append(keep, sub)
+				}
+			}
+			cmd.ResetCommands()
+			for _, sub := range keep {
+				cmd.AddCommand(sub)
+			}
+		}
+	}
+}
+
+// filterAgentCommands removes all commands except "session" when running as an agent,
+// and within "session" keeps only agent-facing subcommands (send, log).
 func filterAgentCommands() {
 	allowed := map[string]bool{"session": true}
 	var keep []*cobra.Command
@@ -73,5 +96,22 @@ func filterAgentCommands() {
 	rootCmd.ResetCommands()
 	for _, cmd := range keep {
 		rootCmd.AddCommand(cmd)
+	}
+
+	// Coupled to: newSessionSendCmd, newSessionLogCmd
+	agentSubs := map[string]bool{"send": true, "log": true}
+	for _, cmd := range rootCmd.Commands() {
+		if cmd.Name() == "session" {
+			var subs []*cobra.Command
+			for _, sub := range cmd.Commands() {
+				if agentSubs[sub.Name()] {
+					subs = append(subs, sub)
+				}
+			}
+			cmd.ResetCommands()
+			for _, sub := range subs {
+				cmd.AddCommand(sub)
+			}
+		}
 	}
 }

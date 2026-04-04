@@ -853,7 +853,7 @@ func (s *Store) CreateMessage(ctx context.Context, msg *domain.Message) error {
 	_, err := s.queries.CreateMessage(ctx, generated.CreateMessageParams{
 		ID:               msg.ID,
 		SessionID:        msg.SessionID,
-		FromTeamMemberID: msg.FromTeamMemberID,
+		FromTeamMemberID: toNullString(msg.FromTeamMemberID),
 		ToTeamMemberID:   msg.ToTeamMemberID,
 		Content:          msg.Content,
 		CreatedAt:        msg.CreatedAt.Unix(),
@@ -871,7 +871,7 @@ func (s *Store) ListMessagesBySessionID(ctx context.Context, sessionID string) (
 		msgs = append(msgs, domain.Message{
 			ID:               row.ID,
 			SessionID:        row.SessionID,
-			FromTeamMemberID: row.FromTeamMemberID,
+			FromTeamMemberID: row.FromTeamMemberID.String,
 			ToTeamMemberID:   row.ToTeamMemberID,
 			Content:          row.Content,
 			CreatedAt:        time.Unix(row.CreatedAt, 0),
@@ -882,7 +882,7 @@ func (s *Store) ListMessagesBySessionID(ctx context.Context, sessionID string) (
 
 func (s *Store) ListMessagesBySessionAndMember(ctx context.Context, sessionID, teamMemberID string) ([]domain.Message, error) {
 	rows, err := s.queries.ListMessagesBySessionAndMember(ctx, generated.ListMessagesBySessionAndMemberParams{
-		SessionID: sessionID, FromTeamMemberID: teamMemberID, ToTeamMemberID: teamMemberID,
+		SessionID: sessionID, FromTeamMemberID: toNullString(teamMemberID), ToTeamMemberID: teamMemberID,
 	})
 	if err != nil {
 		return nil, err
@@ -892,13 +892,51 @@ func (s *Store) ListMessagesBySessionAndMember(ctx context.Context, sessionID, t
 		msgs = append(msgs, domain.Message{
 			ID:               row.ID,
 			SessionID:        row.SessionID,
-			FromTeamMemberID: row.FromTeamMemberID,
+			FromTeamMemberID: row.FromTeamMemberID.String,
 			ToTeamMemberID:   row.ToTeamMemberID,
 			Content:          row.Content,
 			CreatedAt:        time.Unix(row.CreatedAt, 0),
 		})
 	}
 	return msgs, nil
+}
+
+func toNullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: s, Valid: true}
+}
+
+// Log
+
+func (s *Store) CreateLog(ctx context.Context, l *domain.Log) error {
+	_, err := s.queries.CreateLog(ctx, generated.CreateLogParams{
+		ID:           l.ID,
+		SessionID:    l.SessionID,
+		TeamMemberID: l.TeamMemberID,
+		Content:      l.Content,
+		CreatedAt:    l.CreatedAt.Unix(),
+	})
+	return err
+}
+
+func (s *Store) ListLogsBySessionID(ctx context.Context, sessionID string) ([]domain.Log, error) {
+	rows, err := s.queries.ListLogsBySessionID(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	logs := make([]domain.Log, 0, len(rows))
+	for _, row := range rows {
+		logs = append(logs, domain.Log{
+			ID:           row.ID,
+			SessionID:    row.SessionID,
+			TeamMemberID: row.TeamMemberID,
+			Content:      row.Content,
+			CreatedAt:    time.Unix(row.CreatedAt, 0),
+		})
+	}
+	return logs, nil
 }
 
 // SessionSurface (infra state for terminal adapter)
@@ -920,10 +958,8 @@ func (s *Store) GetSessionSurface(ctx context.Context, sessionID, teamMemberID s
 	return row.WorkspaceRef, row.SurfaceRef, nil
 }
 
-func (s *Store) GetSessionWorkspaceRef(ctx context.Context, sessionID, excludeTeamMemberID string) (string, error) {
-	return s.queries.GetSessionWorkspaceRef(ctx, generated.GetSessionWorkspaceRefParams{
-		SessionID: sessionID, TeamMemberID: excludeTeamMemberID,
-	})
+func (s *Store) GetSessionWorkspaceRef(ctx context.Context, sessionID string) (string, error) {
+	return s.queries.GetSessionWorkspaceRef(ctx, sessionID)
 }
 
 func (s *Store) DeleteSessionSurfaces(ctx context.Context, sessionID string) error {

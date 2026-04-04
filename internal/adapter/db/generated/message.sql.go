@@ -18,7 +18,7 @@ VALUES (?, ?, ?, ?, ?, ?)
 type CreateMessageParams struct {
 	ID               string
 	SessionID        string
-	FromTeamMemberID string
+	FromTeamMemberID sql.NullString
 	ToTeamMemberID   string
 	Content          string
 	CreatedAt        int64
@@ -43,7 +43,7 @@ ORDER BY created_at
 
 type ListMessagesBySessionAndMemberParams struct {
 	SessionID        string
-	FromTeamMemberID string
+	FromTeamMemberID sql.NullString
 	ToTeamMemberID   string
 }
 

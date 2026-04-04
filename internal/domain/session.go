@@ -8,9 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// UserMemberID is the reserved member ID for the human user who started the session.
-const UserMemberID = "00000000-0000-0000-0000-000000000000"
-
 type SessionStatus string
 
 const (
@@ -49,6 +46,7 @@ func (s *Session) Stop() {
 }
 
 // Message represents an inter-member message within a session.
+// FromTeamMemberID is nullable — empty when the sender is not a team member.
 type Message struct {
 	ID               string    `json:"id"`
 	SessionID        string    `json:"session_id"`
@@ -77,5 +75,35 @@ func NewMessage(sessionID, fromTeamMemberID, toTeamMemberID, content string) (*M
 		ToTeamMemberID:   toTeamMemberID,
 		Content:          content,
 		CreatedAt:        time.Now(),
+	}, nil
+}
+
+// Log is a self-recorded entry by a team member within a session.
+type Log struct {
+	ID           string    `json:"id"`
+	SessionID    string    `json:"session_id"`
+	TeamMemberID string    `json:"team_member_id"`
+	Content      string    `json:"content"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+func NewLog(sessionID, teamMemberID, content string) (*Log, error) {
+	if strings.TrimSpace(sessionID) == "" {
+		return nil, errors.New("log session id must not be empty")
+	}
+	if strings.TrimSpace(teamMemberID) == "" {
+		return nil, errors.New("log team member id must not be empty")
+	}
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return nil, errors.New("log content must not be empty")
+	}
+
+	return &Log{
+		ID:           uuid.NewString(),
+		SessionID:    sessionID,
+		TeamMemberID: teamMemberID,
+		Content:      content,
+		CreatedAt:    time.Now(),
 	}, nil
 }

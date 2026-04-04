@@ -37,6 +37,14 @@ type GitRepo struct {
 	UpdatedAt int64
 }
 
+type Log struct {
+	ID           string
+	SessionID    string
+	TeamMemberID string
+	Content      string
+	CreatedAt    int64
+}
+
 type Member struct {
 	ID           string
 	Name         string
@@ -59,7 +67,7 @@ type MemberSystemPrompt struct {
 type Message struct {
 	ID               string
 	SessionID        string
-	FromTeamMemberID string
+	FromTeamMemberID sql.NullString
 	ToTeamMemberID   string
 	Content          string
 	CreatedAt        int64
