@@ -9,6 +9,7 @@ import { NODE_H, NODE_W } from "@/components/team-structure/team-layout";
 
 export interface MemberNodeData extends Record<string, unknown> {
   name: string;
+  memberId: string;
   isRoot: boolean;
   cliProfileId?: string;
   cliProfileName?: string;
@@ -43,7 +44,7 @@ const MemberNode = memo(function MemberNode({ id, data }: NodeProps<MemberNodeTy
 
         {/* Member name */}
         <div className={cn(flex.center, "w-full")}>
-          <EntityBadge to={`/members/${id}`}>{data.name}</EntityBadge>
+          <EntityBadge to={`/members/${data.memberId}`}>{data.name}</EntityBadge>
         </div>
       </div>
       <Handle type="source" position={Position.Bottom} className={"!size-0 !opacity-0"} />

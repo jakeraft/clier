@@ -57,12 +57,12 @@ type MemberSystemPrompt struct {
 }
 
 type Message struct {
-	ID           string
-	SessionID    string
-	FromMemberID string
-	ToMemberID   string
-	Content      string
-	CreatedAt    int64
+	ID               string
+	SessionID        string
+	FromTeamMemberID string
+	ToTeamMemberID   string
+	Content          string
+	CreatedAt        int64
 }
 
 type Session struct {
@@ -75,7 +75,7 @@ type Session struct {
 
 type SessionSurface struct {
 	SessionID    string
-	MemberID     string
+	TeamMemberID string
 	WorkspaceRef string
 	SurfaceRef   string
 }
@@ -89,22 +89,24 @@ type SystemPrompt struct {
 }
 
 type Team struct {
-	ID           string
-	Name         string
-	RootMemberID string
-	Plan         string
-	CreatedAt    int64
-	UpdatedAt    int64
+	ID               string
+	Name             string
+	RootTeamMemberID string
+	Plan             string
+	CreatedAt        int64
+	UpdatedAt        int64
 }
 
 type TeamMember struct {
+	ID       string
 	TeamID   string
 	MemberID string
+	Name     string
 }
 
 type TeamRelation struct {
-	TeamID       string
-	FromMemberID string
-	ToMemberID   string
-	Type         string
+	TeamID           string
+	FromTeamMemberID string
+	ToTeamMemberID   string
+	Type             string
 }

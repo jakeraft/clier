@@ -1,0 +1,15 @@
+{
+  "type": "member",
+  "data": {
+    "id": "fd3ff322-6f29-4f5b-96c1-7164af430c85",
+    "name": "writer-4",
+    "cli_profile_id": "16266d16-0166-4326-9fe4-0f3cba180460",
+    "system_prompt_ids": [
+      "e3d5305a-a108-44be-a138-cb118a611cf5"
+    ],
+    "env_ids": [
+      "abfec5e6-18d9-4d72-99b8-328c4e004c43"
+    ],
+    "git_repo_id": ""
+  }
+}

@@ -19,14 +19,14 @@ type SessionStore interface {
 
 // Terminal launches and terminates member processes.
 type Terminal interface {
-	Launch(sessionID, sessionName string, members []domain.MemberSessionPlan) error
+	Launch(sessionID, sessionName string, members []domain.MemberPlan) error
 	Terminate(sessionID string) error
-	Send(sessionID, memberID, text string) error
+	Send(sessionID, teamMemberID, text string) error
 }
 
 // Workspace prepares and cleans up member directories.
 type Workspace interface {
-	Prepare(ctx context.Context, members []domain.MemberSessionPlan) error
+	Prepare(ctx context.Context, members []domain.MemberPlan) error
 	Cleanup(teamID string) error
 }
 
@@ -57,7 +57,7 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 	claudeToken, codexAuth := resolveAuth(auth)
 
 	sessionID := uuid.NewString()
-	members := make([]domain.MemberSessionPlan, 0, len(team.Plan))
+	members := make([]domain.MemberPlan, 0, len(team.Plan))
 	for _, m := range team.Plan {
 		members = append(members, resolvePlaceholders(m, s.base, s.homeDir, sessionID, claudeToken, string(codexAuth)))
 	}
@@ -114,7 +114,7 @@ func (s *Service) Stop(ctx context.Context, sessionID string) error {
 }
 
 // Send validates the relation, persists the message, and delivers it to the recipient's terminal.
-func (s *Service) Send(ctx context.Context, sessionID, fromMemberID, toMemberID, content string) error {
+func (s *Service) Send(ctx context.Context, sessionID, fromTeamMemberID, toTeamMemberID, content string) error {
 	session, err := s.store.GetSession(ctx, sessionID)
 	if err != nil {
 		return fmt.Errorf("get session: %w", err)
@@ -125,19 +125,19 @@ func (s *Service) Send(ctx context.Context, sessionID, fromMemberID, toMemberID,
 		return fmt.Errorf("get team: %w", err)
 	}
 
-	if err := validateDelivery(team, fromMemberID, toMemberID); err != nil {
+	if err := validateDelivery(team, fromTeamMemberID, toTeamMemberID); err != nil {
 		return err
 	}
 
 	senderName := "user"
 	for _, m := range team.Plan {
-		if m.MemberID == fromMemberID {
+		if m.TeamMemberID == fromTeamMemberID {
 			senderName = m.MemberName
 			break
 		}
 	}
 
-	msg, err := domain.NewMessage(sessionID, fromMemberID, toMemberID, content)
+	msg, err := domain.NewMessage(sessionID, fromTeamMemberID, toTeamMemberID, content)
 	if err != nil {
 		return fmt.Errorf("new message: %w", err)
 	}
@@ -146,7 +146,7 @@ func (s *Service) Send(ctx context.Context, sessionID, fromMemberID, toMemberID,
 	}
 
 	text := fmt.Sprintf("[Message from %s] %s", senderName, content)
-	return s.terminal.Send(sessionID, toMemberID, text)
+	return s.terminal.Send(sessionID, toTeamMemberID, text)
 }
 
 // resolveAuth tries to read auth credentials for all known CLI binaries.

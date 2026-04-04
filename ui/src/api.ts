@@ -2,7 +2,7 @@ import type {
   DashboardData,
   TeamView,
   MemberView,
-  MemberSessionPlanView,
+  MemberPlanView,
   CliProfileView,
   SystemPromptView,
   GitRepoView,
@@ -28,7 +28,7 @@ export type {
   SystemPromptView,
   GitRepoView,
   MemberView,
-  MemberSessionPlanView,
+  MemberPlanView,
   TeamView,
   EnvView,
 };
@@ -64,17 +64,37 @@ export const api = {
     getStructure: (
       id: string,
     ): Promise<{
-      rootMemberId: string;
-      members: Array<MemberView & { cliProfileName: string; systemPromptNames: string[] }>;
+      rootTeamMemberId: string;
+      members: Array<{
+        id: string;
+        memberId: string;
+        name: string;
+        cliProfileId: string;
+        systemPromptIds: string[];
+        cliProfileName: string;
+        systemPromptNames: string[];
+      }>;
       relations: Array<{ from: string; to: string; type: string }>;
     }> => {
       const data = getData();
       const team = findById(data.teams, id);
       if (!team) return Promise.reject(new Error("Not found"));
-      const teamMembers = data.members.filter((m) => team.memberIds.includes(m.id));
+      const memberSpecMap = new Map(data.members.map((m) => [m.id, m]));
+      const members = team.teamMembers.map((tm) => {
+        const spec = memberSpecMap.get(tm.memberId);
+        return {
+          id: tm.id,
+          memberId: tm.memberId,
+          name: tm.name,
+          cliProfileId: spec?.cliProfileId ?? "",
+          systemPromptIds: spec?.systemPromptIds ?? [],
+          cliProfileName: spec?.cliProfileName ?? "",
+          systemPromptNames: spec?.systemPromptNames ?? [],
+        };
+      });
       return Promise.resolve({
-        rootMemberId: team.rootMemberId,
-        members: teamMembers,
+        rootTeamMemberId: team.rootTeamMemberId,
+        members,
         relations: team.relations,
       });
     },
@@ -82,7 +102,9 @@ export const api = {
       const data = getData();
       const team = findById(data.teams, id);
       if (!team) return Promise.reject(new Error("Not found"));
-      return Promise.resolve(data.members.filter((m) => team.memberIds.includes(m.id)));
+      const memberSpecMap = new Map(data.members.map((m) => [m.id, m]));
+      const memberIds = [...new Set(team.teamMembers.map((tm) => tm.memberId))];
+      return Promise.resolve(memberIds.map((mid) => memberSpecMap.get(mid)).filter((m): m is MemberView => m != null));
     },
     getRelations: (id: string): Promise<Array<{ from: string; to: string; type: string }>> => {
       const team = findById(getData().teams, id);

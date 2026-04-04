@@ -7,21 +7,28 @@ export interface DashboardData {
   envs: EnvView[];
 }
 
+export interface TeamMemberView {
+  id: string;
+  memberId: string;
+  name: string;
+}
+
 export interface TeamView {
   id: string;
   name: string;
-  rootMemberId: string;
-  memberIds: string[];
+  rootTeamMemberId: string;
+  teamMemberIds: string[];
+  teamMembers: TeamMemberView[];
   relations: RelationView[];
-  plan: MemberSessionPlanView[];
+  plan: MemberPlanView[];
   rootMemberName: string;
   memberNames: string[];
   createdAt: string;
   updatedAt: string;
 }
 
-export interface MemberSessionPlanView {
-  memberId: string;
+export interface MemberPlanView {
+  teamMemberId: string;
   memberName: string;
   memberspace: string;
   command: string;

@@ -1,0 +1,19 @@
+{
+  "type": "cli_profile",
+  "data": {
+    "id": "a1b2c3d4-2001-4000-8000-000000000001",
+    "name": "claude-opus",
+    "model": "claude-opus-4-6",
+    "binary": "claude",
+    "system_args": [
+      "--dangerously-skip-permissions"
+    ],
+    "custom_args": [],
+    "dot_config": {
+      "claudeMdExcludes": [
+        "~/.claude/**"
+      ],
+      "skipDangerousModePermissionPrompt": true
+    }
+  }
+}

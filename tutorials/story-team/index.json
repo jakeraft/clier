@@ -1,0 +1,19 @@
+{
+  "files": [
+    "01-claude-sonnet.json",
+    "02-gpt-5.4.json",
+    "03-editor-in-chief.json",
+    "04-section-editor.json",
+    "05-writer.json",
+    "06-story-genre.json",
+    "07-story-repo.json",
+    "08-chief-editor.json",
+    "09-section-editor-1.json",
+    "10-section-editor-2.json",
+    "11-writer-1.json",
+    "12-writer-2.json",
+    "13-writer-3.json",
+    "14-writer-4.json",
+    "15-team.json"
+  ]
+}

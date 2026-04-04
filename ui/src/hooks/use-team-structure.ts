@@ -8,7 +8,7 @@ import { teamLayout, type StructureMember } from "@/components/team-structure/te
 // --- Shared types --
 
 interface StructureData {
-  rootMemberId: string;
+  rootTeamMemberId: string;
   members: Array<StructureMember & { cliProfileName: string; systemPromptNames: string[] }>;
   relations: Array<{ from: string; to: string; type: string }>;
 }
@@ -26,7 +26,7 @@ function buildLayout(structure: StructureData | undefined) {
   );
 
   return teamLayout(structure.members, structure.relations, {
-    rootId: structure.rootMemberId,
+    rootId: structure.rootTeamMemberId,
     cliProfileNames,
     systemPromptNames,
   });

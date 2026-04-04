@@ -10,17 +10,19 @@ import type { EntityTableColumn } from "@/components/entity-table";
 const columns: EntityTableColumn<TeamView>[] = [
   {
     header: "Root",
-    cell: (t) =>
-      t.rootMemberId ? (
-        <EntityBadge to={`/members/${t.rootMemberId}`}>{t.rootMemberName || EMPTY_DATA}</EntityBadge>
+    cell: (t) => {
+      const rootTm = t.teamMembers.find((tm) => tm.id === t.rootTeamMemberId);
+      return rootTm ? (
+        <EntityBadge to={`/members/${rootTm.memberId}`}>{t.rootMemberName || EMPTY_DATA}</EntityBadge>
       ) : (
         <EmptyEntityBadge entity="member" />
-      ),
+      );
+    },
     flex: 2,
   },
   {
     header: "Member",
-    cell: (t) => <CountBadge count={t.memberIds.length} />,
+    cell: (t) => <CountBadge count={t.teamMemberIds.length} />,
     flex: 1,
   },
 ];

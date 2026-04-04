@@ -28,7 +28,7 @@ func NewCmuxTerminal(surfaces SurfaceStore) *CmuxTerminal {
 	return &CmuxTerminal{binary: "cmux", surfaces: surfaces}
 }
 
-func (c *CmuxTerminal) Launch(sessionID, sessionName string, members []domain.MemberSessionPlan) error {
+func (c *CmuxTerminal) Launch(sessionID, sessionName string, members []domain.MemberPlan) error {
 	if len(members) == 0 {
 		return errors.New("no members to launch")
 	}
@@ -60,7 +60,7 @@ func (c *CmuxTerminal) Launch(sessionID, sessionName string, members []domain.Me
 			return err
 		}
 
-		if err := c.saveSurface(sessionID, m.MemberID, wsRef, surfaceRef); err != nil {
+		if err := c.saveSurface(sessionID, m.TeamMemberID, wsRef, surfaceRef); err != nil {
 			return fmt.Errorf("save surface: %w", err)
 		}
 	}
@@ -101,7 +101,7 @@ func (c *CmuxTerminal) exitAllSurfaces(wsRef string) {
 	}
 }
 
-func (c *CmuxTerminal) setupMemberSurface(wsRef, surfaceRef string, m domain.MemberSessionPlan) error {
+func (c *CmuxTerminal) setupMemberSurface(wsRef, surfaceRef string, m domain.MemberPlan) error {
 	if err := c.renameTab(wsRef, surfaceRef, m.MemberName); err != nil {
 		return fmt.Errorf("rename tab: %w", err)
 	}

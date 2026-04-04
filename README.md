@@ -34,24 +34,25 @@ go install github.com/jakeraft/clier@latest
 
 Open your CLI agent and give it these instructions:
 
-> [!NOTE]
-> Explore the clier CLI and import the tutorial team from
-> `https://raw.githubusercontent.com/jakeraft/clier/main/tutorials/story-team.json`.
-> Show me the team on the dashboard, then start a session and tell the chief:
-> "Write a short story about a mysterious animal."
-> Show me the running sessions. When the story arrives, stop the session and clean up.
+```md
+Explore the clier CLI and import the tutorial team:
+clier import https://raw.githubusercontent.com/jakeraft/clier/main/tutorials/story-team
+Show me the team on the dashboard, then start a session and tell the chief:
+"Write a short story about a mysterious animal."
+Show me the running sessions. When the story arrives, stop the session and clean up.
+```
 
 The agent discovers commands, parses outputs, and chains them on its own. `session start` opens a [cmux](https://cmux.com/) workspace with one terminal per member, and the final result arrives in your terminal as a message.
 
 Under the hood, the agent runs something like:
 
 ```bash
-clier team import <url>
+clier import https://raw.githubusercontent.com/jakeraft/clier/main/tutorials/story-team
 clier team list
 clier dashboard
 clier session start <team-id>
 clier session list
-clier session send "..." --session <session-id> --to <chief-member-id>
+clier session send "..." --session <session-id> --to <team-member-id>
 clier session stop <session-id>
 ```
 

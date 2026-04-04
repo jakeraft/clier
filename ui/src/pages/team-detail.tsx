@@ -1,7 +1,7 @@
 import { useParams } from "react-router";
 import { ClipboardList, User, FileText, Terminal, FolderOpen } from "lucide-react";
 import { api } from "@/api";
-import type { MemberSessionPlanView } from "@/api";
+import type { MemberPlanView } from "@/api";
 import { typography } from "@/lib/typography";
 import { cn } from "@/lib/utilities";
 import { EMPTY_DATA } from "@/components/empty-cell";
@@ -23,6 +23,9 @@ export function TeamDetail() {
 
   if (!team) return <DetailLayout error={error} loading={loading}>{undefined}</DetailLayout>;
 
+  const tmMap = new Map(team.teamMembers.map((tm) => [tm.id, tm]));
+  const rootTm = tmMap.get(team.rootTeamMemberId);
+
   return (
     <DetailLayout error={error}>
       <Section icon={ClipboardList} title="Overview">
@@ -37,8 +40,8 @@ export function TeamDetail() {
             },
             {
               label: "Root",
-              children: team.rootMemberId ? (
-                <EntityBadge to={`/members/${team.rootMemberId}`}>
+              children: rootTm ? (
+                <EntityBadge to={`/members/${rootTm.memberId}`}>
                   {team.rootMemberName || EMPTY_DATA}
                 </EntityBadge>
               ) : (
@@ -50,10 +53,10 @@ export function TeamDetail() {
               children: (
                 <EntityBadgeList
                   entity="member"
-                  items={team.memberIds.map((id, i) => ({
-                    id,
+                  items={team.teamMembers.map((tm, i) => ({
+                    id: tm.id,
                     name: team.memberNames[i] ?? EMPTY_DATA,
-                    to: `/members/${id}`,
+                    to: `/members/${tm.memberId}`,
                   }))}
                 />
               ),
@@ -66,13 +69,13 @@ export function TeamDetail() {
 
       {team.plan.length > 0 &&
         team.plan.map((member) => (
-          <PlanMemberSection key={member.memberId} member={member} />
+          <PlanMemberSection key={member.teamMemberId} member={member} />
         ))}
     </DetailLayout>
   );
 }
 
-function PlanMemberSection({ member }: Readonly<{ member: MemberSessionPlanView }>) {
+function PlanMemberSection({ member }: Readonly<{ member: MemberPlanView }>) {
   return (
     <Section icon={User} title={member.memberName}>
         <Section icon={FolderOpen} title="Workspace">

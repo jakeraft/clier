@@ -1,0 +1,17 @@
+{
+  "type": "cli_profile",
+  "data": {
+    "id": "16266d16-0166-4326-9fe4-0f3cba180460",
+    "name": "gpt-5.4",
+    "model": "gpt-5.4",
+    "binary": "codex",
+    "system_args": [],
+    "custom_args": [],
+    "dot_config": {
+      "notice": {
+        "model_migrations": {}
+      },
+      "sandbox_mode": "danger-full-access"
+    }
+  }
+}

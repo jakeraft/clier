@@ -16,10 +16,10 @@ func TestWorkspace(t *testing.T) {
 			ws := New(baseDir)
 
 			memberspace := filepath.Join(baseDir, "plan-1", "m1")
-			members := []domain.MemberSessionPlan{
+			members := []domain.MemberPlan{
 				{
-					MemberID:   "m1",
-					MemberName: "alice",
+					TeamMemberID: "m1",
+					MemberName:   "alice",
 					Workspace: domain.WorkspacePlan{
 						Memberspace: memberspace,
 						Files: []domain.FileEntry{
