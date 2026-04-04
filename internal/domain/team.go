@@ -10,29 +10,19 @@ import (
 	"github.com/google/uuid"
 )
 
-type RelationType string
-
-const (
-	RelationLeader RelationType = "leader"
-	RelationPeer   RelationType = "peer"
-)
-
 type Relation struct {
-	From string       `json:"from"`
-	To   string       `json:"to"`
-	Type RelationType `json:"type"`
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 type MemberRelations struct {
 	Leaders []string `json:"leaders"`
 	Workers []string `json:"workers"`
-	Peers   []string `json:"peers"`
 }
 
 func (r MemberRelations) IsConnectedTo(memberID string) bool {
 	return slices.Contains(r.Leaders, memberID) ||
-		slices.Contains(r.Workers, memberID) ||
-		slices.Contains(r.Peers, memberID)
+		slices.Contains(r.Workers, memberID)
 }
 
 // TeamMember is an instance of a Member spec within a Team.
@@ -202,11 +192,6 @@ func (t *Team) RemoveTeamMember(teamMemberID string) error {
 }
 
 func (t *Team) AddRelation(r Relation) error {
-	switch r.Type {
-	case RelationLeader, RelationPeer:
-	default:
-		return fmt.Errorf("invalid relation type: %s (must be leader or peer)", r.Type)
-	}
 	if r.From == r.To {
 		return errors.New("cannot create relation to self")
 	}
@@ -217,28 +202,20 @@ func (t *Team) AddRelation(r Relation) error {
 		return fmt.Errorf("team member not in team: %s", r.To)
 	}
 
-	// Check duplicate (peer relations are bidirectional).
+	// Check duplicate.
 	for _, existing := range t.Relations {
-		if existing.From == r.From && existing.To == r.To && existing.Type == r.Type {
-			return fmt.Errorf("duplicate relation: %s → %s (%s)", r.From, r.To, r.Type)
-		}
-		if r.Type == RelationPeer && existing.Type == RelationPeer &&
-			existing.From == r.To && existing.To == r.From {
-			return fmt.Errorf("duplicate relation: %s → %s (%s)", r.From, r.To, r.Type)
+		if existing.From == r.From && existing.To == r.To {
+			return fmt.Errorf("duplicate relation: %s -> %s", r.From, r.To)
 		}
 	}
 
 	// Leader uniqueness: each member can have at most one leader.
-	// Leader cycle: A→B leader and B→A leader is not allowed.
-	if r.Type == RelationLeader {
-		for _, existing := range t.Relations {
-			if existing.To == r.To && existing.Type == RelationLeader {
-				return fmt.Errorf("member %s already has a leader", r.To)
-			}
-			if existing.Type == RelationLeader &&
-				existing.From == r.To && existing.To == r.From {
-				return fmt.Errorf("mutual leader cycle: %s and %s", r.From, r.To)
-			}
+	for _, existing := range t.Relations {
+		if existing.To == r.To {
+			return fmt.Errorf("member %s already has a leader", r.To)
+		}
+		if existing.From == r.To && existing.To == r.From {
+			return fmt.Errorf("mutual leader cycle: %s and %s", r.From, r.To)
 		}
 	}
 
@@ -247,9 +224,9 @@ func (t *Team) AddRelation(r Relation) error {
 	return nil
 }
 
-func (t *Team) RemoveRelation(from, to string, relType RelationType) error {
+func (t *Team) RemoveRelation(from, to string) error {
 	for i, r := range t.Relations {
-		if r.From == from && r.To == to && r.Type == relType {
+		if r.From == from && r.To == to {
 			t.Relations = append(t.Relations[:i], t.Relations[i+1:]...)
 			t.UpdatedAt = time.Now()
 			return nil
@@ -261,30 +238,19 @@ func (t *Team) RemoveRelation(from, to string, relType RelationType) error {
 func (t *Team) MemberRelations(teamMemberID string) MemberRelations {
 	leaders := []string{}
 	workers := []string{}
-	peers := []string{}
 
 	for _, r := range t.Relations {
-		switch r.Type {
-		case RelationLeader:
-			if r.To == teamMemberID {
-				leaders = append(leaders, r.From)
-			}
-			if r.From == teamMemberID {
-				workers = append(workers, r.To)
-			}
-		case RelationPeer:
-			if r.From == teamMemberID {
-				peers = append(peers, r.To)
-			} else if r.To == teamMemberID {
-				peers = append(peers, r.From)
-			}
+		if r.To == teamMemberID {
+			leaders = append(leaders, r.From)
+		}
+		if r.From == teamMemberID {
+			workers = append(workers, r.To)
 		}
 	}
 
 	return MemberRelations{
 		Leaders: leaders,
 		Workers: workers,
-		Peers:   peers,
 	}
 }
 
