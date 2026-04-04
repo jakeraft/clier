@@ -5,24 +5,16 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	for _, binary := range []domain.CliBinary{domain.BinaryClaude, domain.BinaryCodex} {
-		rootCmd.AddCommand(newAgentCmd(binary))
-	}
-}
-
-func newAgentCmd(binary domain.CliBinary) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   string(binary),
-		Short: fmt.Sprintf("Manage %s CLI auth", binary),
+		Use:   "claude",
+		Short: "Manage Claude CLI auth",
 	}
-
-	cmd.AddCommand(newAgentCheckCmd(binary))
-	return cmd
+	cmd.AddCommand(newAgentCheckCmd())
+	rootCmd.AddCommand(cmd)
 }
 
 func isExitError(err error) bool {
@@ -30,24 +22,24 @@ func isExitError(err error) bool {
 	return errors.As(err, &exitErr)
 }
 
-func newAgentCheckCmd(binary domain.CliBinary) *cobra.Command {
+func newAgentCheckCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "check",
-		Short: fmt.Sprintf("Check %s CLI auth status", binary),
+		Short: "Check Claude CLI auth status",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
 				return err
 			}
 			w := cmd.OutOrStdout()
-			if err := cfg.Auth.Check(binary); err != nil {
+			if err := cfg.Auth.Check(); err != nil {
 				if isExitError(err) {
-					_, _ = fmt.Fprintf(w, "%s auth is invalid. Run: %s login\n", binary, binary)
+					_, _ = fmt.Fprintf(w, "claude auth is invalid. Run: claude login\n")
 				} else {
-					_, _ = fmt.Fprintf(w, "%s is not logged in. Run: %s login\n", binary, binary)
+					_, _ = fmt.Fprintf(w, "claude is not logged in. Run: claude login\n")
 				}
 			} else {
-				_, _ = fmt.Fprintf(w, "%s auth is valid\n", binary)
+				_, _ = fmt.Fprintf(w, "claude auth is valid\n")
 			}
 			return nil
 		},

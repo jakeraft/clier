@@ -91,7 +91,7 @@ export interface CliProfileView {
   id: string;
   name: string;
   model: string;
-  binary: "claude" | "codex";
+  binary: "claude";
   systemArgs: string[];
   customArgs: string[];
   dotConfig: Record<string, unknown>;

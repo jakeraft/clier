@@ -14,14 +14,12 @@ type CliBinary string
 
 const (
 	BinaryClaude CliBinary = "claude"
-	BinaryCodex  CliBinary = "codex"
 )
 
 type DotConfig map[string]any
 
 type CliProfilePreset struct {
 	Key        string
-	Binary     CliBinary
 	Model      string
 	SystemArgs []string
 	DotConfig  DotConfig
@@ -30,7 +28,6 @@ type CliProfilePreset struct {
 var CliProfilePresets = []CliProfilePreset{
 	{
 		Key:        "claude-haiku",
-		Binary:     BinaryClaude,
 		Model:      "claude-haiku-4-5-20251001",
 		SystemArgs: []string{"--dangerously-skip-permissions"},
 		DotConfig: DotConfig{
@@ -40,7 +37,6 @@ var CliProfilePresets = []CliProfilePreset{
 	},
 	{
 		Key:        "claude-sonnet",
-		Binary:     BinaryClaude,
 		Model:      "claude-sonnet-4-6",
 		SystemArgs: []string{"--dangerously-skip-permissions"},
 		DotConfig: DotConfig{
@@ -50,38 +46,11 @@ var CliProfilePresets = []CliProfilePreset{
 	},
 	{
 		Key:        "claude-opus",
-		Binary:     BinaryClaude,
 		Model:      "claude-opus-4-6",
 		SystemArgs: []string{"--dangerously-skip-permissions"},
 		DotConfig: DotConfig{
 			"skipDangerousModePermissionPrompt": true,
 			"claudeMdExcludes":                  []string{"~/.claude/**"},
-		},
-	},
-	{
-		Key:        "codex-5.4",
-		Binary:     BinaryCodex,
-		Model:      "gpt-5.4",
-		SystemArgs: []string{},
-		DotConfig: DotConfig{
-			"sandbox_mode": "danger-full-access",
-			"notice": map[string]any{
-				"model_migrations": map[string]any{},
-			},
-		},
-	},
-	{
-		Key:        "codex-mini",
-		Binary:     BinaryCodex,
-		Model:      "gpt-5.1-codex-mini",
-		SystemArgs: []string{},
-		DotConfig: DotConfig{
-			"sandbox_mode": "danger-full-access",
-			"notice": map[string]any{
-				"model_migrations": map[string]any{
-					"gpt-5.1-codex-mini": "gpt-5.4",
-				},
-			},
 		},
 	},
 }
@@ -118,7 +87,7 @@ func NewCliProfile(name, presetKey string, customArgs []string) (*CliProfile, er
 		ID:         uuid.NewString(),
 		Name:       name,
 		Model:      preset.Model,
-		Binary:     preset.Binary,
+		Binary:     BinaryClaude,
 		SystemArgs: append([]string{}, preset.SystemArgs...),
 		CustomArgs: customArgs,
 		DotConfig:  copyDotConfig(preset.DotConfig),
@@ -127,29 +96,36 @@ func NewCliProfile(name, presetKey string, customArgs []string) (*CliProfile, er
 	}, nil
 }
 
-// NewCliProfileRaw creates a CliProfile from explicit values (no preset lookup).
-// Used by import to recreate profiles from exported data.
-func NewCliProfileRaw(name, model string, binary CliBinary, systemArgs, customArgs []string, dotConfig DotConfig) (*CliProfile, error) {
+// validateRawFields validates and normalises shared raw-profile inputs.
+func validateRawFields(name, model string, binary CliBinary, systemArgs, customArgs []string) (
+	string, string, []string, []string, error,
+) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, errors.New("cli profile name must not be empty")
+		return "", "", nil, nil, errors.New("cli profile name must not be empty")
 	}
 	model = strings.TrimSpace(model)
 	if model == "" {
-		return nil, errors.New("cli profile model must not be empty")
+		return "", "", nil, nil, errors.New("cli profile model must not be empty")
 	}
-
-	switch binary {
-	case BinaryClaude, BinaryCodex:
-	default:
-		return nil, fmt.Errorf("invalid binary: %s (must be claude or codex)", binary)
+	if binary != BinaryClaude {
+		return "", "", nil, nil, fmt.Errorf("invalid binary: %s (must be claude)", binary)
 	}
-
 	if systemArgs == nil {
 		systemArgs = []string{}
 	}
 	if customArgs == nil {
 		customArgs = []string{}
+	}
+	return name, model, append([]string{}, systemArgs...), append([]string{}, customArgs...), nil
+}
+
+// NewCliProfileRaw creates a CliProfile from explicit values (no preset lookup).
+// Used by import to recreate profiles from exported data.
+func NewCliProfileRaw(name, model string, binary CliBinary, systemArgs, customArgs []string, dotConfig DotConfig) (*CliProfile, error) {
+	name, model, systemArgs, customArgs, err := validateRawFields(name, model, binary, systemArgs, customArgs)
+	if err != nil {
+		return nil, err
 	}
 
 	now := time.Now()
@@ -158,8 +134,8 @@ func NewCliProfileRaw(name, model string, binary CliBinary, systemArgs, customAr
 		Name:       name,
 		Model:      model,
 		Binary:     binary,
-		SystemArgs: append([]string{}, systemArgs...),
-		CustomArgs: append([]string{}, customArgs...),
+		SystemArgs: systemArgs,
+		CustomArgs: customArgs,
 		DotConfig:  copyDotConfig(dotConfig),
 		CreatedAt:  now,
 		UpdatedAt:  now,
@@ -193,31 +169,16 @@ func (p *CliProfile) Update(name *string, customArgs *[]string) error {
 // UpdateRaw replaces all mutable fields with validated, deep-copied values.
 // Used by import to fully overwrite an existing profile from exported data.
 func (p *CliProfile) UpdateRaw(name, model string, binary CliBinary, systemArgs, customArgs []string, dotConfig DotConfig) error {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return errors.New("cli profile name must not be empty")
-	}
-	model = strings.TrimSpace(model)
-	if model == "" {
-		return errors.New("cli profile model must not be empty")
-	}
-	switch binary {
-	case BinaryClaude, BinaryCodex:
-	default:
-		return fmt.Errorf("invalid binary: %s (must be claude or codex)", binary)
-	}
-	if systemArgs == nil {
-		systemArgs = []string{}
-	}
-	if customArgs == nil {
-		customArgs = []string{}
+	name, model, systemArgs, customArgs, err := validateRawFields(name, model, binary, systemArgs, customArgs)
+	if err != nil {
+		return err
 	}
 
 	p.Name = name
 	p.Model = model
 	p.Binary = binary
-	p.SystemArgs = append([]string{}, systemArgs...)
-	p.CustomArgs = append([]string{}, customArgs...)
+	p.SystemArgs = systemArgs
+	p.CustomArgs = customArgs
 	p.DotConfig = copyDotConfig(dotConfig)
 	p.UpdatedAt = time.Now()
 	return nil

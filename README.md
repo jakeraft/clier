@@ -8,7 +8,7 @@ Define your team in JSON — roles, hierarchy, scoped environments. Start a sess
 
 ## Why Clier?
 
-**1. Deep, multi-agent teams** — No depth limit. Build hierarchies and mix different agent types — Claude, Codex — in a single team.
+**1. Deep, multi-agent teams** — No depth limit. Build hierarchies with Claude agents in a single team.
 
 **2. Scoped roles** — Each member gets its own system prompt, environment variables, git repo, and CLI profile. Agents see only what they need — no excess context, no unrestricted access.
 
@@ -78,15 +78,11 @@ clier session stop <session-id>
 
 <img src="assets/05-writers-working.png" width="800">
 
-**6. A Codex writer works alongside Claude — multiple agent types in one team**
-
-<img src="assets/06-codex-writing.png" width="800">
-
-**7. The final story arrives — "The Silver Fox"**
+**6. The final story arrives — "The Silver Fox"**
 
 <img src="assets/07-final-result.png" width="800">
 
-**8. You can interact with any agent in real time**
+**7. You can interact with any agent in real time**
 
 <img src="assets/08-agent-role.png" width="800">
 

@@ -2,22 +2,18 @@
   "type": "cli_profile",
   "data": {
     "id": "16266d16-0166-4326-9fe4-0f3cba180460",
-    "name": "gpt-5.4",
-    "model": "gpt-5.4",
-    "binary": "codex",
-    "system_args": [],
+    "name": "claude-sonnet-2",
+    "model": "claude-sonnet-4-6",
+    "binary": "claude",
+    "system_args": [
+      "--dangerously-skip-permissions"
+    ],
     "custom_args": [],
     "dot_config": {
-      "notice": {
-        "hide_gpt5_1_migration_prompt": true,
-        "model_migrations": {
-          "gpt-5-codex": "gpt-5.4",
-          "gpt-5.1-codex": "gpt-5.4",
-          "gpt-5.1-codex-mini": "gpt-5.4",
-          "gpt-5.1-codex-max": "gpt-5.4"
-        }
-      },
-      "sandbox_mode": "danger-full-access"
+      "claudeMdExcludes": [
+        "~/.claude/**"
+      ],
+      "skipDangerousModePermissionPrompt": true
     }
   }
 }

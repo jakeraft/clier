@@ -51,7 +51,7 @@ func newProfileCreateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Profile name")
-	cmd.Flags().StringVar(&preset, "preset", "", "Preset key (e.g. claude-sonnet, codex-mini)")
+	cmd.Flags().StringVar(&preset, "preset", "", "Preset key (e.g. claude-sonnet, claude-opus)")
 	cmd.Flags().StringSliceVar(&customArgs, "args", nil, "Custom CLI arguments (comma-separated)")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("preset")

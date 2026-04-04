@@ -2,21 +2,18 @@
   "type": "cli_profile",
   "data": {
     "id": "d97eb595-0ebe-40e3-81bd-3c871fe74db6",
-    "name": "gpt-mini",
-    "model": "gpt-5.1-codex-mini",
-    "binary": "codex",
-    "system_args": [],
+    "name": "claude-haiku-2",
+    "model": "claude-haiku-4-5-20251001",
+    "binary": "claude",
+    "system_args": [
+      "--dangerously-skip-permissions"
+    ],
     "custom_args": [],
     "dot_config": {
-      "notice": {
-        "hide_gpt5_1_migration_prompt": true,
-        "model_migrations": {
-          "gpt-5-codex-mini": "gpt-5.1-codex-mini",
-          "gpt-5-codex": "gpt-5.1-codex-mini",
-          "gpt-5.1-codex-mini": "gpt-5.4"
-        }
-      },
-      "sandbox_mode": "danger-full-access"
+      "claudeMdExcludes": [
+        "~/.claude/**"
+      ],
+      "skipDangerousModePermissionPrompt": true
     }
   }
 }

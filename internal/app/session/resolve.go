@@ -8,7 +8,7 @@ import (
 
 // resolvePlaceholders replaces all {{CLIER_*}} placeholders in a MemberPlan
 // and expands ~/ paths to the user's home directory.
-func resolvePlaceholders(m domain.MemberPlan, base, homeDir, sessionID, claudeToken, codexAuth string) domain.MemberPlan {
+func resolvePlaceholders(m domain.MemberPlan, base, homeDir, sessionID, claudeToken string) domain.MemberPlan {
 	memberspace := strings.ReplaceAll(m.Workspace.Memberspace, PlaceholderBase, base)
 	memberspace = strings.ReplaceAll(memberspace, PlaceholderSessionID, sessionID)
 
@@ -16,7 +16,6 @@ func resolvePlaceholders(m domain.MemberPlan, base, homeDir, sessionID, claudeTo
 		PlaceholderMemberspace, memberspace,
 		PlaceholderSessionID, sessionID,
 		PlaceholderAuthClaude, claudeToken,
-		PlaceholderAuthCodex, codexAuth,
 	)
 
 	m.Workspace.Memberspace = memberspace

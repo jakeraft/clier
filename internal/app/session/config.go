@@ -3,10 +3,8 @@ package session
 import (
 	"encoding/json"
 	"fmt"
-	"maps"
 
 	"github.com/jakeraft/clier/internal/domain"
-	toml "github.com/pelletier/go-toml/v2"
 )
 
 // buildClaudeFiles generates Claude config files (settings.json + trust config)
@@ -34,26 +32,5 @@ func buildClaudeFiles(dotConfig domain.DotConfig, workDir, memberspacePlaceholde
 	return []domain.FileEntry{
 		{Path: memberspacePlaceholder + "/.claude/settings.json", Content: string(settingsData)},
 		{Path: memberspacePlaceholder + "/.claude/.claude.json", Content: string(trustData)},
-	}, nil
-}
-
-// buildCodexFiles generates Codex config files (config.toml).
-// Auth is NOT included here — it is handled separately by setAuth.
-func buildCodexFiles(dotConfig domain.DotConfig, workDir, memberspacePlaceholder string) ([]domain.FileEntry, error) {
-	config := make(map[string]any, len(dotConfig))
-	maps.Copy(config, dotConfig)
-	config["projects"] = map[string]any{
-		workDir: map[string]any{
-			"trust_level": "trusted",
-		},
-	}
-
-	data, err := toml.Marshal(config)
-	if err != nil {
-		return nil, fmt.Errorf("marshal codex config: %w", err)
-	}
-
-	return []domain.FileEntry{
-		{Path: memberspacePlaceholder + "/.codex/config.toml", Content: string(data)},
 	}, nil
 }

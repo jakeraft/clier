@@ -32,25 +32,9 @@ func TestShellQuote(t *testing.T) {
 }
 
 func TestConfigDirEnv(t *testing.T) {
-	t.Run("Claude_ReturnsClaudeConfigDir", func(t *testing.T) {
-		got := configDirEnv(domain.BinaryClaude)
+	t.Run("ReturnsClaudeConfigDir", func(t *testing.T) {
+		got := configDirEnv()
 		want := "CLAUDE_CONFIG_DIR=" + PlaceholderMemberspace + "/.claude"
-		if got != want {
-			t.Errorf("got %q, want %q", got, want)
-		}
-	})
-
-	t.Run("Codex_ReturnsCodexHome", func(t *testing.T) {
-		got := configDirEnv(domain.BinaryCodex)
-		want := "CODEX_HOME=" + PlaceholderMemberspace + "/.codex"
-		if got != want {
-			t.Errorf("got %q, want %q", got, want)
-		}
-	})
-
-	t.Run("Unknown_FallsBackToHOME", func(t *testing.T) {
-		got := configDirEnv("unknown")
-		want := "HOME=" + PlaceholderMemberspace
 		if got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
@@ -58,13 +42,13 @@ func TestConfigDirEnv(t *testing.T) {
 }
 
 func TestBuildEnv(t *testing.T) {
-	t.Run("Claude_WithAuth_IncludesAllEnvVars", func(t *testing.T) {
+	t.Run("WithAuth_IncludesAllEnvVars", func(t *testing.T) {
 		authEnvs := []string{"CLAUDE_CODE_OAUTH_TOKEN=" + PlaceholderAuthClaude}
 		userEnvs := []domain.EnvSnapshot{
 			{Key: "GITHUB_TOKEN", Value: "ghp_xxx"},
 		}
 
-		env := buildEnv(domain.BinaryClaude, "session-1", "m1", authEnvs, userEnvs)
+		env := buildEnv("session-1", "m1", authEnvs, userEnvs)
 
 		envMap := make(map[string]string)
 		for _, e := range env {
@@ -85,18 +69,9 @@ func TestBuildEnv(t *testing.T) {
 		}
 	})
 
-	t.Run("Codex_NoAuth_SystemVarsOnly", func(t *testing.T) {
-		env := buildEnv(domain.BinaryCodex, "session-1", "m2", nil, nil)
+	t.Run("NoAuth_SystemVarsOnly", func(t *testing.T) {
+		env := buildEnv("session-1", "m2", nil, nil)
 
-		envMap := make(map[string]string)
-		for _, e := range env {
-			k, v, _ := strings.Cut(e, "=")
-			envMap[k] = v
-		}
-
-		if envMap["CODEX_HOME"] != PlaceholderMemberspace+"/.codex" {
-			t.Errorf("CODEX_HOME = %q", envMap["CODEX_HOME"])
-		}
 		if len(env) != 3 {
 			t.Errorf("expected 3 env vars, got %d", len(env))
 		}
@@ -129,18 +104,15 @@ func TestBuildEnvCommand(t *testing.T) {
 }
 
 func TestBuildCommand(t *testing.T) {
-	t.Run("Claude_AllArgs_IncludesPlaceholders", func(t *testing.T) {
+	t.Run("AllArgs_IncludesPlaceholders", func(t *testing.T) {
 		authEnvs := []string{"CLAUDE_CODE_OAUTH_TOKEN=" + PlaceholderAuthClaude}
 
-		cmd, err := buildCommand(
-			domain.BinaryClaude, "claude-sonnet-4-6",
+		cmd := buildCommand(
+			"claude-sonnet-4-6",
 			[]string{"--dangerously-skip-permissions"}, []string{"--verbose"},
 			"you are a coder", "session-1", "m1",
 			authEnvs, nil,
 		)
-		if err != nil {
-			t.Fatalf("buildCommand: %v", err)
-		}
 
 		for _, want := range []string{
 			"claude",
@@ -160,46 +132,17 @@ func TestBuildCommand(t *testing.T) {
 		}
 	})
 
-	t.Run("Codex_WithPrompt_UsesDeveloperInstructions", func(t *testing.T) {
-		cmd, err := buildCommand(
-			domain.BinaryCodex, "gpt-5.4",
-			nil, nil,
-			"you are a coder", "session-1", "m2",
-			nil, nil,
-		)
-		if err != nil {
-			t.Fatalf("buildCommand: %v", err)
-		}
-
-		if !strings.Contains(cmd, "developer_instructions=") {
-			t.Errorf("should use developer_instructions: %s", cmd)
-		}
-		if !strings.Contains(cmd, "cd '"+PlaceholderMemberspace+"/project'") {
-			t.Errorf("should cd to memberspace/project: %s", cmd)
-		}
-	})
-
-	t.Run("UnknownBinary_ReturnsError", func(t *testing.T) {
-		_, err := buildCommand("unknown", "m1", nil, nil, "", "session-1", "m1", nil, nil)
-		if err == nil {
-			t.Error("expected error for unknown binary")
-		}
-	})
-
 	t.Run("WithUserEnvs_BakedIntoCommand", func(t *testing.T) {
 		userEnvs := []domain.EnvSnapshot{
 			{Key: "GITHUB_TOKEN", Value: "ghp_xxx"},
 			{Key: "SSH_AUTH_SOCK", Value: "/tmp/ssh.sock"},
 		}
 
-		cmd, err := buildCommand(
-			domain.BinaryClaude, "opus",
+		cmd := buildCommand(
+			"opus",
 			nil, nil, "", "session-1", "m1",
 			nil, userEnvs,
 		)
-		if err != nil {
-			t.Fatalf("buildCommand: %v", err)
-		}
 
 		if !strings.Contains(cmd, "export GITHUB_TOKEN='ghp_xxx'") {
 			t.Errorf("missing GITHUB_TOKEN in:\n%s", cmd)

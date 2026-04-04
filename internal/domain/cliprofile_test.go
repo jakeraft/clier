@@ -34,7 +34,7 @@ func TestCliProfile(t *testing.T) {
 		})
 
 		t.Run("WithCustomArgs_SetsCustomArgs", func(t *testing.T) {
-			p, err := NewCliProfile("my-codex", "codex-mini", []string{"--verbose"})
+			p, err := NewCliProfile("my-claude", "claude-haiku", []string{"--verbose"})
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -163,9 +163,6 @@ func TestCliProfile(t *testing.T) {
 				}
 				if resolved.Model != preset.Model {
 					t.Errorf("preset %q: Model = %q, want %q", preset.Key, resolved.Model, preset.Model)
-				}
-				if resolved.Binary != preset.Binary {
-					t.Errorf("preset %q: Binary = %q, want %q", preset.Key, resolved.Binary, preset.Binary)
 				}
 			}
 		})

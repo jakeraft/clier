@@ -12,7 +12,6 @@ const (
 	PlaceholderMemberspace = "{{CLIER_MEMBERSPACE}}"
 	PlaceholderSessionID   = "{{CLIER_SESSION_ID}}"
 	PlaceholderAuthClaude  = "{{CLIER_AUTH_CLAUDE}}"
-	PlaceholderAuthCodex   = "{{CLIER_AUTH_CODEX}}"
 )
 
 // buildPlan computes the execution plan from current team state.
@@ -74,22 +73,18 @@ func (s *Service) buildPlan(ctx context.Context, team domain.Team) ([]domain.Mem
 		userPrompt := joinPrompts(prompts)
 		prompt := "---\n\n" + clierPrompt + "\n---\n\n" + userPrompt
 
-		auth := setAuth(profile.Binary)
+		authEnvs := setAuth()
 
-		files, err := buildFiles(profile.Binary, profile.DotConfig, PlaceholderMemberspace)
+		files, err := buildClaudeFiles(profile.DotConfig, PlaceholderMemberspace+"/project", PlaceholderMemberspace)
 		if err != nil {
 			return nil, fmt.Errorf("build files for %s: %w", tm.Name, err)
 		}
-		files = append(files, auth.Files...)
 
-		cmd, err := buildCommand(
-			profile.Binary, profile.Model, profile.SystemArgs, profile.CustomArgs,
+		cmd := buildCommand(
+			profile.Model, profile.SystemArgs, profile.CustomArgs,
 			prompt, PlaceholderSessionID, tm.ID,
-			auth.CommandEnvs, envs,
+			authEnvs, envs,
 		)
-		if err != nil {
-			return nil, fmt.Errorf("build command for %s: %w", tm.Name, err)
-		}
 
 		launchPath := PlaceholderMemberspace + "/launch.sh"
 		files = append(files, domain.FileEntry{Path: launchPath, Content: cmd})
@@ -109,18 +104,3 @@ func (s *Service) buildPlan(ctx context.Context, team domain.Team) ([]domain.Mem
 	return plans, nil
 }
 
-// buildFiles dispatches to the binary-specific config file builder.
-func buildFiles(binary domain.CliBinary, dotConfig domain.DotConfig,
-	memberspacePlaceholder string) ([]domain.FileEntry, error) {
-
-	workDir := memberspacePlaceholder + "/project"
-
-	switch binary {
-	case domain.BinaryClaude:
-		return buildClaudeFiles(dotConfig, workDir, memberspacePlaceholder)
-	case domain.BinaryCodex:
-		return buildCodexFiles(dotConfig, workDir, memberspacePlaceholder)
-	default:
-		return nil, fmt.Errorf("unknown binary: %s", binary)
-	}
-}

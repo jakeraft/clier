@@ -41,11 +41,9 @@ type Workspace interface {
 	Cleanup(sessionID string) error
 }
 
-// AuthChecker reads authentication credentials for CLI binaries.
+// AuthChecker reads authentication credentials for the CLI agent.
 type AuthChecker interface {
-	Check(binary domain.CliBinary) error
-	ReadToken(binary domain.CliBinary) (string, error)
-	ReadAuthFile(binary domain.CliBinary) ([]byte, error)
+	ReadToken() (string, error)
 }
 
 // Service orchestrates session execution: build plan, prepare workspace,
@@ -71,12 +69,12 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 		return nil, fmt.Errorf("build plan: %w", err)
 	}
 
-	claudeToken, codexAuth := resolveAuth(auth)
+	claudeToken := resolveAuth(auth)
 
 	sessionID := uuid.NewString()
 	members := make([]domain.MemberPlan, 0, len(plan))
 	for _, m := range plan {
-		members = append(members, resolvePlaceholders(m, s.base, s.homeDir, sessionID, claudeToken, string(codexAuth)))
+		members = append(members, resolvePlaceholders(m, s.base, s.homeDir, sessionID, claudeToken))
 	}
 
 	session, err := domain.NewSession(sessionID, team.ID)
@@ -181,24 +179,11 @@ func (s *Service) Log(ctx context.Context, sessionID, teamMemberID, content stri
 	return nil
 }
 
-// resolveAuth tries to read auth credentials for all known CLI binaries.
-func resolveAuth(auth AuthChecker) (string, []byte) {
-	var claudeToken string
-	var codexAuth []byte
-
-	if err := auth.Check(domain.BinaryClaude); err == nil {
-		token, err := auth.ReadToken(domain.BinaryClaude)
-		if err == nil && token != "" {
-			claudeToken = token
-		}
+// resolveAuth reads the Claude auth token.
+func resolveAuth(auth AuthChecker) string {
+	token, err := auth.ReadToken()
+	if err == nil && token != "" {
+		return token
 	}
-
-	if err := auth.Check(domain.BinaryCodex); err == nil {
-		data, err := auth.ReadAuthFile(domain.BinaryCodex)
-		if err == nil && data != nil {
-			codexAuth = data
-		}
-	}
-
-	return claudeToken, codexAuth
+	return ""
 }

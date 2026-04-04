@@ -18,15 +18,11 @@ func TestResolvePlaceholders(t *testing.T) {
 					Path:    "{{CLIER_MEMBERSPACE}}/.claude/settings.json",
 					Content: `{"excludes":["~/.claude/**"],"projects":{"{{CLIER_MEMBERSPACE}}/project":{}}}`,
 				},
-				{
-					Path:    "{{CLIER_MEMBERSPACE}}/.codex/auth.json",
-					Content: "{{CLIER_AUTH_CODEX}}",
-				},
 			},
 		},
 	}
 
-	resolved := resolvePlaceholders(m, "/home/user/.clier", "/home/user", "session-999", "sk-token-123", `{"key":"val"}`)
+	resolved := resolvePlaceholders(m, "/home/user/.clier", "/home/user", "session-999", "sk-token-123")
 
 	if resolved.Workspace.Memberspace != "/home/user/.clier/workspaces/session-999/member1" {
 		t.Errorf("Memberspace = %q", resolved.Workspace.Memberspace)
@@ -45,9 +41,5 @@ func TestResolvePlaceholders(t *testing.T) {
 	wantContent := `{"excludes":["/home/user/.claude/**"],"projects":{"/home/user/.clier/workspaces/session-999/member1/project":{}}}`
 	if resolved.Workspace.Files[0].Content != wantContent {
 		t.Errorf("Files[0].Content = %q\nwant             %q", resolved.Workspace.Files[0].Content, wantContent)
-	}
-
-	if resolved.Workspace.Files[1].Content != `{"key":"val"}` {
-		t.Errorf("Files[1].Content = %q", resolved.Workspace.Files[1].Content)
 	}
 }
