@@ -25,6 +25,7 @@ func newSessionCmd() *cobra.Command {
 	cmd.AddCommand(newSessionSendCmd())
 	cmd.AddCommand(newSessionLogCmd())
 	cmd.AddCommand(newSessionLogsCmd())
+	cmd.AddCommand(newSessionAttachCmd())
 	return cmd
 }
 
@@ -226,6 +227,37 @@ func newSessionLogsCmd() *cobra.Command {
 			return printJSON(logs)
 		},
 	}
+}
+
+func newSessionAttachCmd() *cobra.Command {
+	var memberFlag string
+
+	cmd := &cobra.Command{
+		Use:   "attach <session-id>",
+		Short: "Attach to a running session's terminal",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			term := terminal.NewTmuxTerminal(store)
+
+			var memberID *string
+			if memberFlag != "" {
+				memberID = &memberFlag
+			}
+			return term.Attach(args[0], memberID)
+		},
+	}
+	cmd.Flags().StringVar(&memberFlag, "member", "", "Attach to a specific member's window")
+	return cmd
 }
 
 // resolveSessionContext resolves session ID and member ID from env vars set by clier.
