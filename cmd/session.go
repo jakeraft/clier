@@ -50,7 +50,7 @@ func newSessionStartCmd() *cobra.Command {
 				return err
 			}
 
-			term := terminal.NewCmuxTerminal(store)
+			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
 			svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
@@ -81,7 +81,7 @@ func newSessionStopCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			term := terminal.NewCmuxTerminal(store)
+			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
 			svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
@@ -141,7 +141,7 @@ func newSessionSendCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			term := terminal.NewCmuxTerminal(store)
+			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
 			svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
@@ -185,7 +185,7 @@ func newSessionLogCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			term := terminal.NewCmuxTerminal(store)
+			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
 			svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
