@@ -151,7 +151,7 @@ func convertTeams(teams []domain.Team) []teamView {
 		}
 		relations := make([]relationView, 0, len(t.Relations))
 		for _, r := range t.Relations {
-			relations = append(relations, relationView{From: r.From, To: r.To, Type: string(r.Type)})
+			relations = append(relations, relationView{From: r.From, To: r.To})
 		}
 		teamMemberIDs := make([]string, 0, len(t.TeamMembers))
 		teamMemberViews := make([]teamMemberView, 0, len(t.TeamMembers))
@@ -316,7 +316,6 @@ type teamView struct {
 type relationView struct {
 	From string `json:"from"`
 	To   string `json:"to"`
-	Type string `json:"type"`
 }
 
 type memberView struct {
