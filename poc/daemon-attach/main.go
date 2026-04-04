@@ -23,7 +23,7 @@ const (
 	cmdAttach byte = 'a'
 	cmdStop   byte = 's'
 
-	detachByte byte = 0x1d // Ctrl+]
+	detachByte byte = 0x1c // Ctrl+\
 
 	ringSize = 256 * 1024 // 256KB output history
 )
@@ -99,7 +99,7 @@ func cmdStart() {
 			c.Close()
 			fmt.Printf("daemon started (pid %d)\n", pid)
 			fmt.Println("  attach:  clier-poc attach")
-			fmt.Println("  detach:  Ctrl+]")
+			fmt.Println("  detach:  Ctrl+\\")
 			fmt.Println("  stop:    clier-poc stop")
 			return
 		}
