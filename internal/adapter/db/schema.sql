@@ -84,11 +84,10 @@ CREATE TABLE IF NOT EXISTS team_relations (
     PRIMARY KEY (team_id, from_team_member_id, to_team_member_id, type)
 );
 
-CREATE TABLE IF NOT EXISTS session_surfaces (
-    session_id       TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    team_member_id   TEXT NOT NULL,
-    workspace_ref    TEXT NOT NULL,
-    surface_ref      TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS terminal_refs (
+    session_id     TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    team_member_id TEXT NOT NULL,
+    refs           TEXT NOT NULL DEFAULT '{}',
     PRIMARY KEY (session_id, team_member_id)
 );
 

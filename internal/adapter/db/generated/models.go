@@ -82,13 +82,6 @@ type Session struct {
 	StoppedAt sql.NullInt64
 }
 
-type SessionSurface struct {
-	SessionID    string
-	TeamMemberID string
-	WorkspaceRef string
-	SurfaceRef   string
-}
-
 type SystemPrompt struct {
 	ID        string
 	Name      string
@@ -117,4 +110,10 @@ type TeamRelation struct {
 	FromTeamMemberID string
 	ToTeamMemberID   string
 	Type             string
+}
+
+type TerminalRef struct {
+	SessionID    string
+	TeamMemberID string
+	Refs         string
 }
