@@ -2,7 +2,9 @@ package terminal
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -22,19 +24,21 @@ type RefStore interface {
 // TmuxTerminal manages agent terminals using tmux.
 // One tmux session per clier session, one window per member.
 type TmuxTerminal struct {
-	refs  RefStore
-	runFn func(args ...string) (string, error)
+	refs     RefStore
+	runFn    func(args ...string) (string, error)
+	attachFn func(sess string) error
 }
 
 func NewTmuxTerminal(refs RefStore) *TmuxTerminal {
 	t := &TmuxTerminal{refs: refs}
 	t.runFn = t.defaultRun
+	t.attachFn = t.defaultAttach
 	return t
 }
 
 func (t *TmuxTerminal) Launch(sessionID, sessionName string, members []domain.MemberPlan) error {
 	if len(members) == 0 {
-		return fmt.Errorf("no members to launch")
+		return errors.New("no members to launch")
 	}
 
 	sess := tmuxSessionName(sessionID)
@@ -43,6 +47,10 @@ func (t *TmuxTerminal) Launch(sessionID, sessionName string, members []domain.Me
 	if _, err := t.runFn("new-session", "-d", "-s", sess); err != nil {
 		return fmt.Errorf("create session: %w", err)
 	}
+
+	// Force base-index 0 on this session so window indices are predictable,
+	// regardless of user's global tmux config.
+	_, _ = t.runFn("set-option", "-t", sess, "base-index", "0")
 
 	success := false
 	defer func() {
@@ -55,7 +63,6 @@ func (t *TmuxTerminal) Launch(sessionID, sessionName string, members []domain.Me
 	for i, m := range members {
 		win := strconv.Itoa(i)
 
-		// First window (index 0) already exists; create new windows for the rest.
 		if i > 0 {
 			if _, err := t.runFn("new-window", "-t", sess); err != nil {
 				return fmt.Errorf("create window: %w", err)
@@ -72,8 +79,10 @@ func (t *TmuxTerminal) Launch(sessionID, sessionName string, members []domain.Me
 	}
 
 	// Register session-closed hook for reverse sync.
-	_, _ = t.runFn("set-hook", "-t", sess, "session-closed",
-		fmt.Sprintf("run-shell 'clier session stop %s'", sessionID))
+	if _, err := t.runFn("set-hook", "-t", sess, "session-closed",
+		fmt.Sprintf("run-shell 'clier session stop %s'", sessionID)); err != nil {
+		return fmt.Errorf("set session-closed hook: %w", err)
+	}
 
 	success = true
 	return nil
@@ -115,7 +124,7 @@ func (t *TmuxTerminal) Attach(sessionID string, memberID *string) error {
 		}
 	}
 
-	return t.attachSession(sess)
+	return t.attachFn(sess)
 }
 
 // exitAllWindows sends /exit to every window so agents shut down gracefully.
@@ -172,11 +181,11 @@ func (t *TmuxTerminal) sendKeys(sess, win, text string) error {
 	return err
 }
 
-func (t *TmuxTerminal) attachSession(sess string) error {
+func (t *TmuxTerminal) defaultAttach(sess string) error {
 	cmd := exec.Command("tmux", "attach-session", "-t", sess)
-	cmd.Stdin = nil // inherit from parent
-	cmd.Stdout = nil
-	cmd.Stderr = nil
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 

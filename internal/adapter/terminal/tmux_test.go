@@ -90,6 +90,10 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	if !hasCall(runner.calls, "new-session") {
 		t.Error("expected new-session call")
 	}
+	// Verify base-index set to 0
+	if !hasCall(runner.calls, "set-option") {
+		t.Error("expected set-option call for base-index")
+	}
 	// Verify second window created for second member
 	if !hasCall(runner.calls, "new-window") {
 		t.Error("expected new-window call for second member")
@@ -187,6 +191,55 @@ func TestTmuxTerminal_Terminate_AlreadyDead(t *testing.T) {
 	if err == nil {
 		t.Error("expected refs to be deleted even when tmux session is dead")
 	}
+}
+
+func TestTmuxTerminal_Attach(t *testing.T) {
+	store := newFakeRefStore()
+	_ = store.SaveRefs(context.Background(), "s-1", "m-1", map[string]string{
+		"session": "clier-s-1", "window": "1",
+	})
+	_ = store.SaveRefs(context.Background(), "s-1", "m-2", map[string]string{
+		"session": "clier-s-1", "window": "2",
+	})
+
+	t.Run("session not found", func(t *testing.T) {
+		runner := &fakeRunner{}
+		tm := &TmuxTerminal{refs: store, runFn: runner.run}
+		err := tm.Attach("unknown", nil)
+		if err == nil {
+			t.Fatal("expected error for unknown session")
+		}
+	})
+
+	t.Run("with member selects window", func(t *testing.T) {
+		runner := &fakeRunner{}
+		// Override attachSession to avoid actual exec
+		tm := &TmuxTerminal{refs: store, runFn: runner.run, attachFn: func(string) error { return nil }}
+		memberID := "m-2"
+		if err := tm.Attach("s-1", &memberID); err != nil {
+			t.Fatalf("Attach: %v", err)
+		}
+		if !hasCall(runner.calls, "select-window") {
+			t.Error("expected select-window call")
+		}
+		// Verify correct window targeted
+		for _, c := range runner.calls {
+			if strings.Contains(c, "select-window") && !strings.Contains(c, ":2") {
+				t.Errorf("select-window should target window 2, got: %s", c)
+			}
+		}
+	})
+
+	t.Run("without member skips select-window", func(t *testing.T) {
+		runner := &fakeRunner{}
+		tm := &TmuxTerminal{refs: store, runFn: runner.run, attachFn: func(string) error { return nil }}
+		if err := tm.Attach("s-1", nil); err != nil {
+			t.Fatalf("Attach: %v", err)
+		}
+		if hasCall(runner.calls, "select-window") {
+			t.Error("select-window should not be called without member")
+		}
+	})
 }
 
 func hasCall(calls []string, substr string) bool {
