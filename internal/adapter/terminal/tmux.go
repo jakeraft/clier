@@ -134,7 +134,7 @@ func (t *TmuxTerminal) exitAllWindows(sess string) {
 	if err != nil {
 		return
 	}
-	for _, win := range strings.Split(strings.TrimSpace(out), "\n") {
+	for win := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
 		win = strings.TrimSpace(win)
 		if win != "" {
 			_ = t.sendKeys(sess, win, "/exit")
