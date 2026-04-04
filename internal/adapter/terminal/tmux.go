@@ -188,6 +188,10 @@ func (t *TmuxTerminal) ensureSessionClosedHook() error {
 
 func (t *TmuxTerminal) sendKeys(sess, win, text string) error {
 	target := sess + ":" + win
+	// Exit copy-mode if active, so send-keys -l goes to the terminal
+	// rather than being intercepted by copy-mode-vi key bindings.
+	// Safe no-op when the pane is not in copy-mode.
+	_, _ = t.runFn("copy-mode", "-q", "-t", target)
 	// Send text literally (-l) to avoid tmux interpreting special characters,
 	// then send Enter as a key press separately.
 	if _, err := t.runFn("send-keys", "-l", "-t", target, text); err != nil {

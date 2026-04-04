@@ -131,14 +131,17 @@ func TestTmuxTerminal_Send(t *testing.T) {
 	if err := tm.Send("s-1", "m-1", "do the work"); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
-	if len(runner.calls) != 2 {
-		t.Fatalf("expected 2 calls (literal text + Enter), got %d: %v", len(runner.calls), runner.calls)
+	if len(runner.calls) != 3 {
+		t.Fatalf("expected 3 calls (copy-mode -q + literal text + Enter), got %d: %v", len(runner.calls), runner.calls)
 	}
-	if !strings.Contains(runner.calls[0], "-l") || !strings.Contains(runner.calls[0], "do the work") {
-		t.Errorf("first call should be literal send-keys, got: %s", runner.calls[0])
+	if !strings.Contains(runner.calls[0], "copy-mode") || !strings.Contains(runner.calls[0], "-q") {
+		t.Errorf("first call should exit copy-mode, got: %s", runner.calls[0])
 	}
-	if !strings.Contains(runner.calls[1], "Enter") {
-		t.Errorf("second call should send Enter, got: %s", runner.calls[1])
+	if !strings.Contains(runner.calls[1], "-l") || !strings.Contains(runner.calls[1], "do the work") {
+		t.Errorf("second call should be literal send-keys, got: %s", runner.calls[1])
+	}
+	if !strings.Contains(runner.calls[2], "Enter") {
+		t.Errorf("third call should send Enter, got: %s", runner.calls[2])
 	}
 }
 

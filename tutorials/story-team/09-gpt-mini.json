@@ -3,7 +3,7 @@
   "data": {
     "id": "d97eb595-0ebe-40e3-81bd-3c871fe74db6",
     "name": "claude-haiku-2",
-    "model": "claude-haiku-4-5-20251001",
+    "model": "claude-sonnet-4-6",
     "binary": "claude",
     "system_args": [
       "--dangerously-skip-permissions"

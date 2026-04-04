@@ -3,6 +3,8 @@ package session
 import (
 	"context"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/domain"
@@ -106,7 +108,8 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 	return session, nil
 }
 
-// Stop terminates a running execution, cleans up workspace, and updates status.
+// Stop terminates a running execution, updates status, and cleans up workspace.
+// Workspace cleanup is best-effort — status is updated even if cleanup fails.
 func (s *Service) Stop(ctx context.Context, sessionID string) error {
 	session, err := s.store.GetSession(ctx, sessionID)
 	if err != nil {
@@ -117,13 +120,16 @@ func (s *Service) Stop(ctx context.Context, sessionID string) error {
 		return fmt.Errorf("terminate terminal: %w", err)
 	}
 
-	if err := s.workspace.Cleanup(sessionID); err != nil {
-		return fmt.Errorf("cleanup workspace: %w", err)
-	}
-
 	session.Stop()
 	if err := s.store.UpdateSessionStatus(ctx, &session); err != nil {
 		return fmt.Errorf("update session status: %w", err)
+	}
+
+	// Allow OS to release file handles from terminated processes.
+	time.Sleep(2 * time.Second)
+
+	if err := s.workspace.Cleanup(sessionID); err != nil {
+		log.Printf("cleanup workspace %s: %v", sessionID, err)
 	}
 
 	return nil
