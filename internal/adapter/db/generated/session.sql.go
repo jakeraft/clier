@@ -11,14 +11,15 @@ import (
 )
 
 const createSession = `-- name: CreateSession :execresult
-INSERT INTO sessions (id, team_id, status, created_at, stopped_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO sessions (id, team_id, status, plan, created_at, stopped_at)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateSessionParams struct {
 	ID        string
 	TeamID    string
 	Status    string
+	Plan      string
 	CreatedAt int64
 	StoppedAt sql.NullInt64
 }
@@ -28,6 +29,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (s
 		arg.ID,
 		arg.TeamID,
 		arg.Status,
+		arg.Plan,
 		arg.CreatedAt,
 		arg.StoppedAt,
 	)
@@ -42,7 +44,7 @@ func (q *Queries) DeleteSession(ctx context.Context, id string) (sql.Result, err
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, team_id, status, created_at, stopped_at FROM sessions WHERE id = ?
+SELECT id, team_id, status, "plan", created_at, stopped_at FROM sessions WHERE id = ?
 `
 
 func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
@@ -52,6 +54,7 @@ func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
 		&i.ID,
 		&i.TeamID,
 		&i.Status,
+		&i.Plan,
 		&i.CreatedAt,
 		&i.StoppedAt,
 	)
@@ -59,7 +62,7 @@ func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
 }
 
 const listSessions = `-- name: ListSessions :many
-SELECT id, team_id, status, created_at, stopped_at FROM sessions ORDER BY created_at
+SELECT id, team_id, status, "plan", created_at, stopped_at FROM sessions ORDER BY created_at
 `
 
 func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
@@ -75,6 +78,7 @@ func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {
 			&i.ID,
 			&i.TeamID,
 			&i.Status,
+			&i.Plan,
 			&i.CreatedAt,
 			&i.StoppedAt,
 		); err != nil {

@@ -68,17 +68,11 @@ func (s *Store) CreateTeam(ctx context.Context, t *domain.Team) error {
 	}
 	defer tx.Rollback()
 
-	planJSON, err := json.Marshal(t.Plan)
-	if err != nil {
-		return fmt.Errorf("marshal plan: %w", err)
-	}
-
 	qtx := generated.New(tx)
 	if _, err := qtx.CreateTeam(ctx, generated.CreateTeamParams{
 		ID:               t.ID,
 		Name:             t.Name,
 		RootTeamMemberID: t.RootTeamMemberID,
-		Plan:             string(planJSON),
 		CreatedAt:        t.CreatedAt.Unix(),
 		UpdatedAt:        t.UpdatedAt.Unix(),
 	}); err != nil {
@@ -122,20 +116,12 @@ func (s *Store) GetTeam(ctx context.Context, id string) (domain.Team, error) {
 	for _, r := range relRows {
 		relations = append(relations, domain.Relation{From: r.FromTeamMemberID, To: r.ToTeamMemberID, Type: domain.RelationType(r.Type)})
 	}
-	var plan []domain.MemberPlan
-	if err := json.Unmarshal([]byte(row.Plan), &plan); err != nil {
-		return domain.Team{}, fmt.Errorf("unmarshal plan: %w", err)
-	}
-	if plan == nil {
-		plan = []domain.MemberPlan{}
-	}
 	return domain.Team{
 		ID:               row.ID,
 		Name:             row.Name,
 		RootTeamMemberID: row.RootTeamMemberID,
 		TeamMembers:      teamMembers,
 		Relations:        relations,
-		Plan:             plan,
 		CreatedAt:        time.Unix(row.CreatedAt, 0),
 		UpdatedAt:        time.Unix(row.UpdatedAt, 0),
 	}, nil
@@ -756,47 +742,46 @@ func (s *Store) DeleteGitRepo(ctx context.Context, id string) error {
 	return nil
 }
 
-// UpdateTeamPlan updates only the plan JSON on a team.
-func (s *Store) UpdateTeamPlan(ctx context.Context, t *domain.Team) error {
-	planJSON, err := json.Marshal(t.Plan)
-	if err != nil {
-		return fmt.Errorf("marshal plan: %w", err)
-	}
-	_, err = s.queries.UpdateTeamPlan(ctx, generated.UpdateTeamPlanParams{
-		Plan:      string(planJSON),
-		UpdatedAt: t.UpdatedAt.Unix(),
-		ID:        t.ID,
-	})
-	return err
-}
-
 // Session
 
-func unmarshalSession(row generated.Session) domain.Session {
+func unmarshalSession(row generated.Session) (domain.Session, error) {
+	var plan []domain.MemberPlan
+	if err := json.Unmarshal([]byte(row.Plan), &plan); err != nil {
+		return domain.Session{}, fmt.Errorf("unmarshal session plan: %w", err)
+	}
+	if plan == nil {
+		plan = []domain.MemberPlan{}
+	}
 	s := domain.Session{
 		ID:        row.ID,
 		TeamID:    row.TeamID,
 		Status:    domain.SessionStatus(row.Status),
+		Plan:      plan,
 		CreatedAt: time.Unix(row.CreatedAt, 0),
 	}
 	if row.StoppedAt.Valid {
 		t := time.Unix(row.StoppedAt.Int64, 0)
 		s.StoppedAt = &t
 	}
-	return s
+	return s, nil
 }
 
 func (s *Store) CreateSession(ctx context.Context, session *domain.Session) error {
+	planJSON, err := json.Marshal(session.Plan)
+	if err != nil {
+		return fmt.Errorf("marshal session plan: %w", err)
+	}
 	params := generated.CreateSessionParams{
 		ID:        session.ID,
 		TeamID:    session.TeamID,
 		Status:    string(session.Status),
+		Plan:      string(planJSON),
 		CreatedAt: session.CreatedAt.Unix(),
 	}
 	if session.StoppedAt != nil {
 		params.StoppedAt = sql.NullInt64{Int64: session.StoppedAt.Unix(), Valid: true}
 	}
-	_, err := s.queries.CreateSession(ctx, params)
+	_, err = s.queries.CreateSession(ctx, params)
 	return err
 }
 
@@ -805,7 +790,7 @@ func (s *Store) GetSession(ctx context.Context, id string) (domain.Session, erro
 	if err != nil {
 		return domain.Session{}, err
 	}
-	return unmarshalSession(row), nil
+	return unmarshalSession(row)
 }
 
 func (s *Store) ListSessions(ctx context.Context) ([]domain.Session, error) {
@@ -815,7 +800,11 @@ func (s *Store) ListSessions(ctx context.Context) ([]domain.Session, error) {
 	}
 	sessions := make([]domain.Session, 0, len(rows))
 	for _, row := range rows {
-		sessions = append(sessions, unmarshalSession(row))
+		sess, err := unmarshalSession(row)
+		if err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, sess)
 	}
 	return sessions, nil
 }

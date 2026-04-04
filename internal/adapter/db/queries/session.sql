@@ -1,6 +1,6 @@
 -- name: CreateSession :execresult
-INSERT INTO sessions (id, team_id, status, created_at, stopped_at)
-VALUES (?, ?, ?, ?, ?);
+INSERT INTO sessions (id, team_id, status, plan, created_at, stopped_at)
+VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: GetSession :one
 SELECT * FROM sessions WHERE id = ?;

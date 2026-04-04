@@ -8,14 +8,23 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-// SessionStore persists Session lifecycle state.
+// SessionStore persists Session lifecycle state and provides read access
+// to team/member specs needed for plan building.
 type SessionStore interface {
+	// Session CRUD
 	CreateSession(ctx context.Context, session *domain.Session) error
 	GetSession(ctx context.Context, id string) (domain.Session, error)
 	UpdateSessionStatus(ctx context.Context, session *domain.Session) error
-	GetTeam(ctx context.Context, id string) (domain.Team, error)
 	CreateMessage(ctx context.Context, msg *domain.Message) error
 	CreateLog(ctx context.Context, l *domain.Log) error
+
+	// Team and member spec reads (used by plan building)
+	GetTeam(ctx context.Context, id string) (domain.Team, error)
+	GetMember(ctx context.Context, id string) (domain.Member, error)
+	GetCliProfile(ctx context.Context, id string) (domain.CliProfile, error)
+	GetSystemPrompt(ctx context.Context, id string) (domain.SystemPrompt, error)
+	GetEnv(ctx context.Context, id string) (domain.Env, error)
+	GetGitRepo(ctx context.Context, id string) (domain.GitRepo, error)
 }
 
 // Terminal launches and terminates member processes.
@@ -38,7 +47,8 @@ type AuthChecker interface {
 	ReadAuthFile(binary domain.CliBinary) ([]byte, error)
 }
 
-// Service orchestrates session execution: prepare workspace, launch terminals, deliver messages.
+// Service orchestrates session execution: build plan, prepare workspace,
+// launch terminals, deliver messages.
 type Service struct {
 	store     SessionStore
 	terminal  Terminal
@@ -52,14 +62,19 @@ func New(store SessionStore, term Terminal, ws Workspace, base, homeDir string) 
 	return &Service{store: store, terminal: term, workspace: ws, base: base, homeDir: homeDir}
 }
 
-// Start resolves placeholders from the team's plan, prepares the workspace,
-// and launches terminals for each member.
+// Start builds a fresh plan from the team's current state, resolves placeholders,
+// prepares the workspace, and launches terminals for each member.
 func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker) (*domain.Session, error) {
+	plan, err := s.buildPlan(ctx, team)
+	if err != nil {
+		return nil, fmt.Errorf("build plan: %w", err)
+	}
+
 	claudeToken, codexAuth := resolveAuth(auth)
 
 	sessionID := uuid.NewString()
-	members := make([]domain.MemberPlan, 0, len(team.Plan))
-	for _, m := range team.Plan {
+	members := make([]domain.MemberPlan, 0, len(plan))
+	for _, m := range plan {
 		members = append(members, resolvePlaceholders(m, s.base, s.homeDir, sessionID, claudeToken, string(codexAuth)))
 	}
 
@@ -67,6 +82,7 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 	if err != nil {
 		return nil, fmt.Errorf("new session: %w", err)
 	}
+	session.Plan = plan
 
 	success := false
 	defer func() {
@@ -122,15 +138,10 @@ func (s *Service) Send(ctx context.Context, sessionID, fromTeamMemberID, toTeamM
 		return fmt.Errorf("get session: %w", err)
 	}
 
-	team, err := s.store.GetTeam(ctx, session.TeamID)
-	if err != nil {
-		return fmt.Errorf("get team: %w", err)
-	}
-
 	text := content
 	if fromTeamMemberID != "" {
 		senderName := fromTeamMemberID
-		for _, m := range team.Plan {
+		for _, m := range session.Plan {
 			if m.TeamMemberID == fromTeamMemberID {
 				senderName = m.MemberName
 				break

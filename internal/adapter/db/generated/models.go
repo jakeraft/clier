@@ -77,6 +77,7 @@ type Session struct {
 	ID        string
 	TeamID    string
 	Status    string
+	Plan      string
 	CreatedAt int64
 	StoppedAt sql.NullInt64
 }
@@ -100,7 +101,6 @@ type Team struct {
 	ID               string
 	Name             string
 	RootTeamMemberID string
-	Plan             string
 	CreatedAt        int64
 	UpdatedAt        int64
 }

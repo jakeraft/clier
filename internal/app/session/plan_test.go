@@ -1,9 +1,10 @@
-package team
+package session
 
 import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/adapter/db"
 	"github.com/jakeraft/clier/internal/domain"
 )
@@ -19,8 +20,8 @@ func setupTestStore(t *testing.T) *db.Store {
 }
 
 // createMinimalTeam creates a team with 2 team members (alice=root, bob=worker)
-// and a leader relation. Returns (teamID, rootTeamMemberID, workerTeamMemberID).
-func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (string, string, string) {
+// and a leader relation. Returns the team and both TeamMember IDs.
+func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (domain.Team, string, string) {
 	t.Helper()
 
 	sp, _ := domain.NewSystemPrompt("test-prompt", "do things")
@@ -54,7 +55,7 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (stri
 		t.Fatalf("CreateTeam: %v", err)
 	}
 
-	workerTM := domain.TeamMember{ID: generateID(), MemberID: worker.ID, Name: "bob"}
+	workerTM := domain.TeamMember{ID: uuid.NewString(), MemberID: worker.ID, Name: "bob"}
 	if err := store.AddTeamMember(ctx, team.ID, workerTM); err != nil {
 		t.Fatalf("AddTeamMember: %v", err)
 	}
@@ -63,30 +64,57 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (stri
 		t.Fatalf("AddTeamRelation: %v", err)
 	}
 
-	return team.ID, team.RootTeamMemberID, workerTM.ID
-}
-
-func TestService_ImportTeam(t *testing.T) {
-	ctx := context.Background()
-	store := setupTestStore(t)
-	teamID, _, _ := createMinimalTeam(t, ctx, store)
-
-	// Fetch the team and re-import it (upsert path).
-	svc := New(store)
-	team, err := store.GetTeam(ctx, teamID)
+	got, err := store.GetTeam(ctx, team.ID)
 	if err != nil {
 		t.Fatalf("GetTeam: %v", err)
 	}
+	return got, team.RootTeamMemberID, workerTM.ID
+}
 
-	if err := svc.ImportTeam(ctx, &team); err != nil {
-		t.Fatalf("ImportTeam: %v", err)
-	}
+func TestService_BuildPlan(t *testing.T) {
+	ctx := context.Background()
+	store := setupTestStore(t)
+	team, rootTMID, workerTMID := createMinimalTeam(t, ctx, store)
 
-	got, err := store.GetTeam(ctx, teamID)
+	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "/tmp/base", "/home/user")
+
+	plan, err := svc.buildPlan(ctx, team)
 	if err != nil {
-		t.Fatalf("GetTeam after import: %v", err)
+		t.Fatalf("buildPlan: %v", err)
 	}
-	if got.Name != team.Name {
-		t.Errorf("Name = %q, want %q", got.Name, team.Name)
+
+	if len(plan) != 2 {
+		t.Fatalf("plan = %d members, want 2", len(plan))
+	}
+
+	// Verify both team members are in the plan.
+	planByTMID := make(map[string]domain.MemberPlan)
+	for _, p := range plan {
+		planByTMID[p.TeamMemberID] = p
+	}
+
+	rootPlan, ok := planByTMID[rootTMID]
+	if !ok {
+		t.Fatal("root team member not found in plan")
+	}
+	if rootPlan.MemberName != "alice" {
+		t.Errorf("root MemberName = %q, want alice", rootPlan.MemberName)
+	}
+	if rootPlan.Terminal.Command == "" {
+		t.Error("root Terminal.Command is empty")
+	}
+	if rootPlan.Workspace.GitRepo == nil {
+		t.Error("root should have git repo")
+	}
+
+	workerPlan, ok := planByTMID[workerTMID]
+	if !ok {
+		t.Fatal("worker team member not found in plan")
+	}
+	if workerPlan.MemberName != "bob" {
+		t.Errorf("worker MemberName = %q, want bob", workerPlan.MemberName)
+	}
+	if workerPlan.Workspace.GitRepo != nil {
+		t.Error("worker should not have git repo")
 	}
 }

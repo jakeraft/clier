@@ -1,4 +1,4 @@
-package team
+package session
 
 import (
 	"encoding/json"
@@ -57,4 +57,3 @@ func buildCodexFiles(dotConfig domain.DotConfig, workDir, memberspacePlaceholder
 		{Path: memberspacePlaceholder + "/.codex/config.toml", Content: string(data)},
 	}, nil
 }
-

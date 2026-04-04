@@ -1,4 +1,4 @@
-package team
+package session
 
 import "github.com/jakeraft/clier/internal/domain"
 

@@ -51,15 +51,14 @@ func (q *Queries) AddTeamRelation(ctx context.Context, arg AddTeamRelationParams
 }
 
 const createTeam = `-- name: CreateTeam :execresult
-INSERT INTO teams (id, name, root_team_member_id, plan, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO teams (id, name, root_team_member_id, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?)
 `
 
 type CreateTeamParams struct {
 	ID               string
 	Name             string
 	RootTeamMemberID string
-	Plan             string
 	CreatedAt        int64
 	UpdatedAt        int64
 }
@@ -69,7 +68,6 @@ func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (sql.Res
 		arg.ID,
 		arg.Name,
 		arg.RootTeamMemberID,
-		arg.Plan,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -100,7 +98,7 @@ func (q *Queries) DeleteTeamRelations(ctx context.Context, teamID string) (sql.R
 }
 
 const getTeam = `-- name: GetTeam :one
-SELECT id, name, root_team_member_id, "plan", created_at, updated_at FROM teams WHERE id = ?
+SELECT id, name, root_team_member_id, created_at, updated_at FROM teams WHERE id = ?
 `
 
 func (q *Queries) GetTeam(ctx context.Context, id string) (Team, error) {
@@ -110,7 +108,6 @@ func (q *Queries) GetTeam(ctx context.Context, id string) (Team, error) {
 		&i.ID,
 		&i.Name,
 		&i.RootTeamMemberID,
-		&i.Plan,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -184,7 +181,7 @@ func (q *Queries) ListTeamRelations(ctx context.Context, teamID string) ([]ListT
 }
 
 const listTeams = `-- name: ListTeams :many
-SELECT id, name, root_team_member_id, "plan", created_at, updated_at FROM teams ORDER BY created_at
+SELECT id, name, root_team_member_id, created_at, updated_at FROM teams ORDER BY created_at
 `
 
 func (q *Queries) ListTeams(ctx context.Context) ([]Team, error) {
@@ -200,7 +197,6 @@ func (q *Queries) ListTeams(ctx context.Context) ([]Team, error) {
 			&i.ID,
 			&i.Name,
 			&i.RootTeamMemberID,
-			&i.Plan,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -277,18 +273,4 @@ func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (sql.Res
 		arg.UpdatedAt,
 		arg.ID,
 	)
-}
-
-const updateTeamPlan = `-- name: UpdateTeamPlan :execresult
-UPDATE teams SET plan = ?, updated_at = ? WHERE id = ?
-`
-
-type UpdateTeamPlanParams struct {
-	Plan      string
-	UpdatedAt int64
-	ID        string
-}
-
-func (q *Queries) UpdateTeamPlan(ctx context.Context, arg UpdateTeamPlanParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, updateTeamPlan, arg.Plan, arg.UpdatedAt, arg.ID)
 }

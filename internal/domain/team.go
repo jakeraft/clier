@@ -44,14 +44,13 @@ type TeamMember struct {
 }
 
 type Team struct {
-	ID               string              `json:"id"`
-	Name             string              `json:"name"`
-	RootTeamMemberID string              `json:"root_team_member_id"`
-	TeamMembers      []TeamMember        `json:"team_members"`
-	Relations        []Relation          `json:"relations"`
-	Plan             []MemberPlan `json:"plan"`
-	CreatedAt        time.Time           `json:"created_at"`
-	UpdatedAt        time.Time           `json:"updated_at"`
+	ID               string       `json:"id"`
+	Name             string       `json:"name"`
+	RootTeamMemberID string       `json:"root_team_member_id"`
+	TeamMembers      []TeamMember `json:"team_members"`
+	Relations        []Relation   `json:"relations"`
+	CreatedAt        time.Time    `json:"created_at"`
+	UpdatedAt        time.Time    `json:"updated_at"`
 }
 
 func NewTeam(name, memberID, memberName string) (*Team, error) {
@@ -312,51 +311,4 @@ func (t *Team) teamMemberIndex(teamMemberID string) int {
 	return -1
 }
 
-// MemberPlan is a fully-resolved execution plan for a single team member.
-// Binary, Model, Envs are NOT stored — they are already resolved into Command.
-// Relations are NOT stored — they are in Team.Relations and baked into the prompt.
-type MemberPlan struct {
-	TeamMemberID string        `json:"team_member_id"`
-	MemberName   string        `json:"member_name"`
-	Terminal     TerminalPlan  `json:"terminal"`
-	Workspace    WorkspacePlan `json:"workspace"`
-}
-
-// TerminalPlan holds the shell command that launches the member agent.
-type TerminalPlan struct {
-	Command string `json:"command"`
-}
-
-// WorkspacePlan holds the filesystem setup for a member's isolated environment.
-type WorkspacePlan struct {
-	Memberspace string      `json:"memberspace"`
-	Files       []FileEntry `json:"files"`
-	GitRepo     *GitRepoRef `json:"git_repo"`
-}
-
-type GitRepoRef struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
-// FileEntry is a resolved config file to write to a member's workspace.
-type FileEntry struct {
-	Path    string `json:"path"`    // relative to memberspace
-	Content string `json:"content"`
-}
-
-// PromptSnapshot is a resolved system prompt used by plan build logic.
-type PromptSnapshot struct {
-	ID     string `json:"id,omitempty"`
-	Name   string `json:"name"`
-	Prompt string `json:"prompt"`
-}
-
-// EnvSnapshot is a resolved environment variable used by plan build logic.
-type EnvSnapshot struct {
-	ID    string `json:"id,omitempty"`
-	Name  string `json:"name"`
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
 
