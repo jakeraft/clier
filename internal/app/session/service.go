@@ -13,8 +13,8 @@ type SessionStore interface {
 	CreateSession(ctx context.Context, session *domain.Session) error
 	GetSession(ctx context.Context, id string) (domain.Session, error)
 	UpdateSessionStatus(ctx context.Context, session *domain.Session) error
-	GetTeam(ctx context.Context, id string) (domain.Team, error)
 	CreateMessage(ctx context.Context, msg *domain.Message) error
+	CreateLog(ctx context.Context, l *domain.Log) error
 }
 
 // Terminal launches and terminates member processes.
@@ -113,28 +113,10 @@ func (s *Service) Stop(ctx context.Context, sessionID string) error {
 	return nil
 }
 
-// Send validates the relation, persists the message, and delivers it to the recipient's terminal.
+// Send persists the message and delivers it to the recipient's terminal.
 func (s *Service) Send(ctx context.Context, sessionID, fromTeamMemberID, toTeamMemberID, content string) error {
-	session, err := s.store.GetSession(ctx, sessionID)
-	if err != nil {
+	if _, err := s.store.GetSession(ctx, sessionID); err != nil {
 		return fmt.Errorf("get session: %w", err)
-	}
-
-	team, err := s.store.GetTeam(ctx, session.TeamID)
-	if err != nil {
-		return fmt.Errorf("get team: %w", err)
-	}
-
-	if err := validateDelivery(team, fromTeamMemberID, toTeamMemberID); err != nil {
-		return err
-	}
-
-	senderName := "user"
-	for _, m := range team.Plan {
-		if m.TeamMemberID == fromTeamMemberID {
-			senderName = m.MemberName
-			break
-		}
 	}
 
 	msg, err := domain.NewMessage(sessionID, fromTeamMemberID, toTeamMemberID, content)
@@ -145,8 +127,24 @@ func (s *Service) Send(ctx context.Context, sessionID, fromTeamMemberID, toTeamM
 		return fmt.Errorf("save message: %w", err)
 	}
 
-	text := fmt.Sprintf("[Message from %s] %s", senderName, content)
+	text := fmt.Sprintf("[Message from %s] %s", fromTeamMemberID, content)
 	return s.terminal.Send(sessionID, toTeamMemberID, text)
+}
+
+// Log persists a self-recorded entry by a team member.
+func (s *Service) Log(ctx context.Context, sessionID, teamMemberID, content string) error {
+	if _, err := s.store.GetSession(ctx, sessionID); err != nil {
+		return fmt.Errorf("get session: %w", err)
+	}
+
+	l, err := domain.NewLog(sessionID, teamMemberID, content)
+	if err != nil {
+		return fmt.Errorf("new log: %w", err)
+	}
+	if err := s.store.CreateLog(ctx, l); err != nil {
+		return fmt.Errorf("save log: %w", err)
+	}
+	return nil
 }
 
 // resolveAuth tries to read auth credentials for all known CLI binaries.

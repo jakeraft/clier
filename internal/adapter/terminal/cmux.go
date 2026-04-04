@@ -19,6 +19,9 @@ type SurfaceStore interface {
 	DeleteSessionSurfaces(ctx context.Context, sessionID string) error
 }
 
+// callerMemberID is the reserved member ID for the human caller who started the session.
+const callerMemberID = "00000000-0000-0000-0000-000000000000"
+
 type CmuxTerminal struct {
 	binary   string
 	surfaces SurfaceStore
@@ -124,7 +127,7 @@ func (c *CmuxTerminal) getRefs(sessionID, memberID string) (wsRef, surfaceRef st
 }
 
 func (c *CmuxTerminal) getWorkspaceRef(sessionID string) (string, error) {
-	return c.surfaces.GetSessionWorkspaceRef(context.Background(), sessionID, domain.UserMemberID)
+	return c.surfaces.GetSessionWorkspaceRef(context.Background(), sessionID, callerMemberID)
 }
 
 func (c *CmuxTerminal) deleteSurfaces(sessionID string) error {
@@ -137,7 +140,7 @@ func (c *CmuxTerminal) saveCallerSurface(sessionID string) error {
 	if wsRef == "" || surfaceRef == "" {
 		return nil
 	}
-	return c.saveSurface(sessionID, domain.UserMemberID, wsRef, surfaceRef)
+	return c.saveSurface(sessionID, callerMemberID, wsRef, surfaceRef)
 }
 
 // cmux command helpers

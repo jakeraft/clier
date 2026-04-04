@@ -112,3 +112,50 @@ func TestMessage(t *testing.T) {
 		})
 	})
 }
+
+func TestLog(t *testing.T) {
+	t.Run("New", func(t *testing.T) {
+		t.Run("ValidInputs_GeneratesUUIDAndSetsFields", func(t *testing.T) {
+			l, err := domain.NewLog("session-1", "member-1", "task started")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if _, err := uuid.Parse(l.ID); err != nil {
+				t.Errorf("ID %q is not a valid UUID", l.ID)
+			}
+			if l.SessionID != "session-1" {
+				t.Errorf("SessionID = %q, want %q", l.SessionID, "session-1")
+			}
+			if l.TeamMemberID != "member-1" {
+				t.Errorf("TeamMemberID = %q, want %q", l.TeamMemberID, "member-1")
+			}
+			if l.Content != "task started" {
+				t.Errorf("Content = %q, want %q", l.Content, "task started")
+			}
+			if l.CreatedAt.IsZero() {
+				t.Error("CreatedAt is zero")
+			}
+		})
+
+		t.Run("EmptySessionID_ReturnsError", func(t *testing.T) {
+			_, err := domain.NewLog("", "member-1", "hello")
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+
+		t.Run("EmptyTeamMemberID_ReturnsError", func(t *testing.T) {
+			_, err := domain.NewLog("session-1", "", "hello")
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+
+		t.Run("EmptyContent_ReturnsError", func(t *testing.T) {
+			_, err := domain.NewLog("session-1", "member-1", "  ")
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+		})
+	})
+}

@@ -46,7 +46,7 @@ func buildClierPrompt(teamName, memberName string, relations domain.MemberRelati
 	b.WriteString("Keep each message substantive. Avoid short fragments like \"ok\" or \"hi\".\n\n")
 	writeSendCommands(&b, relations, nameByID)
 	if len(relations.Leaders) == 0 {
-		fmt.Fprintf(&b, "Send to user:\n```bash\nclier session send --to %s \"<message>\"\n```\n", domain.UserMemberID)
+		fmt.Fprintf(&b, "Send to user:\n```bash\nclier session send --to %s \"<message>\"\n```\n", "00000000-0000-0000-0000-000000000000")
 	}
 
 	// Operating Rules

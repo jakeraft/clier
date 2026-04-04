@@ -901,6 +901,37 @@ func (s *Store) ListMessagesBySessionAndMember(ctx context.Context, sessionID, t
 	return msgs, nil
 }
 
+// Log
+
+func (s *Store) CreateLog(ctx context.Context, l *domain.Log) error {
+	_, err := s.queries.CreateLog(ctx, generated.CreateLogParams{
+		ID:           l.ID,
+		SessionID:    l.SessionID,
+		TeamMemberID: l.TeamMemberID,
+		Content:      l.Content,
+		CreatedAt:    l.CreatedAt.Unix(),
+	})
+	return err
+}
+
+func (s *Store) ListLogsBySessionID(ctx context.Context, sessionID string) ([]domain.Log, error) {
+	rows, err := s.queries.ListLogsBySessionID(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	logs := make([]domain.Log, 0, len(rows))
+	for _, row := range rows {
+		logs = append(logs, domain.Log{
+			ID:           row.ID,
+			SessionID:    row.SessionID,
+			TeamMemberID: row.TeamMemberID,
+			Content:      row.Content,
+			CreatedAt:    time.Unix(row.CreatedAt, 0),
+		})
+	}
+	return logs, nil
+}
+
 // SessionSurface (infra state for terminal adapter)
 
 func (s *Store) SaveSessionSurface(ctx context.Context, sessionID, teamMemberID, workspaceRef, surfaceRef string) error {

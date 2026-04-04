@@ -24,6 +24,7 @@ func newSessionCmd() *cobra.Command {
 	cmd.AddCommand(newSessionStopCmd())
 	cmd.AddCommand(newSessionListCmd())
 	cmd.AddCommand(newSessionSendCmd())
+	cmd.AddCommand(newSessionLogCmd())
 	return cmd
 }
 
@@ -156,6 +157,66 @@ func newSessionSendCmd() *cobra.Command {
 	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session ID (defaults to CLIER_SESSION_ID)")
 	cmd.Flags().StringVar(&toMemberID, "to", "", "Recipient member ID")
 	_ = cmd.MarkFlagRequired("to")
+	return cmd
+}
+
+func newSessionLogCmd() *cobra.Command {
+	var sessionFlag string
+
+	cmd := &cobra.Command{
+		Use:   "log [content]",
+		Short: "Record or view session logs",
+		Long:  "With content arg: record a log entry. Without: list session logs.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			if len(args) == 1 {
+				// Write mode: agent records a log
+				sessionID, memberID, err := resolveSessionContext(sessionFlag)
+				if err != nil {
+					return err
+				}
+
+				term := terminal.NewCmuxTerminal(store)
+				ws := workspace.New(cfg.Paths.Workspaces())
+				svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
+
+				if err := svc.Log(cmd.Context(), sessionID, memberID, args[0]); err != nil {
+					return err
+				}
+				return printJSON(map[string]string{
+					"status":  "logged",
+					"member":  memberID,
+					"session": sessionID,
+				})
+			}
+
+			// Read mode: user views logs
+			sessionID := sessionFlag
+			if sessionID == "" {
+				sessionID = os.Getenv("CLIER_SESSION_ID")
+			}
+			if sessionID == "" {
+				return errors.New("--session flag or CLIER_SESSION_ID must be set")
+			}
+
+			logs, err := store.ListLogsBySessionID(cmd.Context(), sessionID)
+			if err != nil {
+				return err
+			}
+			return printJSON(logs)
+		},
+	}
+	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session ID (defaults to CLIER_SESSION_ID)")
 	return cmd
 }
 
