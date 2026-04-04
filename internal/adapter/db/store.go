@@ -928,30 +928,46 @@ func (s *Store) ListLogsBySessionID(ctx context.Context, sessionID string) ([]do
 	return logs, nil
 }
 
-// SessionSurface (infra state for terminal adapter)
+// TerminalRefs (infra state for terminal adapter)
 
-func (s *Store) SaveSessionSurface(ctx context.Context, sessionID, teamMemberID, workspaceRef, surfaceRef string) error {
-	_, err := s.queries.SaveSessionSurface(ctx, generated.SaveSessionSurfaceParams{
-		SessionID: sessionID, TeamMemberID: teamMemberID, WorkspaceRef: workspaceRef, SurfaceRef: surfaceRef,
+func (s *Store) SaveRefs(ctx context.Context, sessionID, memberID string, refs map[string]string) error {
+	data, err := json.Marshal(refs)
+	if err != nil {
+		return fmt.Errorf("marshal refs: %w", err)
+	}
+	_, err = s.queries.SaveTerminalRefs(ctx, generated.SaveTerminalRefsParams{
+		SessionID: sessionID, TeamMemberID: memberID, Refs: string(data),
 	})
 	return err
 }
 
-func (s *Store) GetSessionSurface(ctx context.Context, sessionID, teamMemberID string) (workspaceRef, surfaceRef string, err error) {
-	row, err := s.queries.GetSessionSurface(ctx, generated.GetSessionSurfaceParams{
-		SessionID: sessionID, TeamMemberID: teamMemberID,
+func (s *Store) GetRefs(ctx context.Context, sessionID, memberID string) (map[string]string, error) {
+	raw, err := s.queries.GetTerminalRefs(ctx, generated.GetTerminalRefsParams{
+		SessionID: sessionID, TeamMemberID: memberID,
 	})
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
-	return row.WorkspaceRef, row.SurfaceRef, nil
+	var refs map[string]string
+	if err := json.Unmarshal([]byte(raw), &refs); err != nil {
+		return nil, fmt.Errorf("unmarshal refs: %w", err)
+	}
+	return refs, nil
 }
 
-func (s *Store) GetSessionWorkspaceRef(ctx context.Context, sessionID string) (string, error) {
-	return s.queries.GetSessionWorkspaceRef(ctx, sessionID)
+func (s *Store) GetSessionRefs(ctx context.Context, sessionID string) (map[string]string, error) {
+	raw, err := s.queries.GetSessionTerminalRefs(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	var refs map[string]string
+	if err := json.Unmarshal([]byte(raw), &refs); err != nil {
+		return nil, fmt.Errorf("unmarshal refs: %w", err)
+	}
+	return refs, nil
 }
 
-func (s *Store) DeleteSessionSurfaces(ctx context.Context, sessionID string) error {
-	_, err := s.queries.DeleteSessionSurfaces(ctx, sessionID)
+func (s *Store) DeleteRefs(ctx context.Context, sessionID string) error {
+	_, err := s.queries.DeleteTerminalRefs(ctx, sessionID)
 	return err
 }
