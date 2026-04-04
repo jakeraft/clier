@@ -21,14 +21,18 @@ func resolvePlaceholders(m domain.MemberPlan, base, homeDir, sessionID, claudeTo
 
 	m.Workspace.Memberspace = memberspace
 	m.Terminal.Command = replacer.Replace(m.Terminal.Command)
-	for i := range m.Workspace.Files {
-		m.Workspace.Files[i].Path = replacer.Replace(m.Workspace.Files[i].Path)
-		content := replacer.Replace(m.Workspace.Files[i].Content)
+
+	// Copy the slice to avoid mutating the original plan's shared backing array.
+	files := make([]domain.FileEntry, len(m.Workspace.Files))
+	for i, f := range m.Workspace.Files {
+		path := replacer.Replace(f.Path)
+		content := replacer.Replace(f.Content)
 		if homeDir != "" {
 			content = strings.ReplaceAll(content, "~/", homeDir+"/")
 		}
-		m.Workspace.Files[i].Content = content
+		files[i] = domain.FileEntry{Path: path, Content: content}
 	}
+	m.Workspace.Files = files
 
 	return m
 }

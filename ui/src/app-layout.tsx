@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { Moon, Sun, Users, User, BookOpen, Bot, FolderGit2, KeyRound } from "lucide-react";
+import { Moon, Sun, Users, Play, User, BookOpen, Bot, FolderGit2, KeyRound } from "lucide-react";
 import { typography, typographyIcon } from "@/lib/typography";
 import { cn } from "@/lib/utilities";
 import { flex, gap } from "@/lib/layout";
@@ -10,6 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useTheme } from "@/hooks/use-theme";
 
 const NAV_ITEMS = [
+  { to: "/sessions", label: "Session", icon: Play },
   { to: "/teams", label: "Team", icon: Users },
   { to: "/members", label: "Member", icon: User },
   { to: "/cli-profiles", label: "CLI", icon: Bot },
@@ -30,7 +31,7 @@ export function AppLayout() {
             variant="ghost"
             className={cn("shrink-0", gap[1], typography[1])}
             onClick={() => {
-              void navigate("/teams");
+              void navigate("/sessions");
             }}
           >
             <Logo />

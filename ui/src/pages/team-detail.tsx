@@ -1,9 +1,7 @@
 import { useParams } from "react-router";
-import { ClipboardList, User, FileText, Terminal, FolderOpen } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 import { api } from "@/api";
-import type { MemberPlanView } from "@/api";
 import { typography } from "@/lib/typography";
-import { cn } from "@/lib/utilities";
 import { EMPTY_DATA } from "@/components/empty-cell";
 import { EntityBadge } from "@/components/entity-badge";
 import { EmptyEntityBadge } from "@/components/empty-entity-badge";
@@ -66,47 +64,6 @@ export function TeamDetail() {
       </Section>
 
       <StructureSection {...structure} />
-
-      {team.plan.length > 0 &&
-        team.plan.map((member) => (
-          <PlanMemberSection key={member.teamMemberId} member={member} />
-        ))}
     </DetailLayout>
-  );
-}
-
-function PlanMemberSection({ member }: Readonly<{ member: MemberPlanView }>) {
-  return (
-    <Section icon={User} title={member.memberName}>
-        <Section icon={FolderOpen} title="Workspace">
-          <OverviewTable
-            rows={[
-              { label: "Memberspace", children: <span className={typography[5]}>{member.memberspace}</span> },
-              {
-                label: "GitRepo",
-                children: member.gitRepo ? (
-                  <span className={typography[5]}>{member.gitRepo.url}</span>
-                ) : (
-                  <span className={typography[6]}>-</span>
-                ),
-              },
-            ]}
-          />
-
-          {member.files.map((file) => (
-            <Section key={file.path} icon={FileText} title={file.path}>
-              <pre className={cn("rounded-base bg-muted/50 border p-3 whitespace-pre-wrap break-all", typography[5])}>
-                {file.content}
-              </pre>
-            </Section>
-          ))}
-        </Section>
-
-        <Section icon={Terminal} title="Terminal">
-          <pre className={cn("rounded-base bg-muted/50 border p-3 whitespace-pre-wrap break-all", typography[5])}>
-            {member.command}
-          </pre>
-        </Section>
-    </Section>
   );
 }

@@ -7,6 +7,8 @@ import { SystemPrompts } from "@/pages/system-prompts";
 import { SystemPromptDetail } from "@/pages/system-prompt-detail";
 import { Teams } from "@/pages/teams";
 import { TeamDetail } from "@/pages/team-detail";
+import { Sessions } from "@/pages/sessions";
+import { SessionDetail } from "@/pages/session-detail";
 import { CliProfiles } from "@/pages/cli-profiles";
 import { CliProfileDetail } from "@/pages/cli-profile-detail";
 import { Members } from "@/pages/members";
@@ -29,7 +31,7 @@ export default function App() {
         <HashRouter>
           <Routes>
             <Route element={<AppLayout />}>
-              <Route path="/" element={<Navigate to="/teams" replace />} />
+              <Route path="/" element={<Navigate to="/sessions" replace />} />
               <Route path="/system-prompts" element={<SystemPrompts />} />
               <Route path="/system-prompts/:id" element={<Keyed Component={SystemPromptDetail} />} />
               <Route path="/cli-profiles" element={<CliProfiles />} />
@@ -40,6 +42,8 @@ export default function App() {
               <Route path="/envs" element={<Envs />} />
               <Route path="/teams" element={<Teams />} />
               <Route path="/teams/:id" element={<Keyed Component={TeamDetail} />} />
+              <Route path="/sessions" element={<Sessions />} />
+              <Route path="/sessions/:id" element={<Keyed Component={SessionDetail} />} />
             </Route>
           </Routes>
         </HashRouter>

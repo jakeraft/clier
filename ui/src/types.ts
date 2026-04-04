@@ -5,6 +5,7 @@ export interface DashboardData {
   systemPrompts: SystemPromptView[];
   gitRepos: GitRepoView[];
   envs: EnvView[];
+  sessions: SessionView[];
 }
 
 export interface TeamMemberView {
@@ -20,7 +21,6 @@ export interface TeamView {
   teamMemberIds: string[];
   teamMembers: TeamMemberView[];
   relations: RelationView[];
-  plan: MemberPlanView[];
   rootMemberName: string;
   memberNames: string[];
   createdAt: string;
@@ -34,6 +34,37 @@ export interface MemberPlanView {
   command: string;
   gitRepo: { name: string; url: string } | null;
   files: { path: string; content: string }[];
+}
+
+export interface SessionView {
+  id: string;
+  name: string;
+  teamId: string;
+  teamName: string;
+  status: string;
+  plan: MemberPlanView[];
+  logs: LogView[];
+  messages: MessageView[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LogView {
+  id: string;
+  teamMemberId: string;
+  memberName: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface MessageView {
+  id: string;
+  fromTeamMemberId: string;
+  fromMemberName: string;
+  toTeamMemberId: string;
+  toMemberName: string;
+  content: string;
+  createdAt: string;
 }
 
 export interface RelationView {

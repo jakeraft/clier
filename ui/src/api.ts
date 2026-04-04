@@ -7,6 +7,9 @@ import type {
   SystemPromptView,
   GitRepoView,
   EnvView,
+  SessionView,
+  LogView,
+  MessageView,
 } from "@/types";
 
 declare global {
@@ -31,6 +34,9 @@ export type {
   MemberPlanView,
   TeamView,
   EnvView,
+  SessionView,
+  LogView,
+  MessageView,
 };
 
 export const api = {
@@ -123,6 +129,13 @@ export const api = {
     list: (): Promise<EnvView[]> => Promise.resolve(getData().envs),
     get: (id: string): Promise<EnvView> => {
       const item = findById(getData().envs, id);
+      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
+    },
+  },
+  sessions: {
+    list: (): Promise<SessionView[]> => Promise.resolve(getData().sessions),
+    get: (id: string): Promise<SessionView> => {
+      const item = findById(getData().sessions, id);
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },

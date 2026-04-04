@@ -1,8 +1,9 @@
-import { Users, User, Bot, BookOpen, FolderGit2, KeyRound, type LucideIcon } from "lucide-react";
-type Entity = "team" | "member" | "cli-profile" | "system-prompt" | "git-repo" | "env";
+import { Users, User, Bot, BookOpen, FolderGit2, KeyRound, Play, type LucideIcon } from "lucide-react";
+type Entity = "team" | "session" | "member" | "cli-profile" | "system-prompt" | "git-repo" | "env";
 
 const ENTITY_STYLE = new Map<Entity, string>([
   ["team", "bg-entity-team/10 text-entity-team hover:bg-entity-team/20 [a&]:hover:bg-entity-team/20"],
+  ["session", "bg-entity-session/10 text-entity-session hover:bg-entity-session/20 [a&]:hover:bg-entity-session/20"],
   ["member", "bg-entity-member/10 text-entity-member hover:bg-entity-member/20 [a&]:hover:bg-entity-member/20"],
   ["cli-profile", "bg-entity-model/10 text-entity-model hover:bg-entity-model/20 [a&]:hover:bg-entity-model/20"],
   [
@@ -18,6 +19,7 @@ const ENTITY_STYLE = new Map<Entity, string>([
 
 const ENTITY_ICON = new Map<Entity, LucideIcon>([
   ["team", Users],
+  ["session", Play],
   ["member", User],
   ["cli-profile", Bot],
   ["system-prompt", BookOpen],
@@ -27,6 +29,7 @@ const ENTITY_ICON = new Map<Entity, LucideIcon>([
 
 const SEGMENT_TO_ENTITY = new Map<string, Entity>([
   ["teams", "team"],
+  ["sessions", "session"],
   ["members", "member"],
   ["cli-profiles", "cli-profile"],
   ["system-prompts", "system-prompt"],
@@ -35,7 +38,7 @@ const SEGMENT_TO_ENTITY = new Map<string, Entity>([
 ]);
 
 function entityFromPath(path: string): Entity | undefined {
-  const match = /^\/(teams|members|cli-profiles|system-prompts|git-repos|envs)(\/|$)/.exec(path);
+  const match = /^\/(teams|sessions|members|cli-profiles|system-prompts|git-repos|envs)(\/|$)/.exec(path);
   if (!match) return undefined;
   return SEGMENT_TO_ENTITY.get(match[1]);
 }
