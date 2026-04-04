@@ -35,9 +35,9 @@ func (w *Workspace) Prepare(ctx context.Context, members []domain.MemberPlan) er
 	return nil
 }
 
-// Cleanup removes all workspace files for a session (baseDir/planID).
-func (w *Workspace) Cleanup(planID string) error {
-	return os.RemoveAll(filepath.Join(w.baseDir, planID))
+// Cleanup removes all workspace files for a session (baseDir/sessionID).
+func (w *Workspace) Cleanup(sessionID string) error {
+	return os.RemoveAll(filepath.Join(w.baseDir, sessionID))
 }
 
 func (w *Workspace) prepareMember(ctx context.Context, m domain.MemberPlan) error {
