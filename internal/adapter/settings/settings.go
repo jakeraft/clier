@@ -184,23 +184,5 @@ func readKeychain(service string) ([]byte, error) {
 }
 
 func systemEnv() []string {
-	var env []string
-	for _, e := range os.Environ() {
-		if strings.HasPrefix(e, "PATH=") {
-			env = append(env, "PATH="+systemPath())
-			continue
-		}
-		env = append(env, e)
-	}
-	return env
-}
-
-func systemPath() string {
-	var dirs []string
-	for _, d := range filepath.SplitList(os.Getenv("PATH")) {
-		if !strings.Contains(d, "cmux") {
-			dirs = append(dirs, d)
-		}
-	}
-	return strings.Join(dirs, string(filepath.ListSeparator))
+	return os.Environ()
 }
