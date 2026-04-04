@@ -78,13 +78,10 @@ func (t *TmuxTerminal) Launch(sessionID, sessionName string, members []domain.Me
 		}
 	}
 
-	// Register session-closed hook for reverse sync.
-	// Use global hook with conditional: per-session hooks (-t) are destroyed
-	// with the session before they can fire.
-	hookCmd := fmt.Sprintf(
-		"if-shell -F '#{==:#{hook_session_name},%s}' 'run-shell \"clier session stop %s\"'",
-		sess, sessionID)
-	if _, err := t.runFn("set-hook", "-g", "session-closed", hookCmd); err != nil {
+	// Register global session-closed hook for reverse sync (idempotent).
+	// A single hook handles all clier sessions: matches "clier-*" pattern,
+	// extracts session ID from the tmux session name, and calls stop.
+	if err := t.ensureSessionClosedHook(); err != nil {
 		return fmt.Errorf("set session-closed hook: %w", err)
 	}
 
@@ -108,8 +105,6 @@ func (t *TmuxTerminal) Terminate(sessionID string) error {
 		t.exitAllWindows(sess)
 		_, _ = t.runFn("kill-session", "-t", sess)
 	}
-	// Remove the global session-closed hook.
-	_, _ = t.runFn("set-hook", "-gu", "session-closed")
 	return t.deleteRefs(sessionID)
 }
 
@@ -178,6 +173,15 @@ func (t *TmuxTerminal) getSessionRefs(sessionID string) (map[string]string, erro
 
 func (t *TmuxTerminal) deleteRefs(sessionID string) error {
 	return t.refs.DeleteRefs(context.Background(), sessionID)
+}
+
+// ensureSessionClosedHook registers a global tmux hook (idempotent) that
+// handles cleanup for any clier session. It matches "clier-*" session names,
+// extracts the session ID, and calls "clier session stop".
+func (t *TmuxTerminal) ensureSessionClosedHook() error {
+	hookCmd := `if-shell -F '#{m:clier-*,#{hook_session_name}}' "run-shell 'clier session stop #{s/clier-//:hook_session_name}'"`
+	_, err := t.runFn("set-hook", "-g", "session-closed", hookCmd)
+	return err
 }
 
 // tmux command helpers
