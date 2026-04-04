@@ -42,16 +42,11 @@ func (q *Queries) GetSessionSurface(ctx context.Context, arg GetSessionSurfacePa
 
 const getSessionWorkspaceRef = `-- name: GetSessionWorkspaceRef :one
 SELECT workspace_ref FROM session_surfaces
-WHERE session_id = ? AND team_member_id != ? LIMIT 1
+WHERE session_id = ? LIMIT 1
 `
 
-type GetSessionWorkspaceRefParams struct {
-	SessionID    string
-	TeamMemberID string
-}
-
-func (q *Queries) GetSessionWorkspaceRef(ctx context.Context, arg GetSessionWorkspaceRefParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getSessionWorkspaceRef, arg.SessionID, arg.TeamMemberID)
+func (q *Queries) GetSessionWorkspaceRef(ctx context.Context, sessionID string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getSessionWorkspaceRef, sessionID)
 	var workspace_ref string
 	err := row.Scan(&workspace_ref)
 	return workspace_ref, err

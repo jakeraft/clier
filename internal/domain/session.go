@@ -46,6 +46,7 @@ func (s *Session) Stop() {
 }
 
 // Message represents an inter-member message within a session.
+// FromTeamMemberID is nullable — empty when the sender is not a team member.
 type Message struct {
 	ID               string    `json:"id"`
 	SessionID        string    `json:"session_id"`

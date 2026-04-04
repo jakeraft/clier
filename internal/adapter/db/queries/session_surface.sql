@@ -8,7 +8,7 @@ WHERE session_id = ? AND team_member_id = ?;
 
 -- name: GetSessionWorkspaceRef :one
 SELECT workspace_ref FROM session_surfaces
-WHERE session_id = ? AND team_member_id != ? LIMIT 1;
+WHERE session_id = ? LIMIT 1;
 
 -- name: DeleteSessionSurfaces :execresult
 DELETE FROM session_surfaces WHERE session_id = ?;

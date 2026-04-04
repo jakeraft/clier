@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -15,12 +14,9 @@ import (
 type SurfaceStore interface {
 	SaveSessionSurface(ctx context.Context, sessionID, memberID, workspaceRef, surfaceRef string) error
 	GetSessionSurface(ctx context.Context, sessionID, memberID string) (workspaceRef, surfaceRef string, err error)
-	GetSessionWorkspaceRef(ctx context.Context, sessionID, excludeMemberID string) (string, error)
+	GetSessionWorkspaceRef(ctx context.Context, sessionID string) (string, error)
 	DeleteSessionSurfaces(ctx context.Context, sessionID string) error
 }
-
-// callerMemberID is the reserved member ID for the human caller who started the session.
-const callerMemberID = "00000000-0000-0000-0000-000000000000"
 
 type CmuxTerminal struct {
 	binary   string
@@ -34,10 +30,6 @@ func NewCmuxTerminal(surfaces SurfaceStore) *CmuxTerminal {
 func (c *CmuxTerminal) Launch(sessionID, sessionName string, members []domain.MemberPlan) error {
 	if len(members) == 0 {
 		return errors.New("no members to launch")
-	}
-
-	if err := c.saveCallerSurface(sessionID); err != nil {
-		return fmt.Errorf("save caller surface: %w", err)
 	}
 
 	wsRef, err := c.createWorkspace(sessionName)
@@ -127,20 +119,11 @@ func (c *CmuxTerminal) getRefs(sessionID, memberID string) (wsRef, surfaceRef st
 }
 
 func (c *CmuxTerminal) getWorkspaceRef(sessionID string) (string, error) {
-	return c.surfaces.GetSessionWorkspaceRef(context.Background(), sessionID, callerMemberID)
+	return c.surfaces.GetSessionWorkspaceRef(context.Background(), sessionID)
 }
 
 func (c *CmuxTerminal) deleteSurfaces(sessionID string) error {
 	return c.surfaces.DeleteSessionSurfaces(context.Background(), sessionID)
-}
-
-func (c *CmuxTerminal) saveCallerSurface(sessionID string) error {
-	wsRef := os.Getenv("CMUX_WORKSPACE_ID")
-	surfaceRef := os.Getenv("CMUX_SURFACE_ID")
-	if wsRef == "" || surfaceRef == "" {
-		return nil
-	}
-	return c.saveSurface(sessionID, callerMemberID, wsRef, surfaceRef)
 }
 
 // cmux command helpers

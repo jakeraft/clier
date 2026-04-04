@@ -67,7 +67,7 @@ type MemberSystemPrompt struct {
 type Message struct {
 	ID               string
 	SessionID        string
-	FromTeamMemberID string
+	FromTeamMemberID sql.NullString
 	ToTeamMemberID   string
 	Content          string
 	CreatedAt        int64

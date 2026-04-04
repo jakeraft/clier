@@ -7,7 +7,6 @@ import (
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/adapter/workspace"
 	"github.com/jakeraft/clier/internal/app/session"
-	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +24,7 @@ func newSessionCmd() *cobra.Command {
 	cmd.AddCommand(newSessionListCmd())
 	cmd.AddCommand(newSessionSendCmd())
 	cmd.AddCommand(newSessionLogCmd())
+	cmd.AddCommand(newSessionLogsCmd())
 	return cmd
 }
 
@@ -121,9 +121,10 @@ func newSessionSendCmd() *cobra.Command {
 	var sessionFlag, toMemberID string
 
 	cmd := &cobra.Command{
-		Use:   "send <content>",
-		Short: "Send a message to a teammate",
-		Args:  cobra.ExactArgs(1),
+		Use:         "send <content>",
+		Short:       "Send a message to a teammate",
+		Args:        cobra.ExactArgs(1),
+		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sessionID, fromMemberID, err := resolveSessionContext(sessionFlag)
 			if err != nil {
@@ -164,10 +165,49 @@ func newSessionLogCmd() *cobra.Command {
 	var sessionFlag string
 
 	cmd := &cobra.Command{
-		Use:   "log [content]",
-		Short: "Record or view session logs",
-		Long:  "With content arg: record a log entry. Without: list session logs.",
-		Args:  cobra.MaximumNArgs(1),
+		Use:         "log <content>",
+		Short:       "Record a session log entry",
+		Args:        cobra.ExactArgs(1),
+		Annotations: map[string]string{mutates: "true"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			sessionID, memberID, err := resolveSessionContext(sessionFlag)
+			if err != nil {
+				return err
+			}
+
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			term := terminal.NewCmuxTerminal(store)
+			ws := workspace.New(cfg.Paths.Workspaces())
+			svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
+
+			if err := svc.Log(cmd.Context(), sessionID, memberID, args[0]); err != nil {
+				return err
+			}
+			return printJSON(map[string]string{
+				"status":  "logged",
+				"member":  memberID,
+				"session": sessionID,
+			})
+		},
+	}
+	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session ID (defaults to CLIER_SESSION_ID)")
+	return cmd
+}
+
+func newSessionLogsCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "logs <session-id>",
+		Short: "List session logs",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -179,45 +219,13 @@ func newSessionLogCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if len(args) == 1 {
-				// Write mode: agent records a log
-				sessionID, memberID, err := resolveSessionContext(sessionFlag)
-				if err != nil {
-					return err
-				}
-
-				term := terminal.NewCmuxTerminal(store)
-				ws := workspace.New(cfg.Paths.Workspaces())
-				svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
-
-				if err := svc.Log(cmd.Context(), sessionID, memberID, args[0]); err != nil {
-					return err
-				}
-				return printJSON(map[string]string{
-					"status":  "logged",
-					"member":  memberID,
-					"session": sessionID,
-				})
-			}
-
-			// Read mode: user views logs
-			sessionID := sessionFlag
-			if sessionID == "" {
-				sessionID = os.Getenv("CLIER_SESSION_ID")
-			}
-			if sessionID == "" {
-				return errors.New("--session flag or CLIER_SESSION_ID must be set")
-			}
-
-			logs, err := store.ListLogsBySessionID(cmd.Context(), sessionID)
+			logs, err := store.ListLogsBySessionID(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
 			return printJSON(logs)
 		},
 	}
-	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session ID (defaults to CLIER_SESSION_ID)")
-	return cmd
 }
 
 // resolveSessionContext resolves session ID and member ID from env vars set by clier.
@@ -231,8 +239,5 @@ func resolveSessionContext(sessionFlag string) (sessionID, memberID string, err 
 		return "", "", errors.New("--session flag or CLIER_SESSION_ID must be set")
 	}
 	memberID = os.Getenv("CLIER_MEMBER_ID")
-	if memberID == "" {
-		memberID = domain.UserMemberID
-	}
 	return sessionID, memberID, nil
 }
