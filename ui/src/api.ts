@@ -80,7 +80,7 @@ export const api = {
         cliProfileName: string;
         systemPromptNames: string[];
       }>;
-      relations: Array<{ from: string; to: string; type: string }>;
+      relations: Array<{ from: string; to: string }>;
     }> => {
       const data = getData();
       const team = findById(data.teams, id);
@@ -112,7 +112,7 @@ export const api = {
       const memberIds = [...new Set(team.teamMembers.map((tm) => tm.memberId))];
       return Promise.resolve(memberIds.map((mid) => memberSpecMap.get(mid)).filter((m): m is MemberView => m != null));
     },
-    getRelations: (id: string): Promise<Array<{ from: string; to: string; type: string }>> => {
+    getRelations: (id: string): Promise<Array<{ from: string; to: string }>> => {
       const team = findById(getData().teams, id);
       if (!team) return Promise.reject(new Error("Not found"));
       return Promise.resolve(team.relations);

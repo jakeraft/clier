@@ -10,7 +10,7 @@ import { teamLayout, type StructureMember } from "@/components/team-structure/te
 interface StructureData {
   rootTeamMemberId: string;
   members: Array<StructureMember & { cliProfileName: string; systemPromptNames: string[] }>;
-  relations: Array<{ from: string; to: string; type: string }>;
+  relations: Array<{ from: string; to: string }>;
 }
 
 const EMPTY_LAYOUT = { nodes: [] as Node[], edges: [] as Edge[] };

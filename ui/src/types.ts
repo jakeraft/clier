@@ -70,7 +70,6 @@ export interface MessageView {
 export interface RelationView {
   from: string;
   to: string;
-  type: "leader" | "peer";
 }
 
 export interface MemberView {
