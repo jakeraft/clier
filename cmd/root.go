@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jakeraft/clier/internal/adapter/dashboard"
 	"github.com/jakeraft/clier/internal/adapter/db"
 	"github.com/jakeraft/clier/internal/adapter/settings"
-	"github.com/jakeraft/clier/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -44,7 +42,7 @@ var rootCmd = &cobra.Command{
 			return nil
 		}
 		defer store.Close()
-		if _, err := dashboard.Generate(cmd.Context(), store, cfg.Paths.Dashboard(), ui.DistFS, ui.DistRoot); err != nil {
+		if _, err := generateDashboard(cmd.Context(), store, cfg.Paths.Dashboard()); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: dashboard not updated: %v\n", err)
 		}
 		return nil
