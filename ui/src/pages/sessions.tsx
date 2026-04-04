@@ -1,13 +1,14 @@
 import { api } from "@/api";
 import type { SessionView } from "@/api";
 import { EntityBadge } from "@/components/entity-badge";
+import { StatusBadge } from "@/components/status-badge";
 import { EntityListPage } from "@/components/entity-list-page";
 import type { EntityTableColumn } from "@/components/entity-table";
 
 const columns: EntityTableColumn<SessionView>[] = [
   {
     header: "Status",
-    cell: (s) => <span>{s.status}</span>,
+    cell: (s) => <StatusBadge status={s.status} />,
     flex: 1,
   },
   {

@@ -6,7 +6,7 @@ VALUES (?, ?, ?, ?, ?, ?);
 SELECT * FROM sessions WHERE id = ?;
 
 -- name: ListSessions :many
-SELECT * FROM sessions ORDER BY created_at;
+SELECT * FROM sessions ORDER BY created_at DESC;
 
 -- name: UpdateSessionStatus :execresult
 UPDATE sessions SET status = ?, stopped_at = ? WHERE id = ?;

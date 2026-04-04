@@ -62,7 +62,7 @@ func (q *Queries) GetSession(ctx context.Context, id string) (Session, error) {
 }
 
 const listSessions = `-- name: ListSessions :many
-SELECT id, team_id, status, "plan", created_at, stopped_at FROM sessions ORDER BY created_at
+SELECT id, team_id, status, "plan", created_at, stopped_at FROM sessions ORDER BY created_at DESC
 `
 
 func (q *Queries) ListSessions(ctx context.Context) ([]Session, error) {

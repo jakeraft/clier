@@ -8,6 +8,7 @@ import { cn } from "@/lib/utilities";
 import { gap } from "@/lib/layout";
 import { formatDateTime } from "@/lib/format-date";
 import { EntityBadge } from "@/components/entity-badge";
+import { StatusBadge } from "@/components/status-badge";
 import { SectionCard as Section } from "@/components/section-card";
 import { DetailLayout } from "@/components/detail-layout";
 import { OverviewTable } from "@/components/overview-table";
@@ -68,7 +69,7 @@ function OverviewTab({ session }: Readonly<{ session: { id: string; status: stri
           rows={[
             {
               label: "Status",
-              children: <span className={typography[5]}>{session.status}</span>,
+              children: <StatusBadge status={session.status} />,
             },
             {
               label: "Team",
