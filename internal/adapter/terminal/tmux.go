@@ -79,8 +79,12 @@ func (t *TmuxTerminal) Launch(sessionID, sessionName string, members []domain.Me
 	}
 
 	// Register session-closed hook for reverse sync.
-	if _, err := t.runFn("set-hook", "-t", sess, "session-closed",
-		fmt.Sprintf("run-shell 'clier session stop %s'", sessionID)); err != nil {
+	// Use global hook with conditional: per-session hooks (-t) are destroyed
+	// with the session before they can fire.
+	hookCmd := fmt.Sprintf(
+		"if-shell -F '#{==:#{hook_session_name},%s}' 'run-shell \"clier session stop %s\"'",
+		sess, sessionID)
+	if _, err := t.runFn("set-hook", "-g", "session-closed", hookCmd); err != nil {
 		return fmt.Errorf("set session-closed hook: %w", err)
 	}
 
@@ -104,6 +108,8 @@ func (t *TmuxTerminal) Terminate(sessionID string) error {
 		t.exitAllWindows(sess)
 		_, _ = t.runFn("kill-session", "-t", sess)
 	}
+	// Remove the global session-closed hook.
+	_, _ = t.runFn("set-hook", "-gu", "session-closed")
 	return t.deleteRefs(sessionID)
 }
 
