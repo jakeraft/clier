@@ -14,7 +14,7 @@ Define your team in JSON — roles, hierarchy, scoped environments. Start a sess
 
 **3. Agent-first** — Every command output, help text, and hint is designed for agents to parse and act on. The dashboard is read-only — you observe, agents operate. You chat with agents in their terminal, not click buttons.
 
-**4. Built on real terminals** — No API wrappers. [cmux](https://cmux.com/) gives each agent its own isolated terminal with built-in messaging. You see what they see, and intervene when needed.
+**4. Built on real terminals** — No API wrappers. [tmux](https://github.com/tmux/tmux) gives each agent its own isolated terminal window. You see what they see, and intervene when needed.
 
 ## Quick Start
 
@@ -42,7 +42,7 @@ Show me the team on the dashboard, then start a session and tell the chief:
 Show me the running sessions. When the story arrives, stop the session and clean up.
 ```
 
-The agent discovers commands, parses outputs, and chains them on its own. `session start` opens a [cmux](https://cmux.com/) workspace with one terminal per member, and the final result arrives in your terminal as a message.
+The agent discovers commands, parses outputs, and chains them on its own. `session start` opens a tmux session with one window per member, and the final result arrives in your terminal as a message.
 
 Under the hood, the agent runs something like:
 
@@ -58,7 +58,7 @@ clier session stop <session-id>
 
 ### Tutorial Walkthrough
 
-**1. Your agent starts in cmux**
+**1. Your agent starts in tmux**
 
 <img src="assets/01-start.png" width="800">
 
@@ -92,7 +92,7 @@ clier session stop <session-id>
 
 ## Requirements
 
-- [cmux](https://cmux.com/) terminal multiplexer
+- [tmux](https://github.com/tmux/tmux) terminal multiplexer
 - At least one supported CLI agent installed
 
 ## License
