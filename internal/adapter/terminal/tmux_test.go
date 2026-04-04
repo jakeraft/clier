@@ -131,12 +131,14 @@ func TestTmuxTerminal_Send(t *testing.T) {
 	if err := tm.Send("s-1", "m-1", "do the work"); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
-	if len(runner.calls) != 1 {
-		t.Fatalf("expected 1 call, got %d", len(runner.calls))
+	if len(runner.calls) != 2 {
+		t.Fatalf("expected 2 calls (literal text + Enter), got %d: %v", len(runner.calls), runner.calls)
 	}
-	call := runner.calls[0]
-	if !strings.Contains(call, "send-keys") || !strings.Contains(call, "do the work") {
-		t.Errorf("unexpected call: %s", call)
+	if !strings.Contains(runner.calls[0], "-l") || !strings.Contains(runner.calls[0], "do the work") {
+		t.Errorf("first call should be literal send-keys, got: %s", runner.calls[0])
+	}
+	if !strings.Contains(runner.calls[1], "Enter") {
+		t.Errorf("second call should send Enter, got: %s", runner.calls[1])
 	}
 }
 

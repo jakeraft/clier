@@ -177,7 +177,13 @@ func (t *TmuxTerminal) deleteRefs(sessionID string) error {
 // tmux command helpers
 
 func (t *TmuxTerminal) sendKeys(sess, win, text string) error {
-	_, err := t.runFn("send-keys", "-t", sess+":"+win, text, "Enter")
+	target := sess + ":" + win
+	// Send text literally (-l) to avoid tmux interpreting special characters,
+	// then send Enter as a key press separately.
+	if _, err := t.runFn("send-keys", "-l", "-t", target, text); err != nil {
+		return err
+	}
+	_, err := t.runFn("send-keys", "-t", target, "Enter")
 	return err
 }
 
