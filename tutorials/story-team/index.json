@@ -7,13 +7,13 @@
     "05-writer.json",
     "06-story-genre.json",
     "07-story-repo.json",
-    "08-chief-editor.json",
-    "09-section-editor-1.json",
-    "10-section-editor-2.json",
-    "11-writer-1.json",
-    "12-writer-2.json",
-    "13-writer-3.json",
-    "14-writer-4.json",
+    "08-claude-haiku.json",
+    "09-gpt-mini.json",
+    "10-chief-editor.json",
+    "11-section-editor-claude.json",
+    "12-section-editor-gpt.json",
+    "13-writer-claude.json",
+    "14-writer-gpt.json",
     "15-team.json"
   ]
 }

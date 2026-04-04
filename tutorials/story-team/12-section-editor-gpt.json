@@ -1,15 +1,15 @@
 {
   "type": "member",
   "data": {
-    "id": "e67708f9-98bf-41f3-bf62-b59f56e6be2b",
-    "name": "writer-3",
+    "id": "5a4b2ab2-f94d-4f0a-8593-641adb656e92",
+    "name": "section-editor-gpt",
     "cli_profile_id": "16266d16-0166-4326-9fe4-0f3cba180460",
     "system_prompt_ids": [
-      "e3d5305a-a108-44be-a138-cb118a611cf5"
+      "f2b80dc2-5b02-43aa-9c7e-6bf950580d03"
     ],
     "env_ids": [
       "abfec5e6-18d9-4d72-99b8-328c4e004c43"
     ],
-    "git_repo_id": ""
+    "git_repo_id": "05405876-f4d9-4eb0-881c-7d7527065736"
   }
 }

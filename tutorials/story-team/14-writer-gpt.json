@@ -1,9 +1,9 @@
 {
   "type": "member",
   "data": {
-    "id": "fd3ff322-6f29-4f5b-96c1-7164af430c85",
-    "name": "writer-4",
-    "cli_profile_id": "16266d16-0166-4326-9fe4-0f3cba180460",
+    "id": "22e10cd1-0e15-4e2a-a0f4-15790f9f572c",
+    "name": "writer-gpt",
+    "cli_profile_id": "d97eb595-0ebe-40e3-81bd-3c871fe74db6",
     "system_prompt_ids": [
       "e3d5305a-a108-44be-a138-cb118a611cf5"
     ],
