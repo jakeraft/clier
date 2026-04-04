@@ -9,7 +9,11 @@
     "custom_args": [],
     "dot_config": {
       "notice": {
-        "model_migrations": {}
+        "hide_gpt5_1_migration_prompt": true,
+        "model_migrations": {
+          "gpt-5-codex-mini": "gpt-5.1-codex-mini",
+          "gpt-5-codex": "gpt-5.1-codex-mini"
+        }
       },
       "sandbox_mode": "danger-full-access"
     }
