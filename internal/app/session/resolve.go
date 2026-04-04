@@ -11,6 +11,7 @@ import (
 // and expands ~/ paths to the user's home directory.
 func resolvePlaceholders(m domain.MemberPlan, base, homeDir, sessionID, claudeToken, codexAuth string) domain.MemberPlan {
 	memberspace := strings.ReplaceAll(m.Workspace.Memberspace, team.PlaceholderBase, base)
+	memberspace = strings.ReplaceAll(memberspace, team.PlaceholderSessionID, sessionID)
 
 	replacer := strings.NewReplacer(
 		team.PlaceholderMemberspace, memberspace,

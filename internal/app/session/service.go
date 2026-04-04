@@ -28,7 +28,7 @@ type Terminal interface {
 // Workspace prepares and cleans up member directories.
 type Workspace interface {
 	Prepare(ctx context.Context, members []domain.MemberPlan) error
-	Cleanup(teamID string) error
+	Cleanup(sessionID string) error
 }
 
 // AuthChecker reads authentication credentials for CLI binaries.
@@ -71,7 +71,7 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 	success := false
 	defer func() {
 		if !success {
-			_ = s.workspace.Cleanup(team.ID)
+			_ = s.workspace.Cleanup(sessionID)
 		}
 	}()
 
@@ -102,7 +102,7 @@ func (s *Service) Stop(ctx context.Context, sessionID string) error {
 		return fmt.Errorf("terminate terminal: %w", err)
 	}
 
-	if err := s.workspace.Cleanup(session.TeamID); err != nil {
+	if err := s.workspace.Cleanup(sessionID); err != nil {
 		return fmt.Errorf("cleanup workspace: %w", err)
 	}
 

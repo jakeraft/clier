@@ -111,7 +111,7 @@ func (s *Service) BuildPlan(ctx context.Context, teamID string) (*domain.Team, e
 		// Build relations using TeamMember ID.
 		relations := team.MemberRelations(tm.ID)
 
-		memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, teamID, tm.ID)
+		memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, PlaceholderSessionID, tm.ID)
 
 		clierPrompt := buildClierPrompt(team.Name, tm.Name, relations, nameByID)
 		userPrompt := joinPrompts(prompts)
