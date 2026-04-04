@@ -66,53 +66,6 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (stri
 	return team.ID, team.RootTeamMemberID, workerTM.ID
 }
 
-func TestService_BuildPlan(t *testing.T) {
-	ctx := context.Background()
-	store := setupTestStore(t)
-	teamID, rootTMID, workerTMID := createMinimalTeam(t, ctx, store)
-
-	svc := New(store)
-	team, err := svc.BuildPlan(ctx, teamID)
-	if err != nil {
-		t.Fatalf("BuildPlan: %v", err)
-	}
-
-	if len(team.Plan) != 2 {
-		t.Fatalf("Plan = %d members, want 2", len(team.Plan))
-	}
-
-	// Verify both team members are in the plan.
-	planByTMID := make(map[string]domain.MemberPlan)
-	for _, p := range team.Plan {
-		planByTMID[p.TeamMemberID] = p
-	}
-
-	rootPlan, ok := planByTMID[rootTMID]
-	if !ok {
-		t.Fatal("root team member not found in plan")
-	}
-	if rootPlan.MemberName != "alice" {
-		t.Errorf("root MemberName = %q, want alice", rootPlan.MemberName)
-	}
-	if rootPlan.Terminal.Command == "" {
-		t.Error("root Terminal.Command is empty")
-	}
-	if rootPlan.Workspace.GitRepo == nil {
-		t.Error("root should have git repo")
-	}
-
-	workerPlan, ok := planByTMID[workerTMID]
-	if !ok {
-		t.Fatal("worker team member not found in plan")
-	}
-	if workerPlan.MemberName != "bob" {
-		t.Errorf("worker MemberName = %q, want bob", workerPlan.MemberName)
-	}
-	if workerPlan.Workspace.GitRepo != nil {
-		t.Error("worker should not have git repo")
-	}
-}
-
 func TestService_ImportTeam(t *testing.T) {
 	ctx := context.Background()
 	store := setupTestStore(t)

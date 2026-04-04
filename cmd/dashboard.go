@@ -142,25 +142,6 @@ func convertTeams(teams []domain.Team) []teamView {
 		for _, r := range t.Relations {
 			relations = append(relations, relationView{From: r.From, To: r.To, Type: string(r.Type)})
 		}
-		plan := make([]memberPlanView, 0, len(t.Plan))
-		for _, m := range t.Plan {
-			files := make([]fileEntryView, 0, len(m.Workspace.Files))
-			for _, f := range m.Workspace.Files {
-				files = append(files, fileEntryView{Path: f.Path, Content: f.Content})
-			}
-			mv := memberPlanView{
-				TeamMemberID: m.TeamMemberID,
-				MemberName:   m.MemberName,
-				Memberspace:  m.Workspace.Memberspace,
-				Command:      m.Terminal.Command,
-				Files:        files,
-			}
-			if m.Workspace.GitRepo != nil {
-				mv.GitRepo = &gitRepoRef{Name: m.Workspace.GitRepo.Name, URL: m.Workspace.GitRepo.URL}
-			}
-			plan = append(plan, mv)
-		}
-
 		teamMemberIDs := make([]string, 0, len(t.TeamMembers))
 		teamMemberViews := make([]teamMemberView, 0, len(t.TeamMembers))
 		for _, tm := range t.TeamMembers {
@@ -187,7 +168,6 @@ func convertTeams(teams []domain.Team) []teamView {
 			TeamMemberIDs:    teamMemberIDs,
 			TeamMembers:      teamMemberViews,
 			Relations:        relations,
-			Plan:             plan,
 			RootMemberName:   rootMemberName,
 			MemberNames:      names,
 			CreatedAt:        t.CreatedAt,
@@ -315,30 +295,10 @@ type teamView struct {
 	TeamMemberIDs    []string         `json:"teamMemberIds"`
 	TeamMembers      []teamMemberView `json:"teamMembers"`
 	Relations        []relationView   `json:"relations"`
-	Plan             []memberPlanView `json:"plan"`
 	RootMemberName   string           `json:"rootMemberName"`
 	MemberNames      []string         `json:"memberNames"`
 	CreatedAt        time.Time        `json:"createdAt"`
 	UpdatedAt        time.Time        `json:"updatedAt"`
-}
-
-type memberPlanView struct {
-	TeamMemberID string          `json:"teamMemberId"`
-	MemberName   string          `json:"memberName"`
-	Memberspace  string          `json:"memberspace"`
-	Command      string          `json:"command"`
-	GitRepo      *gitRepoRef     `json:"gitRepo"`
-	Files        []fileEntryView `json:"files"`
-}
-
-type gitRepoRef struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
-type fileEntryView struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
 }
 
 type relationView struct {

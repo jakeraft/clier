@@ -44,14 +44,13 @@ type TeamMember struct {
 }
 
 type Team struct {
-	ID               string              `json:"id"`
-	Name             string              `json:"name"`
-	RootTeamMemberID string              `json:"root_team_member_id"`
-	TeamMembers      []TeamMember        `json:"team_members"`
-	Relations        []Relation          `json:"relations"`
-	Plan             []MemberPlan `json:"plan"`
-	CreatedAt        time.Time           `json:"created_at"`
-	UpdatedAt        time.Time           `json:"updated_at"`
+	ID               string       `json:"id"`
+	Name             string       `json:"name"`
+	RootTeamMemberID string       `json:"root_team_member_id"`
+	TeamMembers      []TeamMember `json:"team_members"`
+	Relations        []Relation   `json:"relations"`
+	CreatedAt        time.Time    `json:"created_at"`
+	UpdatedAt        time.Time    `json:"updated_at"`
 }
 
 func NewTeam(name, memberID, memberName string) (*Team, error) {

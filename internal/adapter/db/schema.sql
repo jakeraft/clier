@@ -39,7 +39,6 @@ CREATE TABLE IF NOT EXISTS teams (
     id                   TEXT PRIMARY KEY,
     name                 TEXT NOT NULL,
     root_team_member_id  TEXT NOT NULL,
-    plan                 TEXT NOT NULL DEFAULT '[]',
     created_at           INTEGER NOT NULL,
     updated_at           INTEGER NOT NULL
 );
@@ -48,6 +47,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     id            TEXT PRIMARY KEY,
     team_id       TEXT NOT NULL REFERENCES teams(id),
     status        TEXT NOT NULL DEFAULT 'running',
+    plan          TEXT NOT NULL DEFAULT '[]',
     created_at    INTEGER NOT NULL,
     stopped_at    INTEGER
 );

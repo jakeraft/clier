@@ -15,11 +15,13 @@ const (
 	SessionStopped SessionStatus = "stopped"
 )
 
-// Session is an execution instance of a Team's plan on a local machine.
+// Session is an execution instance of a Team on a local machine.
+// Plan is built fresh at session start from the team's current state.
 type Session struct {
 	ID        string        `json:"id"`
 	TeamID    string        `json:"team_id"`
 	Status    SessionStatus `json:"status"`
+	Plan      []MemberPlan  `json:"plan"`
 	CreatedAt time.Time     `json:"created_at"`
 	StoppedAt *time.Time    `json:"stopped_at"`
 }

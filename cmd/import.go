@@ -273,7 +273,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 			return err
 		}
 
-		updated, err := svc.BuildPlan(ctx, t.ID)
+		updated, err := store.GetTeam(ctx, t.ID)
 		if err != nil {
 			return err
 		}

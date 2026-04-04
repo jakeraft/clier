@@ -37,6 +37,21 @@ func (s *stubStore) CreateLog(_ context.Context, l *domain.Log) error {
 	s.logs = append(s.logs, l)
 	return nil
 }
+func (s *stubStore) GetMember(_ context.Context, _ string) (domain.Member, error) {
+	return domain.Member{}, errors.New("not implemented")
+}
+func (s *stubStore) GetCliProfile(_ context.Context, _ string) (domain.CliProfile, error) {
+	return domain.CliProfile{}, errors.New("not implemented")
+}
+func (s *stubStore) GetSystemPrompt(_ context.Context, _ string) (domain.SystemPrompt, error) {
+	return domain.SystemPrompt{}, errors.New("not implemented")
+}
+func (s *stubStore) GetEnv(_ context.Context, _ string) (domain.Env, error) {
+	return domain.Env{}, errors.New("not implemented")
+}
+func (s *stubStore) GetGitRepo(_ context.Context, _ string) (domain.GitRepo, error) {
+	return domain.GitRepo{}, errors.New("not implemented")
+}
 
 type stubTerminal struct {
 	sent []string
@@ -91,14 +106,16 @@ func TestService_Log(t *testing.T) {
 }
 
 func TestService_Send(t *testing.T) {
-	sess := &domain.Session{ID: "s-1", TeamID: "t-1", Status: domain.SessionRunning}
-	team := &domain.Team{
-		ID: "t-1",
+	sess := &domain.Session{
+		ID:     "s-1",
+		TeamID: "t-1",
+		Status: domain.SessionRunning,
 		Plan: []domain.MemberPlan{
 			{TeamMemberID: "m-1", MemberName: "alice"},
 			{TeamMemberID: "m-2", MemberName: "bob"},
 		},
 	}
+	team := &domain.Team{ID: "t-1"}
 
 	t.Run("agent message includes sender name", func(t *testing.T) {
 		store := &stubStore{session: sess, team: team}

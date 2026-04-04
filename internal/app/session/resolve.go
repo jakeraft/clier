@@ -3,21 +3,20 @@ package session
 import (
 	"strings"
 
-	"github.com/jakeraft/clier/internal/app/team"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
 // resolvePlaceholders replaces all {{CLIER_*}} placeholders in a MemberPlan
 // and expands ~/ paths to the user's home directory.
 func resolvePlaceholders(m domain.MemberPlan, base, homeDir, sessionID, claudeToken, codexAuth string) domain.MemberPlan {
-	memberspace := strings.ReplaceAll(m.Workspace.Memberspace, team.PlaceholderBase, base)
-	memberspace = strings.ReplaceAll(memberspace, team.PlaceholderSessionID, sessionID)
+	memberspace := strings.ReplaceAll(m.Workspace.Memberspace, PlaceholderBase, base)
+	memberspace = strings.ReplaceAll(memberspace, PlaceholderSessionID, sessionID)
 
 	replacer := strings.NewReplacer(
-		team.PlaceholderMemberspace, memberspace,
-		team.PlaceholderSessionID, sessionID,
-		team.PlaceholderAuthClaude, claudeToken,
-		team.PlaceholderAuthCodex, codexAuth,
+		PlaceholderMemberspace, memberspace,
+		PlaceholderSessionID, sessionID,
+		PlaceholderAuthClaude, claudeToken,
+		PlaceholderAuthCodex, codexAuth,
 	)
 
 	m.Workspace.Memberspace = memberspace
