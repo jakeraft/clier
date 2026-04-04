@@ -94,7 +94,7 @@ func (t *Team) Update(name *string, rootTeamMemberID *string) error {
 }
 
 // ReplaceComposition replaces the team's name, root, members, and relations atomically.
-// Validates all invariants: name non-empty, root in members, relation types, no self-relations, etc.
+// Validates all invariants: name non-empty, root in members, no self-relations, leader uniqueness, no mutual cycles.
 func (t *Team) ReplaceComposition(name string, rootTeamMemberID string, teamMembers []TeamMember, relations []Relation) error {
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -202,15 +202,10 @@ func (t *Team) AddRelation(r Relation) error {
 		return fmt.Errorf("team member not in team: %s", r.To)
 	}
 
-	// Check duplicate.
 	for _, existing := range t.Relations {
 		if existing.From == r.From && existing.To == r.To {
 			return fmt.Errorf("duplicate relation: %s -> %s", r.From, r.To)
 		}
-	}
-
-	// Leader uniqueness: each member can have at most one leader.
-	for _, existing := range t.Relations {
 		if existing.To == r.To {
 			return fmt.Errorf("member %s already has a leader", r.To)
 		}
