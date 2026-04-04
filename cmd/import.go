@@ -21,7 +21,8 @@ import (
 // readSource reads bytes from a local file or an HTTP(S) URL.
 func readSource(src string) ([]byte, error) {
 	if isURL(src) {
-		resp, err := http.Get(src)
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Get(src)
 		if err != nil {
 			return nil, fmt.Errorf("fetch URL: %w", err)
 		}

@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -57,7 +59,10 @@ func newExportCmd() *cobra.Command {
 			for _, p := range probes {
 				entity, err := p.fetch()
 				if err != nil {
-					continue
+					if errors.Is(err, sql.ErrNoRows) {
+						continue
+					}
+					return fmt.Errorf("fetch %s: %w", p.typeName, err)
 				}
 
 				dataBytes, err := json.Marshal(entity)

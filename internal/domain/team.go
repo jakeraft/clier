@@ -352,13 +352,6 @@ type PromptSnapshot struct {
 	Prompt string `json:"prompt"`
 }
 
-// GitRepoSnapshot is a resolved git repo reference used by plan build logic.
-type GitRepoSnapshot struct {
-	ID   string `json:"id,omitempty"`
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
 // EnvSnapshot is a resolved environment variable used by plan build logic.
 type EnvSnapshot struct {
 	ID    string `json:"id,omitempty"`

@@ -28,5 +28,9 @@ func (s *Service) ImportTeam(ctx context.Context, t *domain.Team) error {
 		return s.store.ReplaceTeamComposition(ctx, &existing)
 	}
 
+	if _, ok := t.FindTeamMember(t.RootTeamMemberID); !ok {
+		return fmt.Errorf("root team member %s not in team members", t.RootTeamMemberID)
+	}
+
 	return s.store.CreateTeam(ctx, t)
 }
