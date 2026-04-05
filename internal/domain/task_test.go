@@ -63,6 +63,25 @@ func TestNewTask(t *testing.T) {
 	})
 }
 
+func TestTaskName(t *testing.T) {
+	tests := []struct {
+		teamName string
+		taskID   string
+		want     string
+	}{
+		{"my-team", "abcdefgh-1234", "my-team-abcdefgh"},
+		{"short", "abc", "short-abc"},
+		{"dots.and:colons here", "12345678-9abc", "dots-and-colons-here-12345678"},
+		{"a-very-long-team-name-that-exceeds", "id-12345", "a-very-long-team-nam-id-12345"},
+	}
+	for _, tt := range tests {
+		got := domain.TaskName(tt.teamName, tt.taskID)
+		if got != tt.want {
+			t.Errorf("TaskName(%q, %q) = %q, want %q", tt.teamName, tt.taskID, got, tt.want)
+		}
+	}
+}
+
 func TestMessage(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
 		t.Run("ValidInputs_GeneratesUUIDAndSetsFields", func(t *testing.T) {

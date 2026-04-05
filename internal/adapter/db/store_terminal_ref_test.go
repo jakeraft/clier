@@ -21,7 +21,7 @@ func TestRefStore(t *testing.T) {
 		t.Fatalf("seed team: %v", err)
 	}
 	_, err = store.db.ExecContext(context.Background(),
-		"INSERT INTO tasks (id, team_id, status, plan, created_at) VALUES ('s1','t1','running','[]',0)")
+		"INSERT INTO tasks (id, name, team_id, status, plan, created_at) VALUES ('s1','team-s1','t1','running','[]',0)")
 	if err != nil {
 		t.Fatalf("seed task: %v", err)
 	}
