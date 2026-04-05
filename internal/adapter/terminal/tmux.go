@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jakeraft/clier/internal/domain"
 )
@@ -27,12 +28,14 @@ type TmuxTerminal struct {
 	refs     RefStore
 	runFn    func(args ...string) (string, error)
 	attachFn func(sess string) error
+	sleep    func(d time.Duration)
 }
 
 func NewTmuxTerminal(refs RefStore) *TmuxTerminal {
 	t := &TmuxTerminal{refs: refs}
 	t.runFn = t.defaultRun
 	t.attachFn = t.defaultAttach
+	t.sleep = time.Sleep
 	return t
 }
 
@@ -196,14 +199,14 @@ func (t *TmuxTerminal) ensureSessionClosedHook() error {
 
 func (t *TmuxTerminal) sendKeys(sess, win, text string) error {
 	target := sess + ":" + win
-	// Exit copy-mode if active, so send-keys -l goes to the terminal
-	// rather than being intercepted by copy-mode-vi key bindings.
-	// Safe no-op when the pane is not in copy-mode.
 	_, _ = t.runFn("copy-mode", "-q", "-t", target)
-	// Chain literal text + Enter in a single tmux invocation using ";"
-	// command separator. Two separate invocations race: the TUI may
-	// drop Enter if it arrives while still processing the text.
-	_, err := t.runFn("send-keys", "-l", "-t", target, text, ";", "send-keys", "-t", target, "Enter")
+	if _, err := t.runFn("send-keys", "-l", "-t", target, text); err != nil {
+		return err
+	}
+	// Claude Code's Ink TUI needs time to process text before Enter.
+	// Without this delay, Enter is swallowed. 300ms matches industry practice.
+	t.sleep(300 * time.Millisecond)
+	_, err := t.runFn("send-keys", "-t", target, "Enter")
 	return err
 }
 

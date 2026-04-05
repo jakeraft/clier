@@ -71,8 +71,8 @@ func Execute() {
 
 // filterUserCommands removes agent-only subcommands from "task" in user context.
 func filterUserCommands() {
-	// Coupled to: newTaskUpdateCmd
-	hidden := map[string]bool{"update": true}
+	// Coupled to: newTaskNoteCmd
+	hidden := map[string]bool{"note": true}
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Name() == "task" {
 			var keep []*cobra.Command
@@ -104,8 +104,8 @@ func filterAgentCommands() {
 		rootCmd.AddCommand(cmd)
 	}
 
-	// Coupled to: newTaskTellCmd, newTaskUpdateCmd
-	agentSubs := map[string]bool{"tell": true, "update": true}
+	// Coupled to: newTaskTellCmd, newTaskNoteCmd
+	agentSubs := map[string]bool{"tell": true, "note": true}
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Name() == "task" {
 			var subs []*cobra.Command

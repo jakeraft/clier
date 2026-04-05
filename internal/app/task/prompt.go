@@ -26,40 +26,39 @@ func joinPrompts(prompts []resource.SystemPrompt) string {
 func buildClierPrompt(teamName, memberName string, relations domain.MemberRelations, nameByID map[string]string) string {
 	var b strings.Builder
 
-	// Header + intro
+	// Header
 	b.WriteString("# Team Protocol\n\n")
-	fmt.Fprintf(&b, "You are **%s**, a member of team **%s**.\n", memberName, teamName)
-	b.WriteString("This protocol defines your role, team structure, and how to coordinate with teammates.\n")
+	fmt.Fprintf(&b, "You are **%s**, a member of team **%s**.\n\n", memberName, teamName)
 
 	// Team Structure
-	b.WriteString("\n## Team Structure\n")
+	b.WriteString("## Team Structure\n\n")
 	writeRelNames(&b, "Leaders", relations.Leaders, nameByID)
 	writeRelNames(&b, "Workers", relations.Workers, nameByID)
 	if len(relations.Leaders) == 0 && len(relations.Workers) == 0 {
-		b.WriteString("(none)\n")
+		b.WriteString("- (none)\n")
 	}
 
 	// Communication
-	b.WriteString("\n## Communication\n")
-	b.WriteString("Use the commands below to message your teammates.\n")
-	b.WriteString("Replies arrive directly in your terminal input — do not poll or call any receive command.\n")
-	b.WriteString("Keep each message substantive. Avoid short fragments like \"ok\" or \"hi\".\n\n")
+	b.WriteString("\n## Communication\n\n")
+	b.WriteString("**IMPORTANT:** Only use the `clier task tell` bash command below.\n")
+	b.WriteString("Do NOT use SendMessage, Agent, or any other built-in tool for communication.\n\n")
 	writeTellCommands(&b, relations, nameByID)
+	b.WriteString("- Replies arrive directly in your terminal input. Do not poll.\n")
+	b.WriteString("- Keep each tell substantive. Avoid short fragments like \"ok\" or \"hi\".\n")
 
 	// Progress Notes
-	b.WriteString("\n## Progress Notes\n")
-	b.WriteString("Share your progress and results:\n")
+	b.WriteString("\n## Progress Notes\n\n")
+	b.WriteString("Post a note when you start, complete, or encounter issues:\n\n")
 	b.WriteString("```bash\nclier task note \"<content>\"\n```\n")
-	b.WriteString("Post a note when you: start a task, complete a task, encounter issues, produce final results.\n")
 
-	// Operating Rules
-	b.WriteString("\n## Operating Rules\n")
+	// Rules
+	b.WriteString("\n## Rules\n\n")
 	if len(relations.Workers) > 0 {
-		b.WriteString("- Your workers have specialized roles — always delegate through them instead of doing their work yourself.\n")
-		b.WriteString("- You MUST wait for all worker responses before wrapping up.\n")
+		b.WriteString("- Delegate to your workers. Do not do their work yourself.\n")
+		b.WriteString("- Wait for ALL worker responses before wrapping up.\n")
 	}
 	if len(relations.Leaders) > 0 {
-		b.WriteString("- You MUST report your results to your leader when done.\n")
+		b.WriteString("- Report your results to your leader when done.\n")
 	}
 	return b.String()
 }

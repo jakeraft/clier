@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jakeraft/clier/internal/domain"
 )
@@ -75,7 +76,7 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 		"list-windows": "0",
 	}}
 	store := newFakeRefStore()
-	tm := &TmuxTerminal{refs: store, runFn: runner.run}
+	tm := &TmuxTerminal{refs: store, runFn: runner.run, sleep: func(time.Duration) {}}
 
 	members := []domain.MemberPlan{
 		{TeamMemberID: "m-1", MemberName: "leader", Terminal: domain.TerminalPlan{Command: "echo hello"}},
@@ -130,20 +131,22 @@ func TestTmuxTerminal_Send(t *testing.T) {
 	_ = store.SaveRefs(context.Background(), "s-1", "m-1", map[string]string{
 		"session": "my-team-s-1", "window": "0",
 	})
-	tm := &TmuxTerminal{refs: store, runFn: runner.run}
+	tm := &TmuxTerminal{refs: store, runFn: runner.run, sleep: func(time.Duration) {}}
 
 	if err := tm.Send("s-1", "m-1", "do the work"); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
-	if len(runner.calls) != 2 {
-		t.Fatalf("expected 2 calls (copy-mode -q + chained send-keys), got %d: %v", len(runner.calls), runner.calls)
+	if len(runner.calls) != 3 {
+		t.Fatalf("expected 3 calls (copy-mode + send-keys text + send-keys Enter), got %d: %v", len(runner.calls), runner.calls)
 	}
-	if !strings.Contains(runner.calls[0], "copy-mode") || !strings.Contains(runner.calls[0], "-q") {
+	if !strings.Contains(runner.calls[0], "copy-mode") {
 		t.Errorf("first call should exit copy-mode, got: %s", runner.calls[0])
 	}
-	call := runner.calls[1]
-	if !strings.Contains(call, "-l") || !strings.Contains(call, "do the work") || !strings.Contains(call, "Enter") {
-		t.Errorf("second call should chain literal text + Enter, got: %s", call)
+	if !strings.Contains(runner.calls[1], "-l") || !strings.Contains(runner.calls[1], "do the work") {
+		t.Errorf("second call should send-keys literal text, got: %s", runner.calls[1])
+	}
+	if !strings.Contains(runner.calls[2], "Enter") {
+		t.Errorf("third call should send Enter, got: %s", runner.calls[2])
 	}
 }
 
@@ -155,7 +158,7 @@ func TestTmuxTerminal_Terminate(t *testing.T) {
 	_ = store.SaveRefs(context.Background(), "s-1", "m-1", map[string]string{
 		"session": "my-team-s-1", "window": "0",
 	})
-	tm := &TmuxTerminal{refs: store, runFn: runner.run}
+	tm := &TmuxTerminal{refs: store, runFn: runner.run, sleep: func(time.Duration) {}}
 
 	if err := tm.Terminate("s-1"); err != nil {
 		t.Fatalf("Terminate: %v", err)
@@ -187,7 +190,7 @@ func TestTmuxTerminal_Terminate_AlreadyDead(t *testing.T) {
 	_ = store.SaveRefs(context.Background(), "s-1", "m-1", map[string]string{
 		"session": "my-team-s-1", "window": "0",
 	})
-	tm := &TmuxTerminal{refs: store, runFn: runner.run}
+	tm := &TmuxTerminal{refs: store, runFn: runner.run, sleep: func(time.Duration) {}}
 
 	// Should not error — idempotent
 	if err := tm.Terminate("s-1"); err != nil {
@@ -211,7 +214,7 @@ func TestTmuxTerminal_Attach(t *testing.T) {
 
 	t.Run("session not found", func(t *testing.T) {
 		runner := &fakeRunner{}
-		tm := &TmuxTerminal{refs: store, runFn: runner.run}
+		tm := &TmuxTerminal{refs: store, runFn: runner.run, sleep: func(time.Duration) {}}
 		err := tm.Attach("unknown", nil)
 		if err == nil {
 			t.Fatal("expected error for unknown session")

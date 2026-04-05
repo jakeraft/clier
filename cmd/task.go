@@ -123,7 +123,7 @@ func newTaskTellCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:         "tell <content>",
-		Short:       "Message a teammate",
+		Short:       "Tell a teammate",
 		Args:        cobra.ExactArgs(1),
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
