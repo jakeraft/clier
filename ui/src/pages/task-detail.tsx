@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router";
 import { ClipboardList, Map, ScrollText, MessageSquare, User, FileText, Terminal, FolderOpen } from "lucide-react";
 import { api } from "@/api";
-import type { MemberPlanView, UpdateView, MessageView } from "@/api";
+import type { MemberPlanView, NoteView, MessageView } from "@/api";
 import { typography, typographyIcon } from "@/lib/typography";
 import { cn } from "@/lib/utilities";
 import { gap } from "@/lib/layout";
@@ -58,7 +58,7 @@ export function TaskDetail() {
   );
 }
 
-function OverviewTab({ task }: Readonly<{ task: { id: string; status: string; teamId: string; teamName: string; createdAt: string; updatedAt: string; updates: UpdateView[]; messages: MessageView[] } }>) {
+function OverviewTab({ task }: Readonly<{ task: { id: string; status: string; teamId: string; teamName: string; createdAt: string; updatedAt: string; notes: NoteView[]; messages: MessageView[] } }>) {
   return (
     <>
       <Section icon={ClipboardList} title="Overview">
@@ -81,10 +81,10 @@ function OverviewTab({ task }: Readonly<{ task: { id: string; status: string; te
 
       <Section
         icon={ScrollText}
-        title="Updates"
-        empty={task.updates.length === 0 ? { title: "No updates yet", description: "Updates will appear when members post progress" } : undefined}
+        title="Notes"
+        empty={task.notes.length === 0 ? { title: "No notes yet", description: "Notes will appear when members post progress" } : undefined}
       >
-        {task.updates.length > 0 && <UpdateTable updates={task.updates} />}
+        {task.notes.length > 0 && <NoteTable notes={task.notes} />}
       </Section>
 
       <Section
@@ -98,7 +98,7 @@ function OverviewTab({ task }: Readonly<{ task: { id: string; status: string; te
   );
 }
 
-function UpdateTable({ updates }: Readonly<{ updates: UpdateView[] }>) {
+function NoteTable({ notes }: Readonly<{ notes: NoteView[] }>) {
   return (
     <div className="rounded-base overflow-hidden border">
       <Table>
@@ -110,11 +110,11 @@ function UpdateTable({ updates }: Readonly<{ updates: UpdateView[] }>) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {updates.map((u) => (
-            <TableRow key={u.id}>
-              <TableCell className={typography[5]}>{u.memberName}</TableCell>
-              <TableCell className={cn(typography[5], "whitespace-pre-wrap break-all")}>{u.content}</TableCell>
-              <TableCell className={typography[6]}>{formatDateTime(u.createdAt)}</TableCell>
+          {notes.map((n) => (
+            <TableRow key={n.id}>
+              <TableCell className={typography[5]}>{n.memberName}</TableCell>
+              <TableCell className={cn(typography[5], "whitespace-pre-wrap break-all")}>{n.content}</TableCell>
+              <TableCell className={typography[6]}>{formatDateTime(n.createdAt)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

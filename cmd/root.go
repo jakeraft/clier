@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 Building blocks (profile, prompt, env, repo) define agent capabilities.
 Combine them into a member, assemble members into a team with
 leader-worker relations, then start a task to launch the agents.
-Monitor progress through messages and updates, or open the dashboard.
+Monitor progress through messages and notes, or open the dashboard.
 
 New to clier? Run "clier tutorial" for a step-by-step guide.`,
 	CompletionOptions: cobra.CompletionOptions{

@@ -46,11 +46,11 @@ func buildClierPrompt(teamName, memberName string, relations domain.MemberRelati
 	b.WriteString("Keep each message substantive. Avoid short fragments like \"ok\" or \"hi\".\n\n")
 	writeTellCommands(&b, relations, nameByID)
 
-	// Progress Updates
-	b.WriteString("\n## Progress Updates\n")
+	// Progress Notes
+	b.WriteString("\n## Progress Notes\n")
 	b.WriteString("Share your progress and results:\n")
-	b.WriteString("```bash\nclier task update \"<content>\"\n```\n")
-	b.WriteString("Update when you: start a task, complete a task, encounter issues, produce final results.\n")
+	b.WriteString("```bash\nclier task note \"<content>\"\n```\n")
+	b.WriteString("Post a note when you: start a task, complete a task, encounter issues, produce final results.\n")
 
 	// Operating Rules
 	b.WriteString("\n## Operating Rules\n")

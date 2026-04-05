@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at            INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS updates (
+CREATE TABLE IF NOT EXISTS notes (
     id              TEXT PRIMARY KEY,
     task_id         TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     team_member_id  TEXT NOT NULL,

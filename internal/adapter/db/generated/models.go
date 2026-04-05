@@ -66,6 +66,14 @@ type Message struct {
 	CreatedAt        int64
 }
 
+type Note struct {
+	ID           string
+	TaskID       string
+	TeamMemberID string
+	Content      string
+	CreatedAt    int64
+}
+
 type SystemPrompt struct {
 	ID        string
 	Name      string
@@ -108,12 +116,4 @@ type TerminalRef struct {
 	TaskID       string
 	TeamMemberID string
 	Refs         string
-}
-
-type Update struct {
-	ID           string
-	TaskID       string
-	TeamMemberID string
-	Content      string
-	CreatedAt    int64
 }

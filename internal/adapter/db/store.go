@@ -931,27 +931,27 @@ func toNullString(s string) sql.NullString {
 	return sql.NullString{String: s, Valid: true}
 }
 
-// Update
+// Note
 
-func (s *Store) CreateUpdate(ctx context.Context, u *domain.Update) error {
-	_, err := s.queries.CreateUpdate(ctx, generated.CreateUpdateParams{
-		ID:           u.ID,
-		TaskID:       u.TaskID,
-		TeamMemberID: u.TeamMemberID,
-		Content:      u.Content,
-		CreatedAt:    u.CreatedAt.Unix(),
+func (s *Store) CreateNote(ctx context.Context, n *domain.Note) error {
+	_, err := s.queries.CreateNote(ctx, generated.CreateNoteParams{
+		ID:           n.ID,
+		TaskID:       n.TaskID,
+		TeamMemberID: n.TeamMemberID,
+		Content:      n.Content,
+		CreatedAt:    n.CreatedAt.Unix(),
 	})
 	return err
 }
 
-func (s *Store) ListUpdatesByTaskID(ctx context.Context, taskID string) ([]domain.Update, error) {
-	rows, err := s.queries.ListUpdatesByTaskID(ctx, taskID)
+func (s *Store) ListNotesByTaskID(ctx context.Context, taskID string) ([]domain.Note, error) {
+	rows, err := s.queries.ListNotesByTaskID(ctx, taskID)
 	if err != nil {
 		return nil, err
 	}
-	updates := make([]domain.Update, 0, len(rows))
+	notes := make([]domain.Note, 0, len(rows))
 	for _, row := range rows {
-		updates = append(updates, domain.Update{
+		notes = append(notes, domain.Note{
 			ID:           row.ID,
 			TaskID:       row.TaskID,
 			TeamMemberID: row.TeamMemberID,
@@ -959,7 +959,7 @@ func (s *Store) ListUpdatesByTaskID(ctx context.Context, taskID string) ([]domai
 			CreatedAt:    time.Unix(row.CreatedAt, 0),
 		})
 	}
-	return updates, nil
+	return notes, nil
 }
 
 // TerminalRefs (infra state for terminal adapter)

@@ -113,46 +113,46 @@ func TestMessage(t *testing.T) {
 	})
 }
 
-func TestUpdate(t *testing.T) {
+func TestNote(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
 		t.Run("ValidInputs_GeneratesUUIDAndSetsFields", func(t *testing.T) {
-			u, err := domain.NewUpdate("task-1", "member-1", "work started")
+			n, err := domain.NewNote("task-1", "member-1", "work started")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if _, err := uuid.Parse(u.ID); err != nil {
-				t.Errorf("ID %q is not a valid UUID", u.ID)
+			if _, err := uuid.Parse(n.ID); err != nil {
+				t.Errorf("ID %q is not a valid UUID", n.ID)
 			}
-			if u.TaskID != "task-1" {
-				t.Errorf("TaskID = %q, want %q", u.TaskID, "task-1")
+			if n.TaskID != "task-1" {
+				t.Errorf("TaskID = %q, want %q", n.TaskID, "task-1")
 			}
-			if u.TeamMemberID != "member-1" {
-				t.Errorf("TeamMemberID = %q, want %q", u.TeamMemberID, "member-1")
+			if n.TeamMemberID != "member-1" {
+				t.Errorf("TeamMemberID = %q, want %q", n.TeamMemberID, "member-1")
 			}
-			if u.Content != "work started" {
-				t.Errorf("Content = %q, want %q", u.Content, "work started")
+			if n.Content != "work started" {
+				t.Errorf("Content = %q, want %q", n.Content, "work started")
 			}
-			if u.CreatedAt.IsZero() {
+			if n.CreatedAt.IsZero() {
 				t.Error("CreatedAt is zero")
 			}
 		})
 
 		t.Run("EmptyTaskID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewUpdate("", "member-1", "hello")
+			_, err := domain.NewNote("", "member-1", "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
 		t.Run("EmptyTeamMemberID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewUpdate("task-1", "", "hello")
+			_, err := domain.NewNote("task-1", "", "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
 		t.Run("EmptyContent_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewUpdate("task-1", "member-1", "  ")
+			_, err := domain.NewNote("task-1", "member-1", "  ")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}

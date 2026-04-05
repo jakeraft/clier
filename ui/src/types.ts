@@ -43,13 +43,13 @@ export interface TaskView {
   teamName: string;
   status: string;
   plan: MemberPlanView[];
-  updates: UpdateView[];
+  notes: NoteView[];
   messages: MessageView[];
   createdAt: string;
   updatedAt: string;
 }
 
-export interface UpdateView {
+export interface NoteView {
   id: string;
   teamMemberId: string;
   memberName: string;

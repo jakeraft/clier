@@ -388,7 +388,7 @@ type taskView struct {
 	TeamName  string            `json:"teamName"`
 	Status    string            `json:"status"`
 	Plan      []memberPlanView  `json:"plan"`
-	Updates   []updateView      `json:"updates"`
+	Notes     []noteView        `json:"notes"`
 	Messages  []messageView     `json:"messages"`
 	CreatedAt time.Time         `json:"createdAt"`
 	UpdatedAt time.Time         `json:"updatedAt"`
@@ -413,7 +413,7 @@ type memberPlanFileEntry struct {
 	Content string `json:"content"`
 }
 
-type updateView struct {
+type noteView struct {
 	ID           string    `json:"id"`
 	TeamMemberID string    `json:"teamMemberId"`
 	MemberName   string    `json:"memberName"`
@@ -434,7 +434,7 @@ type messageView struct {
 func convertTasks(ctx context.Context, store *db.Store, tasks []domain.Task, teamNames map[string]string) ([]taskView, error) {
 	views := make([]taskView, 0, len(tasks))
 	for _, t := range tasks {
-		updates, err := store.ListUpdatesByTaskID(ctx, t.ID)
+		notes, err := store.ListNotesByTaskID(ctx, t.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -469,14 +469,14 @@ func convertTasks(ctx context.Context, store *db.Store, tasks []domain.Task, tea
 			})
 		}
 
-		updateViews := make([]updateView, 0, len(updates))
-		for _, u := range updates {
-			updateViews = append(updateViews, updateView{
-				ID:           u.ID,
-				TeamMemberID: u.TeamMemberID,
-				MemberName:   nameOf[u.TeamMemberID],
-				Content:      u.Content,
-				CreatedAt:    u.CreatedAt,
+		noteViews := make([]noteView, 0, len(notes))
+		for _, n := range notes {
+			noteViews = append(noteViews, noteView{
+				ID:           n.ID,
+				TeamMemberID: n.TeamMemberID,
+				MemberName:   nameOf[n.TeamMemberID],
+				Content:      n.Content,
+				CreatedAt:    n.CreatedAt,
 			})
 		}
 
@@ -505,7 +505,7 @@ func convertTasks(ctx context.Context, store *db.Store, tasks []domain.Task, tea
 			TeamName:  teamNames[t.TeamID],
 			Status:    string(t.Status),
 			Plan:      planViews,
-			Updates:   updateViews,
+			Notes:     noteViews,
 			Messages:  msgViews,
 			CreatedAt: t.CreatedAt,
 			UpdatedAt: updatedAt,

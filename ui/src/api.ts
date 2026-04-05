@@ -8,7 +8,7 @@ import type {
   GitRepoView,
   EnvView,
   TaskView,
-  UpdateView,
+  NoteView,
   MessageView,
 } from "@/types";
 
@@ -35,7 +35,7 @@ export type {
   TeamView,
   EnvView,
   TaskView,
-  UpdateView,
+  NoteView,
   MessageView,
 };
 

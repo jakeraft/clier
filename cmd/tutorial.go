@@ -48,7 +48,7 @@ Run "clier tutorial start" to execute the following commands in sequence:
 
 After the task starts, check progress with:
 
-  clier task updates <task-id>
+  clier task notes <task-id>
   clier task attach <task-id>`,
 	}
 	cmd.AddCommand(newTutorialStartCmd())
@@ -121,7 +121,7 @@ func newTutorialStartCmd() *cobra.Command {
 
 			fmt.Fprintln(os.Stderr, "\nTutorial task started successfully.")
 			fmt.Fprintln(os.Stderr, "\nNext steps:")
-			fmt.Fprintf(os.Stderr, "  clier task updates %s\n", tk.ID)
+			fmt.Fprintf(os.Stderr, "  clier task notes %s\n", tk.ID)
 			fmt.Fprintf(os.Stderr, "  clier task attach %s\n", tk.ID)
 
 			return printJSON(tk)

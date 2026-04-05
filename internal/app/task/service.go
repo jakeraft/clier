@@ -19,7 +19,7 @@ type TaskStore interface {
 	GetTask(ctx context.Context, id string) (domain.Task, error)
 	UpdateTaskStatus(ctx context.Context, task *domain.Task) error
 	CreateMessage(ctx context.Context, msg *domain.Message) error
-	CreateUpdate(ctx context.Context, u *domain.Update) error
+	CreateNote(ctx context.Context, n *domain.Note) error
 
 	// Team and member spec reads (used by plan building)
 	GetTeam(ctx context.Context, id string) (domain.Team, error)
@@ -179,18 +179,18 @@ func (s *Service) Send(ctx context.Context, taskID, fromTeamMemberID, toTeamMemb
 	return nil
 }
 
-// Update persists a progress entry posted by a team member.
-func (s *Service) Update(ctx context.Context, taskID, teamMemberID, content string) error {
+// Note persists a progress entry posted by a team member.
+func (s *Service) Note(ctx context.Context, taskID, teamMemberID, content string) error {
 	if _, err := s.store.GetTask(ctx, taskID); err != nil {
 		return fmt.Errorf("get task: %w", err)
 	}
 
-	u, err := domain.NewUpdate(taskID, teamMemberID, content)
+	n, err := domain.NewNote(taskID, teamMemberID, content)
 	if err != nil {
-		return fmt.Errorf("new update: %w", err)
+		return fmt.Errorf("new note: %w", err)
 	}
-	if err := s.store.CreateUpdate(ctx, u); err != nil {
-		return fmt.Errorf("save update: %w", err)
+	if err := s.store.CreateNote(ctx, n); err != nil {
+		return fmt.Errorf("save note: %w", err)
 	}
 	return nil
 }

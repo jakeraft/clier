@@ -82,8 +82,8 @@ func NewMessage(taskID, fromTeamMemberID, toTeamMemberID, content string) (*Mess
 	}, nil
 }
 
-// Update is a progress entry posted by a team member within a task.
-type Update struct {
+// Note is a progress entry posted by a team member within a task.
+type Note struct {
 	ID           string    `json:"id"`
 	TaskID       string    `json:"task_id"`
 	TeamMemberID string    `json:"team_member_id"`
@@ -91,19 +91,19 @@ type Update struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-func NewUpdate(taskID, teamMemberID, content string) (*Update, error) {
+func NewNote(taskID, teamMemberID, content string) (*Note, error) {
 	if strings.TrimSpace(taskID) == "" {
-		return nil, errors.New("update task id must not be empty")
+		return nil, errors.New("note task id must not be empty")
 	}
 	if strings.TrimSpace(teamMemberID) == "" {
-		return nil, errors.New("update team member id must not be empty")
+		return nil, errors.New("note team member id must not be empty")
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return nil, errors.New("update content must not be empty")
+		return nil, errors.New("note content must not be empty")
 	}
 
-	return &Update{
+	return &Note{
 		ID:           uuid.NewString(),
 		TaskID:       taskID,
 		TeamMemberID: teamMemberID,

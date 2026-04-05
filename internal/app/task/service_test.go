@@ -10,10 +10,10 @@ import (
 )
 
 type stubStore struct {
-	task    *domain.Task
-	team    *domain.Team
-	updates []*domain.Update
-	msgs    []*domain.Message
+	task  *domain.Task
+	team  *domain.Team
+	notes []*domain.Note
+	msgs  []*domain.Message
 }
 
 func (s *stubStore) CreateTask(_ context.Context, t *domain.Task) error { return nil }
@@ -34,8 +34,8 @@ func (s *stubStore) CreateMessage(_ context.Context, msg *domain.Message) error 
 	s.msgs = append(s.msgs, msg)
 	return nil
 }
-func (s *stubStore) CreateUpdate(_ context.Context, u *domain.Update) error {
-	s.updates = append(s.updates, u)
+func (s *stubStore) CreateNote(_ context.Context, n *domain.Note) error {
+	s.notes = append(s.notes, n)
 	return nil
 }
 func (s *stubStore) GetMember(_ context.Context, _ string) (domain.Member, error) {
@@ -71,36 +71,36 @@ type stubWorkspace struct{}
 func (w *stubWorkspace) Prepare(_ context.Context, _ []domain.MemberPlan) error { return nil }
 func (w *stubWorkspace) Cleanup(_ string) error                                 { return nil }
 
-func TestService_Update(t *testing.T) {
+func TestService_Note(t *testing.T) {
 	tk := &domain.Task{ID: "s-1", TeamID: "t-1", Status: domain.TaskRunning}
 	store := &stubStore{task: tk}
 	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "", "")
 
 	t.Run("success", func(t *testing.T) {
-		store.updates = nil
-		if err := svc.Update(context.Background(), "s-1", "member-1", "task done"); err != nil {
+		store.notes = nil
+		if err := svc.Note(context.Background(), "s-1", "member-1", "task done"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(store.updates) != 1 {
-			t.Fatalf("expected 1 update, got %d", len(store.updates))
+		if len(store.notes) != 1 {
+			t.Fatalf("expected 1 note, got %d", len(store.notes))
 		}
-		if store.updates[0].Content != "task done" {
-			t.Errorf("Content = %q, want %q", store.updates[0].Content, "task done")
+		if store.notes[0].Content != "task done" {
+			t.Errorf("Content = %q, want %q", store.notes[0].Content, "task done")
 		}
-		if store.updates[0].TeamMemberID != "member-1" {
-			t.Errorf("TeamMemberID = %q, want %q", store.updates[0].TeamMemberID, "member-1")
+		if store.notes[0].TeamMemberID != "member-1" {
+			t.Errorf("TeamMemberID = %q, want %q", store.notes[0].TeamMemberID, "member-1")
 		}
 	})
 
 	t.Run("task not found", func(t *testing.T) {
-		err := svc.Update(context.Background(), "unknown", "member-1", "hello")
+		err := svc.Note(context.Background(), "unknown", "member-1", "hello")
 		if err == nil {
 			t.Fatal("expected error for unknown task")
 		}
 	})
 
 	t.Run("empty content", func(t *testing.T) {
-		err := svc.Update(context.Background(), "s-1", "member-1", "  ")
+		err := svc.Note(context.Background(), "s-1", "member-1", "  ")
 		if err == nil {
 			t.Fatal("expected error for empty content")
 		}

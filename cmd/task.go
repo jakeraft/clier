@@ -23,8 +23,8 @@ func newTaskCmd() *cobra.Command {
 	cmd.AddCommand(newTaskStopCmd())
 	cmd.AddCommand(newTaskListCmd())
 	cmd.AddCommand(newTaskTellCmd())
-	cmd.AddCommand(newTaskUpdateCmd())
-	cmd.AddCommand(newTaskUpdatesCmd())
+	cmd.AddCommand(newTaskNoteCmd())
+	cmd.AddCommand(newTaskNotesCmd())
 	cmd.AddCommand(newTaskAttachCmd())
 	return cmd
 }
@@ -162,12 +162,12 @@ func newTaskTellCmd() *cobra.Command {
 	return cmd
 }
 
-func newTaskUpdateCmd() *cobra.Command {
+func newTaskNoteCmd() *cobra.Command {
 	var taskFlag string
 
 	cmd := &cobra.Command{
-		Use:         "update <content>",
-		Short:       "Post a progress update",
+		Use:         "note <content>",
+		Short:       "Post a progress note",
 		Args:        cobra.ExactArgs(1),
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -190,7 +190,7 @@ func newTaskUpdateCmd() *cobra.Command {
 			ws := workspace.New(cfg.Paths.Workspaces())
 			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
-			if err := svc.Update(cmd.Context(), taskID, memberID, args[0]); err != nil {
+			if err := svc.Note(cmd.Context(), taskID, memberID, args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
@@ -204,10 +204,10 @@ func newTaskUpdateCmd() *cobra.Command {
 	return cmd
 }
 
-func newTaskUpdatesCmd() *cobra.Command {
+func newTaskNotesCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "updates <task-id>",
-		Short: "List task updates",
+		Use:   "notes <task-id>",
+		Short: "List task notes",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
@@ -220,11 +220,11 @@ func newTaskUpdatesCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			updates, err := store.ListUpdatesByTaskID(cmd.Context(), args[0])
+			notes, err := store.ListNotesByTaskID(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
-			return printJSON(updates)
+			return printJSON(notes)
 		},
 	}
 }
