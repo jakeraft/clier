@@ -100,7 +100,7 @@ func TestCliProfile(t *testing.T) {
 		t.Run("ValidInputs", func(t *testing.T) {
 			p, err := NewCliProfileRaw("my-profile", "claude-sonnet-4-6", BinaryClaude,
 				[]string{"--dangerously-skip-permissions"}, []string{"--verbose"},
-				DotConfig{"key": "val"})
+				`{"key":"val"}`, `{"hasCompletedOnboarding":true}`)
 			if err != nil {
 				t.Fatalf("NewCliProfileRaw: %v", err)
 			}
@@ -119,28 +119,28 @@ func TestCliProfile(t *testing.T) {
 		})
 
 		t.Run("EmptyName", func(t *testing.T) {
-			_, err := NewCliProfileRaw("", "model", BinaryClaude, nil, nil, nil)
+			_, err := NewCliProfileRaw("", "model", BinaryClaude, nil, nil, "", "")
 			if err == nil {
 				t.Error("expected error for empty name")
 			}
 		})
 
 		t.Run("EmptyModel", func(t *testing.T) {
-			_, err := NewCliProfileRaw("name", "", BinaryClaude, nil, nil, nil)
+			_, err := NewCliProfileRaw("name", "", BinaryClaude, nil, nil, "", "")
 			if err == nil {
 				t.Error("expected error for empty model")
 			}
 		})
 
 		t.Run("InvalidBinary", func(t *testing.T) {
-			_, err := NewCliProfileRaw("name", "model", CliBinary("invalid"), nil, nil, nil)
+			_, err := NewCliProfileRaw("name", "model", CliBinary("invalid"), nil, nil, "", "")
 			if err == nil {
 				t.Error("expected error for invalid binary")
 			}
 		})
 
 		t.Run("NilSlicesDefaultToEmpty", func(t *testing.T) {
-			p, err := NewCliProfileRaw("name", "model", BinaryClaude, nil, nil, nil)
+			p, err := NewCliProfileRaw("name", "model", BinaryClaude, nil, nil, "", "")
 			if err != nil {
 				t.Fatalf("NewCliProfileRaw: %v", err)
 			}

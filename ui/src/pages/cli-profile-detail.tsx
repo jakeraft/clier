@@ -38,11 +38,15 @@ export function CliProfileDetail() {
           updatedAt={profile.updatedAt}
         />
       </Section>
-      <Section icon={Cog} title="Config">
-        <ArgumentsBadge
-          args={Object.entries(profile.dotConfig ?? {}).map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`)}
-          variant="secondary"
-        />
+      <Section icon={Cog} title="Settings JSON">
+        <pre className="text-sm bg-muted rounded-md p-3 overflow-x-auto">
+          {JSON.stringify(profile.settingsJson, null, 2)}
+        </pre>
+      </Section>
+      <Section icon={Cog} title="Claude JSON">
+        <pre className="text-sm bg-muted rounded-md p-3 overflow-x-auto">
+          {JSON.stringify(profile.claudeJson, null, 2)}
+        </pre>
       </Section>
 
       <Section icon={Settings} title="System Args">

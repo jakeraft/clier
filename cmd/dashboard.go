@@ -232,7 +232,8 @@ func convertCliProfiles(profiles []resource.CliProfile) []cliProfileView {
 			Binary:     string(p.Binary),
 			SystemArgs: p.SystemArgs,
 			CustomArgs: p.CustomArgs,
-			DotConfig:  p.DotConfig,
+			SettingsJSON: json.RawMessage(p.SettingsJSON),
+			ClaudeJSON:   json.RawMessage(p.ClaudeJSON),
 			CreatedAt:  p.CreatedAt,
 			UpdatedAt:  p.UpdatedAt,
 		})
@@ -335,15 +336,16 @@ type memberView struct {
 }
 
 type cliProfileView struct {
-	ID         string         `json:"id"`
-	Name       string         `json:"name"`
-	Model      string         `json:"model"`
-	Binary     string         `json:"binary"`
-	SystemArgs []string       `json:"systemArgs"`
-	CustomArgs []string       `json:"customArgs"`
-	DotConfig  map[string]any `json:"dotConfig"`
-	CreatedAt  time.Time      `json:"createdAt"`
-	UpdatedAt  time.Time      `json:"updatedAt"`
+	ID           string          `json:"id"`
+	Name         string          `json:"name"`
+	Model        string          `json:"model"`
+	Binary       string          `json:"binary"`
+	SystemArgs   []string        `json:"systemArgs"`
+	CustomArgs   []string        `json:"customArgs"`
+	SettingsJSON json.RawMessage `json:"settingsJson"`
+	ClaudeJSON   json.RawMessage `json:"claudeJson"`
+	CreatedAt    time.Time       `json:"createdAt"`
+	UpdatedAt    time.Time       `json:"updatedAt"`
 }
 
 type systemPromptView struct {
