@@ -9,15 +9,16 @@ import (
 )
 
 type CliProfile struct {
-	ID         string
-	Name       string
-	Model      string
-	Binary     string
-	SystemArgs string
-	CustomArgs string
-	DotConfig  string
-	CreatedAt  int64
-	UpdatedAt  int64
+	ID           string
+	Name         string
+	Model        string
+	Binary       string
+	SystemArgs   string
+	CustomArgs   string
+	SettingsJson string
+	ClaudeJson   string
+	CreatedAt    int64
+	UpdatedAt    int64
 }
 
 type Env struct {

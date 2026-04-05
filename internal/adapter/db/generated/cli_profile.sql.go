@@ -11,20 +11,21 @@ import (
 )
 
 const createCliProfile = `-- name: CreateCliProfile :execresult
-INSERT INTO cli_profiles (id, name, model, binary, system_args, custom_args, dot_config, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO cli_profiles (id, name, model, binary, system_args, custom_args, settings_json, claude_json, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateCliProfileParams struct {
-	ID         string
-	Name       string
-	Model      string
-	Binary     string
-	SystemArgs string
-	CustomArgs string
-	DotConfig  string
-	CreatedAt  int64
-	UpdatedAt  int64
+	ID           string
+	Name         string
+	Model        string
+	Binary       string
+	SystemArgs   string
+	CustomArgs   string
+	SettingsJson string
+	ClaudeJson   string
+	CreatedAt    int64
+	UpdatedAt    int64
 }
 
 func (q *Queries) CreateCliProfile(ctx context.Context, arg CreateCliProfileParams) (sql.Result, error) {
@@ -35,7 +36,8 @@ func (q *Queries) CreateCliProfile(ctx context.Context, arg CreateCliProfilePara
 		arg.Binary,
 		arg.SystemArgs,
 		arg.CustomArgs,
-		arg.DotConfig,
+		arg.SettingsJson,
+		arg.ClaudeJson,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -50,7 +52,7 @@ func (q *Queries) DeleteCliProfile(ctx context.Context, id string) (sql.Result, 
 }
 
 const getCliProfile = `-- name: GetCliProfile :one
-SELECT id, name, model, binary, system_args, custom_args, dot_config, created_at, updated_at FROM cli_profiles WHERE id = ?
+SELECT id, name, model, binary, system_args, custom_args, settings_json, claude_json, created_at, updated_at FROM cli_profiles WHERE id = ?
 `
 
 func (q *Queries) GetCliProfile(ctx context.Context, id string) (CliProfile, error) {
@@ -63,7 +65,8 @@ func (q *Queries) GetCliProfile(ctx context.Context, id string) (CliProfile, err
 		&i.Binary,
 		&i.SystemArgs,
 		&i.CustomArgs,
-		&i.DotConfig,
+		&i.SettingsJson,
+		&i.ClaudeJson,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -71,7 +74,7 @@ func (q *Queries) GetCliProfile(ctx context.Context, id string) (CliProfile, err
 }
 
 const listCliProfiles = `-- name: ListCliProfiles :many
-SELECT id, name, model, binary, system_args, custom_args, dot_config, created_at, updated_at FROM cli_profiles ORDER BY created_at
+SELECT id, name, model, binary, system_args, custom_args, settings_json, claude_json, created_at, updated_at FROM cli_profiles ORDER BY created_at
 `
 
 func (q *Queries) ListCliProfiles(ctx context.Context) ([]CliProfile, error) {
@@ -90,7 +93,8 @@ func (q *Queries) ListCliProfiles(ctx context.Context) ([]CliProfile, error) {
 			&i.Binary,
 			&i.SystemArgs,
 			&i.CustomArgs,
-			&i.DotConfig,
+			&i.SettingsJson,
+			&i.ClaudeJson,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -109,19 +113,20 @@ func (q *Queries) ListCliProfiles(ctx context.Context) ([]CliProfile, error) {
 
 const updateCliProfile = `-- name: UpdateCliProfile :execresult
 UPDATE cli_profiles
-SET name = ?, model = ?, binary = ?, system_args = ?, custom_args = ?, dot_config = ?, updated_at = ?
+SET name = ?, model = ?, binary = ?, system_args = ?, custom_args = ?, settings_json = ?, claude_json = ?, updated_at = ?
 WHERE id = ?
 `
 
 type UpdateCliProfileParams struct {
-	Name       string
-	Model      string
-	Binary     string
-	SystemArgs string
-	CustomArgs string
-	DotConfig  string
-	UpdatedAt  int64
-	ID         string
+	Name         string
+	Model        string
+	Binary       string
+	SystemArgs   string
+	CustomArgs   string
+	SettingsJson string
+	ClaudeJson   string
+	UpdatedAt    int64
+	ID           string
 }
 
 func (q *Queries) UpdateCliProfile(ctx context.Context, arg UpdateCliProfileParams) (sql.Result, error) {
@@ -131,7 +136,8 @@ func (q *Queries) UpdateCliProfile(ctx context.Context, arg UpdateCliProfilePara
 		arg.Binary,
 		arg.SystemArgs,
 		arg.CustomArgs,
-		arg.DotConfig,
+		arg.SettingsJson,
+		arg.ClaudeJson,
 		arg.UpdatedAt,
 		arg.ID,
 	)

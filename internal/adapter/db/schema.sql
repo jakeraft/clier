@@ -5,8 +5,9 @@ CREATE TABLE IF NOT EXISTS cli_profiles (
     binary      TEXT NOT NULL DEFAULT 'claude',
     system_args TEXT NOT NULL DEFAULT '[]',
     custom_args TEXT NOT NULL DEFAULT '[]',
-    dot_config  TEXT NOT NULL DEFAULT '{}',
-    created_at  INTEGER NOT NULL,
+    settings_json TEXT NOT NULL DEFAULT '{}',
+    claude_json   TEXT NOT NULL DEFAULT '{}',
+    created_at    INTEGER NOT NULL,
     updated_at  INTEGER NOT NULL
 );
 

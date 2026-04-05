@@ -1,6 +1,6 @@
 -- name: CreateCliProfile :execresult
-INSERT INTO cli_profiles (id, name, model, binary, system_args, custom_args, dot_config, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO cli_profiles (id, name, model, binary, system_args, custom_args, settings_json, claude_json, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetCliProfile :one
 SELECT * FROM cli_profiles WHERE id = ?;
@@ -10,7 +10,7 @@ SELECT * FROM cli_profiles ORDER BY created_at;
 
 -- name: UpdateCliProfile :execresult
 UPDATE cli_profiles
-SET name = ?, model = ?, binary = ?, system_args = ?, custom_args = ?, dot_config = ?, updated_at = ?
+SET name = ?, model = ?, binary = ?, system_args = ?, custom_args = ?, settings_json = ?, claude_json = ?, updated_at = ?
 WHERE id = ?;
 
 -- name: DeleteCliProfile :execresult
