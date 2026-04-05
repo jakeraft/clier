@@ -112,8 +112,8 @@ func NewLog(sessionID, teamMemberID, content string) (*Log, error) {
 	}, nil
 }
 
-// MemberPlan is a fully-resolved execution plan for a single team member.
-// Binary, Model, Envs are NOT stored — they are already resolved into Command.
+// MemberPlan is the execution plan for a single team member, built from resolved resources.
+// Binary, Model, Envs are NOT stored — they are already baked into Command.
 // Relations are NOT stored — they are in Team.Relations and baked into the prompt.
 //
 // Plan retains {{CLIER_*}} placeholders; these are expanded at session start
@@ -143,7 +143,7 @@ type GitRepoRef struct {
 	URL  string `json:"url"`
 }
 
-// FileEntry is a resolved config file to write to a member's workspace.
+// FileEntry is a config file to write to a member's workspace.
 type FileEntry struct {
 	Path    string `json:"path"`    // relative to memberspace
 	Content string `json:"content"`

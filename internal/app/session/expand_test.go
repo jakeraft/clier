@@ -37,7 +37,7 @@ func TestExpandPlaceholders(t *testing.T) {
 		t.Errorf("Files[0].Path = %q", expanded.Workspace.Files[0].Path)
 	}
 
-	// ~/ should be expanded to home dir, placeholders should be resolved
+	// ~/ should be expanded to home dir, placeholders should be expanded
 	wantContent := `{"excludes":["/home/user/.claude/**"],"projects":{"/home/user/.clier/workspaces/session-999/member1/project":{}}}`
 	if expanded.Workspace.Files[0].Content != wantContent {
 		t.Errorf("Files[0].Content = %q\nwant             %q", expanded.Workspace.Files[0].Content, wantContent)
