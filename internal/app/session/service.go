@@ -87,10 +87,10 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 	session.Plan = plan
 
 	// Expand: placeholders -> concrete paths
-	claudeToken := resolveAuth(auth)
+	claudeToken := readAuth(auth)
 	members := make([]domain.MemberPlan, 0, len(plan))
 	for _, m := range plan {
-		members = append(members, resolvePlaceholders(m, s.base, s.homeDir, sessionID, claudeToken))
+		members = append(members, expandPlaceholders(m, s.base, s.homeDir, sessionID, claudeToken))
 	}
 
 	success := false
@@ -194,8 +194,8 @@ func (s *Service) Log(ctx context.Context, sessionID, teamMemberID, content stri
 	return nil
 }
 
-// resolveAuth reads the Claude auth token.
-func resolveAuth(auth AuthChecker) string {
+// readAuth reads the Claude auth token.
+func readAuth(auth AuthChecker) string {
 	token, err := auth.ReadToken()
 	if err == nil && token != "" {
 		return token

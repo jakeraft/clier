@@ -6,9 +6,10 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-// resolvePlaceholders replaces all {{CLIER_*}} placeholders in a MemberPlan
+// expandPlaceholders replaces all {{CLIER_*}} placeholders in a MemberPlan
 // and expands ~/ paths to the user's home directory.
-func resolvePlaceholders(m domain.MemberPlan, base, homeDir, sessionID, claudeToken string) domain.MemberPlan {
+// This is the expand phase: plan with placeholders -> plan with concrete paths.
+func expandPlaceholders(m domain.MemberPlan, base, homeDir, sessionID, claudeToken string) domain.MemberPlan {
 	memberspace := strings.ReplaceAll(m.Workspace.Memberspace, PlaceholderBase, base)
 	memberspace = strings.ReplaceAll(memberspace, PlaceholderSessionID, sessionID)
 
