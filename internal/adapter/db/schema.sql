@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS teams (
     updated_at           INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS sessions (
+CREATE TABLE IF NOT EXISTS tasks (
     id            TEXT PRIMARY KEY,
     team_id       TEXT NOT NULL REFERENCES teams(id),
     status        TEXT NOT NULL DEFAULT 'running',
@@ -55,16 +55,16 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE TABLE IF NOT EXISTS messages (
     id                    TEXT PRIMARY KEY,
-    session_id            TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    task_id               TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     from_team_member_id   TEXT,
     to_team_member_id     TEXT NOT NULL,
     content               TEXT NOT NULL,
     created_at            INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS logs (
+CREATE TABLE IF NOT EXISTS updates (
     id              TEXT PRIMARY KEY,
-    session_id      TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    task_id         TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     team_member_id  TEXT NOT NULL,
     content         TEXT NOT NULL,
     created_at      INTEGER NOT NULL
@@ -85,10 +85,10 @@ CREATE TABLE IF NOT EXISTS team_relations (
 );
 
 CREATE TABLE IF NOT EXISTS terminal_refs (
-    session_id     TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+    task_id        TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     team_member_id TEXT NOT NULL,
     refs           TEXT NOT NULL DEFAULT '{}',
-    PRIMARY KEY (session_id, team_member_id)
+    PRIMARY KEY (task_id, team_member_id)
 );
 
 CREATE TABLE IF NOT EXISTS member_system_prompts (

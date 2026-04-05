@@ -38,14 +38,6 @@ type GitRepo struct {
 	UpdatedAt int64
 }
 
-type Log struct {
-	ID           string
-	SessionID    string
-	TeamMemberID string
-	Content      string
-	CreatedAt    int64
-}
-
 type Member struct {
 	ID           string
 	Name         string
@@ -67,20 +59,11 @@ type MemberSystemPrompt struct {
 
 type Message struct {
 	ID               string
-	SessionID        string
+	TaskID           string
 	FromTeamMemberID sql.NullString
 	ToTeamMemberID   string
 	Content          string
 	CreatedAt        int64
-}
-
-type Session struct {
-	ID        string
-	TeamID    string
-	Status    string
-	Plan      string
-	CreatedAt int64
-	StoppedAt sql.NullInt64
 }
 
 type SystemPrompt struct {
@@ -89,6 +72,15 @@ type SystemPrompt struct {
 	Prompt    string
 	CreatedAt int64
 	UpdatedAt int64
+}
+
+type Task struct {
+	ID        string
+	TeamID    string
+	Status    string
+	Plan      string
+	CreatedAt int64
+	StoppedAt sql.NullInt64
 }
 
 type Team struct {
@@ -113,7 +105,15 @@ type TeamRelation struct {
 }
 
 type TerminalRef struct {
-	SessionID    string
+	TaskID       string
 	TeamMemberID string
 	Refs         string
+}
+
+type Update struct {
+	ID           string
+	TaskID       string
+	TeamMemberID string
+	Content      string
+	CreatedAt    int64
 }
