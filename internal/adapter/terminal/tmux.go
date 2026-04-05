@@ -192,12 +192,10 @@ func (t *TmuxTerminal) sendKeys(sess, win, text string) error {
 	// rather than being intercepted by copy-mode-vi key bindings.
 	// Safe no-op when the pane is not in copy-mode.
 	_, _ = t.runFn("copy-mode", "-q", "-t", target)
-	// Send text literally (-l) to avoid tmux interpreting special characters,
-	// then send Enter as a key press separately.
-	if _, err := t.runFn("send-keys", "-l", "-t", target, text); err != nil {
-		return err
-	}
-	_, err := t.runFn("send-keys", "-t", target, "Enter")
+	// Chain literal text + Enter in a single tmux invocation using ";"
+	// command separator. Two separate invocations race: the TUI may
+	// drop Enter if it arrives while still processing the text.
+	_, err := t.runFn("send-keys", "-l", "-t", target, text, ";", "send-keys", "-t", target, "Enter")
 	return err
 }
 
