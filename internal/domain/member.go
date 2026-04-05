@@ -76,3 +76,15 @@ func (m *Member) Update(name, cliProfileID *string, systemPromptIDs *[]string, g
 	m.UpdatedAt = time.Now()
 	return nil
 }
+
+// ResolvedMember is a Member spec with all referenced resources loaded.
+// Produced by the resolve phase; consumed by the build phase to create MemberPlan.
+type ResolvedMember struct {
+	TeamMemberID string
+	Name         string
+	Profile      CliProfile
+	Prompts      []SystemPrompt
+	Envs         []Env
+	Repo         *GitRepo
+	Relations    MemberRelations
+}

@@ -272,4 +272,10 @@ func (t *Team) teamMemberIndex(teamMemberID string) int {
 	return -1
 }
 
+// ResolvedTeam is a Team with all members fully resolved.
+// Produced by the resolve phase; consumed by the build phase.
+type ResolvedTeam struct {
+	Team
+	Members []ResolvedMember
+}
 
