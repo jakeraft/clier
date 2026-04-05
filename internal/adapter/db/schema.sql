@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS teams (
 
 CREATE TABLE IF NOT EXISTS tasks (
     id            TEXT PRIMARY KEY,
+    name          TEXT NOT NULL DEFAULT '',
     team_id       TEXT NOT NULL REFERENCES teams(id),
     status        TEXT NOT NULL DEFAULT 'running',
     plan          TEXT NOT NULL DEFAULT '[]',

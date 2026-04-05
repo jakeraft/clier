@@ -58,7 +58,7 @@ export function TaskDetail() {
   );
 }
 
-function OverviewTab({ task }: Readonly<{ task: { id: string; status: string; teamId: string; teamName: string; createdAt: string; updatedAt: string; notes: NoteView[]; messages: MessageView[] } }>) {
+function OverviewTab({ task }: Readonly<{ task: { id: string; name: string; status: string; teamId: string; teamName: string; createdAt: string; updatedAt: string; notes: NoteView[]; messages: MessageView[] } }>) {
   return (
     <>
       <Section icon={ClipboardList} title="Overview">
@@ -67,6 +67,10 @@ function OverviewTab({ task }: Readonly<{ task: { id: string; status: string; te
           createdAt={task.createdAt}
           updatedAt={task.updatedAt}
           rows={[
+            {
+              label: "Name",
+              children: task.name,
+            },
             {
               label: "Status",
               children: <StatusBadge status={task.status} />,

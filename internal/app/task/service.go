@@ -74,6 +74,7 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 	}
 
 	taskID := uuid.NewString()
+	taskName := domain.TaskName(team.Name, taskID)
 
 	// Build: resolved objects -> execution plan (with placeholders)
 	plan, err := buildPlans(resolved, taskID)
@@ -81,7 +82,7 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 		return nil, fmt.Errorf("build plans: %w", err)
 	}
 
-	t, err := domain.NewTask(taskID, team.ID)
+	t, err := domain.NewTask(taskID, taskName, team.ID)
 	if err != nil {
 		return nil, fmt.Errorf("new task: %w", err)
 	}
@@ -110,7 +111,7 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 		return nil, fmt.Errorf("save task: %w", err)
 	}
 
-	if err := s.terminal.Launch(taskID, team.Name, members); err != nil {
+	if err := s.terminal.Launch(taskID, taskName, members); err != nil {
 		return nil, fmt.Errorf("launch terminal: %w", err)
 	}
 

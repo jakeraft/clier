@@ -84,6 +84,7 @@ type SystemPrompt struct {
 
 type Task struct {
 	ID        string
+	Name      string
 	TeamID    string
 	Status    string
 	Plan      string

@@ -788,6 +788,7 @@ func unmarshalTask(row generated.Task) (domain.Task, error) {
 	}
 	t := domain.Task{
 		ID:        row.ID,
+		Name:      row.Name,
 		TeamID:    row.TeamID,
 		Status:    domain.TaskStatus(row.Status),
 		Plan:      plan,
@@ -807,6 +808,7 @@ func (s *Store) CreateTask(ctx context.Context, task *domain.Task) error {
 	}
 	params := generated.CreateTaskParams{
 		ID:        task.ID,
+		Name:      task.Name,
 		TeamID:    task.TeamID,
 		Status:    string(task.Status),
 		Plan:      string(planJSON),

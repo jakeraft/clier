@@ -19,6 +19,7 @@ const (
 // Plan is built fresh at task start from the team's current state.
 type Task struct {
 	ID     string     `json:"id"`
+	Name   string     `json:"name"`
 	TeamID string     `json:"team_id"`
 	Status TaskStatus `json:"status"`
 	// Plan retains {{CLIER_*}} placeholders as built. Safe for name/ID lookups;
@@ -28,19 +29,36 @@ type Task struct {
 	StoppedAt *time.Time   `json:"stopped_at"`
 }
 
-func NewTask(id, teamID string) (*Task, error) {
+func NewTask(id, name, teamID string) (*Task, error) {
 	if id == "" {
 		return nil, errors.New("task id must not be empty")
+	}
+	if name == "" {
+		return nil, errors.New("task name must not be empty")
 	}
 	if teamID == "" {
 		return nil, errors.New("team id must not be empty")
 	}
 	return &Task{
 		ID:        id,
+		Name:      name,
 		TeamID:    teamID,
 		Status:    TaskRunning,
 		CreatedAt: time.Now(),
 	}, nil
+}
+
+// TaskName generates a task name from team name and task ID.
+func TaskName(teamName, taskID string) string {
+	name := strings.NewReplacer(".", "-", ":", "-", " ", "-").Replace(teamName)
+	if len(name) > 20 {
+		name = name[:20]
+	}
+	short := taskID
+	if len(short) > 8 {
+		short = short[:8]
+	}
+	return name + "-" + short
 }
 
 func (t *Task) Stop() {

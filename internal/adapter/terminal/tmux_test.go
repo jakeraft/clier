@@ -104,7 +104,7 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 		t.Errorf("expected 2 rename-window calls, got %d", renameCount)
 	}
 	// Verify task ID stored in tmux server env
-	if !hasCall(runner.calls, "set-environment -g CLIER_TASK_my-team-s-1 s-1") {
+	if !hasCall(runner.calls, "set-environment -g CLIER_TASK_my-team s-1") {
 		t.Error("expected set-environment call for task env")
 	}
 	// Verify command sent to first member
@@ -116,8 +116,8 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetRefs m-1: %v", err)
 	}
-	if refs["session"] != "my-team-s-1" {
-		t.Errorf("session ref = %q, want my-team-s-1", refs["session"])
+	if refs["session"] != "my-team" {
+		t.Errorf("session ref = %q, want my-team", refs["session"])
 	}
 	if refs["window"] != "0" {
 		t.Errorf("window ref = %q, want 0", refs["window"])

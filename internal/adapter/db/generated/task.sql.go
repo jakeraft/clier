@@ -11,12 +11,13 @@ import (
 )
 
 const createTask = `-- name: CreateTask :execresult
-INSERT INTO tasks (id, team_id, status, plan, created_at, stopped_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO tasks (id, name, team_id, status, plan, created_at, stopped_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateTaskParams struct {
 	ID        string
+	Name      string
 	TeamID    string
 	Status    string
 	Plan      string
@@ -27,6 +28,7 @@ type CreateTaskParams struct {
 func (q *Queries) CreateTask(ctx context.Context, arg CreateTaskParams) (sql.Result, error) {
 	return q.db.ExecContext(ctx, createTask,
 		arg.ID,
+		arg.Name,
 		arg.TeamID,
 		arg.Status,
 		arg.Plan,
@@ -44,7 +46,7 @@ func (q *Queries) DeleteTask(ctx context.Context, id string) (sql.Result, error)
 }
 
 const getTask = `-- name: GetTask :one
-SELECT id, team_id, status, "plan", created_at, stopped_at FROM tasks WHERE id = ?
+SELECT id, name, team_id, status, "plan", created_at, stopped_at FROM tasks WHERE id = ?
 `
 
 func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
@@ -52,6 +54,7 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 	var i Task
 	err := row.Scan(
 		&i.ID,
+		&i.Name,
 		&i.TeamID,
 		&i.Status,
 		&i.Plan,
@@ -62,7 +65,7 @@ func (q *Queries) GetTask(ctx context.Context, id string) (Task, error) {
 }
 
 const listTasks = `-- name: ListTasks :many
-SELECT id, team_id, status, "plan", created_at, stopped_at FROM tasks ORDER BY created_at DESC
+SELECT id, name, team_id, status, "plan", created_at, stopped_at FROM tasks ORDER BY created_at DESC
 `
 
 func (q *Queries) ListTasks(ctx context.Context) ([]Task, error) {
@@ -76,6 +79,7 @@ func (q *Queries) ListTasks(ctx context.Context) ([]Task, error) {
 		var i Task
 		if err := rows.Scan(
 			&i.ID,
+			&i.Name,
 			&i.TeamID,
 			&i.Status,
 			&i.Plan,

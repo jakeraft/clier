@@ -500,7 +500,7 @@ func convertTasks(ctx context.Context, store *db.Store, tasks []domain.Task, tea
 
 		views = append(views, taskView{
 			ID:        t.ID,
-			Name:      t.ID,
+			Name:      t.Name,
 			TeamID:    t.TeamID,
 			TeamName:  teamNames[t.TeamID],
 			Status:    string(t.Status),

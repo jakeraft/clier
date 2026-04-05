@@ -9,12 +9,15 @@ import (
 
 func TestNewTask(t *testing.T) {
 	t.Run("valid task", func(t *testing.T) {
-		task, err := domain.NewTask("task-123", "team-456")
+		task, err := domain.NewTask("task-123", "my-team-task-123", "team-456")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if task.ID != "task-123" {
 			t.Errorf("ID = %q, want %q", task.ID, "task-123")
+		}
+		if task.Name != "my-team-task-123" {
+			t.Errorf("Name = %q, want %q", task.Name, "my-team-task-123")
 		}
 		if task.TeamID != "team-456" {
 			t.Errorf("TeamID = %q, want %q", task.TeamID, "team-456")
@@ -28,21 +31,28 @@ func TestNewTask(t *testing.T) {
 	})
 
 	t.Run("empty id", func(t *testing.T) {
-		_, err := domain.NewTask("", "team-456")
+		_, err := domain.NewTask("", "name", "team-456")
 		if err == nil {
 			t.Fatal("expected error for empty ID")
 		}
 	})
 
+	t.Run("empty name", func(t *testing.T) {
+		_, err := domain.NewTask("task-123", "", "team-456")
+		if err == nil {
+			t.Fatal("expected error for empty name")
+		}
+	})
+
 	t.Run("empty team id", func(t *testing.T) {
-		_, err := domain.NewTask("task-123", "")
+		_, err := domain.NewTask("task-123", "name", "")
 		if err == nil {
 			t.Fatal("expected error for empty team ID")
 		}
 	})
 
 	t.Run("stop", func(t *testing.T) {
-		task, _ := domain.NewTask("task-123", "team-456")
+		task, _ := domain.NewTask("task-123", "my-team-task-123", "team-456")
 		task.Stop()
 		if task.Status != domain.TaskStopped {
 			t.Errorf("Status = %q, want %q", task.Status, domain.TaskStopped)

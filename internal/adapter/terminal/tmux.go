@@ -41,7 +41,7 @@ func (t *TmuxTerminal) Launch(taskID, taskName string, members []domain.MemberPl
 		return errors.New("no members to launch")
 	}
 
-	sess := tmuxSessionName(taskName, taskID)
+	sess := taskName
 
 	// Create tmux session (first window is created automatically).
 	if _, err := t.runFn("new-session", "-d", "-s", sess); err != nil {
@@ -222,18 +222,6 @@ func (t *TmuxTerminal) defaultRun(args ...string) (string, error) {
 		return "", fmt.Errorf("tmux %s: %w: %s", args[0], err, strings.TrimSpace(string(out)))
 	}
 	return strings.TrimSpace(string(out)), nil
-}
-
-func tmuxSessionName(teamName, taskID string) string {
-	name := strings.NewReplacer(".", "-", ":", "-", " ", "-").Replace(teamName)
-	if len(name) > 20 {
-		name = name[:20]
-	}
-	short := taskID
-	if len(short) > 8 {
-		short = short[:8]
-	}
-	return name + "-" + short
 }
 
 func taskEnvKey(sess string) string {
