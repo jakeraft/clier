@@ -44,7 +44,7 @@ Run "clier tutorial start" to execute the following commands in sequence:
 
   1. clier import ` + tutorialImportURL + `
   2. clier session start ` + tutorialTeamID + `
-  3. clier session send --session <session-id> --to ` + tutorialRootMemberID + ` "` + tutorialMessage + `"
+  3. clier session tell --session <session-id> --to ` + tutorialRootMemberID + ` "` + tutorialMessage + `"
 
 After the session starts, check progress with:
 
@@ -113,10 +113,10 @@ func newTutorialStartCmd() *cobra.Command {
 				return fmt.Errorf("start session: %w", err)
 			}
 
-			// Step 3: Send message to root member.
-			fmt.Fprintln(os.Stderr, "Step 3/3: Sending message to chief-editor...")
+			// Step 3: Tell root member to start.
+			fmt.Fprintln(os.Stderr, "Step 3/3: Telling chief-editor to start...")
 			if err := svc.Send(ctx, s.ID, "", tutorialRootMemberID, tutorialMessage); err != nil {
-				return fmt.Errorf("send message: %w", err)
+				return fmt.Errorf("tell message: %w", err)
 			}
 
 			fmt.Fprintln(os.Stderr, "\nTutorial session started successfully.")
