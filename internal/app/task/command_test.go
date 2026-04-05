@@ -1,4 +1,4 @@
-package session
+package task
 
 import (
 	"strings"
@@ -48,7 +48,7 @@ func TestBuildEnv(t *testing.T) {
 			{Key: "GITHUB_TOKEN", Value: "ghp_xxx"},
 		}
 
-		env := buildEnv("session-1", "m1", authEnvs, userEnvs)
+		env := buildEnv("task-1", "m1", authEnvs, userEnvs)
 
 		envMap := make(map[string]string)
 		for _, e := range env {
@@ -58,7 +58,7 @@ func TestBuildEnv(t *testing.T) {
 
 		for k, want := range map[string]string{
 			"CLAUDE_CONFIG_DIR":       PlaceholderMemberspace + "/.claude",
-			"CLIER_SESSION_ID":        "session-1",
+			"CLIER_TASK_ID":           "task-1",
 			"CLIER_MEMBER_ID":         "m1",
 			"CLAUDE_CODE_OAUTH_TOKEN": PlaceholderAuthClaude,
 			"GITHUB_TOKEN":            "ghp_xxx",
@@ -70,7 +70,7 @@ func TestBuildEnv(t *testing.T) {
 	})
 
 	t.Run("NoAuth_SystemVarsOnly", func(t *testing.T) {
-		env := buildEnv("session-1", "m2", nil, nil)
+		env := buildEnv("task-1", "m2", nil, nil)
 
 		if len(env) != 3 {
 			t.Errorf("expected 3 env vars, got %d", len(env))
@@ -112,7 +112,7 @@ func TestBuildCommand(t *testing.T) {
 			SystemArgs: []string{"--dangerously-skip-permissions"},
 			CustomArgs: []string{"--verbose"},
 		}
-		cmd := buildCommand(profile, "you are a coder", "session-1", "m1", authEnvs, nil)
+		cmd := buildCommand(profile, "you are a coder", "task-1", "m1", authEnvs, nil)
 
 		for _, want := range []string{
 			"claude",
@@ -121,7 +121,7 @@ func TestBuildCommand(t *testing.T) {
 			"--verbose",
 			"--append-system-prompt",
 			"export CLAUDE_CONFIG_DIR='" + PlaceholderMemberspace + "/.claude'",
-			"export CLIER_SESSION_ID='session-1'",
+			"export CLIER_TASK_ID='task-1'",
 			"export CLIER_MEMBER_ID='m1'",
 			"export CLAUDE_CODE_OAUTH_TOKEN='" + PlaceholderAuthClaude + "'",
 			"cd '" + PlaceholderMemberspace + "/project'",
@@ -139,7 +139,7 @@ func TestBuildCommand(t *testing.T) {
 		}
 
 		profile := resource.CliProfile{Model: "opus"}
-		cmd := buildCommand(profile, "", "session-1", "m1", nil, userEnvs)
+		cmd := buildCommand(profile, "", "task-1", "m1", nil, userEnvs)
 
 		if !strings.Contains(cmd, "export GITHUB_TOKEN='ghp_xxx'") {
 			t.Errorf("missing GITHUB_TOKEN in:\n%s", cmd)

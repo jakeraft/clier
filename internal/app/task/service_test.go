@@ -1,4 +1,4 @@
-package session
+package task
 
 import (
 	"context"
@@ -10,20 +10,20 @@ import (
 )
 
 type stubStore struct {
-	session *domain.Session
+	task    *domain.Task
 	team    *domain.Team
-	logs    []*domain.Log
+	updates []*domain.Update
 	msgs    []*domain.Message
 }
 
-func (s *stubStore) CreateSession(_ context.Context, sess *domain.Session) error { return nil }
-func (s *stubStore) GetSession(_ context.Context, id string) (domain.Session, error) {
-	if s.session != nil && s.session.ID == id {
-		return *s.session, nil
+func (s *stubStore) CreateTask(_ context.Context, t *domain.Task) error { return nil }
+func (s *stubStore) GetTask(_ context.Context, id string) (domain.Task, error) {
+	if s.task != nil && s.task.ID == id {
+		return *s.task, nil
 	}
-	return domain.Session{}, errors.New("session not found")
+	return domain.Task{}, errors.New("task not found")
 }
-func (s *stubStore) UpdateSessionStatus(_ context.Context, _ *domain.Session) error { return nil }
+func (s *stubStore) UpdateTaskStatus(_ context.Context, _ *domain.Task) error { return nil }
 func (s *stubStore) GetTeam(_ context.Context, id string) (domain.Team, error) {
 	if s.team != nil && s.team.ID == id {
 		return *s.team, nil
@@ -34,8 +34,8 @@ func (s *stubStore) CreateMessage(_ context.Context, msg *domain.Message) error 
 	s.msgs = append(s.msgs, msg)
 	return nil
 }
-func (s *stubStore) CreateLog(_ context.Context, l *domain.Log) error {
-	s.logs = append(s.logs, l)
+func (s *stubStore) CreateUpdate(_ context.Context, u *domain.Update) error {
+	s.updates = append(s.updates, u)
 	return nil
 }
 func (s *stubStore) GetMember(_ context.Context, _ string) (domain.Member, error) {
@@ -71,36 +71,36 @@ type stubWorkspace struct{}
 func (w *stubWorkspace) Prepare(_ context.Context, _ []domain.MemberPlan) error { return nil }
 func (w *stubWorkspace) Cleanup(_ string) error                                 { return nil }
 
-func TestService_Log(t *testing.T) {
-	sess := &domain.Session{ID: "s-1", TeamID: "t-1", Status: domain.SessionRunning}
-	store := &stubStore{session: sess}
+func TestService_Update(t *testing.T) {
+	tk := &domain.Task{ID: "s-1", TeamID: "t-1", Status: domain.TaskRunning}
+	store := &stubStore{task: tk}
 	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "", "")
 
 	t.Run("success", func(t *testing.T) {
-		store.logs = nil
-		if err := svc.Log(context.Background(), "s-1", "member-1", "task done"); err != nil {
+		store.updates = nil
+		if err := svc.Update(context.Background(), "s-1", "member-1", "task done"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if len(store.logs) != 1 {
-			t.Fatalf("expected 1 log, got %d", len(store.logs))
+		if len(store.updates) != 1 {
+			t.Fatalf("expected 1 update, got %d", len(store.updates))
 		}
-		if store.logs[0].Content != "task done" {
-			t.Errorf("Content = %q, want %q", store.logs[0].Content, "task done")
+		if store.updates[0].Content != "task done" {
+			t.Errorf("Content = %q, want %q", store.updates[0].Content, "task done")
 		}
-		if store.logs[0].TeamMemberID != "member-1" {
-			t.Errorf("TeamMemberID = %q, want %q", store.logs[0].TeamMemberID, "member-1")
+		if store.updates[0].TeamMemberID != "member-1" {
+			t.Errorf("TeamMemberID = %q, want %q", store.updates[0].TeamMemberID, "member-1")
 		}
 	})
 
-	t.Run("session not found", func(t *testing.T) {
-		err := svc.Log(context.Background(), "unknown", "member-1", "hello")
+	t.Run("task not found", func(t *testing.T) {
+		err := svc.Update(context.Background(), "unknown", "member-1", "hello")
 		if err == nil {
-			t.Fatal("expected error for unknown session")
+			t.Fatal("expected error for unknown task")
 		}
 	})
 
 	t.Run("empty content", func(t *testing.T) {
-		err := svc.Log(context.Background(), "s-1", "member-1", "  ")
+		err := svc.Update(context.Background(), "s-1", "member-1", "  ")
 		if err == nil {
 			t.Fatal("expected error for empty content")
 		}
@@ -108,10 +108,10 @@ func TestService_Log(t *testing.T) {
 }
 
 func TestService_Send(t *testing.T) {
-	sess := &domain.Session{
+	tk := &domain.Task{
 		ID:     "s-1",
 		TeamID: "t-1",
-		Status: domain.SessionRunning,
+		Status: domain.TaskRunning,
 		Plan: []domain.MemberPlan{
 			{TeamMemberID: "m-1", MemberName: "alice"},
 			{TeamMemberID: "m-2", MemberName: "bob"},
@@ -120,7 +120,7 @@ func TestService_Send(t *testing.T) {
 	team := &domain.Team{ID: "t-1"}
 
 	t.Run("agent message includes sender name", func(t *testing.T) {
-		store := &stubStore{session: sess, team: team}
+		store := &stubStore{task: tk, team: team}
 		term := &stubTerminal{}
 		svc := New(store, term, &stubWorkspace{}, "", "")
 
@@ -140,7 +140,7 @@ func TestService_Send(t *testing.T) {
 	})
 
 	t.Run("empty sender has no prefix", func(t *testing.T) {
-		store := &stubStore{session: sess, team: team}
+		store := &stubStore{task: tk, team: team}
 		term := &stubTerminal{}
 		svc := New(store, term, &stubWorkspace{}, "", "")
 
@@ -153,7 +153,7 @@ func TestService_Send(t *testing.T) {
 	})
 
 	t.Run("delivery failure prevents save", func(t *testing.T) {
-		store := &stubStore{session: sess, team: team}
+		store := &stubStore{task: tk, team: team}
 		term := &failTerminal{}
 		svc := New(store, term, &stubWorkspace{}, "", "")
 

@@ -10,7 +10,7 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-// Workspace manages session member filesystem environments.
+// Workspace manages task member filesystem environments.
 type Workspace struct {
 	baseDir string
 }
@@ -35,9 +35,9 @@ func (w *Workspace) Prepare(ctx context.Context, members []domain.MemberPlan) er
 	return nil
 }
 
-// Cleanup removes all workspace files for a session (baseDir/sessionID).
-func (w *Workspace) Cleanup(sessionID string) error {
-	return os.RemoveAll(filepath.Join(w.baseDir, sessionID))
+// Cleanup removes all workspace files for a task (baseDir/taskID).
+func (w *Workspace) Cleanup(taskID string) error {
+	return os.RemoveAll(filepath.Join(w.baseDir, taskID))
 }
 
 func (w *Workspace) prepareMember(ctx context.Context, m domain.MemberPlan) error {

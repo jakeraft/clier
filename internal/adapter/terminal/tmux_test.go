@@ -32,23 +32,23 @@ func (f *fakeRunner) run(args ...string) (string, error) {
 
 // fakeRefStore is an in-memory RefStore for testing.
 type fakeRefStore struct {
-	refs map[string]map[string]map[string]string // sessionID -> memberID -> refs
+	refs map[string]map[string]map[string]string // taskID -> memberID -> refs
 }
 
 func newFakeRefStore() *fakeRefStore {
 	return &fakeRefStore{refs: make(map[string]map[string]map[string]string)}
 }
 
-func (f *fakeRefStore) SaveRefs(_ context.Context, sessionID, memberID string, refs map[string]string) error {
-	if f.refs[sessionID] == nil {
-		f.refs[sessionID] = make(map[string]map[string]string)
+func (f *fakeRefStore) SaveRefs(_ context.Context, taskID, memberID string, refs map[string]string) error {
+	if f.refs[taskID] == nil {
+		f.refs[taskID] = make(map[string]map[string]string)
 	}
-	f.refs[sessionID][memberID] = refs
+	f.refs[taskID][memberID] = refs
 	return nil
 }
 
-func (f *fakeRefStore) GetRefs(_ context.Context, sessionID, memberID string) (map[string]string, error) {
-	if m, ok := f.refs[sessionID]; ok {
+func (f *fakeRefStore) GetRefs(_ context.Context, taskID, memberID string) (map[string]string, error) {
+	if m, ok := f.refs[taskID]; ok {
 		if r, ok := m[memberID]; ok {
 			return r, nil
 		}
@@ -56,8 +56,8 @@ func (f *fakeRefStore) GetRefs(_ context.Context, sessionID, memberID string) (m
 	return nil, errors.New("not found")
 }
 
-func (f *fakeRefStore) GetSessionRefs(_ context.Context, sessionID string) (map[string]string, error) {
-	if m, ok := f.refs[sessionID]; ok {
+func (f *fakeRefStore) GetTaskRefs(_ context.Context, taskID string) (map[string]string, error) {
+	if m, ok := f.refs[taskID]; ok {
 		for _, r := range m {
 			return r, nil
 		}
@@ -65,8 +65,8 @@ func (f *fakeRefStore) GetSessionRefs(_ context.Context, sessionID string) (map[
 	return nil, errors.New("not found")
 }
 
-func (f *fakeRefStore) DeleteRefs(_ context.Context, sessionID string) error {
-	delete(f.refs, sessionID)
+func (f *fakeRefStore) DeleteRefs(_ context.Context, taskID string) error {
+	delete(f.refs, taskID)
 	return nil
 }
 

@@ -1,4 +1,4 @@
-package session
+package task
 
 import (
 	"fmt"
@@ -46,11 +46,11 @@ func buildClierPrompt(teamName, memberName string, relations domain.MemberRelati
 	b.WriteString("Keep each message substantive. Avoid short fragments like \"ok\" or \"hi\".\n\n")
 	writeTellCommands(&b, relations, nameByID)
 
-	// Logging
-	b.WriteString("\n## Logging\n")
-	b.WriteString("Record your progress and results:\n")
-	b.WriteString("```bash\nclier session log \"<content>\"\n```\n")
-	b.WriteString("Log when you: start a task, complete a task, encounter issues, produce final results.\n")
+	// Progress Updates
+	b.WriteString("\n## Progress Updates\n")
+	b.WriteString("Share your progress and results:\n")
+	b.WriteString("```bash\nclier task update \"<content>\"\n```\n")
+	b.WriteString("Update when you: start a task, complete a task, encounter issues, produce final results.\n")
 
 	// Operating Rules
 	b.WriteString("\n## Operating Rules\n")
@@ -70,7 +70,7 @@ func writeTellCommands(b *strings.Builder, rel domain.MemberRelations, nameByID 
 	all = append(all, rel.Leaders...)
 	all = append(all, rel.Workers...)
 	for _, id := range all {
-		fmt.Fprintf(b, "Tell %s:\n```bash\nclier session tell --to %s \"<message>\"\n```\n", nameByID[id], id)
+		fmt.Fprintf(b, "Tell %s:\n```bash\nclier task tell --to %s \"<message>\"\n```\n", nameByID[id], id)
 	}
 }
 

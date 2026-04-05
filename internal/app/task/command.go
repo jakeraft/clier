@@ -1,4 +1,4 @@
-package session
+package task
 
 import (
 	"fmt"
@@ -28,12 +28,12 @@ func configDirEnv() string {
 }
 
 // buildEnv assembles the full set of environment variables for a member command.
-func buildEnv(sessionID, memberID string,
+func buildEnv(taskID, memberID string,
 	authEnvs []string, userEnvs []resource.Env) []string {
 
 	env := []string{
 		configDirEnv(),
-		"CLIER_SESSION_ID=" + sessionID,
+		"CLIER_TASK_ID=" + taskID,
 		"CLIER_MEMBER_ID=" + memberID,
 	}
 	env = append(env, authEnvs...)
@@ -74,11 +74,11 @@ func buildAgentCommand(model string, systemArgs, customArgs []string,
 
 // buildCommand returns the complete shell command for launching an agent,
 // including environment variable exports.
-func buildCommand(profile resource.CliProfile, prompt, sessionID, memberID string,
+func buildCommand(profile resource.CliProfile, prompt, taskID, memberID string,
 	authEnvs []string, userEnvs []resource.Env) string {
 
 	workDir := PlaceholderMemberspace + "/project"
 	cmd := buildAgentCommand(profile.Model, profile.SystemArgs, profile.CustomArgs, prompt, workDir)
-	env := buildEnv(sessionID, memberID, authEnvs, userEnvs)
+	env := buildEnv(taskID, memberID, authEnvs, userEnvs)
 	return buildEnvCommand(cmd, env)
 }

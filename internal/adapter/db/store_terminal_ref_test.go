@@ -14,16 +14,16 @@ func TestRefStore(t *testing.T) {
 	}
 	defer store.Close()
 
-	// Seed a session so FK constraint passes.
+	// Seed a task so FK constraint passes.
 	_, err = store.db.ExecContext(context.Background(),
 		"INSERT INTO teams (id, name, root_team_member_id, created_at, updated_at) VALUES ('t1','team','root',0,0)")
 	if err != nil {
 		t.Fatalf("seed team: %v", err)
 	}
 	_, err = store.db.ExecContext(context.Background(),
-		"INSERT INTO sessions (id, team_id, status, plan, created_at) VALUES ('s1','t1','running','[]',0)")
+		"INSERT INTO tasks (id, team_id, status, plan, created_at) VALUES ('s1','t1','running','[]',0)")
 	if err != nil {
-		t.Fatalf("seed session: %v", err)
+		t.Fatalf("seed task: %v", err)
 	}
 
 	ctx := context.Background()
@@ -42,13 +42,13 @@ func TestRefStore(t *testing.T) {
 		}
 	})
 
-	t.Run("GetSessionRefs", func(t *testing.T) {
-		got, err := store.GetSessionRefs(ctx, "s1")
+	t.Run("GetTaskRefs", func(t *testing.T) {
+		got, err := store.GetTaskRefs(ctx, "s1")
 		if err != nil {
-			t.Fatalf("GetSessionRefs: %v", err)
+			t.Fatalf("GetTaskRefs: %v", err)
 		}
 		if got["session"] != "clier-s1" {
-			t.Errorf("GetSessionRefs session = %q, want clier-s1", got["session"])
+			t.Errorf("GetTaskRefs session = %q, want clier-s1", got["session"])
 		}
 	})
 

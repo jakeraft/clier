@@ -1,4 +1,4 @@
-package session
+package task
 
 import (
 	"context"
@@ -133,7 +133,7 @@ func TestBuildPlans(t *testing.T) {
 		t.Fatalf("resolveTeam: %v", err)
 	}
 
-	plans, err := buildPlans(resolved, "test-session")
+	plans, err := buildPlans(resolved, "test-task")
 	if err != nil {
 		t.Fatalf("buildPlans: %v", err)
 	}

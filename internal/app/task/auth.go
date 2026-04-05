@@ -1,4 +1,4 @@
-package session
+package task
 
 // setAuth returns auth environment variable placeholders for the Claude CLI.
 func setAuth() []string {

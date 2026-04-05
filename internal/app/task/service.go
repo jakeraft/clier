@@ -1,4 +1,4 @@
-package session
+package task
 
 import (
 	"context"
@@ -11,15 +11,15 @@ import (
 	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
-// SessionStore persists Session lifecycle state and provides read access
+// TaskStore persists Task lifecycle state and provides read access
 // to team/member specs needed for plan building.
-type SessionStore interface {
-	// Session CRUD
-	CreateSession(ctx context.Context, session *domain.Session) error
-	GetSession(ctx context.Context, id string) (domain.Session, error)
-	UpdateSessionStatus(ctx context.Context, session *domain.Session) error
+type TaskStore interface {
+	// Task CRUD
+	CreateTask(ctx context.Context, task *domain.Task) error
+	GetTask(ctx context.Context, id string) (domain.Task, error)
+	UpdateTaskStatus(ctx context.Context, task *domain.Task) error
 	CreateMessage(ctx context.Context, msg *domain.Message) error
-	CreateLog(ctx context.Context, l *domain.Log) error
+	CreateUpdate(ctx context.Context, u *domain.Update) error
 
 	// Team and member spec reads (used by plan building)
 	GetTeam(ctx context.Context, id string) (domain.Team, error)
@@ -32,16 +32,16 @@ type SessionStore interface {
 
 // Terminal launches and terminates member processes.
 type Terminal interface {
-	Launch(sessionID, sessionName string, members []domain.MemberPlan) error
-	Terminate(sessionID string) error
-	Send(sessionID, teamMemberID, text string) error
-	Attach(sessionID string, memberID *string) error
+	Launch(taskID, taskName string, members []domain.MemberPlan) error
+	Terminate(taskID string) error
+	Send(taskID, teamMemberID, text string) error
+	Attach(taskID string, memberID *string) error
 }
 
 // Workspace prepares and cleans up member directories.
 type Workspace interface {
 	Prepare(ctx context.Context, members []domain.MemberPlan) error
-	Cleanup(sessionID string) error
+	Cleanup(taskID string) error
 }
 
 // AuthChecker reads authentication credentials for the CLI agent.
@@ -49,55 +49,55 @@ type AuthChecker interface {
 	ReadToken() (string, error)
 }
 
-// Service orchestrates session execution: build plan, prepare workspace,
+// Service orchestrates task execution: build plan, prepare workspace,
 // launch terminals, deliver messages.
 type Service struct {
-	store     SessionStore
+	store     TaskStore
 	terminal  Terminal
 	workspace Workspace
 	base      string
 	homeDir   string
 }
 
-// New creates a session Service.
-func New(store SessionStore, term Terminal, ws Workspace, base, homeDir string) *Service {
+// New creates a task Service.
+func New(store TaskStore, term Terminal, ws Workspace, base, homeDir string) *Service {
 	return &Service{store: store, terminal: term, workspace: ws, base: base, homeDir: homeDir}
 }
 
 // Start resolves the team, builds the execution plan, expands placeholders,
 // prepares the workspace, and launches terminals for each member.
-func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker) (*domain.Session, error) {
+func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker) (*domain.Task, error) {
 	// Resolve: ID references -> loaded domain objects
 	resolved, err := s.resolveTeam(ctx, team)
 	if err != nil {
 		return nil, fmt.Errorf("resolve team: %w", err)
 	}
 
-	sessionID := uuid.NewString()
+	taskID := uuid.NewString()
 
 	// Build: resolved objects -> execution plan (with placeholders)
-	plan, err := buildPlans(resolved, sessionID)
+	plan, err := buildPlans(resolved, taskID)
 	if err != nil {
 		return nil, fmt.Errorf("build plans: %w", err)
 	}
 
-	session, err := domain.NewSession(sessionID, team.ID)
+	t, err := domain.NewTask(taskID, team.ID)
 	if err != nil {
-		return nil, fmt.Errorf("new session: %w", err)
+		return nil, fmt.Errorf("new task: %w", err)
 	}
-	session.Plan = plan
+	t.Plan = plan
 
 	// Expand: placeholders -> concrete paths
 	claudeToken := readAuth(auth)
 	members := make([]domain.MemberPlan, 0, len(plan))
 	for _, m := range plan {
-		members = append(members, expandPlaceholders(m, s.base, s.homeDir, sessionID, claudeToken))
+		members = append(members, expandPlaceholders(m, s.base, s.homeDir, taskID, claudeToken))
 	}
 
 	success := false
 	defer func() {
 		if !success {
-			_ = s.workspace.Cleanup(sessionID)
+			_ = s.workspace.Cleanup(taskID)
 		}
 	}()
 
@@ -106,40 +106,40 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 		return nil, fmt.Errorf("prepare workspace: %w", err)
 	}
 
-	if err := s.store.CreateSession(ctx, session); err != nil {
-		return nil, fmt.Errorf("save session: %w", err)
+	if err := s.store.CreateTask(ctx, t); err != nil {
+		return nil, fmt.Errorf("save task: %w", err)
 	}
 
-	if err := s.terminal.Launch(sessionID, team.Name, members); err != nil {
+	if err := s.terminal.Launch(taskID, team.Name, members); err != nil {
 		return nil, fmt.Errorf("launch terminal: %w", err)
 	}
 
 	success = true
-	return session, nil
+	return t, nil
 }
 
 // Stop terminates a running execution, updates status, and cleans up workspace.
 // Workspace cleanup is best-effort — status is updated even if cleanup fails.
-func (s *Service) Stop(ctx context.Context, sessionID string) error {
-	session, err := s.store.GetSession(ctx, sessionID)
+func (s *Service) Stop(ctx context.Context, taskID string) error {
+	t, err := s.store.GetTask(ctx, taskID)
 	if err != nil {
-		return fmt.Errorf("get session: %w", err)
+		return fmt.Errorf("get task: %w", err)
 	}
 
-	if err := s.terminal.Terminate(sessionID); err != nil {
+	if err := s.terminal.Terminate(taskID); err != nil {
 		return fmt.Errorf("terminate terminal: %w", err)
 	}
 
-	session.Stop()
-	if err := s.store.UpdateSessionStatus(ctx, &session); err != nil {
-		return fmt.Errorf("update session status: %w", err)
+	t.Stop()
+	if err := s.store.UpdateTaskStatus(ctx, &t); err != nil {
+		return fmt.Errorf("update task status: %w", err)
 	}
 
 	// Allow OS to release file handles from terminated processes.
 	time.Sleep(2 * time.Second)
 
-	if err := s.workspace.Cleanup(sessionID); err != nil {
-		log.Printf("cleanup workspace %s: %v", sessionID, err)
+	if err := s.workspace.Cleanup(taskID); err != nil {
+		log.Printf("cleanup workspace %s: %v", taskID, err)
 	}
 
 	return nil
@@ -147,16 +147,16 @@ func (s *Service) Stop(ctx context.Context, sessionID string) error {
 
 // Send delivers a message to the recipient's terminal, then persists it.
 // Delivery happens first so that a bad recipient fails before anything is saved.
-func (s *Service) Send(ctx context.Context, sessionID, fromTeamMemberID, toTeamMemberID, content string) error {
-	session, err := s.store.GetSession(ctx, sessionID)
+func (s *Service) Send(ctx context.Context, taskID, fromTeamMemberID, toTeamMemberID, content string) error {
+	t, err := s.store.GetTask(ctx, taskID)
 	if err != nil {
-		return fmt.Errorf("get session: %w", err)
+		return fmt.Errorf("get task: %w", err)
 	}
 
 	text := content
 	if fromTeamMemberID != "" {
 		senderName := fromTeamMemberID
-		for _, m := range session.Plan {
+		for _, m := range t.Plan {
 			if m.TeamMemberID == fromTeamMemberID {
 				senderName = m.MemberName
 				break
@@ -165,11 +165,11 @@ func (s *Service) Send(ctx context.Context, sessionID, fromTeamMemberID, toTeamM
 		text = fmt.Sprintf("[Message from %s] %s", senderName, content)
 	}
 
-	if err := s.terminal.Send(sessionID, toTeamMemberID, text); err != nil {
+	if err := s.terminal.Send(taskID, toTeamMemberID, text); err != nil {
 		return fmt.Errorf("deliver message: %w", err)
 	}
 
-	msg, err := domain.NewMessage(sessionID, fromTeamMemberID, toTeamMemberID, content)
+	msg, err := domain.NewMessage(taskID, fromTeamMemberID, toTeamMemberID, content)
 	if err != nil {
 		return fmt.Errorf("new message: %w", err)
 	}
@@ -179,18 +179,18 @@ func (s *Service) Send(ctx context.Context, sessionID, fromTeamMemberID, toTeamM
 	return nil
 }
 
-// Log persists a self-recorded entry by a team member.
-func (s *Service) Log(ctx context.Context, sessionID, teamMemberID, content string) error {
-	if _, err := s.store.GetSession(ctx, sessionID); err != nil {
-		return fmt.Errorf("get session: %w", err)
+// Update persists a progress entry posted by a team member.
+func (s *Service) Update(ctx context.Context, taskID, teamMemberID, content string) error {
+	if _, err := s.store.GetTask(ctx, taskID); err != nil {
+		return fmt.Errorf("get task: %w", err)
 	}
 
-	l, err := domain.NewLog(sessionID, teamMemberID, content)
+	u, err := domain.NewUpdate(taskID, teamMemberID, content)
 	if err != nil {
-		return fmt.Errorf("new log: %w", err)
+		return fmt.Errorf("new update: %w", err)
 	}
-	if err := s.store.CreateLog(ctx, l); err != nil {
-		return fmt.Errorf("save log: %w", err)
+	if err := s.store.CreateUpdate(ctx, u); err != nil {
+		return fmt.Errorf("save update: %w", err)
 	}
 	return nil
 }

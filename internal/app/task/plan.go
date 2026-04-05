@@ -1,4 +1,4 @@
-package session
+package task
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 const (
 	PlaceholderBase        = "{{CLIER_BASE}}"
 	PlaceholderMemberspace = "{{CLIER_MEMBERSPACE}}"
-	PlaceholderSessionID   = "{{CLIER_SESSION_ID}}"
+	PlaceholderTaskID      = "{{CLIER_TASK_ID}}"
 	PlaceholderAuthClaude  = "{{CLIER_AUTH_CLAUDE}}"
 )
 
@@ -83,7 +83,7 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 
 // buildPlans constructs MemberPlans from a resolved team.
 // This is the build phase: resolved objects -> execution plan with placeholders.
-func buildPlans(resolved *domain.ResolvedTeam, sessionID string) ([]domain.MemberPlan, error) {
+func buildPlans(resolved *domain.ResolvedTeam, taskID string) ([]domain.MemberPlan, error) {
 	nameByID := make(map[string]string, len(resolved.Members))
 	for _, rm := range resolved.Members {
 		nameByID[rm.TeamMemberID] = rm.Name
@@ -91,7 +91,7 @@ func buildPlans(resolved *domain.ResolvedTeam, sessionID string) ([]domain.Membe
 
 	plans := make([]domain.MemberPlan, 0, len(resolved.Members))
 	for _, rm := range resolved.Members {
-		plan, err := buildMemberPlan(&rm, nameByID, resolved.Team.Name, sessionID)
+		plan, err := buildMemberPlan(&rm, nameByID, resolved.Team.Name, taskID)
 		if err != nil {
 			return nil, err
 		}
@@ -101,8 +101,8 @@ func buildPlans(resolved *domain.ResolvedTeam, sessionID string) ([]domain.Membe
 }
 
 // buildMemberPlan constructs a single MemberPlan from a resolved member.
-func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, teamName, sessionID string) (domain.MemberPlan, error) {
-	memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, PlaceholderSessionID, rm.TeamMemberID)
+func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, teamName, taskID string) (domain.MemberPlan, error) {
+	memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, PlaceholderTaskID, rm.TeamMemberID)
 
 	clierPrompt := buildClierPrompt(teamName, rm.Name, rm.Relations, nameByID)
 	userPrompt := joinPrompts(rm.Prompts)
@@ -112,7 +112,7 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 
 	files := buildClaudeFiles(rm.Profile.SettingsJSON, rm.Profile.ClaudeJSON, PlaceholderMemberspace)
 
-	cmd := buildCommand(rm.Profile, prompt, sessionID, rm.TeamMemberID, authEnvs, rm.Envs)
+	cmd := buildCommand(rm.Profile, prompt, taskID, rm.TeamMemberID, authEnvs, rm.Envs)
 
 	launchPath := PlaceholderMemberspace + "/launch.sh"
 	files = append(files, domain.FileEntry{Path: launchPath, Content: cmd})
