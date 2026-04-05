@@ -103,6 +103,10 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	if renameCount != 2 {
 		t.Errorf("expected 2 rename-window calls, got %d", renameCount)
 	}
+	// Verify task ID stored in tmux server env
+	if !hasCall(runner.calls, "set-environment -g CLIER_TASK_my-team-s-1 s-1") {
+		t.Error("expected set-environment call for task env")
+	}
 	// Verify command sent to first member
 	if !hasCall(runner.calls, "send-keys") {
 		t.Error("expected send-keys call for member command")
@@ -112,8 +116,8 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetRefs m-1: %v", err)
 	}
-	if refs["session"] != "clier-s-1" {
-		t.Errorf("session ref = %q, want clier-s-1", refs["session"])
+	if refs["session"] != "my-team-s-1" {
+		t.Errorf("session ref = %q, want my-team-s-1", refs["session"])
 	}
 	if refs["window"] != "0" {
 		t.Errorf("window ref = %q, want 0", refs["window"])
@@ -124,7 +128,7 @@ func TestTmuxTerminal_Send(t *testing.T) {
 	runner := &fakeRunner{}
 	store := newFakeRefStore()
 	_ = store.SaveRefs(context.Background(), "s-1", "m-1", map[string]string{
-		"session": "clier-s-1", "window": "0",
+		"session": "my-team-s-1", "window": "0",
 	})
 	tm := &TmuxTerminal{refs: store, runFn: runner.run}
 
@@ -149,7 +153,7 @@ func TestTmuxTerminal_Terminate(t *testing.T) {
 	}}
 	store := newFakeRefStore()
 	_ = store.SaveRefs(context.Background(), "s-1", "m-1", map[string]string{
-		"session": "clier-s-1", "window": "0",
+		"session": "my-team-s-1", "window": "0",
 	})
 	tm := &TmuxTerminal{refs: store, runFn: runner.run}
 
@@ -181,7 +185,7 @@ func TestTmuxTerminal_Terminate_AlreadyDead(t *testing.T) {
 	runner := &fakeRunner{err: errors.New("session not found")}
 	store := newFakeRefStore()
 	_ = store.SaveRefs(context.Background(), "s-1", "m-1", map[string]string{
-		"session": "clier-s-1", "window": "0",
+		"session": "my-team-s-1", "window": "0",
 	})
 	tm := &TmuxTerminal{refs: store, runFn: runner.run}
 
@@ -199,10 +203,10 @@ func TestTmuxTerminal_Terminate_AlreadyDead(t *testing.T) {
 func TestTmuxTerminal_Attach(t *testing.T) {
 	store := newFakeRefStore()
 	_ = store.SaveRefs(context.Background(), "s-1", "m-1", map[string]string{
-		"session": "clier-s-1", "window": "1",
+		"session": "my-team-s-1", "window": "1",
 	})
 	_ = store.SaveRefs(context.Background(), "s-1", "m-2", map[string]string{
-		"session": "clier-s-1", "window": "2",
+		"session": "my-team-s-1", "window": "2",
 	})
 
 	t.Run("session not found", func(t *testing.T) {

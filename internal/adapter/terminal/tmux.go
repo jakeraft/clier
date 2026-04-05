@@ -41,24 +41,31 @@ func (t *TmuxTerminal) Launch(taskID, taskName string, members []domain.MemberPl
 		return errors.New("no members to launch")
 	}
 
-	sess := tmuxSessionName(taskID)
+	sess := tmuxSessionName(taskName, taskID)
 
 	// Create tmux session (first window is created automatically).
 	if _, err := t.runFn("new-session", "-d", "-s", sess); err != nil {
 		return fmt.Errorf("create session: %w", err)
 	}
 
-	// Force base-index 0 on this session so window indices are predictable,
-	// regardless of user's global tmux config.
-	_, _ = t.runFn("set-option", "-t", sess, "base-index", "0")
-
 	success := false
 	defer func() {
 		if !success {
 			_, _ = t.runFn("kill-session", "-t", sess)
+			_, _ = t.runFn("set-environment", "-g", "-u", taskEnvKey(sess))
 			_ = t.deleteRefs(taskID)
 		}
 	}()
+
+	// Store full task ID in tmux server env so the session-closed hook
+	// can look it up by session name.
+	if _, err := t.runFn("set-environment", "-g", taskEnvKey(sess), taskID); err != nil {
+		return fmt.Errorf("set task env: %w", err)
+	}
+
+	// Force base-index 0 on this session so window indices are predictable,
+	// regardless of user's global tmux config.
+	_, _ = t.runFn("set-option", "-t", sess, "base-index", "0")
 
 	for i, m := range members {
 		win := strconv.Itoa(i)
@@ -79,8 +86,8 @@ func (t *TmuxTerminal) Launch(taskID, taskName string, members []domain.MemberPl
 	}
 
 	// Register global session-closed hook for reverse sync (idempotent).
-	// A single hook handles all clier tasks: matches "clier-*" pattern,
-	// extracts task ID from the tmux session name, and calls stop.
+	// A single hook handles all clier tasks: looks up the full task ID
+	// from a tmux server env var keyed by session name, and calls stop.
 	if err := t.ensureSessionClosedHook(); err != nil {
 		return fmt.Errorf("set session-closed hook: %w", err)
 	}
@@ -104,6 +111,7 @@ func (t *TmuxTerminal) Terminate(taskID string) error {
 		// Gracefully exit each agent before killing the session.
 		t.exitAllWindows(sess)
 		_, _ = t.runFn("kill-session", "-t", sess)
+		_, _ = t.runFn("set-environment", "-g", "-u", taskEnvKey(sess))
 	}
 	return t.deleteRefs(taskID)
 }
@@ -176,10 +184,10 @@ func (t *TmuxTerminal) deleteRefs(taskID string) error {
 }
 
 // ensureSessionClosedHook registers a global tmux hook (idempotent) that
-// handles cleanup for any clier task. It matches "clier-*" session names,
-// extracts the task ID, and calls "clier task stop".
+// handles cleanup for any clier task. It looks up the full task ID from
+// a tmux server env var keyed by session name, then calls "clier task stop".
 func (t *TmuxTerminal) ensureSessionClosedHook() error {
-	hookCmd := `if-shell -F '#{m:clier-*,#{hook_session_name}}' "run-shell 'clier task stop #{s/clier-//:hook_session_name}'"`
+	hookCmd := `run-shell 'ID=$(tmux show-environment -g CLIER_TASK_#{hook_session_name} 2>/dev/null | cut -d= -f2); [ -n "$ID" ] && clier task stop "$ID" && tmux set-environment -g -u CLIER_TASK_#{hook_session_name}'`
 	_, err := t.runFn("set-hook", "-g", "session-closed", hookCmd)
 	return err
 }
@@ -216,6 +224,18 @@ func (t *TmuxTerminal) defaultRun(args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func tmuxSessionName(sessionID string) string {
-	return "clier-" + sessionID
+func tmuxSessionName(teamName, taskID string) string {
+	name := strings.NewReplacer(".", "-", ":", "-", " ", "-").Replace(teamName)
+	if len(name) > 20 {
+		name = name[:20]
+	}
+	short := taskID
+	if len(short) > 8 {
+		short = short[:8]
+	}
+	return name + "-" + short
+}
+
+func taskEnvKey(sess string) string {
+	return "CLIER_TASK_" + sess
 }

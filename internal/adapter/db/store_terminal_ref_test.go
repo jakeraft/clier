@@ -29,7 +29,7 @@ func TestRefStore(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("SaveAndGet", func(t *testing.T) {
-		refs := map[string]string{"session": "clier-s1", "window": "0"}
+		refs := map[string]string{"session": "team-s1", "window": "0"}
 		if err := store.SaveRefs(ctx, "s1", "m1", refs); err != nil {
 			t.Fatalf("SaveRefs: %v", err)
 		}
@@ -37,8 +37,8 @@ func TestRefStore(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetRefs: %v", err)
 		}
-		if got["session"] != "clier-s1" || got["window"] != "0" {
-			t.Errorf("GetRefs = %v, want session=clier-s1 window=0", got)
+		if got["session"] != "team-s1" || got["window"] != "0" {
+			t.Errorf("GetRefs = %v, want session=team-s1 window=0", got)
 		}
 	})
 
@@ -47,13 +47,13 @@ func TestRefStore(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetTaskRefs: %v", err)
 		}
-		if got["session"] != "clier-s1" {
-			t.Errorf("GetTaskRefs session = %q, want clier-s1", got["session"])
+		if got["session"] != "team-s1" {
+			t.Errorf("GetTaskRefs session = %q, want team-s1", got["session"])
 		}
 	})
 
 	t.Run("Upsert", func(t *testing.T) {
-		refs := map[string]string{"session": "clier-s1", "window": "5"}
+		refs := map[string]string{"session": "team-s1", "window": "5"}
 		if err := store.SaveRefs(ctx, "s1", "m1", refs); err != nil {
 			t.Fatalf("SaveRefs upsert: %v", err)
 		}
