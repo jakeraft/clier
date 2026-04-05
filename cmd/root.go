@@ -24,6 +24,14 @@ func newStore(cfg *settings.Settings) (*db.Store, error) {
 var rootCmd = &cobra.Command{
 	Use:   "clier",
 	Short: "Orchestrate AI coding agent teams in isolated workspaces",
+	Long: `Orchestrate AI coding agent teams in isolated workspaces.
+
+Building blocks (profile, prompt, env, repo) define agent capabilities.
+Combine them into a member, assemble members into a team with
+leader-worker relations, then start a session to launch the agents.
+Monitor progress through messages and logs, or open the dashboard.
+
+New to clier? Run "clier tutorial" for a step-by-step guide.`,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
