@@ -1,11 +1,11 @@
 {
   "type": "member",
   "data": {
-    "id": "5d17b0d4-09ac-4999-8222-d061621e5d3c",
-    "name": "section-editor-claude",
-    "cli_profile_id": "c82b70df-a758-4844-bef9-e9d78913c324",
+    "id": "0e4926bc-0030-4e14-b3f5-b0eefee4842c",
+    "name": "writer",
+    "cli_profile_id": "31acb5b7-1c89-4458-9306-d17741f0eff0",
     "system_prompt_ids": [
-      "f2b80dc2-5b02-43aa-9c7e-6bf950580d03"
+      "e3d5305a-a108-44be-a138-cb118a611cf5"
     ],
     "env_ids": [
       "abfec5e6-18d9-4d72-99b8-328c4e004c43"

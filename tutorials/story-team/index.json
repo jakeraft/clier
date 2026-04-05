@@ -1,19 +1,15 @@
 {
   "files": [
     "01-claude-sonnet.json",
-    "02-gpt-5.4.json",
     "03-editor-in-chief.json",
     "04-section-editor.json",
     "05-writer.json",
     "06-story-genre.json",
     "07-story-repo.json",
     "08-claude-haiku.json",
-    "09-gpt-mini.json",
     "10-chief-editor.json",
-    "11-section-editor-claude.json",
-    "12-section-editor-gpt.json",
-    "13-writer-claude.json",
-    "14-writer-gpt.json",
+    "11-section-editor.json",
+    "13-writer.json",
     "15-team.json"
   ]
 }

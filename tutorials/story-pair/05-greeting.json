@@ -1,9 +1,0 @@
-{
-  "type": "env",
-  "data": {
-    "id": "b17c4429-8691-49cd-bf3f-ebb987ee2de1",
-    "name": "greeting",
-    "key": "GREETING",
-    "value": "hello from clier"
-  }
-}
