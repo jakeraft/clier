@@ -7,11 +7,6 @@ import type { EntityTableColumn } from "@/components/entity-table";
 
 const columns: EntityTableColumn<TaskView>[] = [
   {
-    header: "Name",
-    cell: (s) => s.name,
-    flex: 2,
-  },
-  {
     header: "Status",
     cell: (s) => <StatusBadge status={s.status} />,
     flex: 1,
