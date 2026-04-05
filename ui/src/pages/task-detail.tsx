@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams } from "react-router";
 import { ClipboardList, Map, ScrollText, MessageSquare, User, FileText, Terminal, FolderOpen } from "lucide-react";
 import { api } from "@/api";
-import type { MemberPlanView, LogView, MessageView } from "@/api";
+import type { MemberPlanView, UpdateView, MessageView } from "@/api";
 import { typography, typographyIcon } from "@/lib/typography";
 import { cn } from "@/lib/utilities";
 import { gap } from "@/lib/layout";
@@ -18,12 +18,12 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 type Tab = "overview" | "plan";
 
-export function SessionDetail() {
+export function TaskDetail() {
   const { id: parameterId } = useParams<{ id: string }>();
-  const { data: session, error, loading } = useDetailPage(parameterId, api.sessions.get);
+  const { data: task, error, loading } = useDetailPage(parameterId, api.tasks.get);
   const [tab, setTab] = useState<Tab>("overview");
 
-  if (!session) return <DetailLayout error={error} loading={loading}>{undefined}</DetailLayout>;
+  if (!task) return <DetailLayout error={error} loading={loading}>{undefined}</DetailLayout>;
 
   return (
     <DetailLayout error={error}>
@@ -52,28 +52,28 @@ export function SessionDetail() {
         ))}
       </ToggleGroup>
 
-      {tab === "overview" && <OverviewTab session={session} />}
-      {tab === "plan" && <PlanTab plan={session.plan} />}
+      {tab === "overview" && <OverviewTab task={task} />}
+      {tab === "plan" && <PlanTab plan={task.plan} />}
     </DetailLayout>
   );
 }
 
-function OverviewTab({ session }: Readonly<{ session: { id: string; status: string; teamId: string; teamName: string; createdAt: string; updatedAt: string; logs: LogView[]; messages: MessageView[] } }>) {
+function OverviewTab({ task }: Readonly<{ task: { id: string; status: string; teamId: string; teamName: string; createdAt: string; updatedAt: string; updates: UpdateView[]; messages: MessageView[] } }>) {
   return (
     <>
       <Section icon={ClipboardList} title="Overview">
         <OverviewTable
-          id={session.id}
-          createdAt={session.createdAt}
-          updatedAt={session.updatedAt}
+          id={task.id}
+          createdAt={task.createdAt}
+          updatedAt={task.updatedAt}
           rows={[
             {
               label: "Status",
-              children: <StatusBadge status={session.status} />,
+              children: <StatusBadge status={task.status} />,
             },
             {
               label: "Team",
-              children: <EntityBadge to={`/teams/${session.teamId}`}>{session.teamName}</EntityBadge>,
+              children: <EntityBadge to={`/teams/${task.teamId}`}>{task.teamName}</EntityBadge>,
             },
           ]}
         />
@@ -81,24 +81,24 @@ function OverviewTab({ session }: Readonly<{ session: { id: string; status: stri
 
       <Section
         icon={ScrollText}
-        title="Logs"
-        empty={session.logs.length === 0 ? { title: "No logs yet", description: "Logs will appear when members record entries" } : undefined}
+        title="Updates"
+        empty={task.updates.length === 0 ? { title: "No updates yet", description: "Updates will appear when members post progress" } : undefined}
       >
-        {session.logs.length > 0 && <LogTable logs={session.logs} />}
+        {task.updates.length > 0 && <UpdateTable updates={task.updates} />}
       </Section>
 
       <Section
         icon={MessageSquare}
         title="Messages"
-        empty={session.messages.length === 0 ? { title: "No messages yet", description: "Messages will appear when members communicate" } : undefined}
+        empty={task.messages.length === 0 ? { title: "No messages yet", description: "Messages will appear when members communicate" } : undefined}
       >
-        {session.messages.length > 0 && <MessageTable messages={session.messages} />}
+        {task.messages.length > 0 && <MessageTable messages={task.messages} />}
       </Section>
     </>
   );
 }
 
-function LogTable({ logs }: Readonly<{ logs: LogView[] }>) {
+function UpdateTable({ updates }: Readonly<{ updates: UpdateView[] }>) {
   return (
     <div className="rounded-base overflow-hidden border">
       <Table>
@@ -110,11 +110,11 @@ function LogTable({ logs }: Readonly<{ logs: LogView[] }>) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {logs.map((log) => (
-            <TableRow key={log.id}>
-              <TableCell className={typography[5]}>{log.memberName}</TableCell>
-              <TableCell className={cn(typography[5], "whitespace-pre-wrap break-all")}>{log.content}</TableCell>
-              <TableCell className={typography[6]}>{formatDateTime(log.createdAt)}</TableCell>
+          {updates.map((u) => (
+            <TableRow key={u.id}>
+              <TableCell className={typography[5]}>{u.memberName}</TableCell>
+              <TableCell className={cn(typography[5], "whitespace-pre-wrap break-all")}>{u.content}</TableCell>
+              <TableCell className={typography[6]}>{formatDateTime(u.createdAt)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -156,7 +156,7 @@ function PlanTab({ plan }: Readonly<{ plan: MemberPlanView[] }>) {
       <Section
         icon={ClipboardList}
         title="Plan"
-        empty={{ title: "No plan", description: "Plan is built when the session starts" }}
+        empty={{ title: "No plan", description: "Plan is built when the task starts" }}
       />
     );
   }

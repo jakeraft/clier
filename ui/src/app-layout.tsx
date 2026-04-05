@@ -10,7 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useTheme } from "@/hooks/use-theme";
 
 const NAV_ITEMS = [
-  { to: "/sessions", label: "Session", icon: Play },
+  { to: "/tasks", label: "Task", icon: Play },
   { to: "/teams", label: "Team", icon: Users },
   { to: "/members", label: "Member", icon: User },
   { to: "/cli-profiles", label: "CLI", icon: Bot },
@@ -31,7 +31,7 @@ export function AppLayout() {
             variant="ghost"
             className={cn("shrink-0", gap[1], typography[1])}
             onClick={() => {
-              void navigate("/sessions");
+              void navigate("/tasks");
             }}
           >
             <Logo />

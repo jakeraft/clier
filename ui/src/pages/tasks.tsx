@@ -1,11 +1,11 @@
 import { api } from "@/api";
-import type { SessionView } from "@/api";
+import type { TaskView } from "@/api";
 import { EntityBadge } from "@/components/entity-badge";
 import { StatusBadge } from "@/components/status-badge";
 import { EntityListPage } from "@/components/entity-list-page";
 import type { EntityTableColumn } from "@/components/entity-table";
 
-const columns: EntityTableColumn<SessionView>[] = [
+const columns: EntityTableColumn<TaskView>[] = [
   {
     header: "Status",
     cell: (s) => <StatusBadge status={s.status} />,
@@ -18,14 +18,14 @@ const columns: EntityTableColumn<SessionView>[] = [
   },
 ];
 
-export function Sessions() {
+export function Tasks() {
   return (
-    <EntityListPage<SessionView>
-      entityType="session"
-      apiList={api.sessions.list}
+    <EntityListPage<TaskView>
+      entityType="task"
+      apiList={api.tasks.list}
       columns={columns}
-      empty={{ title: "No sessions yet", description: "Start a session with a team to get started" }}
-      routeBase="/sessions"
+      empty={{ title: "No tasks yet", description: "Start a task with a team to get started" }}
+      routeBase="/tasks"
     />
   );
 }

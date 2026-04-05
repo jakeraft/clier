@@ -7,8 +7,8 @@ import type {
   SystemPromptView,
   GitRepoView,
   EnvView,
-  SessionView,
-  LogView,
+  TaskView,
+  UpdateView,
   MessageView,
 } from "@/types";
 
@@ -34,8 +34,8 @@ export type {
   MemberPlanView,
   TeamView,
   EnvView,
-  SessionView,
-  LogView,
+  TaskView,
+  UpdateView,
   MessageView,
 };
 
@@ -132,10 +132,10 @@ export const api = {
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },
-  sessions: {
-    list: (): Promise<SessionView[]> => Promise.resolve(getData().sessions),
-    get: (id: string): Promise<SessionView> => {
-      const item = findById(getData().sessions, id);
+  tasks: {
+    list: (): Promise<TaskView[]> => Promise.resolve(getData().tasks),
+    get: (id: string): Promise<TaskView> => {
+      const item = findById(getData().tasks, id);
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },
