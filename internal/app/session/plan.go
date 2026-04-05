@@ -14,93 +14,124 @@ const (
 	PlaceholderAuthClaude  = "{{CLIER_AUTH_CLAUDE}}"
 )
 
-// buildPlan computes the execution plan from current team state.
-// For each TeamMember, loads the member spec, profile, prompts, envs, and repo,
-// then builds a MemberPlan directly.
-func (s *Service) buildPlan(ctx context.Context, team domain.Team) ([]domain.MemberPlan, error) {
-	// Build nameByID using TeamMember IDs.
-	nameByID := make(map[string]string, len(team.TeamMembers))
+// resolveTeam loads all referenced resources for every team member.
+// This is the resolve phase: ID strings -> actual domain objects.
+func (s *Service) resolveTeam(ctx context.Context, team domain.Team) (*domain.ResolvedTeam, error) {
+	members := make([]domain.ResolvedMember, 0, len(team.TeamMembers))
 	for _, tm := range team.TeamMembers {
-		nameByID[tm.ID] = tm.Name
+		rm, err := s.resolveMember(ctx, &team, tm)
+		if err != nil {
+			return nil, err
+		}
+		members = append(members, *rm)
+	}
+	return &domain.ResolvedTeam{Team: team, Members: members}, nil
+}
+
+// resolveMember loads the member spec and all its referenced resources.
+func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domain.TeamMember) (*domain.ResolvedMember, error) {
+	member, err := s.store.GetMember(ctx, tm.MemberID)
+	if err != nil {
+		return nil, fmt.Errorf("get member %s: %w", tm.MemberID, err)
 	}
 
-	plans := make([]domain.MemberPlan, 0, len(team.TeamMembers))
-
-	for _, tm := range team.TeamMembers {
-		member, err := s.store.GetMember(ctx, tm.MemberID)
-		if err != nil {
-			return nil, fmt.Errorf("get member %s: %w", tm.MemberID, err)
-		}
-
-		profile, err := s.store.GetCliProfile(ctx, member.CliProfileID)
-		if err != nil {
-			return nil, fmt.Errorf("get cli profile for %s: %w", tm.Name, err)
-		}
-
-		prompts := make([]domain.PromptSnapshot, 0, len(member.SystemPromptIDs))
-		for _, id := range member.SystemPromptIDs {
-			sp, err := s.store.GetSystemPrompt(ctx, id)
-			if err != nil {
-				return nil, fmt.Errorf("get prompt %s: %w", id, err)
-			}
-			prompts = append(prompts, domain.PromptSnapshot{ID: sp.ID, Name: sp.Name, Prompt: sp.Prompt})
-		}
-
-		envs := make([]domain.EnvSnapshot, 0, len(member.EnvIDs))
-		for _, id := range member.EnvIDs {
-			env, err := s.store.GetEnv(ctx, id)
-			if err != nil {
-				return nil, fmt.Errorf("get env %s: %w", id, err)
-			}
-			envs = append(envs, domain.EnvSnapshot{ID: env.ID, Name: env.Name, Key: env.Key, Value: env.Value})
-		}
-
-		var gitRepo *domain.GitRepoRef
-		if member.GitRepoID != "" {
-			repo, err := s.store.GetGitRepo(ctx, member.GitRepoID)
-			if err != nil {
-				return nil, fmt.Errorf("get git repo for %s: %w", tm.Name, err)
-			}
-			gitRepo = &domain.GitRepoRef{Name: repo.Name, URL: repo.URL}
-		}
-
-		// Build relations using TeamMember ID.
-		relations := team.MemberRelations(tm.ID)
-
-		memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, PlaceholderSessionID, tm.ID)
-
-		clierPrompt := buildClierPrompt(team.Name, tm.Name, relations, nameByID)
-		userPrompt := joinPrompts(prompts)
-		prompt := "---\n\n" + clierPrompt + "\n---\n\n" + userPrompt
-
-		authEnvs := setAuth()
-
-		files, err := buildClaudeFiles(profile.DotConfig, PlaceholderMemberspace+"/project", PlaceholderMemberspace)
-		if err != nil {
-			return nil, fmt.Errorf("build files for %s: %w", tm.Name, err)
-		}
-
-		cmd := buildCommand(
-			profile.Model, profile.SystemArgs, profile.CustomArgs,
-			prompt, PlaceholderSessionID, tm.ID,
-			authEnvs, envs,
-		)
-
-		launchPath := PlaceholderMemberspace + "/launch.sh"
-		files = append(files, domain.FileEntry{Path: launchPath, Content: cmd})
-
-		plans = append(plans, domain.MemberPlan{
-			TeamMemberID: tm.ID,
-			MemberName:   tm.Name,
-			Terminal:     domain.TerminalPlan{Command: ". " + launchPath},
-			Workspace: domain.WorkspacePlan{
-				Memberspace: memberspace,
-				Files:       files,
-				GitRepo:     gitRepo,
-			},
-		})
+	profile, err := s.store.GetCliProfile(ctx, member.CliProfileID)
+	if err != nil {
+		return nil, fmt.Errorf("get cli profile for %s: %w", tm.Name, err)
 	}
 
+	prompts := make([]domain.SystemPrompt, 0, len(member.SystemPromptIDs))
+	for _, id := range member.SystemPromptIDs {
+		sp, err := s.store.GetSystemPrompt(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("get prompt %s: %w", id, err)
+		}
+		prompts = append(prompts, sp)
+	}
+
+	envs := make([]domain.Env, 0, len(member.EnvIDs))
+	for _, id := range member.EnvIDs {
+		env, err := s.store.GetEnv(ctx, id)
+		if err != nil {
+			return nil, fmt.Errorf("get env %s: %w", id, err)
+		}
+		envs = append(envs, env)
+	}
+
+	var repo *domain.GitRepo
+	if member.GitRepoID != "" {
+		r, err := s.store.GetGitRepo(ctx, member.GitRepoID)
+		if err != nil {
+			return nil, fmt.Errorf("get git repo for %s: %w", tm.Name, err)
+		}
+		repo = &r
+	}
+
+	relations := team.MemberRelations(tm.ID)
+
+	return &domain.ResolvedMember{
+		TeamMemberID: tm.ID,
+		Name:         tm.Name,
+		Profile:      profile,
+		Prompts:      prompts,
+		Envs:         envs,
+		Repo:         repo,
+		Relations:    relations,
+	}, nil
+}
+
+// buildPlans constructs MemberPlans from a resolved team.
+// This is the build phase: resolved objects -> execution plan with placeholders.
+func buildPlans(resolved *domain.ResolvedTeam, sessionID string) ([]domain.MemberPlan, error) {
+	nameByID := make(map[string]string, len(resolved.Members))
+	for _, rm := range resolved.Members {
+		nameByID[rm.TeamMemberID] = rm.Name
+	}
+
+	plans := make([]domain.MemberPlan, 0, len(resolved.Members))
+	for _, rm := range resolved.Members {
+		plan, err := buildMemberPlan(&rm, nameByID, resolved.Team.Name, sessionID)
+		if err != nil {
+			return nil, err
+		}
+		plans = append(plans, plan)
+	}
 	return plans, nil
 }
 
+// buildMemberPlan constructs a single MemberPlan from a resolved member.
+func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, teamName, sessionID string) (domain.MemberPlan, error) {
+	memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, PlaceholderSessionID, rm.TeamMemberID)
+
+	clierPrompt := buildClierPrompt(teamName, rm.Name, rm.Relations, nameByID)
+	userPrompt := joinPrompts(rm.Prompts)
+	prompt := "---\n\n" + clierPrompt + "\n---\n\n" + userPrompt
+
+	authEnvs := setAuth()
+
+	files, err := buildClaudeFiles(rm.Profile.DotConfig, PlaceholderMemberspace+"/project", PlaceholderMemberspace)
+	if err != nil {
+		return domain.MemberPlan{}, fmt.Errorf("build files for %s: %w", rm.Name, err)
+	}
+
+	cmd := buildCommand(rm.Profile, prompt, sessionID, rm.TeamMemberID, authEnvs, rm.Envs)
+
+	launchPath := PlaceholderMemberspace + "/launch.sh"
+	files = append(files, domain.FileEntry{Path: launchPath, Content: cmd})
+
+	var gitRepo *domain.GitRepoRef
+	if rm.Repo != nil {
+		gitRepo = &domain.GitRepoRef{Name: rm.Repo.Name, URL: rm.Repo.URL}
+	}
+
+	return domain.MemberPlan{
+		TeamMemberID: rm.TeamMemberID,
+		MemberName:   rm.Name,
+		Terminal:     domain.TerminalPlan{Command: ". " + launchPath},
+		Workspace: domain.WorkspacePlan{
+			Memberspace: memberspace,
+			Files:       files,
+			GitRepo:     gitRepo,
+		},
+	}, nil
+}

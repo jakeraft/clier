@@ -8,7 +8,7 @@ import (
 
 func TestJoinPrompts(t *testing.T) {
 	t.Run("SinglePrompt_ReturnsAsIs", func(t *testing.T) {
-		prompts := []domain.PromptSnapshot{
+		prompts := []domain.SystemPrompt{
 			{Name: "style", Prompt: "Be concise."},
 		}
 
@@ -19,7 +19,7 @@ func TestJoinPrompts(t *testing.T) {
 	})
 
 	t.Run("MultiplePrompts_JoinedWithSeparator", func(t *testing.T) {
-		prompts := []domain.PromptSnapshot{
+		prompts := []domain.SystemPrompt{
 			{Name: "style", Prompt: "Be concise."},
 			{Name: "role", Prompt: "You are a Go developer."},
 			{Name: "rules", Prompt: "Follow best practices."},
@@ -40,7 +40,7 @@ func TestJoinPrompts(t *testing.T) {
 	})
 
 	t.Run("EmptySlice_ReturnsEmpty", func(t *testing.T) {
-		got := joinPrompts([]domain.PromptSnapshot{})
+		got := joinPrompts([]domain.SystemPrompt{})
 		if got != "" {
 			t.Errorf("got %q, want empty", got)
 		}

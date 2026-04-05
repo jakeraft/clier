@@ -29,7 +29,7 @@ func configDirEnv() string {
 
 // buildEnv assembles the full set of environment variables for a member command.
 func buildEnv(sessionID, memberID string,
-	authEnvs []string, userEnvs []domain.EnvSnapshot) []string {
+	authEnvs []string, userEnvs []domain.Env) []string {
 
 	env := []string{
 		configDirEnv(),
@@ -74,12 +74,11 @@ func buildAgentCommand(model string, systemArgs, customArgs []string,
 
 // buildCommand returns the complete shell command for launching an agent,
 // including environment variable exports.
-func buildCommand(model string, systemArgs, customArgs []string,
-	prompt, sessionID, memberID string,
-	authEnvs []string, userEnvs []domain.EnvSnapshot) string {
+func buildCommand(profile domain.CliProfile, prompt, sessionID, memberID string,
+	authEnvs []string, userEnvs []domain.Env) string {
 
 	workDir := PlaceholderMemberspace + "/project"
-	cmd := buildAgentCommand(model, systemArgs, customArgs, prompt, workDir)
+	cmd := buildAgentCommand(profile.Model, profile.SystemArgs, profile.CustomArgs, prompt, workDir)
 	env := buildEnv(sessionID, memberID, authEnvs, userEnvs)
 	return buildEnvCommand(cmd, env)
 }

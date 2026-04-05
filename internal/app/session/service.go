@@ -63,20 +63,21 @@ func New(store SessionStore, term Terminal, ws Workspace, base, homeDir string) 
 	return &Service{store: store, terminal: term, workspace: ws, base: base, homeDir: homeDir}
 }
 
-// Start builds a fresh plan from the team's current state, resolves placeholders,
+// Start resolves the team, builds the execution plan, expands placeholders,
 // prepares the workspace, and launches terminals for each member.
 func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker) (*domain.Session, error) {
-	plan, err := s.buildPlan(ctx, team)
+	// Resolve: ID references -> loaded domain objects
+	resolved, err := s.resolveTeam(ctx, team)
 	if err != nil {
-		return nil, fmt.Errorf("build plan: %w", err)
+		return nil, fmt.Errorf("resolve team: %w", err)
 	}
 
-	claudeToken := resolveAuth(auth)
-
 	sessionID := uuid.NewString()
-	members := make([]domain.MemberPlan, 0, len(plan))
-	for _, m := range plan {
-		members = append(members, resolvePlaceholders(m, s.base, s.homeDir, sessionID, claudeToken))
+
+	// Build: resolved objects -> execution plan (with placeholders)
+	plan, err := buildPlans(resolved, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("build plans: %w", err)
 	}
 
 	session, err := domain.NewSession(sessionID, team.ID)
@@ -85,6 +86,13 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 	}
 	session.Plan = plan
 
+	// Expand: placeholders -> concrete paths
+	claudeToken := resolveAuth(auth)
+	members := make([]domain.MemberPlan, 0, len(plan))
+	for _, m := range plan {
+		members = append(members, resolvePlaceholders(m, s.base, s.homeDir, sessionID, claudeToken))
+	}
+
 	success := false
 	defer func() {
 		if !success {
@@ -92,6 +100,7 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 		}
 	}()
 
+	// Start: prepare workspace + launch terminals
 	if err := s.workspace.Prepare(ctx, members); err != nil {
 		return nil, fmt.Errorf("prepare workspace: %w", err)
 	}
