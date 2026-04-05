@@ -169,7 +169,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		}
 		setTimestamps(&p.CreatedAt, &p.UpdatedAt)
 		if existing, err := store.GetCliProfile(ctx, p.ID); err == nil {
-			if err := existing.UpdateRaw(p.Name, p.Model, p.Binary, p.SystemArgs, p.CustomArgs, p.DotConfig); err != nil {
+			if err := existing.UpdateRaw(p.Name, p.Model, p.Binary, p.SystemArgs, p.CustomArgs, p.SettingsJSON, p.ClaudeJSON); err != nil {
 				return err
 			}
 			if err := store.UpdateCliProfile(ctx, &existing); err != nil {
