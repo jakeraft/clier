@@ -8,19 +8,19 @@ import (
 	"github.com/google/uuid"
 )
 
-type SessionStatus string
+type TaskStatus string
 
 const (
-	SessionRunning SessionStatus = "running"
-	SessionStopped SessionStatus = "stopped"
+	TaskRunning TaskStatus = "running"
+	TaskStopped TaskStatus = "stopped"
 )
 
-// Session is an execution instance of a Team on a local machine.
-// Plan is built fresh at session start from the team's current state.
-type Session struct {
-	ID     string        `json:"id"`
-	TeamID string        `json:"team_id"`
-	Status SessionStatus `json:"status"`
+// Task is an execution instance of a Team on a local machine.
+// Plan is built fresh at task start from the team's current state.
+type Task struct {
+	ID     string     `json:"id"`
+	TeamID string     `json:"team_id"`
+	Status TaskStatus `json:"status"`
 	// Plan retains {{CLIER_*}} placeholders as built. Safe for name/ID lookups;
 	// paths and commands require resolution before use.
 	Plan      []MemberPlan `json:"plan"`
@@ -28,41 +28,41 @@ type Session struct {
 	StoppedAt *time.Time   `json:"stopped_at"`
 }
 
-func NewSession(id, teamID string) (*Session, error) {
+func NewTask(id, teamID string) (*Task, error) {
 	if id == "" {
-		return nil, errors.New("session id must not be empty")
+		return nil, errors.New("task id must not be empty")
 	}
 	if teamID == "" {
 		return nil, errors.New("team id must not be empty")
 	}
-	return &Session{
+	return &Task{
 		ID:        id,
 		TeamID:    teamID,
-		Status:    SessionRunning,
+		Status:    TaskRunning,
 		CreatedAt: time.Now(),
 	}, nil
 }
 
-func (s *Session) Stop() {
+func (t *Task) Stop() {
 	now := time.Now()
-	s.Status = SessionStopped
-	s.StoppedAt = &now
+	t.Status = TaskStopped
+	t.StoppedAt = &now
 }
 
-// Message represents an inter-member message within a session.
+// Message represents an inter-member message within a task.
 // FromTeamMemberID is nullable — empty when the sender is not a team member.
 type Message struct {
 	ID               string    `json:"id"`
-	SessionID        string    `json:"session_id"`
+	TaskID           string    `json:"task_id"`
 	FromTeamMemberID string    `json:"from_team_member_id"`
 	ToTeamMemberID   string    `json:"to_team_member_id"`
 	Content          string    `json:"content"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 
-func NewMessage(sessionID, fromTeamMemberID, toTeamMemberID, content string) (*Message, error) {
-	if strings.TrimSpace(sessionID) == "" {
-		return nil, errors.New("message session id must not be empty")
+func NewMessage(taskID, fromTeamMemberID, toTeamMemberID, content string) (*Message, error) {
+	if strings.TrimSpace(taskID) == "" {
+		return nil, errors.New("message task id must not be empty")
 	}
 	if strings.TrimSpace(toTeamMemberID) == "" {
 		return nil, errors.New("message recipient must not be empty")
@@ -74,7 +74,7 @@ func NewMessage(sessionID, fromTeamMemberID, toTeamMemberID, content string) (*M
 
 	return &Message{
 		ID:               uuid.NewString(),
-		SessionID:        sessionID,
+		TaskID:           taskID,
 		FromTeamMemberID: fromTeamMemberID,
 		ToTeamMemberID:   toTeamMemberID,
 		Content:          content,
@@ -82,30 +82,30 @@ func NewMessage(sessionID, fromTeamMemberID, toTeamMemberID, content string) (*M
 	}, nil
 }
 
-// Log is a self-recorded entry by a team member within a session.
-type Log struct {
+// Update is a progress entry posted by a team member within a task.
+type Update struct {
 	ID           string    `json:"id"`
-	SessionID    string    `json:"session_id"`
+	TaskID       string    `json:"task_id"`
 	TeamMemberID string    `json:"team_member_id"`
 	Content      string    `json:"content"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-func NewLog(sessionID, teamMemberID, content string) (*Log, error) {
-	if strings.TrimSpace(sessionID) == "" {
-		return nil, errors.New("log session id must not be empty")
+func NewUpdate(taskID, teamMemberID, content string) (*Update, error) {
+	if strings.TrimSpace(taskID) == "" {
+		return nil, errors.New("update task id must not be empty")
 	}
 	if strings.TrimSpace(teamMemberID) == "" {
-		return nil, errors.New("log team member id must not be empty")
+		return nil, errors.New("update team member id must not be empty")
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return nil, errors.New("log content must not be empty")
+		return nil, errors.New("update content must not be empty")
 	}
 
-	return &Log{
+	return &Update{
 		ID:           uuid.NewString(),
-		SessionID:    sessionID,
+		TaskID:       taskID,
 		TeamMemberID: teamMemberID,
 		Content:      content,
 		CreatedAt:    time.Now(),
@@ -116,7 +116,7 @@ func NewLog(sessionID, teamMemberID, content string) (*Log, error) {
 // Binary, Model, Envs are NOT stored — they are already baked into Command.
 // Relations are NOT stored — they are in Team.Relations and baked into the prompt.
 //
-// Plan retains {{CLIER_*}} placeholders; these are expanded at session start
+// Plan retains {{CLIER_*}} placeholders; these are expanded at task start
 // into concrete paths. The stored plan is safe for name/ID lookups but should
 // not be used to reconstruct the workspace without re-expanding placeholders.
 type MemberPlan struct {
