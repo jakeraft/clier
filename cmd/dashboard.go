@@ -105,7 +105,7 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 	if err != nil {
 		return dashboardData{}, err
 	}
-	sessions, err := store.ListSessions(ctx)
+	tasks, err := store.ListTasks(ctx)
 	if err != nil {
 		return dashboardData{}, err
 	}
@@ -116,7 +116,7 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 	envNames := nameMap(envs, func(e resource.Env) (string, string) { return e.ID, e.Name })
 	teamNames := nameMap(teams, func(t domain.Team) (string, string) { return t.ID, t.Name })
 
-	sessionViews, err := convertSessions(ctx, store, sessions, teamNames)
+	taskViews, err := convertTasks(ctx, store, tasks, teamNames)
 	if err != nil {
 		return dashboardData{}, err
 	}
@@ -128,7 +128,7 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 		SystemPrompts: convertSystemPrompts(prompts),
 		GitRepos:      convertGitRepos(repos),
 		Envs:          convertEnvs(envs),
-		Sessions:      sessionViews,
+		Tasks:         taskViews,
 	}, nil
 }
 
@@ -141,7 +141,7 @@ func nameMap[T any](items []T, fn func(T) (string, string)) map[string]string {
 	return m
 }
 
-// --- domain → view conversions ---
+// --- domain -> view conversions ---
 
 func convertTeams(teams []domain.Team) []teamView {
 	views := make([]teamView, 0, len(teams))
@@ -293,7 +293,7 @@ type dashboardData struct {
 	SystemPrompts []systemPromptView `json:"systemPrompts"`
 	GitRepos      []gitRepoView      `json:"gitRepos"`
 	Envs          []envView          `json:"envs"`
-	Sessions      []sessionView      `json:"sessions"`
+	Tasks         []taskView         `json:"tasks"`
 }
 
 type teamMemberView struct {
@@ -373,14 +373,14 @@ type envView struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-type sessionView struct {
+type taskView struct {
 	ID        string            `json:"id"`
 	Name      string            `json:"name"`
 	TeamID    string            `json:"teamId"`
 	TeamName  string            `json:"teamName"`
 	Status    string            `json:"status"`
 	Plan      []memberPlanView  `json:"plan"`
-	Logs      []logView         `json:"logs"`
+	Updates   []updateView      `json:"updates"`
 	Messages  []messageView     `json:"messages"`
 	CreatedAt time.Time         `json:"createdAt"`
 	UpdatedAt time.Time         `json:"updatedAt"`
@@ -405,7 +405,7 @@ type memberPlanFileEntry struct {
 	Content string `json:"content"`
 }
 
-type logView struct {
+type updateView struct {
 	ID           string    `json:"id"`
 	TeamMemberID string    `json:"teamMemberId"`
 	MemberName   string    `json:"memberName"`
@@ -423,26 +423,26 @@ type messageView struct {
 	CreatedAt        time.Time `json:"createdAt"`
 }
 
-func convertSessions(ctx context.Context, store *db.Store, sessions []domain.Session, teamNames map[string]string) ([]sessionView, error) {
-	views := make([]sessionView, 0, len(sessions))
-	for _, s := range sessions {
-		logs, err := store.ListLogsBySessionID(ctx, s.ID)
+func convertTasks(ctx context.Context, store *db.Store, tasks []domain.Task, teamNames map[string]string) ([]taskView, error) {
+	views := make([]taskView, 0, len(tasks))
+	for _, t := range tasks {
+		updates, err := store.ListUpdatesByTaskID(ctx, t.ID)
 		if err != nil {
 			return nil, err
 		}
-		msgs, err := store.ListMessagesBySessionID(ctx, s.ID)
+		msgs, err := store.ListMessagesByTaskID(ctx, t.ID)
 		if err != nil {
 			return nil, err
 		}
 
-		// Build teamMemberID → memberName map from plan
-		nameOf := make(map[string]string, len(s.Plan))
-		for _, mp := range s.Plan {
+		// Build teamMemberID -> memberName map from plan
+		nameOf := make(map[string]string, len(t.Plan))
+		for _, mp := range t.Plan {
 			nameOf[mp.TeamMemberID] = mp.MemberName
 		}
 
-		planViews := make([]memberPlanView, 0, len(s.Plan))
-		for _, mp := range s.Plan {
+		planViews := make([]memberPlanView, 0, len(t.Plan))
+		for _, mp := range t.Plan {
 			var gitRepo *memberPlanGitRepoRef
 			if mp.Workspace.GitRepo != nil {
 				gitRepo = &memberPlanGitRepoRef{Name: mp.Workspace.GitRepo.Name, URL: mp.Workspace.GitRepo.URL}
@@ -461,14 +461,14 @@ func convertSessions(ctx context.Context, store *db.Store, sessions []domain.Ses
 			})
 		}
 
-		logViews := make([]logView, 0, len(logs))
-		for _, l := range logs {
-			logViews = append(logViews, logView{
-				ID:           l.ID,
-				TeamMemberID: l.TeamMemberID,
-				MemberName:   nameOf[l.TeamMemberID],
-				Content:      l.Content,
-				CreatedAt:    l.CreatedAt,
+		updateViews := make([]updateView, 0, len(updates))
+		for _, u := range updates {
+			updateViews = append(updateViews, updateView{
+				ID:           u.ID,
+				TeamMemberID: u.TeamMemberID,
+				MemberName:   nameOf[u.TeamMemberID],
+				Content:      u.Content,
+				CreatedAt:    u.CreatedAt,
 			})
 		}
 
@@ -485,21 +485,21 @@ func convertSessions(ctx context.Context, store *db.Store, sessions []domain.Ses
 			})
 		}
 
-		updatedAt := s.CreatedAt
-		if s.StoppedAt != nil {
-			updatedAt = *s.StoppedAt
+		updatedAt := t.CreatedAt
+		if t.StoppedAt != nil {
+			updatedAt = *t.StoppedAt
 		}
 
-		views = append(views, sessionView{
-			ID:        s.ID,
-			Name:      s.ID,
-			TeamID:    s.TeamID,
-			TeamName:  teamNames[s.TeamID],
-			Status:    string(s.Status),
+		views = append(views, taskView{
+			ID:        t.ID,
+			Name:      t.ID,
+			TeamID:    t.TeamID,
+			TeamName:  teamNames[t.TeamID],
+			Status:    string(t.Status),
 			Plan:      planViews,
-			Logs:      logViews,
+			Updates:   updateViews,
 			Messages:  msgViews,
-			CreatedAt: s.CreatedAt,
+			CreatedAt: t.CreatedAt,
 			UpdatedAt: updatedAt,
 		})
 	}

@@ -28,8 +28,8 @@ var rootCmd = &cobra.Command{
 
 Building blocks (profile, prompt, env, repo) define agent capabilities.
 Combine them into a member, assemble members into a team with
-leader-worker relations, then start a session to launch the agents.
-Monitor progress through messages and logs, or open the dashboard.
+leader-worker relations, then start a task to launch the agents.
+Monitor progress through messages and updates, or open the dashboard.
 
 New to clier? Run "clier tutorial" for a step-by-step guide.`,
 	CompletionOptions: cobra.CompletionOptions{
@@ -69,12 +69,12 @@ func Execute() {
 	}
 }
 
-// filterUserCommands removes agent-only subcommands from "session" in user context.
+// filterUserCommands removes agent-only subcommands from "task" in user context.
 func filterUserCommands() {
-	// Coupled to: newSessionLogCmd
-	hidden := map[string]bool{"log": true}
+	// Coupled to: newTaskUpdateCmd
+	hidden := map[string]bool{"update": true}
 	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == "session" {
+		if cmd.Name() == "task" {
 			var keep []*cobra.Command
 			for _, sub := range cmd.Commands() {
 				if !hidden[sub.Name()] {
@@ -89,10 +89,10 @@ func filterUserCommands() {
 	}
 }
 
-// filterAgentCommands removes all commands except "session" when running as an agent,
-// and within "session" keeps only agent-facing subcommands (tell, log).
+// filterAgentCommands removes all commands except "task" when running as an agent,
+// and within "task" keeps only agent-facing subcommands (tell, update).
 func filterAgentCommands() {
-	allowed := map[string]bool{"session": true}
+	allowed := map[string]bool{"task": true}
 	var keep []*cobra.Command
 	for _, cmd := range rootCmd.Commands() {
 		if allowed[cmd.Name()] {
@@ -104,10 +104,10 @@ func filterAgentCommands() {
 		rootCmd.AddCommand(cmd)
 	}
 
-	// Coupled to: newSessionTellCmd, newSessionLogCmd
-	agentSubs := map[string]bool{"tell": true, "log": true}
+	// Coupled to: newTaskTellCmd, newTaskUpdateCmd
+	agentSubs := map[string]bool{"tell": true, "update": true}
 	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == "session" {
+		if cmd.Name() == "task" {
 			var subs []*cobra.Command
 			for _, sub := range cmd.Commands() {
 				if agentSubs[sub.Name()] {

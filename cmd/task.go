@@ -6,33 +6,33 @@ import (
 
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/adapter/workspace"
-	"github.com/jakeraft/clier/internal/app/session"
+	"github.com/jakeraft/clier/internal/app/task"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	rootCmd.AddCommand(newSessionCmd())
+	rootCmd.AddCommand(newTaskCmd())
 }
 
-func newSessionCmd() *cobra.Command {
+func newTaskCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "session",
-		Short: "Manage sessions",
+		Use:   "task",
+		Short: "Manage tasks",
 	}
-	cmd.AddCommand(newSessionStartCmd())
-	cmd.AddCommand(newSessionStopCmd())
-	cmd.AddCommand(newSessionListCmd())
-	cmd.AddCommand(newSessionTellCmd())
-	cmd.AddCommand(newSessionLogCmd())
-	cmd.AddCommand(newSessionLogsCmd())
-	cmd.AddCommand(newSessionAttachCmd())
+	cmd.AddCommand(newTaskStartCmd())
+	cmd.AddCommand(newTaskStopCmd())
+	cmd.AddCommand(newTaskListCmd())
+	cmd.AddCommand(newTaskTellCmd())
+	cmd.AddCommand(newTaskUpdateCmd())
+	cmd.AddCommand(newTaskUpdatesCmd())
+	cmd.AddCommand(newTaskAttachCmd())
 	return cmd
 }
 
-func newSessionStartCmd() *cobra.Command {
+func newTaskStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "start <team-id>",
-		Short:       "Start a session",
+		Short:       "Start a task",
 		Args:        cobra.ExactArgs(1),
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -53,22 +53,22 @@ func newSessionStartCmd() *cobra.Command {
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
-			svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
+			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
-			s, err := svc.Start(cmd.Context(), t, cfg.Auth)
+			tk, err := svc.Start(cmd.Context(), t, cfg.Auth)
 			if err != nil {
 				return err
 			}
-			return printJSON(s)
+			return printJSON(tk)
 		},
 	}
 	return cmd
 }
 
-func newSessionStopCmd() *cobra.Command {
+func newTaskStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:         "stop <id>",
-		Short:       "Stop a session",
+		Short:       "Stop a task",
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -84,7 +84,7 @@ func newSessionStopCmd() *cobra.Command {
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
-			svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
+			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
 			if err := svc.Stop(cmd.Context(), args[0]); err != nil {
 				return err
@@ -94,10 +94,10 @@ func newSessionStopCmd() *cobra.Command {
 	}
 }
 
-func newSessionListCmd() *cobra.Command {
+func newTaskListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List all sessions",
+		Short: "List all tasks",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -109,17 +109,17 @@ func newSessionListCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			sessions, err := store.ListSessions(cmd.Context())
+			tasks, err := store.ListTasks(cmd.Context())
 			if err != nil {
 				return err
 			}
-			return printJSON(sessions)
+			return printJSON(tasks)
 		},
 	}
 }
 
-func newSessionTellCmd() *cobra.Command {
-	var sessionFlag, toMemberID string
+func newTaskTellCmd() *cobra.Command {
+	var taskFlag, toMemberID string
 
 	cmd := &cobra.Command{
 		Use:         "tell <content>",
@@ -127,7 +127,7 @@ func newSessionTellCmd() *cobra.Command {
 		Args:        cobra.ExactArgs(1),
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID, fromMemberID, err := resolveSessionContext(sessionFlag)
+			taskID, fromMemberID, err := resolveTaskContext(taskFlag)
 			if err != nil {
 				return err
 			}
@@ -144,9 +144,9 @@ func newSessionTellCmd() *cobra.Command {
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
-			svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
+			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
-			if err := svc.Send(cmd.Context(), sessionID, fromMemberID, toMemberID, args[0]); err != nil {
+			if err := svc.Send(cmd.Context(), taskID, fromMemberID, toMemberID, args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
@@ -156,22 +156,22 @@ func newSessionTellCmd() *cobra.Command {
 			})
 		},
 	}
-	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session ID (defaults to CLIER_SESSION_ID)")
+	cmd.Flags().StringVar(&taskFlag, "task", "", "Task ID (defaults to CLIER_TASK_ID)")
 	cmd.Flags().StringVar(&toMemberID, "to", "", "Recipient member ID")
 	_ = cmd.MarkFlagRequired("to")
 	return cmd
 }
 
-func newSessionLogCmd() *cobra.Command {
-	var sessionFlag string
+func newTaskUpdateCmd() *cobra.Command {
+	var taskFlag string
 
 	cmd := &cobra.Command{
-		Use:         "log <content>",
-		Short:       "Record a session log entry",
+		Use:         "update <content>",
+		Short:       "Post a progress update",
 		Args:        cobra.ExactArgs(1),
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			sessionID, memberID, err := resolveSessionContext(sessionFlag)
+			taskID, memberID, err := resolveTaskContext(taskFlag)
 			if err != nil {
 				return err
 			}
@@ -188,26 +188,26 @@ func newSessionLogCmd() *cobra.Command {
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
-			svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
+			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
-			if err := svc.Log(cmd.Context(), sessionID, memberID, args[0]); err != nil {
+			if err := svc.Update(cmd.Context(), taskID, memberID, args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
-				"status":  "logged",
-				"member":  memberID,
-				"session": sessionID,
+				"status": "posted",
+				"member": memberID,
+				"task":   taskID,
 			})
 		},
 	}
-	cmd.Flags().StringVar(&sessionFlag, "session", "", "Session ID (defaults to CLIER_SESSION_ID)")
+	cmd.Flags().StringVar(&taskFlag, "task", "", "Task ID (defaults to CLIER_TASK_ID)")
 	return cmd
 }
 
-func newSessionLogsCmd() *cobra.Command {
+func newTaskUpdatesCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "logs <session-id>",
-		Short: "List session logs",
+		Use:   "updates <task-id>",
+		Short: "List task updates",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
@@ -220,21 +220,21 @@ func newSessionLogsCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			logs, err := store.ListLogsBySessionID(cmd.Context(), args[0])
+			updates, err := store.ListUpdatesByTaskID(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
-			return printJSON(logs)
+			return printJSON(updates)
 		},
 	}
 }
 
-func newSessionAttachCmd() *cobra.Command {
+func newTaskAttachCmd() *cobra.Command {
 	var memberFlag string
 
 	cmd := &cobra.Command{
-		Use:   "attach <session-id>",
-		Short: "Attach to a running session's terminal",
+		Use:   "attach <task-id>",
+		Short: "Attach to a running task's terminal",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
@@ -260,16 +260,16 @@ func newSessionAttachCmd() *cobra.Command {
 	return cmd
 }
 
-// resolveSessionContext resolves session ID and member ID from env vars set by clier.
-// CLIER_SESSION_ID identifies the session, CLIER_MEMBER_ID identifies the sender.
-func resolveSessionContext(sessionFlag string) (sessionID, memberID string, err error) {
-	sessionID = sessionFlag
-	if sessionID == "" {
-		sessionID = os.Getenv("CLIER_SESSION_ID")
+// resolveTaskContext resolves task ID and member ID from env vars set by clier.
+// CLIER_TASK_ID identifies the task, CLIER_MEMBER_ID identifies the sender.
+func resolveTaskContext(taskFlag string) (taskID, memberID string, err error) {
+	taskID = taskFlag
+	if taskID == "" {
+		taskID = os.Getenv("CLIER_TASK_ID")
 	}
-	if sessionID == "" {
-		return "", "", errors.New("--session flag or CLIER_SESSION_ID must be set")
+	if taskID == "" {
+		return "", "", errors.New("--task flag or CLIER_TASK_ID must be set")
 	}
 	memberID = os.Getenv("CLIER_MEMBER_ID")
-	return sessionID, memberID, nil
+	return taskID, memberID, nil
 }

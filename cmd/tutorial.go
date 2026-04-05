@@ -8,7 +8,7 @@ import (
 
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/adapter/workspace"
-	"github.com/jakeraft/clier/internal/app/session"
+	"github.com/jakeraft/clier/internal/app/task"
 	"github.com/spf13/cobra"
 )
 
@@ -43,13 +43,13 @@ that collaborates to write a short mystery story:
 Run "clier tutorial start" to execute the following commands in sequence:
 
   1. clier import ` + tutorialImportURL + `
-  2. clier session start ` + tutorialTeamID + `
-  3. clier session tell --session <session-id> --to ` + tutorialRootMemberID + ` "` + tutorialMessage + `"
+  2. clier task start ` + tutorialTeamID + `
+  3. clier task tell --task <task-id> --to ` + tutorialRootMemberID + ` "` + tutorialMessage + `"
 
-After the session starts, check progress with:
+After the task starts, check progress with:
 
-  clier session logs <session-id>
-  # clier session attach <session-id>  (coming soon)`,
+  clier task updates <task-id>
+  clier task attach <task-id>`,
 	}
 	cmd.AddCommand(newTutorialStartCmd())
 	return cmd
@@ -97,8 +97,8 @@ func newTutorialStartCmd() *cobra.Command {
 				}
 			}
 
-			// Step 2: Start session.
-			fmt.Fprintln(os.Stderr, "Step 2/3: Starting session...")
+			// Step 2: Start task.
+			fmt.Fprintln(os.Stderr, "Step 2/3: Starting task...")
 			t, err := store.GetTeam(ctx, tutorialTeamID)
 			if err != nil {
 				return fmt.Errorf("get team: %w", err)
@@ -106,25 +106,25 @@ func newTutorialStartCmd() *cobra.Command {
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
-			svc := session.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
+			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
-			s, err := svc.Start(ctx, t, cfg.Auth)
+			tk, err := svc.Start(ctx, t, cfg.Auth)
 			if err != nil {
-				return fmt.Errorf("start session: %w", err)
+				return fmt.Errorf("start task: %w", err)
 			}
 
 			// Step 3: Tell root member to start.
 			fmt.Fprintln(os.Stderr, "Step 3/3: Telling chief-editor to start...")
-			if err := svc.Send(ctx, s.ID, "", tutorialRootMemberID, tutorialMessage); err != nil {
+			if err := svc.Send(ctx, tk.ID, "", tutorialRootMemberID, tutorialMessage); err != nil {
 				return fmt.Errorf("tell message: %w", err)
 			}
 
-			fmt.Fprintln(os.Stderr, "\nTutorial session started successfully.")
+			fmt.Fprintln(os.Stderr, "\nTutorial task started successfully.")
 			fmt.Fprintln(os.Stderr, "\nNext steps:")
-			fmt.Fprintf(os.Stderr, "  clier session logs %s\n", s.ID)
-			fmt.Fprintf(os.Stderr, "  # clier session attach %s  (coming soon)\n", s.ID)
+			fmt.Fprintf(os.Stderr, "  clier task updates %s\n", tk.ID)
+			fmt.Fprintf(os.Stderr, "  clier task attach %s\n", tk.ID)
 
-			return printJSON(s)
+			return printJSON(tk)
 		},
 	}
 }
