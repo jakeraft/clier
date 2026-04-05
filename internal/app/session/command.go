@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 // shellQuote wraps a string in single quotes, escaping embedded single quotes.
@@ -29,7 +29,7 @@ func configDirEnv() string {
 
 // buildEnv assembles the full set of environment variables for a member command.
 func buildEnv(sessionID, memberID string,
-	authEnvs []string, userEnvs []domain.Env) []string {
+	authEnvs []string, userEnvs []resource.Env) []string {
 
 	env := []string{
 		configDirEnv(),
@@ -74,8 +74,8 @@ func buildAgentCommand(model string, systemArgs, customArgs []string,
 
 // buildCommand returns the complete shell command for launching an agent,
 // including environment variable exports.
-func buildCommand(profile domain.CliProfile, prompt, sessionID, memberID string,
-	authEnvs []string, userEnvs []domain.Env) string {
+func buildCommand(profile resource.CliProfile, prompt, sessionID, memberID string,
+	authEnvs []string, userEnvs []resource.Env) string {
 
 	workDir := PlaceholderMemberspace + "/project"
 	cmd := buildAgentCommand(profile.Model, profile.SystemArgs, profile.CustomArgs, prompt, workDir)

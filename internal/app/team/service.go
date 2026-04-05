@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 // Store defines the operations needed by the team service.
@@ -13,16 +14,16 @@ type Store interface {
 	GetMember(ctx context.Context, id string) (domain.Member, error)
 
 	// Write (used by Import)
-	CreateSystemPrompt(ctx context.Context, sp *domain.SystemPrompt) error
-	CreateEnv(ctx context.Context, e *domain.Env) error
-	CreateGitRepo(ctx context.Context, r *domain.GitRepo) error
-	CreateCliProfile(ctx context.Context, p *domain.CliProfile) error
+	CreateSystemPrompt(ctx context.Context, sp *resource.SystemPrompt) error
+	CreateEnv(ctx context.Context, e *resource.Env) error
+	CreateGitRepo(ctx context.Context, r *resource.GitRepo) error
+	CreateCliProfile(ctx context.Context, p *resource.CliProfile) error
 	CreateMember(ctx context.Context, m *domain.Member) error
 	CreateTeam(ctx context.Context, t *domain.Team) error
-	UpdateSystemPrompt(ctx context.Context, sp *domain.SystemPrompt) error
-	UpdateEnv(ctx context.Context, e *domain.Env) error
-	UpdateGitRepo(ctx context.Context, r *domain.GitRepo) error
-	UpdateCliProfile(ctx context.Context, p *domain.CliProfile) error
+	UpdateSystemPrompt(ctx context.Context, sp *resource.SystemPrompt) error
+	UpdateEnv(ctx context.Context, e *resource.Env) error
+	UpdateGitRepo(ctx context.Context, r *resource.GitRepo) error
+	UpdateCliProfile(ctx context.Context, p *resource.CliProfile) error
 	UpdateMember(ctx context.Context, m *domain.Member) error
 	UpdateTeam(ctx context.Context, t *domain.Team) error
 	AddTeamMember(ctx context.Context, teamID string, tm domain.TeamMember) error

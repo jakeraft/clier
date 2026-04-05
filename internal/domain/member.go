@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 type Member struct {
@@ -82,9 +83,9 @@ func (m *Member) Update(name, cliProfileID *string, systemPromptIDs *[]string, g
 type ResolvedMember struct {
 	TeamMemberID string
 	Name         string
-	Profile      CliProfile
-	Prompts      []SystemPrompt
-	Envs         []Env
-	Repo         *GitRepo
+	Profile      resource.CliProfile
+	Prompts      []resource.SystemPrompt
+	Envs         []resource.Env
+	Repo         *resource.GitRepo
 	Relations    MemberRelations
 }

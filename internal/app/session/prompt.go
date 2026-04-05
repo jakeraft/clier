@@ -5,11 +5,12 @@ import (
 	"strings"
 
 	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 // joinPrompts combines multiple system prompts into a single string,
 // separated by double newlines.
-func joinPrompts(prompts []domain.SystemPrompt) string {
+func joinPrompts(prompts []resource.SystemPrompt) string {
 	parts := make([]string, 0, len(prompts))
 	for _, sp := range prompts {
 		parts = append(parts, sp.Prompt)

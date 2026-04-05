@@ -5,11 +5,12 @@ import (
 	"fmt"
 
 	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 // buildClaudeFiles generates Claude config files (settings.json + trust config)
 // with paths using memberspacePlaceholder instead of absolute paths.
-func buildClaudeFiles(dotConfig domain.DotConfig, workDir, memberspacePlaceholder string) ([]domain.FileEntry, error) {
+func buildClaudeFiles(dotConfig resource.DotConfig, workDir, memberspacePlaceholder string) ([]domain.FileEntry, error) {
 	settingsData, err := json.MarshalIndent(dotConfig, "", "  ")
 	if err != nil {
 		return nil, fmt.Errorf("marshal settings: %w", err)

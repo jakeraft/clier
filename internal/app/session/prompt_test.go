@@ -3,12 +3,12 @@ package session
 import (
 	"testing"
 
-	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 func TestJoinPrompts(t *testing.T) {
 	t.Run("SinglePrompt_ReturnsAsIs", func(t *testing.T) {
-		prompts := []domain.SystemPrompt{
+		prompts := []resource.SystemPrompt{
 			{Name: "style", Prompt: "Be concise."},
 		}
 
@@ -19,7 +19,7 @@ func TestJoinPrompts(t *testing.T) {
 	})
 
 	t.Run("MultiplePrompts_JoinedWithSeparator", func(t *testing.T) {
-		prompts := []domain.SystemPrompt{
+		prompts := []resource.SystemPrompt{
 			{Name: "style", Prompt: "Be concise."},
 			{Name: "role", Prompt: "You are a Go developer."},
 			{Name: "rules", Prompt: "Follow best practices."},
@@ -40,7 +40,7 @@ func TestJoinPrompts(t *testing.T) {
 	})
 
 	t.Run("EmptySlice_ReturnsEmpty", func(t *testing.T) {
-		got := joinPrompts([]domain.SystemPrompt{})
+		got := joinPrompts([]resource.SystemPrompt{})
 		if got != "" {
 			t.Errorf("got %q, want empty", got)
 		}

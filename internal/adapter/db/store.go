@@ -12,6 +12,7 @@ import (
 
 	"github.com/jakeraft/clier/internal/adapter/db/generated"
 	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 	_ "modernc.org/sqlite"
 )
 
@@ -401,7 +402,7 @@ func (s *Store) DeleteMember(ctx context.Context, id string) error {
 
 // CliProfile
 
-func marshalCliProfileJSON(p *domain.CliProfile) (systemArgs, customArgs, dotConfig string, err error) {
+func marshalCliProfileJSON(p *resource.CliProfile) (systemArgs, customArgs, dotConfig string, err error) {
 	sa, err := json.Marshal(p.SystemArgs)
 	if err != nil {
 		return "", "", "", fmt.Errorf("marshal system_args: %w", err)
@@ -417,7 +418,7 @@ func marshalCliProfileJSON(p *domain.CliProfile) (systemArgs, customArgs, dotCon
 	return string(sa), string(ca), string(dc), nil
 }
 
-func (s *Store) CreateCliProfile(ctx context.Context, p *domain.CliProfile) error {
+func (s *Store) CreateCliProfile(ctx context.Context, p *resource.CliProfile) error {
 	systemArgs, customArgs, dotConfig, err := marshalCliProfileJSON(p)
 	if err != nil {
 		return err
@@ -436,17 +437,17 @@ func (s *Store) CreateCliProfile(ctx context.Context, p *domain.CliProfile) erro
 	return err
 }
 
-func unmarshalCliProfile(row generated.CliProfile) (domain.CliProfile, error) {
+func unmarshalCliProfile(row generated.CliProfile) (resource.CliProfile, error) {
 	var systemArgs, customArgs []string
 	if err := json.Unmarshal([]byte(row.SystemArgs), &systemArgs); err != nil {
-		return domain.CliProfile{}, fmt.Errorf("unmarshal system_args: %w", err)
+		return resource.CliProfile{}, fmt.Errorf("unmarshal system_args: %w", err)
 	}
 	if err := json.Unmarshal([]byte(row.CustomArgs), &customArgs); err != nil {
-		return domain.CliProfile{}, fmt.Errorf("unmarshal custom_args: %w", err)
+		return resource.CliProfile{}, fmt.Errorf("unmarshal custom_args: %w", err)
 	}
-	var dotConfig domain.DotConfig
+	var dotConfig resource.DotConfig
 	if err := json.Unmarshal([]byte(row.DotConfig), &dotConfig); err != nil {
-		return domain.CliProfile{}, fmt.Errorf("unmarshal dot_config: %w", err)
+		return resource.CliProfile{}, fmt.Errorf("unmarshal dot_config: %w", err)
 	}
 	if systemArgs == nil {
 		systemArgs = []string{}
@@ -454,11 +455,11 @@ func unmarshalCliProfile(row generated.CliProfile) (domain.CliProfile, error) {
 	if customArgs == nil {
 		customArgs = []string{}
 	}
-	return domain.CliProfile{
+	return resource.CliProfile{
 		ID:         row.ID,
 		Name:       row.Name,
 		Model:      row.Model,
-		Binary:     domain.CliBinary(row.Binary),
+		Binary:     resource.CliBinary(row.Binary),
 		SystemArgs: systemArgs,
 		CustomArgs: customArgs,
 		DotConfig:  dotConfig,
@@ -467,20 +468,20 @@ func unmarshalCliProfile(row generated.CliProfile) (domain.CliProfile, error) {
 	}, nil
 }
 
-func (s *Store) GetCliProfile(ctx context.Context, id string) (domain.CliProfile, error) {
+func (s *Store) GetCliProfile(ctx context.Context, id string) (resource.CliProfile, error) {
 	row, err := s.queries.GetCliProfile(ctx, id)
 	if err != nil {
-		return domain.CliProfile{}, err
+		return resource.CliProfile{}, err
 	}
 	return unmarshalCliProfile(row)
 }
 
-func (s *Store) ListCliProfiles(ctx context.Context) ([]domain.CliProfile, error) {
+func (s *Store) ListCliProfiles(ctx context.Context) ([]resource.CliProfile, error) {
 	rows, err := s.queries.ListCliProfiles(ctx)
 	if err != nil {
 		return nil, err
 	}
-	profiles := make([]domain.CliProfile, 0, len(rows))
+	profiles := make([]resource.CliProfile, 0, len(rows))
 	for _, row := range rows {
 		p, err := unmarshalCliProfile(row)
 		if err != nil {
@@ -491,7 +492,7 @@ func (s *Store) ListCliProfiles(ctx context.Context) ([]domain.CliProfile, error
 	return profiles, nil
 }
 
-func (s *Store) UpdateCliProfile(ctx context.Context, p *domain.CliProfile) error {
+func (s *Store) UpdateCliProfile(ctx context.Context, p *resource.CliProfile) error {
 	systemArgs, customArgs, dotConfig, err := marshalCliProfileJSON(p)
 	if err != nil {
 		return err
@@ -527,7 +528,7 @@ func (s *Store) DeleteCliProfile(ctx context.Context, id string) error {
 
 // SystemPrompt
 
-func (s *Store) CreateSystemPrompt(ctx context.Context, sp *domain.SystemPrompt) error {
+func (s *Store) CreateSystemPrompt(ctx context.Context, sp *resource.SystemPrompt) error {
 	_, err := s.queries.CreateSystemPrompt(ctx, generated.CreateSystemPromptParams{
 		ID:        sp.ID,
 		Name:      sp.Name,
@@ -538,12 +539,12 @@ func (s *Store) CreateSystemPrompt(ctx context.Context, sp *domain.SystemPrompt)
 	return err
 }
 
-func (s *Store) GetSystemPrompt(ctx context.Context, id string) (domain.SystemPrompt, error) {
+func (s *Store) GetSystemPrompt(ctx context.Context, id string) (resource.SystemPrompt, error) {
 	row, err := s.queries.GetSystemPrompt(ctx, id)
 	if err != nil {
-		return domain.SystemPrompt{}, err
+		return resource.SystemPrompt{}, err
 	}
-	return domain.SystemPrompt{
+	return resource.SystemPrompt{
 		ID:        row.ID,
 		Name:      row.Name,
 		Prompt:    row.Prompt,
@@ -552,14 +553,14 @@ func (s *Store) GetSystemPrompt(ctx context.Context, id string) (domain.SystemPr
 	}, nil
 }
 
-func (s *Store) ListSystemPrompts(ctx context.Context) ([]domain.SystemPrompt, error) {
+func (s *Store) ListSystemPrompts(ctx context.Context) ([]resource.SystemPrompt, error) {
 	rows, err := s.queries.ListSystemPrompts(ctx)
 	if err != nil {
 		return nil, err
 	}
-	prompts := make([]domain.SystemPrompt, 0, len(rows))
+	prompts := make([]resource.SystemPrompt, 0, len(rows))
 	for _, row := range rows {
-		prompts = append(prompts, domain.SystemPrompt{
+		prompts = append(prompts, resource.SystemPrompt{
 			ID:        row.ID,
 			Name:      row.Name,
 			Prompt:    row.Prompt,
@@ -570,7 +571,7 @@ func (s *Store) ListSystemPrompts(ctx context.Context) ([]domain.SystemPrompt, e
 	return prompts, nil
 }
 
-func (s *Store) UpdateSystemPrompt(ctx context.Context, sp *domain.SystemPrompt) error {
+func (s *Store) UpdateSystemPrompt(ctx context.Context, sp *resource.SystemPrompt) error {
 	_, err := s.queries.UpdateSystemPrompt(ctx, generated.UpdateSystemPromptParams{
 		Name:      sp.Name,
 		Prompt:    sp.Prompt,
@@ -598,7 +599,7 @@ func (s *Store) DeleteSystemPrompt(ctx context.Context, id string) error {
 
 // Env
 
-func (s *Store) CreateEnv(ctx context.Context, e *domain.Env) error {
+func (s *Store) CreateEnv(ctx context.Context, e *resource.Env) error {
 	_, err := s.queries.CreateEnv(ctx, generated.CreateEnvParams{
 		ID:        e.ID,
 		Name:      e.Name,
@@ -610,12 +611,12 @@ func (s *Store) CreateEnv(ctx context.Context, e *domain.Env) error {
 	return err
 }
 
-func (s *Store) GetEnv(ctx context.Context, id string) (domain.Env, error) {
+func (s *Store) GetEnv(ctx context.Context, id string) (resource.Env, error) {
 	row, err := s.queries.GetEnv(ctx, id)
 	if err != nil {
-		return domain.Env{}, err
+		return resource.Env{}, err
 	}
-	return domain.Env{
+	return resource.Env{
 		ID:        row.ID,
 		Name:      row.Name,
 		Key:       row.Key,
@@ -625,14 +626,14 @@ func (s *Store) GetEnv(ctx context.Context, id string) (domain.Env, error) {
 	}, nil
 }
 
-func (s *Store) ListEnvs(ctx context.Context) ([]domain.Env, error) {
+func (s *Store) ListEnvs(ctx context.Context) ([]resource.Env, error) {
 	rows, err := s.queries.ListEnvs(ctx)
 	if err != nil {
 		return nil, err
 	}
-	envs := make([]domain.Env, 0, len(rows))
+	envs := make([]resource.Env, 0, len(rows))
 	for _, row := range rows {
-		envs = append(envs, domain.Env{
+		envs = append(envs, resource.Env{
 			ID:        row.ID,
 			Name:      row.Name,
 			Key:       row.Key,
@@ -644,7 +645,7 @@ func (s *Store) ListEnvs(ctx context.Context) ([]domain.Env, error) {
 	return envs, nil
 }
 
-func (s *Store) UpdateEnv(ctx context.Context, e *domain.Env) error {
+func (s *Store) UpdateEnv(ctx context.Context, e *resource.Env) error {
 	_, err := s.queries.UpdateEnv(ctx, generated.UpdateEnvParams{
 		Name:      e.Name,
 		Key:       e.Key,
@@ -673,7 +674,7 @@ func (s *Store) DeleteEnv(ctx context.Context, id string) error {
 
 // GitRepo
 
-func (s *Store) CreateGitRepo(ctx context.Context, r *domain.GitRepo) error {
+func (s *Store) CreateGitRepo(ctx context.Context, r *resource.GitRepo) error {
 	_, err := s.queries.CreateGitRepo(ctx, generated.CreateGitRepoParams{
 		ID:        r.ID,
 		Name:      r.Name,
@@ -684,12 +685,12 @@ func (s *Store) CreateGitRepo(ctx context.Context, r *domain.GitRepo) error {
 	return err
 }
 
-func (s *Store) GetGitRepo(ctx context.Context, id string) (domain.GitRepo, error) {
+func (s *Store) GetGitRepo(ctx context.Context, id string) (resource.GitRepo, error) {
 	row, err := s.queries.GetGitRepo(ctx, id)
 	if err != nil {
-		return domain.GitRepo{}, err
+		return resource.GitRepo{}, err
 	}
-	return domain.GitRepo{
+	return resource.GitRepo{
 		ID:        row.ID,
 		Name:      row.Name,
 		URL:       row.Url,
@@ -698,14 +699,14 @@ func (s *Store) GetGitRepo(ctx context.Context, id string) (domain.GitRepo, erro
 	}, nil
 }
 
-func (s *Store) ListGitRepos(ctx context.Context) ([]domain.GitRepo, error) {
+func (s *Store) ListGitRepos(ctx context.Context) ([]resource.GitRepo, error) {
 	rows, err := s.queries.ListGitRepos(ctx)
 	if err != nil {
 		return nil, err
 	}
-	repos := make([]domain.GitRepo, 0, len(rows))
+	repos := make([]resource.GitRepo, 0, len(rows))
 	for _, row := range rows {
-		repos = append(repos, domain.GitRepo{
+		repos = append(repos, resource.GitRepo{
 			ID:        row.ID,
 			Name:      row.Name,
 			URL:       row.Url,
@@ -716,7 +717,7 @@ func (s *Store) ListGitRepos(ctx context.Context) ([]domain.GitRepo, error) {
 	return repos, nil
 }
 
-func (s *Store) UpdateGitRepo(ctx context.Context, r *domain.GitRepo) error {
+func (s *Store) UpdateGitRepo(ctx context.Context, r *resource.GitRepo) error {
 	_, err := s.queries.UpdateGitRepo(ctx, generated.UpdateGitRepoParams{
 		Name:      r.Name,
 		Url:       r.URL,

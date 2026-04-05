@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +39,7 @@ func newEnvCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			e, err := domain.NewEnv(name, key, value)
+			e, err := resource.NewEnv(name, key, value)
 			if err != nil {
 				return err
 			}

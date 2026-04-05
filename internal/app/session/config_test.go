@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 func TestBuildClaudeFiles(t *testing.T) {
 	const ms = "{{CLIER_MEMBERSPACE}}"
 
 	t.Run("WithDotConfig_ReturnsSettingsAndTrust", func(t *testing.T) {
-		dotConfig := domain.DotConfig{"skipDangerousModePermissionPrompt": true}
+		dotConfig := resource.DotConfig{"skipDangerousModePermissionPrompt": true}
 		workDir := ms + "/project"
 
 		files, err := buildClaudeFiles(dotConfig, workDir, ms)
@@ -48,7 +48,7 @@ func TestBuildClaudeFiles(t *testing.T) {
 	})
 
 	t.Run("TildePaths_PreservedInPlan", func(t *testing.T) {
-		dotConfig := domain.DotConfig{"claudeMdExcludes": []string{"~/.claude/**"}}
+		dotConfig := resource.DotConfig{"claudeMdExcludes": []string{"~/.claude/**"}}
 
 		files, err := buildClaudeFiles(dotConfig, ms+"/project", ms)
 		if err != nil {

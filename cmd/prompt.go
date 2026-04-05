@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +39,7 @@ func newPromptCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			s, err := domain.NewSystemPrompt(name, prompt)
+			s, err := resource.NewSystemPrompt(name, prompt)
 			if err != nil {
 				return err
 			}

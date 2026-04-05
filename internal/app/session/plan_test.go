@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/adapter/db"
 	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 func setupTestStore(t *testing.T) *db.Store {
@@ -22,18 +23,18 @@ func setupTestStore(t *testing.T) *db.Store {
 func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (domain.Team, string, string) {
 	t.Helper()
 
-	sp, _ := domain.NewSystemPrompt("test-prompt", "do things")
+	sp, _ := resource.NewSystemPrompt("test-prompt", "do things")
 	if err := store.CreateSystemPrompt(ctx, sp); err != nil {
 		t.Fatalf("CreateSystemPrompt: %v", err)
 	}
 
-	profile, _ := domain.NewCliProfileRaw("test-profile", "claude-sonnet-4-6", domain.BinaryClaude,
-		[]string{"--dangerously-skip-permissions"}, []string{}, domain.DotConfig{"key": "val"})
+	profile, _ := resource.NewCliProfileRaw("test-profile", "claude-sonnet-4-6", resource.BinaryClaude,
+		[]string{"--dangerously-skip-permissions"}, []string{}, resource.DotConfig{"key": "val"})
 	if err := store.CreateCliProfile(ctx, profile); err != nil {
 		t.Fatalf("CreateCliProfile: %v", err)
 	}
 
-	repo, _ := domain.NewGitRepo("test-repo", "https://example.com/repo.git")
+	repo, _ := resource.NewGitRepo("test-repo", "https://example.com/repo.git")
 	if err := store.CreateGitRepo(ctx, repo); err != nil {
 		t.Fatalf("CreateGitRepo: %v", err)
 	}

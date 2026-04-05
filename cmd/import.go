@@ -15,6 +15,7 @@ import (
 	"github.com/jakeraft/clier/internal/adapter/db"
 	"github.com/jakeraft/clier/internal/app/team"
 	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 	"github.com/spf13/cobra"
 )
 
@@ -162,7 +163,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 
 	switch env.Type {
 	case "cli_profile":
-		var p domain.CliProfile
+		var p resource.CliProfile
 		if err := json.Unmarshal(env.Data, &p); err != nil {
 			return fmt.Errorf("unmarshal cli_profile: %w", err)
 		}
@@ -182,7 +183,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		return printJSON(p)
 
 	case "system_prompt":
-		var sp domain.SystemPrompt
+		var sp resource.SystemPrompt
 		if err := json.Unmarshal(env.Data, &sp); err != nil {
 			return fmt.Errorf("unmarshal system_prompt: %w", err)
 		}
@@ -202,7 +203,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		return printJSON(sp)
 
 	case "git_repo":
-		var r domain.GitRepo
+		var r resource.GitRepo
 		if err := json.Unmarshal(env.Data, &r); err != nil {
 			return fmt.Errorf("unmarshal git_repo: %w", err)
 		}
@@ -222,7 +223,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		return printJSON(r)
 
 	case "env":
-		var e domain.Env
+		var e resource.Env
 		if err := json.Unmarshal(env.Data, &e); err != nil {
 			return fmt.Errorf("unmarshal env: %w", err)
 		}

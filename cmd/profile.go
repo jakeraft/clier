@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +40,7 @@ func newProfileCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			p, err := domain.NewCliProfile(name, preset, customArgs)
+			p, err := resource.NewCliProfile(name, preset, customArgs)
 			if err != nil {
 				return err
 			}

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 func TestShellQuote(t *testing.T) {
@@ -44,7 +44,7 @@ func TestConfigDirEnv(t *testing.T) {
 func TestBuildEnv(t *testing.T) {
 	t.Run("WithAuth_IncludesAllEnvVars", func(t *testing.T) {
 		authEnvs := []string{"CLAUDE_CODE_OAUTH_TOKEN=" + PlaceholderAuthClaude}
-		userEnvs := []domain.Env{
+		userEnvs := []resource.Env{
 			{Key: "GITHUB_TOKEN", Value: "ghp_xxx"},
 		}
 
@@ -107,7 +107,7 @@ func TestBuildCommand(t *testing.T) {
 	t.Run("AllArgs_IncludesPlaceholders", func(t *testing.T) {
 		authEnvs := []string{"CLAUDE_CODE_OAUTH_TOKEN=" + PlaceholderAuthClaude}
 
-		profile := domain.CliProfile{
+		profile := resource.CliProfile{
 			Model:      "claude-sonnet-4-6",
 			SystemArgs: []string{"--dangerously-skip-permissions"},
 			CustomArgs: []string{"--verbose"},
@@ -133,12 +133,12 @@ func TestBuildCommand(t *testing.T) {
 	})
 
 	t.Run("WithUserEnvs_BakedIntoCommand", func(t *testing.T) {
-		userEnvs := []domain.Env{
+		userEnvs := []resource.Env{
 			{Key: "GITHUB_TOKEN", Value: "ghp_xxx"},
 			{Key: "SSH_AUTH_SOCK", Value: "/tmp/ssh.sock"},
 		}
 
-		profile := domain.CliProfile{Model: "opus"}
+		profile := resource.CliProfile{Model: "opus"}
 		cmd := buildCommand(profile, "", "session-1", "m1", nil, userEnvs)
 
 		if !strings.Contains(cmd, "export GITHUB_TOKEN='ghp_xxx'") {

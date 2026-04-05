@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +39,7 @@ func newRepoCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			r, err := domain.NewGitRepo(name, url)
+			r, err := resource.NewGitRepo(name, url)
 			if err != nil {
 				return err
 			}

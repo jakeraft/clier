@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 const (
@@ -40,7 +41,7 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		return nil, fmt.Errorf("get cli profile for %s: %w", tm.Name, err)
 	}
 
-	prompts := make([]domain.SystemPrompt, 0, len(member.SystemPromptIDs))
+	prompts := make([]resource.SystemPrompt, 0, len(member.SystemPromptIDs))
 	for _, id := range member.SystemPromptIDs {
 		sp, err := s.store.GetSystemPrompt(ctx, id)
 		if err != nil {
@@ -49,7 +50,7 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		prompts = append(prompts, sp)
 	}
 
-	envs := make([]domain.Env, 0, len(member.EnvIDs))
+	envs := make([]resource.Env, 0, len(member.EnvIDs))
 	for _, id := range member.EnvIDs {
 		env, err := s.store.GetEnv(ctx, id)
 		if err != nil {
@@ -58,7 +59,7 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		envs = append(envs, env)
 	}
 
-	var repo *domain.GitRepo
+	var repo *resource.GitRepo
 	if member.GitRepoID != "" {
 		r, err := s.store.GetGitRepo(ctx, member.GitRepoID)
 		if err != nil {

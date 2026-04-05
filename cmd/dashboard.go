@@ -12,6 +12,7 @@ import (
 
 	"github.com/jakeraft/clier/internal/adapter/db"
 	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 	"github.com/jakeraft/clier/ui"
 	"github.com/spf13/cobra"
 )
@@ -109,10 +110,10 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 		return dashboardData{}, err
 	}
 
-	profileNames := nameMap(profiles, func(p domain.CliProfile) (string, string) { return p.ID, p.Name })
-	promptNames := nameMap(prompts, func(p domain.SystemPrompt) (string, string) { return p.ID, p.Name })
-	repoNames := nameMap(repos, func(r domain.GitRepo) (string, string) { return r.ID, r.Name })
-	envNames := nameMap(envs, func(e domain.Env) (string, string) { return e.ID, e.Name })
+	profileNames := nameMap(profiles, func(p resource.CliProfile) (string, string) { return p.ID, p.Name })
+	promptNames := nameMap(prompts, func(p resource.SystemPrompt) (string, string) { return p.ID, p.Name })
+	repoNames := nameMap(repos, func(r resource.GitRepo) (string, string) { return r.ID, r.Name })
+	envNames := nameMap(envs, func(e resource.Env) (string, string) { return e.ID, e.Name })
 	teamNames := nameMap(teams, func(t domain.Team) (string, string) { return t.ID, t.Name })
 
 	sessionViews, err := convertSessions(ctx, store, sessions, teamNames)
@@ -221,7 +222,7 @@ func convertMembers(members []domain.Member, profileNames, promptNames, repoName
 	return views
 }
 
-func convertCliProfiles(profiles []domain.CliProfile) []cliProfileView {
+func convertCliProfiles(profiles []resource.CliProfile) []cliProfileView {
 	views := make([]cliProfileView, 0, len(profiles))
 	for _, p := range profiles {
 		views = append(views, cliProfileView{
@@ -239,7 +240,7 @@ func convertCliProfiles(profiles []domain.CliProfile) []cliProfileView {
 	return views
 }
 
-func convertSystemPrompts(prompts []domain.SystemPrompt) []systemPromptView {
+func convertSystemPrompts(prompts []resource.SystemPrompt) []systemPromptView {
 	views := make([]systemPromptView, 0, len(prompts))
 	for _, p := range prompts {
 		views = append(views, systemPromptView{
@@ -253,7 +254,7 @@ func convertSystemPrompts(prompts []domain.SystemPrompt) []systemPromptView {
 	return views
 }
 
-func convertGitRepos(repos []domain.GitRepo) []gitRepoView {
+func convertGitRepos(repos []resource.GitRepo) []gitRepoView {
 	views := make([]gitRepoView, 0, len(repos))
 	for _, r := range repos {
 		views = append(views, gitRepoView{
@@ -267,7 +268,7 @@ func convertGitRepos(repos []domain.GitRepo) []gitRepoView {
 	return views
 }
 
-func convertEnvs(envs []domain.Env) []envView {
+func convertEnvs(envs []resource.Env) []envView {
 	views := make([]envView, 0, len(envs))
 	for _, e := range envs {
 		views = append(views, envView{

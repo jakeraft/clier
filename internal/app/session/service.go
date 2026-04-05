@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 // SessionStore persists Session lifecycle state and provides read access
@@ -23,10 +24,10 @@ type SessionStore interface {
 	// Team and member spec reads (used by plan building)
 	GetTeam(ctx context.Context, id string) (domain.Team, error)
 	GetMember(ctx context.Context, id string) (domain.Member, error)
-	GetCliProfile(ctx context.Context, id string) (domain.CliProfile, error)
-	GetSystemPrompt(ctx context.Context, id string) (domain.SystemPrompt, error)
-	GetEnv(ctx context.Context, id string) (domain.Env, error)
-	GetGitRepo(ctx context.Context, id string) (domain.GitRepo, error)
+	GetCliProfile(ctx context.Context, id string) (resource.CliProfile, error)
+	GetSystemPrompt(ctx context.Context, id string) (resource.SystemPrompt, error)
+	GetEnv(ctx context.Context, id string) (resource.Env, error)
+	GetGitRepo(ctx context.Context, id string) (resource.GitRepo, error)
 }
 
 // Terminal launches and terminates member processes.
