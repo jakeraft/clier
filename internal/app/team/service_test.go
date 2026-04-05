@@ -30,7 +30,8 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (stri
 	}
 
 	profile, _ := resource.NewCliProfileRaw("test-profile", "claude-sonnet-4-6", resource.BinaryClaude,
-		[]string{"--dangerously-skip-permissions"}, []string{}, resource.DotConfig{"key": "val"})
+		[]string{"--dangerously-skip-permissions"}, []string{},
+		`{"key":"val"}`, `{"hasCompletedOnboarding":true}`)
 	if err := store.CreateCliProfile(ctx, profile); err != nil {
 		t.Fatalf("CreateCliProfile: %v", err)
 	}

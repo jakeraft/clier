@@ -161,7 +161,7 @@ func (p *CliProfile) Update(name *string, customArgs *[]string) error {
 	return nil
 }
 
-// UpdateRaw replaces all mutable fields with validated, deep-copied values.
+// UpdateRaw replaces all mutable fields with validated values.
 // Used by import to fully overwrite an existing profile from exported data.
 func (p *CliProfile) UpdateRaw(name, model string, binary CliBinary, systemArgs, customArgs []string, settingsJSON, claudeJSON string) error {
 	name, model, systemArgs, customArgs, err := validateRawFields(name, model, binary, systemArgs, customArgs)
