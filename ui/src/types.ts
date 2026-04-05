@@ -94,7 +94,8 @@ export interface CliProfileView {
   binary: "claude";
   systemArgs: string[];
   customArgs: string[];
-  dotConfig: Record<string, unknown>;
+  settingsJson: Record<string, unknown>;
+  claudeJson: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
