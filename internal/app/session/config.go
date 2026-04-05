@@ -1,37 +1,12 @@
 package session
 
-import (
-	"encoding/json"
-	"fmt"
+import "github.com/jakeraft/clier/internal/domain"
 
-	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/domain/resource"
-)
-
-// buildClaudeFiles generates Claude config files (settings.json + trust config)
-// with paths using memberspacePlaceholder instead of absolute paths.
-func buildClaudeFiles(dotConfig resource.DotConfig, workDir, memberspacePlaceholder string) ([]domain.FileEntry, error) {
-	settingsData, err := json.MarshalIndent(dotConfig, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("marshal settings: %w", err)
-	}
-
-	trust := map[string]any{
-		"hasCompletedOnboarding": true,
-		"projects": map[string]any{
-			workDir: map[string]any{
-				"hasTrustDialogAccepted":        true,
-				"hasCompletedProjectOnboarding": true,
-			},
-		},
-	}
-	trustData, err := json.MarshalIndent(trust, "", "  ")
-	if err != nil {
-		return nil, fmt.Errorf("marshal trust: %w", err)
-	}
-
+// buildClaudeFiles wraps the profile's JSON strings into FileEntry values.
+// Placeholder replacement is handled later by expandPlaceholders.
+func buildClaudeFiles(settingsJSON, claudeJSON, memberspacePlaceholder string) []domain.FileEntry {
 	return []domain.FileEntry{
-		{Path: memberspacePlaceholder + "/.claude/settings.json", Content: string(settingsData)},
-		{Path: memberspacePlaceholder + "/.claude/.claude.json", Content: string(trustData)},
-	}, nil
+		{Path: memberspacePlaceholder + "/.claude/settings.json", Content: settingsJSON},
+		{Path: memberspacePlaceholder + "/.claude/.claude.json", Content: claudeJSON},
+	}
 }

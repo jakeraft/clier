@@ -110,10 +110,7 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 
 	authEnvs := setAuth()
 
-	files, err := buildClaudeFiles(rm.Profile.DotConfig, PlaceholderMemberspace+"/project", PlaceholderMemberspace)
-	if err != nil {
-		return domain.MemberPlan{}, fmt.Errorf("build files for %s: %w", rm.Name, err)
-	}
+	files := buildClaudeFiles(rm.Profile.SettingsJSON, rm.Profile.ClaudeJSON, PlaceholderMemberspace)
 
 	cmd := buildCommand(rm.Profile, prompt, sessionID, rm.TeamMemberID, authEnvs, rm.Envs)
 
