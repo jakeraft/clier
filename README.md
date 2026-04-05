@@ -52,7 +52,7 @@ clier team list
 clier dashboard
 clier session start <team-id>
 clier session list
-clier session send "..." --session <session-id> --to <team-member-id>
+clier session tell "..." --session <session-id> --to <team-member-id>
 clier session stop <session-id>
 ```
 

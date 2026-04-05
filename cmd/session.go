@@ -22,7 +22,7 @@ func newSessionCmd() *cobra.Command {
 	cmd.AddCommand(newSessionStartCmd())
 	cmd.AddCommand(newSessionStopCmd())
 	cmd.AddCommand(newSessionListCmd())
-	cmd.AddCommand(newSessionSendCmd())
+	cmd.AddCommand(newSessionTellCmd())
 	cmd.AddCommand(newSessionLogCmd())
 	cmd.AddCommand(newSessionLogsCmd())
 	cmd.AddCommand(newSessionAttachCmd())
@@ -118,12 +118,12 @@ func newSessionListCmd() *cobra.Command {
 	}
 }
 
-func newSessionSendCmd() *cobra.Command {
+func newSessionTellCmd() *cobra.Command {
 	var sessionFlag, toMemberID string
 
 	cmd := &cobra.Command{
-		Use:         "send <content>",
-		Short:       "Send a message to a teammate",
+		Use:         "tell <content>",
+		Short:       "Message a teammate",
 		Args:        cobra.ExactArgs(1),
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {

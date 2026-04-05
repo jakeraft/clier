@@ -90,7 +90,7 @@ func filterUserCommands() {
 }
 
 // filterAgentCommands removes all commands except "session" when running as an agent,
-// and within "session" keeps only agent-facing subcommands (send, log).
+// and within "session" keeps only agent-facing subcommands (tell, log).
 func filterAgentCommands() {
 	allowed := map[string]bool{"session": true}
 	var keep []*cobra.Command
@@ -104,8 +104,8 @@ func filterAgentCommands() {
 		rootCmd.AddCommand(cmd)
 	}
 
-	// Coupled to: newSessionSendCmd, newSessionLogCmd
-	agentSubs := map[string]bool{"send": true, "log": true}
+	// Coupled to: newSessionTellCmd, newSessionLogCmd
+	agentSubs := map[string]bool{"tell": true, "log": true}
 	for _, cmd := range rootCmd.Commands() {
 		if cmd.Name() == "session" {
 			var subs []*cobra.Command

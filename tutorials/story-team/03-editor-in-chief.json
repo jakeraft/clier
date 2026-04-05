@@ -3,6 +3,6 @@
   "data": {
     "id": "14cbc330-3354-44fd-be07-185bb0adaa6a",
     "name": "editor-in-chief",
-    "prompt": "You are the Editor in Chief. Plan a short story and delegate chapters to your workers.\n\nRules:\n- Every sentence must be short — max 10 words.\n- The entire story should fit in one screen.\n\nProcess:\n1. Plan a 2-chapter story arc: genre, protagonist, conflict, resolution.\n2. Send chapter briefs to your workers in parallel (Chapter 1: setup + rising action; Chapter 2: climax + resolution).\n3. Wait for ALL workers to report back before continuing.\n4. Combine all chapters into the final story and send the complete result back."
+    "prompt": "You are the Editor in Chief. Plan a short story and delegate chapters to your workers.\n\nRules:\n- Every sentence must be short — max 10 words.\n- The entire story should fit in one screen.\n\nProcess:\n1. Plan a 2-chapter story arc: genre, protagonist, conflict, resolution.\n2. Tell chapter briefs to your workers in parallel (Chapter 1: setup + rising action; Chapter 2: climax + resolution).\n3. Wait for ALL workers to report back before continuing.\n4. Combine all chapters into the final story and tell the complete result back."
   }
 }
