@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate, useParams } from "react-router";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppErrorBoundary } from "@/components/app-error-boundary";
 import { AppLayout } from "@/app-layout";
+import { NotFound } from "@/pages/not-found";
 import { SystemPrompts } from "@/pages/system-prompts";
 import { SystemPromptDetail } from "@/pages/system-prompt-detail";
 import { Teams } from "@/pages/teams";
@@ -44,6 +45,7 @@ export default function App() {
               <Route path="/teams/:id" element={<Keyed Component={TeamDetail} />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/tasks/:id" element={<Keyed Component={TaskDetail} />} />
+              <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
         </HashRouter>

@@ -232,13 +232,21 @@ func convertCliProfiles(profiles []resource.CliProfile) []cliProfileView {
 			Binary:     string(p.Binary),
 			SystemArgs: p.SystemArgs,
 			CustomArgs: p.CustomArgs,
-			SettingsJSON: json.RawMessage(p.SettingsJSON),
-			ClaudeJSON:   json.RawMessage(p.ClaudeJSON),
+			SettingsJSON: toRawJSON(p.SettingsJSON),
+			ClaudeJSON:   toRawJSON(p.ClaudeJSON),
 			CreatedAt:  p.CreatedAt,
 			UpdatedAt:  p.UpdatedAt,
 		})
 	}
 	return views
+}
+
+// toRawJSON converts a JSON string to json.RawMessage, defaulting empty strings to null.
+func toRawJSON(s string) json.RawMessage {
+	if s == "" {
+		return json.RawMessage("null")
+	}
+	return json.RawMessage(s)
 }
 
 func convertSystemPrompts(prompts []resource.SystemPrompt) []systemPromptView {
