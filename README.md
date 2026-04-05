@@ -4,7 +4,7 @@
 
 **Design your agent team. Run them in real terminals, not API calls.**
 
-Define your team in JSON — roles, hierarchy, scoped environments. Start a session, and agents collaborate while you watch and intervene in real time.
+Define your team in JSON — roles, hierarchy, scoped environments. Start a task, and agents collaborate while you watch and intervene in real time.
 
 ## Why Clier?
 
@@ -37,12 +37,12 @@ Open your CLI agent and give it these instructions:
 ```md
 Explore the clier CLI and import the tutorial team:
 clier import https://raw.githubusercontent.com/jakeraft/clier/main/tutorials/story-team
-Show me the team on the dashboard, then start a session and tell the chief:
+Show me the team on the dashboard, then start a task and tell the chief:
 "Write a short story about a mysterious animal."
-Show me the running sessions. When the story arrives, stop the session and clean up.
+Show me the running tasks. When the story arrives, stop the task and clean up.
 ```
 
-The agent discovers commands, parses outputs, and chains them on its own. `session start` opens a tmux session with one window per member, and the final result arrives in your terminal as a message.
+The agent discovers commands, parses outputs, and chains them on its own. `task start` opens a tmux session with one window per member, and the final result arrives in your terminal as a message.
 
 Under the hood, the agent runs something like:
 
@@ -50,10 +50,10 @@ Under the hood, the agent runs something like:
 clier import https://raw.githubusercontent.com/jakeraft/clier/main/tutorials/story-team
 clier team list
 clier dashboard
-clier session start <team-id>
-clier session list
-clier session tell "..." --session <session-id> --to <team-member-id>
-clier session stop <session-id>
+clier task start <team-id>
+clier task list
+clier task tell "..." --task <task-id> --to <team-member-id>
+clier task stop <task-id>
 ```
 
 ### Tutorial Walkthrough
@@ -66,7 +66,7 @@ clier session stop <session-id>
 
 <img src="assets/02-explore.png" width="800">
 
-**3. It imports the team, opens the dashboard, and starts a session**
+**3. It imports the team, opens the dashboard, and starts a task**
 
 <img src="assets/03-dashboard.png" width="800">
 

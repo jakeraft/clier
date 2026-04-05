@@ -48,7 +48,6 @@
   --color-warning-foreground: var(--warning-foreground);
   /* custom: domain entity colors */
   --color-entity-team: var(--entity-team);
-  --color-entity-session: var(--entity-session);
   --color-entity-member: var(--entity-member);
   --color-entity-model: var(--entity-model);
   --color-entity-instruction: var(--entity-instruction);
@@ -99,7 +98,6 @@
   --warning-foreground: oklch(0.205 0 0);
   /* custom: domain entity colors */
   --entity-team: oklch(0.546 0.245 292.61);
-  --entity-session: oklch(0.546 0.18 80);
   --entity-member: oklch(0.546 0.18 210);
   --entity-model: oklch(0.553 0.195 58.07);
   --entity-instruction: oklch(0.536 0.12 182.5);
@@ -147,7 +145,6 @@
   --warning-foreground: oklch(0.205 0 0);
   /* custom: domain entity colors */
   --entity-team: oklch(0.714 0.2 292.61);
-  --entity-session: oklch(0.714 0.15 80);
   --entity-member: oklch(0.714 0.15 210);
   --entity-model: oklch(0.762 0.165 58.07);
   --entity-instruction: oklch(0.704 0.1 182.5);

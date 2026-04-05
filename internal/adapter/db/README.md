@@ -53,18 +53,18 @@ store, err := db.NewStore("~/.clier/data.db")
 
 ```go
 // Store methods accept/return domain types, not generated types.
-session, err := store.GetSession(ctx, sessionID)   // returns domain.Session
-err := store.CreateSession(ctx, &session)          // accepts *domain.Session
-err := store.CreateMessage(ctx, &msg)              // accepts *domain.Message
+task, err := store.GetTask(ctx, taskID)     // returns domain.Task
+err := store.CreateTask(ctx, &task)         // accepts *domain.Task
+err := store.CreateMessage(ctx, &msg)       // accepts *domain.Message
 ```
 
 Consumers (app layer) define their own port interfaces satisfied by `*Store`:
 
 ```go
-// app/session/service.go
-type SessionStore interface {
-    CreateSession(ctx context.Context, session *domain.Session) error
-    GetSession(ctx context.Context, id string) (domain.Session, error)
+// app/task/service.go
+type TaskStore interface {
+    CreateTask(ctx context.Context, task *domain.Task) error
+    GetTask(ctx context.Context, id string) (domain.Task, error)
     // ...
 }
 ```
