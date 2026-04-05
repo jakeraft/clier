@@ -50,6 +50,22 @@ func NewStore(dbPath string) (*Store, error) {
 		return nil, fmt.Errorf("init schema: %w", err)
 	}
 
+	// Migrate: rename dot_config → settings_json for existing databases.
+	if columnExists(db, "cli_profiles", "dot_config") {
+		if _, err := db.Exec("ALTER TABLE cli_profiles RENAME COLUMN dot_config TO settings_json"); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("migrate dot_config to settings_json: %w", err)
+		}
+	}
+
+	// Migrate: add claude_json column for existing databases.
+	if !columnExists(db, "cli_profiles", "claude_json") {
+		if _, err := db.Exec("ALTER TABLE cli_profiles ADD COLUMN claude_json TEXT NOT NULL DEFAULT '{}'"); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("add claude_json column: %w", err)
+		}
+	}
+
 	return &Store{
 		db:      db,
 		queries: generated.New(db),
@@ -58,6 +74,28 @@ func NewStore(dbPath string) (*Store, error) {
 
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+func columnExists(db *sql.DB, table, column string) bool {
+	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull int
+		var dflt sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			return false
+		}
+		if name == column {
+			return true
+		}
+	}
+	return false
 }
 
 // Team
@@ -402,37 +440,34 @@ func (s *Store) DeleteMember(ctx context.Context, id string) error {
 
 // CliProfile
 
-func marshalCliProfileJSON(p *resource.CliProfile) (systemArgs, customArgs, dotConfig string, err error) {
+func marshalCliProfileSlices(p *resource.CliProfile) (systemArgs, customArgs string, err error) {
 	sa, err := json.Marshal(p.SystemArgs)
 	if err != nil {
-		return "", "", "", fmt.Errorf("marshal system_args: %w", err)
+		return "", "", fmt.Errorf("marshal system_args: %w", err)
 	}
 	ca, err := json.Marshal(p.CustomArgs)
 	if err != nil {
-		return "", "", "", fmt.Errorf("marshal custom_args: %w", err)
+		return "", "", fmt.Errorf("marshal custom_args: %w", err)
 	}
-	dc, err := json.Marshal(p.DotConfig)
-	if err != nil {
-		return "", "", "", fmt.Errorf("marshal dot_config: %w", err)
-	}
-	return string(sa), string(ca), string(dc), nil
+	return string(sa), string(ca), nil
 }
 
 func (s *Store) CreateCliProfile(ctx context.Context, p *resource.CliProfile) error {
-	systemArgs, customArgs, dotConfig, err := marshalCliProfileJSON(p)
+	systemArgs, customArgs, err := marshalCliProfileSlices(p)
 	if err != nil {
 		return err
 	}
 	_, err = s.queries.CreateCliProfile(ctx, generated.CreateCliProfileParams{
-		ID:         p.ID,
-		Name:       p.Name,
-		Model:      p.Model,
-		Binary:     string(p.Binary),
-		SystemArgs: systemArgs,
-		CustomArgs: customArgs,
-		DotConfig:  dotConfig,
-		CreatedAt:  p.CreatedAt.Unix(),
-		UpdatedAt:  p.UpdatedAt.Unix(),
+		ID:           p.ID,
+		Name:         p.Name,
+		Model:        p.Model,
+		Binary:       string(p.Binary),
+		SystemArgs:   systemArgs,
+		CustomArgs:   customArgs,
+		SettingsJson: p.SettingsJSON,
+		ClaudeJson:   p.ClaudeJSON,
+		CreatedAt:    p.CreatedAt.Unix(),
+		UpdatedAt:    p.UpdatedAt.Unix(),
 	})
 	return err
 }
@@ -445,10 +480,6 @@ func unmarshalCliProfile(row generated.CliProfile) (resource.CliProfile, error) 
 	if err := json.Unmarshal([]byte(row.CustomArgs), &customArgs); err != nil {
 		return resource.CliProfile{}, fmt.Errorf("unmarshal custom_args: %w", err)
 	}
-	var dotConfig resource.DotConfig
-	if err := json.Unmarshal([]byte(row.DotConfig), &dotConfig); err != nil {
-		return resource.CliProfile{}, fmt.Errorf("unmarshal dot_config: %w", err)
-	}
 	if systemArgs == nil {
 		systemArgs = []string{}
 	}
@@ -456,15 +487,16 @@ func unmarshalCliProfile(row generated.CliProfile) (resource.CliProfile, error) 
 		customArgs = []string{}
 	}
 	return resource.CliProfile{
-		ID:         row.ID,
-		Name:       row.Name,
-		Model:      row.Model,
-		Binary:     resource.CliBinary(row.Binary),
-		SystemArgs: systemArgs,
-		CustomArgs: customArgs,
-		DotConfig:  dotConfig,
-		CreatedAt:  time.Unix(row.CreatedAt, 0),
-		UpdatedAt:  time.Unix(row.UpdatedAt, 0),
+		ID:           row.ID,
+		Name:         row.Name,
+		Model:        row.Model,
+		Binary:       resource.CliBinary(row.Binary),
+		SystemArgs:   systemArgs,
+		CustomArgs:   customArgs,
+		SettingsJSON: row.SettingsJson,
+		ClaudeJSON:   row.ClaudeJson,
+		CreatedAt:    time.Unix(row.CreatedAt, 0),
+		UpdatedAt:    time.Unix(row.UpdatedAt, 0),
 	}, nil
 }
 
@@ -493,19 +525,20 @@ func (s *Store) ListCliProfiles(ctx context.Context) ([]resource.CliProfile, err
 }
 
 func (s *Store) UpdateCliProfile(ctx context.Context, p *resource.CliProfile) error {
-	systemArgs, customArgs, dotConfig, err := marshalCliProfileJSON(p)
+	systemArgs, customArgs, err := marshalCliProfileSlices(p)
 	if err != nil {
 		return err
 	}
 	_, err = s.queries.UpdateCliProfile(ctx, generated.UpdateCliProfileParams{
-		Name:       p.Name,
-		Model:      p.Model,
-		Binary:     string(p.Binary),
-		SystemArgs: systemArgs,
-		CustomArgs: customArgs,
-		DotConfig:  dotConfig,
-		UpdatedAt:  p.UpdatedAt.Unix(),
-		ID:         p.ID,
+		Name:         p.Name,
+		Model:        p.Model,
+		Binary:       string(p.Binary),
+		SystemArgs:   systemArgs,
+		CustomArgs:   customArgs,
+		SettingsJson: p.SettingsJSON,
+		ClaudeJson:   p.ClaudeJSON,
+		UpdatedAt:    p.UpdatedAt.Unix(),
+		ID:           p.ID,
 	})
 	return err
 }
