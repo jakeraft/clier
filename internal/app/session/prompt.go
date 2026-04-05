@@ -40,10 +40,10 @@ func buildClierPrompt(teamName, memberName string, relations domain.MemberRelati
 
 	// Communication
 	b.WriteString("\n## Communication\n")
-	b.WriteString("Use the commands below to send messages to your teammates.\n")
+	b.WriteString("Use the commands below to message your teammates.\n")
 	b.WriteString("Replies arrive directly in your terminal input — do not poll or call any receive command.\n")
 	b.WriteString("Keep each message substantive. Avoid short fragments like \"ok\" or \"hi\".\n\n")
-	writeSendCommands(&b, relations, nameByID)
+	writeTellCommands(&b, relations, nameByID)
 
 	// Logging
 	b.WriteString("\n## Logging\n")
@@ -63,13 +63,13 @@ func buildClierPrompt(teamName, memberName string, relations domain.MemberRelati
 	return b.String()
 }
 
-// writeSendCommands writes ready-to-use send commands for each related member.
-func writeSendCommands(b *strings.Builder, rel domain.MemberRelations, nameByID map[string]string) {
+// writeTellCommands writes ready-to-use tell commands for each related member.
+func writeTellCommands(b *strings.Builder, rel domain.MemberRelations, nameByID map[string]string) {
 	all := make([]string, 0, len(rel.Leaders)+len(rel.Workers))
 	all = append(all, rel.Leaders...)
 	all = append(all, rel.Workers...)
 	for _, id := range all {
-		fmt.Fprintf(b, "Send to %s:\n```bash\nclier session send --to %s \"<message>\"\n```\n", nameByID[id], id)
+		fmt.Fprintf(b, "Tell %s:\n```bash\nclier session tell --to %s \"<message>\"\n```\n", nameByID[id], id)
 	}
 }
 
