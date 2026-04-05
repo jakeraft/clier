@@ -9,11 +9,7 @@
       "--dangerously-skip-permissions"
     ],
     "custom_args": [],
-    "dot_config": {
-      "claudeMdExcludes": [
-        "~/.claude/**"
-      ],
-      "skipDangerousModePermissionPrompt": true
-    }
+    "settings_json": "{\"claudeMdExcludes\":[\"~/.claude/**\"],\"skipDangerousModePermissionPrompt\":true}",
+    "claude_json": "{\"hasCompletedOnboarding\":true,\"projects\":{\"{{CLIER_MEMBERSPACE}}/project\":{\"hasTrustDialogAccepted\":true,\"hasCompletedProjectOnboarding\":true}}}"
   }
 }
