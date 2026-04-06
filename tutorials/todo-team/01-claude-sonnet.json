@@ -1,0 +1,15 @@
+{
+  "type": "cli_profile",
+  "data": {
+    "id": "c82b70df-a758-4844-bef9-e9d78913c324",
+    "name": "claude-sonnet",
+    "model": "claude-sonnet-4-6",
+    "binary": "claude",
+    "system_args": [
+      "--dangerously-skip-permissions"
+    ],
+    "custom_args": [],
+    "settings_json": "{\"claudeMdExcludes\":[\"~/.claude/**\"],\"skipDangerousModePermissionPrompt\":true}",
+    "claude_json": "{\"hasCompletedOnboarding\":true,\"projects\":{\"{{CLIER_MEMBERSPACE}}/project\":{\"hasTrustDialogAccepted\":true,\"hasCompletedProjectOnboarding\":true}}}"
+  }
+}
