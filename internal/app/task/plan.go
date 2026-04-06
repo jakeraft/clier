@@ -108,7 +108,7 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 	userPrompt := joinPrompts(rm.Prompts)
 	prompt := "---\n\n" + clierPrompt + "\n---\n\n" + userPrompt
 
-	authEnvs := setAuth()
+	authEnvs := buildAuthEnvs()
 
 	files := buildClaudeFiles(rm.Profile.SettingsJSON, rm.Profile.ClaudeJSON, PlaceholderMemberspace)
 

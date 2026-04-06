@@ -30,12 +30,15 @@ type Task struct {
 }
 
 func NewTask(id, name, teamID string) (*Task, error) {
+	id = strings.TrimSpace(id)
 	if id == "" {
 		return nil, errors.New("task id must not be empty")
 	}
+	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("task name must not be empty")
 	}
+	teamID = strings.TrimSpace(teamID)
 	if teamID == "" {
 		return nil, errors.New("team id must not be empty")
 	}

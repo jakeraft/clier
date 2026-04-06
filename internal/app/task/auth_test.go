@@ -4,9 +4,9 @@ import (
 	"testing"
 )
 
-func TestSetAuth(t *testing.T) {
+func TestBuildAuthEnvs(t *testing.T) {
 	t.Run("ReturnsCommandEnvWithPlaceholder", func(t *testing.T) {
-		envs := setAuth()
+		envs := buildAuthEnvs()
 
 		if len(envs) != 1 {
 			t.Fatalf("expected 1 env, got %d", len(envs))

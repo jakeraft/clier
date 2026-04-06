@@ -173,6 +173,17 @@ function PlanTab({ plan }: Readonly<{ plan: MemberPlanView[] }>) {
   );
 }
 
+function formatFileContent(path: string, content: string): string {
+  if (path.endsWith(".json")) {
+    try {
+      return JSON.stringify(JSON.parse(content), null, 2);
+    } catch {
+      return content;
+    }
+  }
+  return content;
+}
+
 function PlanMemberSection({ member }: Readonly<{ member: MemberPlanView }>) {
   return (
     <Section icon={User} title={member.memberName}>
@@ -194,7 +205,7 @@ function PlanMemberSection({ member }: Readonly<{ member: MemberPlanView }>) {
           {member.files.map((file) => (
             <Section key={file.path} icon={FileText} title={file.path}>
               <pre className={cn("rounded-base bg-muted/50 border p-3 whitespace-pre-wrap break-all", typography[5])}>
-                {file.content}
+                {formatFileContent(file.path, file.content)}
               </pre>
             </Section>
           ))}
