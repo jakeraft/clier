@@ -29,6 +29,13 @@ func TestNewClaudeJson_EmptyContent(t *testing.T) {
 	}
 }
 
+func TestNewClaudeJson_InvalidJSON(t *testing.T) {
+	_, err := NewClaudeJson("name", "not json")
+	if err == nil {
+		t.Error("expected error for invalid JSON")
+	}
+}
+
 func TestClaudeJson_Update(t *testing.T) {
 	cj, _ := NewClaudeJson("old", `{"old":true}`)
 	newName := "new"

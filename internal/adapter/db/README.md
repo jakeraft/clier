@@ -28,14 +28,14 @@ queries/*.sql  ┘                      ├── db.go        (Queries struct)
 SQL query annotations like:
 
 ```sql
--- name: GetCliProfile :one
-SELECT * FROM cli_profiles WHERE id = ?;
+-- name: GetClaudeMd :one
+SELECT * FROM claude_mds WHERE id = ?;
 ```
 
 become type-safe Go methods:
 
 ```go
-func (q *Queries) GetCliProfile(ctx context.Context, id string) (CliProfile, error)
+func (q *Queries) GetClaudeMd(ctx context.Context, id string) (ClaudeMd, error)
 ```
 
 ### Runtime — NewStore

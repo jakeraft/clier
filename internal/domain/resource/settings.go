@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -27,6 +28,9 @@ func NewSettings(name, content string) (*Settings, error) {
 	if content == "" {
 		return nil, errors.New("settings content must not be empty")
 	}
+	if !json.Valid([]byte(content)) {
+		return nil, errors.New("settings content must be valid JSON")
+	}
 
 	now := time.Now()
 	return &Settings{
@@ -50,6 +54,9 @@ func (s *Settings) Update(name, content *string) error {
 		trimmed := strings.TrimSpace(*content)
 		if trimmed == "" {
 			return errors.New("settings content must not be empty")
+		}
+		if !json.Valid([]byte(trimmed)) {
+			return errors.New("settings content must be valid JSON")
 		}
 		s.Content = trimmed
 	}

@@ -29,6 +29,13 @@ func TestNewSettings_EmptyContent(t *testing.T) {
 	}
 }
 
+func TestNewSettings_InvalidJSON(t *testing.T) {
+	_, err := NewSettings("name", "not json")
+	if err == nil {
+		t.Error("expected error for invalid JSON")
+	}
+}
+
 func TestSettings_Update(t *testing.T) {
 	s, _ := NewSettings("old", `{"old":true}`)
 	newName := "new"

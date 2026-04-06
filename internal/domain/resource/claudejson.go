@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -27,6 +28,9 @@ func NewClaudeJson(name, content string) (*ClaudeJson, error) {
 	if content == "" {
 		return nil, errors.New("claude json content must not be empty")
 	}
+	if !json.Valid([]byte(content)) {
+		return nil, errors.New("claude json content must be valid JSON")
+	}
 
 	now := time.Now()
 	return &ClaudeJson{
@@ -50,6 +54,9 @@ func (c *ClaudeJson) Update(name, content *string) error {
 		trimmed := strings.TrimSpace(*content)
 		if trimmed == "" {
 			return errors.New("claude json content must not be empty")
+		}
+		if !json.Valid([]byte(trimmed)) {
+			return errors.New("claude json content must be valid JSON")
 		}
 		c.Content = trimmed
 	}
