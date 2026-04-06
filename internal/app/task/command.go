@@ -27,19 +27,47 @@ func configDirEnv() string {
 	return "CLAUDE_CONFIG_DIR=" + PlaceholderMemberspace + "/.claude"
 }
 
-// buildEnv assembles the full set of environment variables for a member command.
-func buildEnv(taskID, memberID string,
-	authEnvs []string, userEnvs []resource.Env) []string {
-
-	env := []string{
+// systemEnvs returns clier infrastructure environment variables.
+func systemEnvs(taskID, memberID string) []string {
+	return []string{
 		configDirEnv(),
 		"CLIER_TASK_ID=" + taskID,
 		"CLIER_MEMBER_ID=" + memberID,
 	}
-	env = append(env, authEnvs...)
-	for _, e := range userEnvs {
-		env = append(env, e.Key+"="+e.Value)
+}
+
+// authEnvs returns authentication environment variables for the Claude CLI.
+func authEnvs() []string {
+	return []string{"CLAUDE_CODE_OAUTH_TOKEN=" + PlaceholderAuthClaude}
+}
+
+// identityEnvs returns git identity environment variables derived from the member name.
+func identityEnvs(memberName string) []string {
+	email := memberName + "@clier.local"
+	return []string{
+		"GIT_AUTHOR_NAME=" + memberName,
+		"GIT_AUTHOR_EMAIL=" + email,
+		"GIT_COMMITTER_NAME=" + memberName,
+		"GIT_COMMITTER_EMAIL=" + email,
 	}
+}
+
+// userDefinedEnvs converts user-created Env resources to KEY=VALUE strings.
+func userDefinedEnvs(envs []resource.Env) []string {
+	out := make([]string, len(envs))
+	for i, e := range envs {
+		out[i] = e.Key + "=" + e.Value
+	}
+	return out
+}
+
+// buildEnv assembles the full set of environment variables for a member command.
+func buildEnv(memberName, taskID, memberID string, userEnvs []resource.Env) []string {
+	var env []string
+	env = append(env, systemEnvs(taskID, memberID)...)
+	env = append(env, authEnvs()...)
+	env = append(env, identityEnvs(memberName)...)
+	env = append(env, userDefinedEnvs(userEnvs)...)
 	return env
 }
 
@@ -74,11 +102,11 @@ func buildAgentCommand(model string, systemArgs, customArgs []string,
 
 // buildCommand returns the complete shell command for launching an agent,
 // including environment variable exports.
-func buildCommand(profile resource.CliProfile, prompt, taskID, memberID string,
-	authEnvs []string, userEnvs []resource.Env) string {
+func buildCommand(profile resource.CliProfile, prompt, memberName, taskID, memberID string,
+	userEnvs []resource.Env) string {
 
 	workDir := PlaceholderMemberspace + "/project"
 	cmd := buildAgentCommand(profile.Model, profile.SystemArgs, profile.CustomArgs, prompt, workDir)
-	env := buildEnv(taskID, memberID, authEnvs, userEnvs)
+	env := buildEnv(memberName, taskID, memberID, userEnvs)
 	return buildEnvCommand(cmd, env)
 }

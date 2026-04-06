@@ -105,11 +105,9 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 	userPrompt := joinPrompts(rm.Prompts)
 	prompt := "---\n\n" + clierPrompt + "\n---\n\n" + userPrompt
 
-	authEnvs := buildAuthEnvs()
-
 	files := buildClaudeFiles(rm.Profile.SettingsJSON, rm.Profile.ClaudeJSON, PlaceholderMemberspace)
 
-	cmd := buildCommand(rm.Profile, prompt, taskID, rm.TeamMemberID, authEnvs, rm.Envs)
+	cmd := buildCommand(rm.Profile, prompt, rm.Name, taskID, rm.TeamMemberID, rm.Envs)
 
 	launchPath := PlaceholderMemberspace + "/launch.sh"
 	files = append(files, domain.FileEntry{Path: launchPath, Content: cmd})
