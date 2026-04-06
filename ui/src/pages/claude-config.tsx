@@ -23,7 +23,7 @@ export function ClaudeConfig() {
   const [tab, setTab] = useState<Tab>("settings");
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <ToggleGroup
         type="single"
         size="sm"
@@ -72,6 +72,6 @@ export function ClaudeConfig() {
           routeBase="/claude/claude-jsons"
         />
       )}
-    </div>
+    </>
   );
 }

@@ -23,7 +23,7 @@ export function Prompts() {
   const [tab, setTab] = useState<Tab>("claude-md");
 
   return (
-    <div className="flex flex-col gap-4">
+    <>
       <ToggleGroup
         type="single"
         size="sm"
@@ -72,6 +72,6 @@ export function Prompts() {
           routeBase="/prompts/skills"
         />
       )}
-    </div>
+    </>
   );
 }
