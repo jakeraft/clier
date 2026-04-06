@@ -162,45 +162,85 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 	}
 
 	switch env.Type {
-	case "cli_profile":
-		var p resource.CliProfile
-		if err := json.Unmarshal(env.Data, &p); err != nil {
-			return fmt.Errorf("unmarshal cli_profile: %w", err)
+	case "claude_md":
+		var c resource.ClaudeMd
+		if err := json.Unmarshal(env.Data, &c); err != nil {
+			return fmt.Errorf("unmarshal claude_md: %w", err)
 		}
-		setTimestamps(&p.CreatedAt, &p.UpdatedAt)
-		if existing, err := store.GetCliProfile(ctx, p.ID); err == nil {
-			if err := existing.UpdateRaw(p.Name, p.Model, p.Binary, p.SystemArgs, p.CustomArgs, p.SettingsJSON, p.ClaudeJSON); err != nil {
+		setTimestamps(&c.CreatedAt, &c.UpdatedAt)
+		if existing, err := store.GetClaudeMd(ctx, c.ID); err == nil {
+			if err := existing.Update(&c.Name, &c.Content); err != nil {
 				return err
 			}
-			if err := store.UpdateCliProfile(ctx, &existing); err != nil {
+			if err := store.UpdateClaudeMd(ctx, &existing); err != nil {
 				return err
 			}
 			return printJSON(existing)
 		}
-		if err := store.CreateCliProfile(ctx, &p); err != nil {
+		if err := store.CreateClaudeMd(ctx, &c); err != nil {
 			return err
 		}
-		return printJSON(p)
+		return printJSON(c)
 
-	case "system_prompt":
-		var sp resource.SystemPrompt
-		if err := json.Unmarshal(env.Data, &sp); err != nil {
-			return fmt.Errorf("unmarshal system_prompt: %w", err)
+	case "skill":
+		var sk resource.Skill
+		if err := json.Unmarshal(env.Data, &sk); err != nil {
+			return fmt.Errorf("unmarshal skill: %w", err)
 		}
-		setTimestamps(&sp.CreatedAt, &sp.UpdatedAt)
-		if existing, err := store.GetSystemPrompt(ctx, sp.ID); err == nil {
-			if err := existing.Update(&sp.Name, &sp.Prompt); err != nil {
+		setTimestamps(&sk.CreatedAt, &sk.UpdatedAt)
+		if existing, err := store.GetSkill(ctx, sk.ID); err == nil {
+			if err := existing.Update(&sk.Name, &sk.Content); err != nil {
 				return err
 			}
-			if err := store.UpdateSystemPrompt(ctx, &existing); err != nil {
+			if err := store.UpdateSkill(ctx, &existing); err != nil {
 				return err
 			}
 			return printJSON(existing)
 		}
-		if err := store.CreateSystemPrompt(ctx, &sp); err != nil {
+		if err := store.CreateSkill(ctx, &sk); err != nil {
 			return err
 		}
-		return printJSON(sp)
+		return printJSON(sk)
+
+	case "settings":
+		var st resource.Settings
+		if err := json.Unmarshal(env.Data, &st); err != nil {
+			return fmt.Errorf("unmarshal settings: %w", err)
+		}
+		setTimestamps(&st.CreatedAt, &st.UpdatedAt)
+		if existing, err := store.GetSettings(ctx, st.ID); err == nil {
+			if err := existing.Update(&st.Name, &st.Content); err != nil {
+				return err
+			}
+			if err := store.UpdateSettings(ctx, &existing); err != nil {
+				return err
+			}
+			return printJSON(existing)
+		}
+		if err := store.CreateSettings(ctx, &st); err != nil {
+			return err
+		}
+		return printJSON(st)
+
+	case "claude_json":
+		var cj resource.ClaudeJson
+		if err := json.Unmarshal(env.Data, &cj); err != nil {
+			return fmt.Errorf("unmarshal claude_json: %w", err)
+		}
+		setTimestamps(&cj.CreatedAt, &cj.UpdatedAt)
+		if existing, err := store.GetClaudeJson(ctx, cj.ID); err == nil {
+			if err := existing.Update(&cj.Name, &cj.Content); err != nil {
+				return err
+			}
+			if err := store.UpdateClaudeJson(ctx, &existing); err != nil {
+				return err
+			}
+			return printJSON(existing)
+		}
+		if err := store.CreateClaudeJson(ctx, &cj); err != nil {
+			return err
+		}
+		return printJSON(cj)
 
 	case "git_repo":
 		var r resource.GitRepo
@@ -249,7 +289,8 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		}
 		setTimestamps(&m.CreatedAt, &m.UpdatedAt)
 		if existing, err := store.GetMember(ctx, m.ID); err == nil {
-			if err := existing.Update(&m.Name, &m.CliProfileID, &m.SystemPromptIDs, &m.GitRepoID, &m.EnvIDs); err != nil {
+			if err := existing.Update(&m.Name, &m.Model, &m.Args, &m.ClaudeMdID, &m.SkillIDs,
+				&m.SettingsID, &m.ClaudeJsonID, &m.EnvIDs, &m.GitRepoID); err != nil {
 				return err
 			}
 			if err := store.UpdateMember(ctx, &existing); err != nil {

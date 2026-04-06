@@ -50,8 +50,10 @@ func newExportCmd() *cobra.Command {
 			probes := []probe{
 				{"team", func() (any, error) { t, e := store.GetTeam(ctx, id); return t, e }},
 				{"member", func() (any, error) { m, e := store.GetMember(ctx, id); return m, e }},
-				{"cli_profile", func() (any, error) { p, e := store.GetCliProfile(ctx, id); return p, e }},
-				{"system_prompt", func() (any, error) { s, e := store.GetSystemPrompt(ctx, id); return s, e }},
+				{"claude_md", func() (any, error) { cm, e := store.GetClaudeMd(ctx, id); return cm, e }},
+				{"skill", func() (any, error) { sk, e := store.GetSkill(ctx, id); return sk, e }},
+				{"settings", func() (any, error) { st, e := store.GetSettings(ctx, id); return st, e }},
+				{"claude_json", func() (any, error) { cj, e := store.GetClaudeJson(ctx, id); return cj, e }},
 				{"git_repo", func() (any, error) { r, e := store.GetGitRepo(ctx, id); return r, e }},
 				{"env", func() (any, error) { e, err := store.GetEnv(ctx, id); return e, err }},
 			}
