@@ -36,18 +36,40 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		return nil, fmt.Errorf("get member %s: %w", tm.MemberID, err)
 	}
 
-	profile, err := s.store.GetCliProfile(ctx, member.CliProfileID)
-	if err != nil {
-		return nil, fmt.Errorf("get cli profile for %s: %w", tm.Name, err)
+	var claudeMd *resource.ClaudeMd
+	if member.ClaudeMdID != "" {
+		cm, err := s.store.GetClaudeMd(ctx, member.ClaudeMdID)
+		if err != nil {
+			return nil, fmt.Errorf("get claude md for %s: %w", tm.Name, err)
+		}
+		claudeMd = &cm
 	}
 
-	prompts := make([]resource.SystemPrompt, 0, len(member.SystemPromptIDs))
-	for _, id := range member.SystemPromptIDs {
-		sp, err := s.store.GetSystemPrompt(ctx, id)
+	skills := make([]resource.Skill, 0, len(member.SkillIDs))
+	for _, id := range member.SkillIDs {
+		sk, err := s.store.GetSkill(ctx, id)
 		if err != nil {
-			return nil, fmt.Errorf("get prompt %s: %w", id, err)
+			return nil, fmt.Errorf("get skill %s: %w", id, err)
 		}
-		prompts = append(prompts, sp)
+		skills = append(skills, sk)
+	}
+
+	var settings *resource.Settings
+	if member.SettingsID != "" {
+		st, err := s.store.GetSettings(ctx, member.SettingsID)
+		if err != nil {
+			return nil, fmt.Errorf("get settings for %s: %w", tm.Name, err)
+		}
+		settings = &st
+	}
+
+	var claudeJson *resource.ClaudeJson
+	if member.ClaudeJsonID != "" {
+		cj, err := s.store.GetClaudeJson(ctx, member.ClaudeJsonID)
+		if err != nil {
+			return nil, fmt.Errorf("get claude json for %s: %w", tm.Name, err)
+		}
+		claudeJson = &cj
 	}
 
 	envs := make([]resource.Env, 0, len(member.EnvIDs))
@@ -73,8 +95,12 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 	return &domain.ResolvedMember{
 		TeamMemberID: tm.ID,
 		Name:         tm.Name,
-		Profile:      profile,
-		Prompts:      prompts,
+		Model:        member.Model,
+		Args:         member.Args,
+		ClaudeMd:     claudeMd,
+		Skills:       skills,
+		Settings:     settings,
+		ClaudeJson:   claudeJson,
 		Envs:         envs,
 		Repo:         repo,
 		Relations:    relations,
@@ -98,16 +124,46 @@ func buildPlans(resolved *domain.ResolvedTeam, taskID string) []domain.MemberPla
 }
 
 // buildMemberPlan constructs a single MemberPlan from a resolved member.
+// This is the transparent facade: each building block and its destination is visible.
 func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, teamName, taskID string) domain.MemberPlan {
 	memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, PlaceholderTaskID, rm.TeamMemberID)
 
-	clierPrompt := buildClierPrompt(teamName, rm.Name, rm.Relations, nameByID)
-	userPrompt := joinPrompts(rm.Prompts)
-	prompt := "---\n\n" + clierPrompt + "\n---\n\n" + userPrompt
+	// === CLAUDE.md ===
+	systemClaudeMd := buildClierPrompt(teamName, rm.Name, rm.Relations, nameByID) // Clier system
+	var userClaudeMd string                                                        // user building block
+	if rm.ClaudeMd != nil {
+		userClaudeMd = rm.ClaudeMd.Content
+	}
 
-	files := buildClaudeFiles(rm.Profile.SettingsJSON, rm.Profile.ClaudeJSON, PlaceholderMemberspace)
+	// === settings.json ===
+	var userSettings string // user building block (no system injection currently)
+	if rm.Settings != nil {
+		userSettings = rm.Settings.Content
+	}
 
-	cmd := buildCommand(rm.Profile, prompt, teamName, rm.Name, taskID, rm.TeamMemberID, rm.Envs)
+	// === .claude.json ===
+	systemClaudeJson := buildSystemClaudeJson(PlaceholderMemberspace) // Clier system: projects path
+	var userClaudeJson string                                         // user building block
+	if rm.ClaudeJson != nil {
+		userClaudeJson = rm.ClaudeJson.Content
+	}
+
+	// === Skills ===
+	userSkills := rm.Skills // user building block (no system injection)
+
+	// === Assemble workspace files ===
+	files := buildWorkspaceFiles(PlaceholderMemberspace, systemClaudeMd, userClaudeMd, userSettings, systemClaudeJson, userClaudeJson, userSkills)
+
+	// === Command: user building blocks ===
+	model := rm.Model
+	args := rm.Args
+	userEnvs := rm.Envs
+
+	// === Command: Clier system-generated ===
+	// (system envs are assembled inside buildCommand -> buildEnv)
+
+	// === Assemble command ===
+	cmd := buildCommand(model, args, PlaceholderMemberspace+"/project", teamName, rm.Name, taskID, rm.TeamMemberID, userEnvs)
 
 	launchPath := PlaceholderMemberspace + "/launch.sh"
 	files = append(files, domain.FileEntry{Path: launchPath, Content: cmd})

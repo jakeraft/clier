@@ -5,18 +5,7 @@ import (
 	"strings"
 
 	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/domain/resource"
 )
-
-// joinPrompts combines multiple system prompts into a single string,
-// separated by double newlines.
-func joinPrompts(prompts []resource.SystemPrompt) string {
-	parts := make([]string, 0, len(prompts))
-	for _, sp := range prompts {
-		parts = append(parts, sp.Prompt)
-	}
-	return strings.Join(parts, "\n\n---\n\n")
-}
 
 // buildClierPrompt generates the team protocol that clier injects at plan build time.
 // It gives the agent full context about its role, team structure, and communication

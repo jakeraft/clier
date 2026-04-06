@@ -41,11 +41,17 @@ func (s *stubStore) CreateNote(_ context.Context, n *domain.Note) error {
 func (s *stubStore) GetMember(_ context.Context, _ string) (domain.Member, error) {
 	return domain.Member{}, errors.New("not implemented")
 }
-func (s *stubStore) GetCliProfile(_ context.Context, _ string) (resource.CliProfile, error) {
-	return resource.CliProfile{}, errors.New("not implemented")
+func (s *stubStore) GetClaudeMd(_ context.Context, _ string) (resource.ClaudeMd, error) {
+	return resource.ClaudeMd{}, errors.New("not implemented")
 }
-func (s *stubStore) GetSystemPrompt(_ context.Context, _ string) (resource.SystemPrompt, error) {
-	return resource.SystemPrompt{}, errors.New("not implemented")
+func (s *stubStore) GetSkill(_ context.Context, _ string) (resource.Skill, error) {
+	return resource.Skill{}, errors.New("not implemented")
+}
+func (s *stubStore) GetSettings(_ context.Context, _ string) (resource.Settings, error) {
+	return resource.Settings{}, errors.New("not implemented")
+}
+func (s *stubStore) GetClaudeJson(_ context.Context, _ string) (resource.ClaudeJson, error) {
+	return resource.ClaudeJson{}, errors.New("not implemented")
 }
 func (s *stubStore) GetEnv(_ context.Context, _ string) (resource.Env, error) {
 	return resource.Env{}, errors.New("not implemented")

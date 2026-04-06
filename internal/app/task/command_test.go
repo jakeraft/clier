@@ -148,32 +148,31 @@ func TestBuildEnvCommand(t *testing.T) {
 
 func TestBuildCommand(t *testing.T) {
 	t.Run("AllArgs_IncludesPlaceholders", func(t *testing.T) {
-		profile := resource.CliProfile{
-			Model:      "claude-sonnet-4-6",
-			SystemArgs: []string{"--dangerously-skip-permissions"},
-			CustomArgs: []string{"--verbose"},
-		}
-		cmd := buildCommand(profile, "you are a coder", "my-team", "coder", "task-1", "m1", nil)
+		cmd := buildCommand("claude-sonnet-4-6",
+			[]string{"--dangerously-skip-permissions", "--verbose"},
+			PlaceholderMemberspace+"/project",
+			"my-team", "coder", "task-1", "m1", nil)
 
 		for _, want := range []string{
 			"claude",
 			"--model 'claude-sonnet-4-6'",
 			"--dangerously-skip-permissions",
 			"--verbose",
-			"--append-system-prompt",
 			"export CLAUDE_CONFIG_DIR='" + PlaceholderMemberspace + "/.claude'",
 			"export CLIER_TASK_ID='task-1'",
 			"export CLIER_MEMBER_ID='m1'",
 			"export CLAUDE_CODE_OAUTH_TOKEN='" + PlaceholderAuthClaude + "'",
 			"export GIT_AUTHOR_NAME='my-team/coder'",
-			"export GIT_AUTHOR_EMAIL='noreply@clier.com'",
-			"export GIT_COMMITTER_NAME='my-team/coder'",
-			"export GIT_COMMITTER_EMAIL='noreply@clier.com'",
 			"cd '" + PlaceholderMemberspace + "/project'",
 		} {
 			if !strings.Contains(cmd, want) {
 				t.Errorf("missing %q in:\n%s", want, cmd)
 			}
+		}
+
+		// --append-system-prompt should NOT be present
+		if strings.Contains(cmd, "--append-system-prompt") {
+			t.Error("--append-system-prompt should not be in the command")
 		}
 	})
 
@@ -183,8 +182,8 @@ func TestBuildCommand(t *testing.T) {
 			{Key: "SSH_AUTH_SOCK", Value: "/tmp/ssh.sock"},
 		}
 
-		profile := resource.CliProfile{Model: "opus"}
-		cmd := buildCommand(profile, "", "my-team", "alice", "task-1", "m1", userEnvs)
+		cmd := buildCommand("opus", nil, PlaceholderMemberspace+"/project",
+			"my-team", "alice", "task-1", "m1", userEnvs)
 
 		if !strings.Contains(cmd, "export GITHUB_TOKEN='ghp_xxx'") {
 			t.Errorf("missing GITHUB_TOKEN in:\n%s", cmd)
