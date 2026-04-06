@@ -88,6 +88,16 @@ func (t *TmuxTerminal) Launch(taskID, taskName string, members []domain.MemberPl
 		}
 	}
 
+	// Wait for all members to be ready before returning.
+	for i, m := range members {
+		if m.Terminal.Command == "" {
+			continue
+		}
+		if err := t.waitReady(sess, strconv.Itoa(i), 60*time.Second); err != nil {
+			return fmt.Errorf("wait ready %s: %w", m.MemberName, err)
+		}
+	}
+
 	// Register global session-closed hook for reverse sync (idempotent).
 	// A single hook handles all clier tasks: looks up the full task ID
 	// from a tmux server env var keyed by session name, and calls stop.
@@ -193,6 +203,28 @@ func (t *TmuxTerminal) ensureSessionClosedHook() error {
 	hookCmd := `run-shell 'ID=$(tmux show-environment -g CLIER_TASK_#{hook_session_name} 2>/dev/null | cut -d= -f2); [ -n "$ID" ] && clier task stop "$ID" && tmux set-environment -g -u CLIER_TASK_#{hook_session_name}'`
 	_, err := t.runFn("set-hook", "-g", "session-closed", hookCmd)
 	return err
+}
+
+// waitReady polls the pane title until Claude Code's TUI marker appears.
+// Claude Code sets the pane title via OSC escape sequences:
+// - Braille characters (U+2800-U+28FF) while working/starting
+// - Done markers (✳✻✽✶✢) when idle
+func (t *TmuxTerminal) waitReady(sess, win string, timeout time.Duration) error {
+	target := sess + ":" + win
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		title, err := t.runFn("display-message", "-p", "-t", target, "#{pane_title}")
+		if err == nil && hasClaudeMarker(title) {
+			return nil
+		}
+		t.sleep(500 * time.Millisecond)
+	}
+	return fmt.Errorf("not ready after %v", timeout)
+}
+
+// hasClaudeMarker returns true if the pane title indicates Claude Code is running.
+func hasClaudeMarker(title string) bool {
+	return strings.Contains(title, "Claude")
 }
 
 // tmux command helpers

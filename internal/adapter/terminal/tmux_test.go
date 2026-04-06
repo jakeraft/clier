@@ -73,7 +73,8 @@ func (f *fakeRefStore) DeleteRefs(_ context.Context, taskID string) error {
 
 func TestTmuxTerminal_Launch(t *testing.T) {
 	runner := &fakeRunner{output: map[string]string{
-		"list-windows": "0",
+		"list-windows":  "0",
+		"display-message": "✳ Claude Code",
 	}}
 	store := newFakeRefStore()
 	tm := &TmuxTerminal{refs: store, runFn: runner.run, sleep: func(time.Duration) {}}
@@ -250,6 +251,43 @@ func TestTmuxTerminal_Attach(t *testing.T) {
 			t.Error("select-window should not be called without member")
 		}
 	})
+}
+
+func TestHasClaudeMarker(t *testing.T) {
+	tests := []struct {
+		name  string
+		title string
+		want  bool
+	}{
+		{"idle title", "✳ Claude Code", true},
+		{"working title", "⠋ Claude Code", true},
+		{"empty", "", false},
+		{"plain shell", "zsh", false},
+		{"version number", "2.1.92", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := hasClaudeMarker(tt.title); got != tt.want {
+				t.Errorf("hasClaudeMarker(%q) = %v, want %v", tt.title, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTmuxTerminal_WaitReady_Timeout(t *testing.T) {
+	runner := &fakeRunner{output: map[string]string{
+		"display-message": "zsh",
+	}}
+	store := newFakeRefStore()
+	tm := &TmuxTerminal{refs: store, runFn: runner.run, sleep: func(time.Duration) {}}
+
+	err := tm.waitReady("sess", "0", 10*time.Millisecond)
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+	if !strings.Contains(err.Error(), "not ready") {
+		t.Errorf("unexpected error: %v", err)
+	}
 }
 
 func hasCall(calls []string, substr string) bool {
