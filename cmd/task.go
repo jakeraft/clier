@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"errors"
+	"io"
 	"os"
+	"strings"
 
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/adapter/workspace"
@@ -122,11 +124,24 @@ func newTaskTellCmd() *cobra.Command {
 	var taskFlag, toMemberID string
 
 	cmd := &cobra.Command{
-		Use:         "tell <content>",
-		Short:       "Tell a teammate",
-		Args:        cobra.ExactArgs(1),
+		Use:   "tell [content]",
+		Short: "Tell a teammate",
+		Long: `Tell a teammate. Content can be provided as an argument or via stdin.
+
+Examples:
+  clier task tell --to <id> "simple message"
+  echo "message with special chars" | clier task tell --to <id>
+  clier task tell --to <id> <<'EOF'
+  message with ` + "`backticks`" + ` and --flags
+  EOF`,
+		Args:        cobra.MaximumNArgs(1),
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			content, err := readContent(args)
+			if err != nil {
+				return err
+			}
+
 			taskID, fromMemberID, err := resolveTaskContext(taskFlag)
 			if err != nil {
 				return err
@@ -146,7 +161,7 @@ func newTaskTellCmd() *cobra.Command {
 			ws := workspace.New(cfg.Paths.Workspaces())
 			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
-			if err := svc.Send(cmd.Context(), taskID, fromMemberID, toMemberID, args[0]); err != nil {
+			if err := svc.Send(cmd.Context(), taskID, fromMemberID, toMemberID, content); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
@@ -166,11 +181,16 @@ func newTaskNoteCmd() *cobra.Command {
 	var taskFlag string
 
 	cmd := &cobra.Command{
-		Use:         "note <content>",
+		Use:         "note [content]",
 		Short:       "Post a progress note",
-		Args:        cobra.ExactArgs(1),
+		Args:        cobra.MaximumNArgs(1),
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			content, err := readContent(args)
+			if err != nil {
+				return err
+			}
+
 			taskID, memberID, err := resolveTaskContext(taskFlag)
 			if err != nil {
 				return err
@@ -190,7 +210,7 @@ func newTaskNoteCmd() *cobra.Command {
 			ws := workspace.New(cfg.Paths.Workspaces())
 			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
 
-			if err := svc.Note(cmd.Context(), taskID, memberID, args[0]); err != nil {
+			if err := svc.Note(cmd.Context(), taskID, memberID, content); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
@@ -258,6 +278,22 @@ func newTaskAttachCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&memberFlag, "member", "", "Attach to a specific member's window")
 	return cmd
+}
+
+// readContent returns content from args[0] or stdin when no argument is given.
+func readContent(args []string) (string, error) {
+	if len(args) > 0 && args[0] != "-" {
+		return args[0], nil
+	}
+	b, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return "", err
+	}
+	content := strings.TrimSpace(string(b))
+	if content == "" {
+		return "", errors.New("no content provided (pass as argument or pipe via stdin)")
+	}
+	return content, nil
 }
 
 // resolveTaskContext resolves task ID and member ID from env vars set by clier.

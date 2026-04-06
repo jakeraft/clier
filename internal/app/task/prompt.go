@@ -42,6 +42,7 @@ func buildClierPrompt(teamName, memberName string, relations domain.MemberRelati
 	b.WriteString("\n## Communication\n\n")
 	b.WriteString("**IMPORTANT:** Only use the `clier task tell` bash command below.\n")
 	b.WriteString("Do NOT use SendMessage, Agent, or any other built-in tool for communication.\n\n")
+	b.WriteString("Use heredoc to avoid shell escaping issues with backticks, flags, etc.:\n\n")
 	writeTellCommands(&b, relations, nameByID)
 	b.WriteString("- Replies arrive directly in your terminal input. Do not poll.\n")
 	b.WriteString("- Keep each tell substantive. Avoid short fragments like \"ok\" or \"hi\".\n")
@@ -49,7 +50,7 @@ func buildClierPrompt(teamName, memberName string, relations domain.MemberRelati
 	// Progress Notes
 	b.WriteString("\n## Progress Notes\n\n")
 	b.WriteString("Post a note when you start, complete, or encounter issues:\n\n")
-	b.WriteString("```bash\nclier task note \"<content>\"\n```\n")
+	b.WriteString("```bash\nclier task note <<'EOF'\n<content>\nEOF\n```\n")
 
 	// Rules
 	b.WriteString("\n## Rules\n\n")
@@ -69,7 +70,7 @@ func writeTellCommands(b *strings.Builder, rel domain.MemberRelations, nameByID 
 	all = append(all, rel.Leaders...)
 	all = append(all, rel.Workers...)
 	for _, id := range all {
-		fmt.Fprintf(b, "Tell %s:\n```bash\nclier task tell --to %s \"<message>\"\n```\n", nameByID[id], id)
+		fmt.Fprintf(b, "Tell %s:\n```bash\nclier task tell --to %s <<'EOF'\n<message>\nEOF\n```\n", nameByID[id], id)
 	}
 }
 

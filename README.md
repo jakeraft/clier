@@ -52,7 +52,9 @@ clier team list
 clier dashboard
 clier task start <team-id>
 clier task list
-clier task tell "..." --task <task-id> --to <team-member-id>
+clier task tell --to <member-id> <<'EOF'      # stdin: safe from shell escaping
+message with `backticks` and --flags
+EOF
 clier task stop <task-id>
 ```
 
