@@ -29,17 +29,14 @@ func newTutorialCmd() *cobra.Command {
 		Short: "Learn the clier workflow with an example team",
 		Long: `Learn the clier workflow with an example team.
 
-This tutorial uses the "todo-team" — a team of AI agents that fixes
-bugs and audits a deliberately incomplete Todo CLI app:
+This tutorial uses the "todo-team" — a team of AI agents that
+implements a feature on a real GitHub repo with PR-based code review:
 
   tech-lead (root)
-  ├── coder → reviewer    (fix track: implement feature → code review)
-  └── auditor             (audit track: review codebase → file GitHub issues)
+  └── coder → reviewer    (implement → PR → review loop)
 
-The todo app (github.com/jakeraft/clier_todo) has intentional bugs:
-  - list: status always shows "[ ]" regardless of done value
-  - done: sets done=0 instead of done=1
-  - delete: no existence check
+The todo app (github.com/jakeraft/clier_todo) is a simple Go CLI
+with some hidden bugs the agents may discover along the way.
 
 Run "clier tutorial start" to kick off the team:
 
@@ -47,9 +44,9 @@ Run "clier tutorial start" to kick off the team:
   2. Start a task (launches all agents in tmux)
   3. Tell the tech-lead: "` + tutorialMessage + `"
 
-The coder implements the feature and gets it reviewed,
-while the auditor independently discovers existing bugs
-and files GitHub issues — self-healing in action.
+The coder implements the feature on a branch, creates a PR,
+and iterates with the reviewer until approved. The tech-lead
+writes a final report on the PR.
 
 Monitor progress:
 
@@ -58,9 +55,9 @@ Monitor progress:
 
 When the task is done:
 
-  clier task stop <task-id>        Stop all agents
-  gh issue list -R jakeraft/clier_todo   See issues the auditor filed
-  cd ~/.clier/workspaces/<task-id>/<member-id>/project && git log   See commits`,
+  clier task stop <task-id>                            Stop all agents
+  gh pr list -R jakeraft/clier_todo                    See the PR
+  gh pr view <number> -R jakeraft/clier_todo --web     Read the final report`,
 	}
 	cmd.AddCommand(newTutorialStartCmd())
 	return cmd
