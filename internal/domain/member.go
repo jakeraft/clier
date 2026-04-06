@@ -10,28 +10,38 @@ import (
 )
 
 type Member struct {
-	ID              string    `json:"id"`
-	Name            string    `json:"name"`
-	CliProfileID    string    `json:"cli_profile_id"`
-	SystemPromptIDs []string  `json:"system_prompt_ids"`
-	EnvIDs          []string  `json:"env_ids"`
-	GitRepoID       string    `json:"git_repo_id"` // empty string means not set
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	Model        string    `json:"model"`
+	Args         []string  `json:"args"`
+	ClaudeMdID   string    `json:"claude_md_id"`   // empty string = not set (nullable FK)
+	SkillIDs     []string  `json:"skill_ids"`
+	SettingsID   string    `json:"settings_id"`     // empty string = not set (nullable FK)
+	ClaudeJsonID string    `json:"claude_json_id"`  // empty string = not set (nullable FK)
+	EnvIDs       []string  `json:"env_ids"`
+	GitRepoID    string    `json:"git_repo_id"`     // empty string = not set (nullable FK)
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
-func NewMember(name, cliProfileID string, systemPromptIDs []string, gitRepoID string, envIDs []string) (*Member, error) {
+func NewMember(name, model string, args []string,
+	claudeMdID string, skillIDs []string,
+	settingsID, claudeJsonID string,
+	envIDs []string, gitRepoID string) (*Member, error) {
+
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("member name must not be empty")
 	}
-	cliProfileID = strings.TrimSpace(cliProfileID)
-	if cliProfileID == "" {
-		return nil, errors.New("member cli profile id must not be empty")
+	model = strings.TrimSpace(model)
+	if model == "" {
+		return nil, errors.New("member model must not be empty")
 	}
-
-	if systemPromptIDs == nil {
-		systemPromptIDs = []string{}
+	if args == nil {
+		args = []string{}
+	}
+	if skillIDs == nil {
+		skillIDs = []string{}
 	}
 	if envIDs == nil {
 		envIDs = []string{}
@@ -39,18 +49,26 @@ func NewMember(name, cliProfileID string, systemPromptIDs []string, gitRepoID st
 
 	now := time.Now()
 	return &Member{
-		ID:              uuid.NewString(),
-		Name:            name,
-		CliProfileID:    cliProfileID,
-		SystemPromptIDs: systemPromptIDs,
-		EnvIDs:          envIDs,
-		GitRepoID:       gitRepoID,
-		CreatedAt:       now,
-		UpdatedAt:       now,
+		ID:           uuid.NewString(),
+		Name:         name,
+		Model:        model,
+		Args:         args,
+		ClaudeMdID:   claudeMdID,
+		SkillIDs:     skillIDs,
+		SettingsID:   settingsID,
+		ClaudeJsonID: claudeJsonID,
+		EnvIDs:       envIDs,
+		GitRepoID:    gitRepoID,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}, nil
 }
 
-func (m *Member) Update(name, cliProfileID *string, systemPromptIDs *[]string, gitRepoID *string, envIDs *[]string) error {
+func (m *Member) Update(name, model *string, args *[]string,
+	claudeMdID *string, skillIDs *[]string,
+	settingsID, claudeJsonID *string,
+	envIDs *[]string, gitRepoID *string) error {
+
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
@@ -58,21 +76,33 @@ func (m *Member) Update(name, cliProfileID *string, systemPromptIDs *[]string, g
 		}
 		m.Name = trimmed
 	}
-	if cliProfileID != nil {
-		trimmed := strings.TrimSpace(*cliProfileID)
+	if model != nil {
+		trimmed := strings.TrimSpace(*model)
 		if trimmed == "" {
-			return errors.New("member cli profile id must not be empty")
+			return errors.New("member model must not be empty")
 		}
-		m.CliProfileID = trimmed
+		m.Model = trimmed
 	}
-	if systemPromptIDs != nil {
-		m.SystemPromptIDs = *systemPromptIDs
+	if args != nil {
+		m.Args = *args
 	}
-	if gitRepoID != nil {
-		m.GitRepoID = *gitRepoID
+	if claudeMdID != nil {
+		m.ClaudeMdID = *claudeMdID
+	}
+	if skillIDs != nil {
+		m.SkillIDs = *skillIDs
+	}
+	if settingsID != nil {
+		m.SettingsID = *settingsID
+	}
+	if claudeJsonID != nil {
+		m.ClaudeJsonID = *claudeJsonID
 	}
 	if envIDs != nil {
 		m.EnvIDs = *envIDs
+	}
+	if gitRepoID != nil {
+		m.GitRepoID = *gitRepoID
 	}
 	m.UpdatedAt = time.Now()
 	return nil
@@ -83,8 +113,12 @@ func (m *Member) Update(name, cliProfileID *string, systemPromptIDs *[]string, g
 type ResolvedMember struct {
 	TeamMemberID string
 	Name         string
-	Profile      resource.CliProfile
-	Prompts      []resource.SystemPrompt
+	Model        string
+	Args         []string
+	ClaudeMd     *resource.ClaudeMd
+	Skills       []resource.Skill
+	Settings     *resource.Settings
+	ClaudeJson   *resource.ClaudeJson
 	Envs         []resource.Env
 	Repo         *resource.GitRepo
 	Relations    MemberRelations

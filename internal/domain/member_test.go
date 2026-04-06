@@ -1,138 +1,106 @@
 package domain
 
-import (
-	"testing"
+import "testing"
 
-	"github.com/google/uuid"
-)
+func TestNewMember(t *testing.T) {
+	m, err := NewMember("coder", "claude-sonnet-4-6", []string{"--dangerously-skip-permissions"},
+		"claude-md-1", []string{"skill-1"}, "settings-1", "claude-json-1",
+		[]string{"env-1"}, "repo-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if m.Name != "coder" {
+		t.Errorf("name = %q, want %q", m.Name, "coder")
+	}
+	if m.Model != "claude-sonnet-4-6" {
+		t.Errorf("model = %q, want %q", m.Model, "claude-sonnet-4-6")
+	}
+	if len(m.Args) != 1 || m.Args[0] != "--dangerously-skip-permissions" {
+		t.Errorf("args = %v, want [--dangerously-skip-permissions]", m.Args)
+	}
+	if m.ClaudeMdID != "claude-md-1" {
+		t.Errorf("claude_md_id = %q, want %q", m.ClaudeMdID, "claude-md-1")
+	}
+	if len(m.SkillIDs) != 1 || m.SkillIDs[0] != "skill-1" {
+		t.Errorf("skill_ids = %v, want [skill-1]", m.SkillIDs)
+	}
+	if m.SettingsID != "settings-1" {
+		t.Errorf("settings_id = %q, want %q", m.SettingsID, "settings-1")
+	}
+	if m.ClaudeJsonID != "claude-json-1" {
+		t.Errorf("claude_json_id = %q, want %q", m.ClaudeJsonID, "claude-json-1")
+	}
+	if m.GitRepoID != "repo-1" {
+		t.Errorf("git_repo_id = %q, want %q", m.GitRepoID, "repo-1")
+	}
+}
 
-func TestMember(t *testing.T) {
-	t.Run("New", func(t *testing.T) {
-		t.Run("ValidInputs_GeneratesUUIDAndSetsFields", func(t *testing.T) {
-			m, err := NewMember("alice", "profile-1", []string{"prompt-1"}, "repo-1", nil)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if _, err := uuid.Parse(m.ID); err != nil {
-				t.Errorf("ID %q is not a valid UUID", m.ID)
-			}
-			if m.Name != "alice" {
-				t.Errorf("Name = %q, want %q", m.Name, "alice")
-			}
-			if m.CliProfileID != "profile-1" {
-				t.Errorf("CliProfileID = %q, want %q", m.CliProfileID, "profile-1")
-			}
-			if len(m.SystemPromptIDs) != 1 || m.SystemPromptIDs[0] != "prompt-1" {
-				t.Errorf("SystemPromptIDs = %v, want [prompt-1]", m.SystemPromptIDs)
-			}
-			if m.GitRepoID != "repo-1" {
-				t.Errorf("GitRepoID = %q, want %q", m.GitRepoID, "repo-1")
-			}
-		})
+func TestNewMember_EmptyName(t *testing.T) {
+	_, err := NewMember("", "model", nil, "", nil, "", "", nil, "")
+	if err == nil {
+		t.Error("expected error for empty name")
+	}
+}
 
-		t.Run("NoOptionalFields_DefaultsToEmpty", func(t *testing.T) {
-			m, err := NewMember("bob", "profile-1", nil, "", nil)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if len(m.SystemPromptIDs) != 0 {
-				t.Errorf("SystemPromptIDs = %v, want []", m.SystemPromptIDs)
-			}
-			if m.GitRepoID != "" {
-				t.Errorf("GitRepoID = %q, want empty", m.GitRepoID)
-			}
-		})
+func TestNewMember_EmptyModel(t *testing.T) {
+	_, err := NewMember("name", "", nil, "", nil, "", "", nil, "")
+	if err == nil {
+		t.Error("expected error for empty model")
+	}
+}
 
-		t.Run("EmptyName_ReturnsError", func(t *testing.T) {
-			_, err := NewMember("", "profile-1", nil, "", nil)
-			if err == nil {
-				t.Fatal("expected error, got nil")
-			}
-		})
+func TestMember_NilSlicesDefault(t *testing.T) {
+	m, err := NewMember("coder", "claude-sonnet-4-6", nil, "", nil, "", "", nil, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if m.Args == nil {
+		t.Error("Args should be empty slice, not nil")
+	}
+	if m.SkillIDs == nil {
+		t.Error("SkillIDs should be empty slice, not nil")
+	}
+	if m.EnvIDs == nil {
+		t.Error("EnvIDs should be empty slice, not nil")
+	}
+}
 
-		t.Run("EmptyCliProfileID_ReturnsError", func(t *testing.T) {
-			_, err := NewMember("name", "  ", nil, "", nil)
-			if err == nil {
-				t.Fatal("expected error, got nil")
-			}
-		})
-
-		t.Run("WithEnvIDs_SetsEnvIDs", func(t *testing.T) {
-			m, err := NewMember("alice", "profile-1", nil, "", []string{"env-1", "env-2"})
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if len(m.EnvIDs) != 2 {
-				t.Fatalf("EnvIDs length = %d, want 2", len(m.EnvIDs))
-			}
-			if m.EnvIDs[0] != "env-1" || m.EnvIDs[1] != "env-2" {
-				t.Errorf("EnvIDs = %v, want [env-1 env-2]", m.EnvIDs)
-			}
-		})
-
-		t.Run("NilEnvIDs_DefaultsToEmptySlice", func(t *testing.T) {
-			m, err := NewMember("alice", "profile-1", nil, "", nil)
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if m.EnvIDs == nil {
-				t.Fatal("EnvIDs should not be nil")
-			}
-			if len(m.EnvIDs) != 0 {
-				t.Errorf("EnvIDs length = %d, want 0", len(m.EnvIDs))
-			}
-		})
-	})
-
-	t.Run("Update", func(t *testing.T) {
-		t.Run("ValidFields_ChangesAllFields", func(t *testing.T) {
-			m, _ := NewMember("old", "profile-1", nil, "", nil)
-			name := "new"
-			profileID := "profile-2"
-			prompts := []string{"prompt-1"}
-			repoID := "repo-1"
-			if err := m.Update(&name, &profileID, &prompts, &repoID, nil); err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if m.Name != "new" {
-				t.Errorf("Name = %q, want %q", m.Name, "new")
-			}
-			if m.CliProfileID != "profile-2" {
-				t.Errorf("CliProfileID = %q, want %q", m.CliProfileID, "profile-2")
-			}
-			if len(m.SystemPromptIDs) != 1 {
-				t.Errorf("SystemPromptIDs = %v, want [prompt-1]", m.SystemPromptIDs)
-			}
-			if m.GitRepoID != "repo-1" {
-				t.Errorf("GitRepoID = %q, want %q", m.GitRepoID, "repo-1")
-			}
-		})
-
-		t.Run("ClearGitRepoID_SetsEmpty", func(t *testing.T) {
-			m, _ := NewMember("name", "profile-1", nil, "repo-1", nil)
-			empty := ""
-			if err := m.Update(nil, nil, nil, &empty, nil); err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if m.GitRepoID != "" {
-				t.Errorf("GitRepoID = %q, want empty", m.GitRepoID)
-			}
-		})
-
-		t.Run("EmptyName_ReturnsError", func(t *testing.T) {
-			m, _ := NewMember("valid", "profile-1", nil, "", nil)
-			name := ""
-			if err := m.Update(&name, nil, nil, nil, nil); err == nil {
-				t.Fatal("expected error, got nil")
-			}
-		})
-
-		t.Run("EmptyCliProfileID_ReturnsError", func(t *testing.T) {
-			m, _ := NewMember("valid", "profile-1", nil, "", nil)
-			profileID := "  "
-			if err := m.Update(nil, &profileID, nil, nil, nil); err == nil {
-				t.Fatal("expected error, got nil")
-			}
-		})
-	})
+func TestMember_Update(t *testing.T) {
+	m, _ := NewMember("old", "old-model", nil, "", nil, "", "", nil, "")
+	newName := "new"
+	newModel := "new-model"
+	newArgs := []string{"--flag"}
+	newMdID := "md-1"
+	newSkills := []string{"s-1", "s-2"}
+	newSettings := "set-1"
+	newCJ := "cj-1"
+	newEnvs := []string{"e-1"}
+	newRepo := "r-1"
+	if err := m.Update(&newName, &newModel, &newArgs, &newMdID, &newSkills, &newSettings, &newCJ, &newEnvs, &newRepo); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if m.Name != "new" {
+		t.Errorf("name = %q, want %q", m.Name, "new")
+	}
+	if m.Model != "new-model" {
+		t.Errorf("model = %q", m.Model)
+	}
+	if len(m.Args) != 1 {
+		t.Errorf("args = %v", m.Args)
+	}
+	if m.ClaudeMdID != "md-1" {
+		t.Errorf("claude_md_id = %q", m.ClaudeMdID)
+	}
+	if len(m.SkillIDs) != 2 {
+		t.Errorf("skill_ids = %v", m.SkillIDs)
+	}
+	if m.SettingsID != "set-1" {
+		t.Errorf("settings_id = %q", m.SettingsID)
+	}
+	if m.ClaudeJsonID != "cj-1" {
+		t.Errorf("claude_json_id = %q", m.ClaudeJsonID)
+	}
+	if m.GitRepoID != "r-1" {
+		t.Errorf("git_repo_id = %q", m.GitRepoID)
+	}
 }
