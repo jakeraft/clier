@@ -1,6 +1,6 @@
 -- name: CreateMember :execresult
-INSERT INTO members (id, name, cli_profile_id, git_repo_id, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?);
+INSERT INTO members (id, name, model, args, claude_md_id, settings_id, claude_json_id, git_repo_id, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetMember :one
 SELECT * FROM members WHERE id = ?;
@@ -9,22 +9,22 @@ SELECT * FROM members WHERE id = ?;
 SELECT * FROM members ORDER BY created_at;
 
 -- name: UpdateMember :execresult
-UPDATE members SET name = ?, cli_profile_id = ?, git_repo_id = ?, updated_at = ? WHERE id = ?;
+UPDATE members SET name = ?, model = ?, args = ?, claude_md_id = ?, settings_id = ?, claude_json_id = ?, git_repo_id = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeleteMember :execresult
 DELETE FROM members WHERE id = ?;
 
--- name: AddMemberSystemPrompt :execresult
-INSERT INTO member_system_prompts (member_id, system_prompt_id) VALUES (?, ?);
+-- name: AddMemberSkill :execresult
+INSERT INTO member_skills (member_id, skill_id) VALUES (?, ?);
 
--- name: RemoveMemberSystemPrompt :execresult
-DELETE FROM member_system_prompts WHERE member_id = ? AND system_prompt_id = ?;
+-- name: RemoveMemberSkill :execresult
+DELETE FROM member_skills WHERE member_id = ? AND skill_id = ?;
 
--- name: ListMemberSystemPromptIDs :many
-SELECT system_prompt_id FROM member_system_prompts WHERE member_id = ? ORDER BY rowid;
+-- name: ListMemberSkillIDs :many
+SELECT skill_id FROM member_skills WHERE member_id = ? ORDER BY rowid;
 
--- name: DeleteMemberSystemPrompts :execresult
-DELETE FROM member_system_prompts WHERE member_id = ?;
+-- name: DeleteMemberSkills :execresult
+DELETE FROM member_skills WHERE member_id = ?;
 
 -- name: AddMemberEnv :execresult
 INSERT INTO member_envs (member_id, env_id) VALUES (?, ?);
@@ -37,4 +37,3 @@ SELECT env_id FROM member_envs WHERE member_id = ? ORDER BY rowid;
 
 -- name: DeleteMemberEnvs :execresult
 DELETE FROM member_envs WHERE member_id = ?;
-
