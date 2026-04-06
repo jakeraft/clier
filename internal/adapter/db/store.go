@@ -50,22 +50,6 @@ func NewStore(dbPath string) (*Store, error) {
 		return nil, fmt.Errorf("init schema: %w", err)
 	}
 
-	// Migrate: rename dot_config → settings_json for existing databases.
-	if columnExists(db, "cli_profiles", "dot_config") {
-		if _, err := db.Exec("ALTER TABLE cli_profiles RENAME COLUMN dot_config TO settings_json"); err != nil {
-			db.Close()
-			return nil, fmt.Errorf("migrate dot_config to settings_json: %w", err)
-		}
-	}
-
-	// Migrate: add claude_json column for existing databases.
-	if !columnExists(db, "cli_profiles", "claude_json") {
-		if _, err := db.Exec("ALTER TABLE cli_profiles ADD COLUMN claude_json TEXT NOT NULL DEFAULT '{}'"); err != nil {
-			db.Close()
-			return nil, fmt.Errorf("add claude_json column: %w", err)
-		}
-	}
-
 	return &Store{
 		db:      db,
 		queries: generated.New(db),
@@ -74,28 +58,6 @@ func NewStore(dbPath string) (*Store, error) {
 
 func (s *Store) Close() error {
 	return s.db.Close()
-}
-
-func columnExists(db *sql.DB, table, column string) bool {
-	rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
-	if err != nil {
-		return false
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var cid int
-		var name, ctype string
-		var notnull int
-		var dflt sql.NullString
-		var pk int
-		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
-			return false
-		}
-		if name == column {
-			return true
-		}
-	}
-	return false
 }
 
 // Team
@@ -305,20 +267,29 @@ func (s *Store) CreateMember(ctx context.Context, m *domain.Member) error {
 	}
 	defer tx.Rollback()
 
+	argsJSON, err := json.Marshal(m.Args)
+	if err != nil {
+		return fmt.Errorf("marshal args: %w", err)
+	}
+
 	qtx := generated.New(tx)
 	if _, err := qtx.CreateMember(ctx, generated.CreateMemberParams{
 		ID:           m.ID,
 		Name:         m.Name,
-		CliProfileID: m.CliProfileID,
+		Model:        m.Model,
+		Args:         string(argsJSON),
+		ClaudeMdID:   sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
+		SettingsID:   sql.NullString{String: m.SettingsID, Valid: m.SettingsID != ""},
+		ClaudeJsonID: sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
 		GitRepoID:    sql.NullString{String: m.GitRepoID, Valid: m.GitRepoID != ""},
 		CreatedAt:    m.CreatedAt.Unix(),
 		UpdatedAt:    m.UpdatedAt.Unix(),
 	}); err != nil {
 		return err
 	}
-	for _, promptID := range m.SystemPromptIDs {
-		if _, err := qtx.AddMemberSystemPrompt(ctx, generated.AddMemberSystemPromptParams{
-			MemberID: m.ID, SystemPromptID: promptID,
+	for _, skillID := range m.SkillIDs {
+		if _, err := qtx.AddMemberSkill(ctx, generated.AddMemberSkillParams{
+			MemberID: m.ID, SkillID: skillID,
 		}); err != nil {
 			return err
 		}
@@ -338,12 +309,19 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 	if err != nil {
 		return domain.Member{}, err
 	}
-	promptIDs, err := s.queries.ListMemberSystemPromptIDs(ctx, id)
+	var args []string
+	if err := json.Unmarshal([]byte(row.Args), &args); err != nil {
+		return domain.Member{}, fmt.Errorf("unmarshal args: %w", err)
+	}
+	if args == nil {
+		args = []string{}
+	}
+	skillIDs, err := s.queries.ListMemberSkillIDs(ctx, id)
 	if err != nil {
 		return domain.Member{}, err
 	}
-	if promptIDs == nil {
-		promptIDs = []string{}
+	if skillIDs == nil {
+		skillIDs = []string{}
 	}
 	envIDs, err := s.queries.ListMemberEnvIDs(ctx, id)
 	if err != nil {
@@ -353,14 +331,18 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 		envIDs = []string{}
 	}
 	return domain.Member{
-		ID:              row.ID,
-		Name:            row.Name,
-		CliProfileID:    row.CliProfileID,
-		SystemPromptIDs: promptIDs,
-		EnvIDs:          envIDs,
-		GitRepoID:       row.GitRepoID.String,
-		CreatedAt:       time.Unix(row.CreatedAt, 0),
-		UpdatedAt:       time.Unix(row.UpdatedAt, 0),
+		ID:           row.ID,
+		Name:         row.Name,
+		Model:        row.Model,
+		Args:         args,
+		ClaudeMdID:   row.ClaudeMdID.String,
+		SkillIDs:     skillIDs,
+		SettingsID:   row.SettingsID.String,
+		ClaudeJsonID: row.ClaudeJsonID.String,
+		EnvIDs:       envIDs,
+		GitRepoID:    row.GitRepoID.String,
+		CreatedAt:    time.Unix(row.CreatedAt, 0),
+		UpdatedAt:    time.Unix(row.UpdatedAt, 0),
 	}, nil
 }
 
@@ -387,27 +369,37 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 	}
 	defer tx.Rollback()
 
+	argsJSON, err := json.Marshal(m.Args)
+	if err != nil {
+		return fmt.Errorf("marshal args: %w", err)
+	}
+
 	qtx := generated.New(tx)
 	if _, err := qtx.UpdateMember(ctx, generated.UpdateMemberParams{
 		Name:         m.Name,
-		CliProfileID: m.CliProfileID,
+		Model:        m.Model,
+		Args:         string(argsJSON),
+		ClaudeMdID:   sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
+		SettingsID:   sql.NullString{String: m.SettingsID, Valid: m.SettingsID != ""},
+		ClaudeJsonID: sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
 		GitRepoID:    sql.NullString{String: m.GitRepoID, Valid: m.GitRepoID != ""},
 		UpdatedAt:    m.UpdatedAt.Unix(),
 		ID:           m.ID,
 	}); err != nil {
 		return err
 	}
-	// Replace junction rows: delete all + re-insert.
-	if _, err := qtx.DeleteMemberSystemPrompts(ctx, m.ID); err != nil {
+	// Replace skill junction rows
+	if _, err := qtx.DeleteMemberSkills(ctx, m.ID); err != nil {
 		return err
 	}
-	for _, promptID := range m.SystemPromptIDs {
-		if _, err := qtx.AddMemberSystemPrompt(ctx, generated.AddMemberSystemPromptParams{
-			MemberID: m.ID, SystemPromptID: promptID,
+	for _, skillID := range m.SkillIDs {
+		if _, err := qtx.AddMemberSkill(ctx, generated.AddMemberSkillParams{
+			MemberID: m.ID, SkillID: skillID,
 		}); err != nil {
 			return err
 		}
 	}
+	// Replace env junction rows
 	if _, err := qtx.DeleteMemberEnvs(ctx, m.ID); err != nil {
 		return err
 	}
@@ -421,7 +413,7 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 	return tx.Commit()
 }
 
-// DeleteMember deletes a member. CASCADE: member_system_prompts, member_envs.
+// DeleteMember deletes a member. CASCADE: member_skills, member_envs.
 // RESTRICT: team_members.member_id — fails if member is referenced by a team.
 func (s *Store) DeleteMember(ctx context.Context, id string) error {
 	result, err := s.queries.DeleteMember(ctx, id)
@@ -438,185 +430,64 @@ func (s *Store) DeleteMember(ctx context.Context, id string) error {
 	return nil
 }
 
-// CliProfile
+// ClaudeMd
 
-func marshalCliProfileSlices(p *resource.CliProfile) (systemArgs, customArgs string, err error) {
-	sa, err := json.Marshal(p.SystemArgs)
-	if err != nil {
-		return "", "", fmt.Errorf("marshal system_args: %w", err)
-	}
-	ca, err := json.Marshal(p.CustomArgs)
-	if err != nil {
-		return "", "", fmt.Errorf("marshal custom_args: %w", err)
-	}
-	return string(sa), string(ca), nil
-}
-
-func (s *Store) CreateCliProfile(ctx context.Context, p *resource.CliProfile) error {
-	systemArgs, customArgs, err := marshalCliProfileSlices(p)
-	if err != nil {
-		return err
-	}
-	_, err = s.queries.CreateCliProfile(ctx, generated.CreateCliProfileParams{
-		ID:           p.ID,
-		Name:         p.Name,
-		Model:        p.Model,
-		Binary:       string(p.Binary),
-		SystemArgs:   systemArgs,
-		CustomArgs:   customArgs,
-		SettingsJson: p.SettingsJSON,
-		ClaudeJson:   p.ClaudeJSON,
-		CreatedAt:    p.CreatedAt.Unix(),
-		UpdatedAt:    p.UpdatedAt.Unix(),
+func (s *Store) CreateClaudeMd(ctx context.Context, c *resource.ClaudeMd) error {
+	_, err := s.queries.CreateClaudeMd(ctx, generated.CreateClaudeMdParams{
+		ID:        c.ID,
+		Name:      c.Name,
+		Content:   c.Content,
+		CreatedAt: c.CreatedAt.Unix(),
+		UpdatedAt: c.UpdatedAt.Unix(),
 	})
 	return err
 }
 
-func unmarshalCliProfile(row generated.CliProfile) (resource.CliProfile, error) {
-	var systemArgs, customArgs []string
-	if err := json.Unmarshal([]byte(row.SystemArgs), &systemArgs); err != nil {
-		return resource.CliProfile{}, fmt.Errorf("unmarshal system_args: %w", err)
-	}
-	if err := json.Unmarshal([]byte(row.CustomArgs), &customArgs); err != nil {
-		return resource.CliProfile{}, fmt.Errorf("unmarshal custom_args: %w", err)
-	}
-	if systemArgs == nil {
-		systemArgs = []string{}
-	}
-	if customArgs == nil {
-		customArgs = []string{}
-	}
-	return resource.CliProfile{
-		ID:           row.ID,
-		Name:         row.Name,
-		Model:        row.Model,
-		Binary:       resource.CliBinary(row.Binary),
-		SystemArgs:   systemArgs,
-		CustomArgs:   customArgs,
-		SettingsJSON: row.SettingsJson,
-		ClaudeJSON:   row.ClaudeJson,
-		CreatedAt:    time.Unix(row.CreatedAt, 0),
-		UpdatedAt:    time.Unix(row.UpdatedAt, 0),
-	}, nil
-}
-
-func (s *Store) GetCliProfile(ctx context.Context, id string) (resource.CliProfile, error) {
-	row, err := s.queries.GetCliProfile(ctx, id)
+func (s *Store) GetClaudeMd(ctx context.Context, id string) (resource.ClaudeMd, error) {
+	row, err := s.queries.GetClaudeMd(ctx, id)
 	if err != nil {
-		return resource.CliProfile{}, err
+		return resource.ClaudeMd{}, err
 	}
-	return unmarshalCliProfile(row)
-}
-
-func (s *Store) ListCliProfiles(ctx context.Context) ([]resource.CliProfile, error) {
-	rows, err := s.queries.ListCliProfiles(ctx)
-	if err != nil {
-		return nil, err
-	}
-	profiles := make([]resource.CliProfile, 0, len(rows))
-	for _, row := range rows {
-		p, err := unmarshalCliProfile(row)
-		if err != nil {
-			return nil, err
-		}
-		profiles = append(profiles, p)
-	}
-	return profiles, nil
-}
-
-func (s *Store) UpdateCliProfile(ctx context.Context, p *resource.CliProfile) error {
-	systemArgs, customArgs, err := marshalCliProfileSlices(p)
-	if err != nil {
-		return err
-	}
-	_, err = s.queries.UpdateCliProfile(ctx, generated.UpdateCliProfileParams{
-		Name:         p.Name,
-		Model:        p.Model,
-		Binary:       string(p.Binary),
-		SystemArgs:   systemArgs,
-		CustomArgs:   customArgs,
-		SettingsJson: p.SettingsJSON,
-		ClaudeJson:   p.ClaudeJSON,
-		UpdatedAt:    p.UpdatedAt.Unix(),
-		ID:           p.ID,
-	})
-	return err
-}
-
-// DeleteCliProfile deletes a cli profile. RESTRICT: fails if referenced by a member.
-func (s *Store) DeleteCliProfile(ctx context.Context, id string) error {
-	result, err := s.queries.DeleteCliProfile(ctx, id)
-	if err != nil {
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return fmt.Errorf("cli profile not found: %s", id)
-	}
-	return nil
-}
-
-// SystemPrompt
-
-func (s *Store) CreateSystemPrompt(ctx context.Context, sp *resource.SystemPrompt) error {
-	_, err := s.queries.CreateSystemPrompt(ctx, generated.CreateSystemPromptParams{
-		ID:        sp.ID,
-		Name:      sp.Name,
-		Prompt:    sp.Prompt,
-		CreatedAt: sp.CreatedAt.Unix(),
-		UpdatedAt: sp.UpdatedAt.Unix(),
-	})
-	return err
-}
-
-func (s *Store) GetSystemPrompt(ctx context.Context, id string) (resource.SystemPrompt, error) {
-	row, err := s.queries.GetSystemPrompt(ctx, id)
-	if err != nil {
-		return resource.SystemPrompt{}, err
-	}
-	return resource.SystemPrompt{
+	return resource.ClaudeMd{
 		ID:        row.ID,
 		Name:      row.Name,
-		Prompt:    row.Prompt,
+		Content:   row.Content,
 		CreatedAt: time.Unix(row.CreatedAt, 0),
 		UpdatedAt: time.Unix(row.UpdatedAt, 0),
 	}, nil
 }
 
-func (s *Store) ListSystemPrompts(ctx context.Context) ([]resource.SystemPrompt, error) {
-	rows, err := s.queries.ListSystemPrompts(ctx)
+func (s *Store) ListClaudeMds(ctx context.Context) ([]resource.ClaudeMd, error) {
+	rows, err := s.queries.ListClaudeMds(ctx)
 	if err != nil {
 		return nil, err
 	}
-	prompts := make([]resource.SystemPrompt, 0, len(rows))
+	items := make([]resource.ClaudeMd, 0, len(rows))
 	for _, row := range rows {
-		prompts = append(prompts, resource.SystemPrompt{
+		items = append(items, resource.ClaudeMd{
 			ID:        row.ID,
 			Name:      row.Name,
-			Prompt:    row.Prompt,
+			Content:   row.Content,
 			CreatedAt: time.Unix(row.CreatedAt, 0),
 			UpdatedAt: time.Unix(row.UpdatedAt, 0),
 		})
 	}
-	return prompts, nil
+	return items, nil
 }
 
-func (s *Store) UpdateSystemPrompt(ctx context.Context, sp *resource.SystemPrompt) error {
-	_, err := s.queries.UpdateSystemPrompt(ctx, generated.UpdateSystemPromptParams{
-		Name:      sp.Name,
-		Prompt:    sp.Prompt,
-		UpdatedAt: sp.UpdatedAt.Unix(),
-		ID:        sp.ID,
+func (s *Store) UpdateClaudeMd(ctx context.Context, c *resource.ClaudeMd) error {
+	_, err := s.queries.UpdateClaudeMd(ctx, generated.UpdateClaudeMdParams{
+		Name:      c.Name,
+		Content:   c.Content,
+		UpdatedAt: c.UpdatedAt.Unix(),
+		ID:        c.ID,
 	})
 	return err
 }
 
-// DeleteSystemPrompt deletes a system prompt. RESTRICT: fails if referenced by a member.
-func (s *Store) DeleteSystemPrompt(ctx context.Context, id string) error {
-	result, err := s.queries.DeleteSystemPrompt(ctx, id)
+// DeleteClaudeMd deletes a claude md. RESTRICT: fails if referenced by a member.
+func (s *Store) DeleteClaudeMd(ctx context.Context, id string) error {
+	result, err := s.queries.DeleteClaudeMd(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -625,7 +496,220 @@ func (s *Store) DeleteSystemPrompt(ctx context.Context, id string) error {
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("system prompt not found: %s", id)
+		return fmt.Errorf("claude md not found: %s", id)
+	}
+	return nil
+}
+
+// Skill
+
+func (s *Store) CreateSkill(ctx context.Context, sk *resource.Skill) error {
+	_, err := s.queries.CreateSkill(ctx, generated.CreateSkillParams{
+		ID:        sk.ID,
+		Name:      sk.Name,
+		Content:   sk.Content,
+		CreatedAt: sk.CreatedAt.Unix(),
+		UpdatedAt: sk.UpdatedAt.Unix(),
+	})
+	return err
+}
+
+func (s *Store) GetSkill(ctx context.Context, id string) (resource.Skill, error) {
+	row, err := s.queries.GetSkill(ctx, id)
+	if err != nil {
+		return resource.Skill{}, err
+	}
+	return resource.Skill{
+		ID:        row.ID,
+		Name:      row.Name,
+		Content:   row.Content,
+		CreatedAt: time.Unix(row.CreatedAt, 0),
+		UpdatedAt: time.Unix(row.UpdatedAt, 0),
+	}, nil
+}
+
+func (s *Store) ListSkills(ctx context.Context) ([]resource.Skill, error) {
+	rows, err := s.queries.ListSkills(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]resource.Skill, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, resource.Skill{
+			ID:        row.ID,
+			Name:      row.Name,
+			Content:   row.Content,
+			CreatedAt: time.Unix(row.CreatedAt, 0),
+			UpdatedAt: time.Unix(row.UpdatedAt, 0),
+		})
+	}
+	return items, nil
+}
+
+func (s *Store) UpdateSkill(ctx context.Context, sk *resource.Skill) error {
+	_, err := s.queries.UpdateSkill(ctx, generated.UpdateSkillParams{
+		Name:      sk.Name,
+		Content:   sk.Content,
+		UpdatedAt: sk.UpdatedAt.Unix(),
+		ID:        sk.ID,
+	})
+	return err
+}
+
+// DeleteSkill deletes a skill. RESTRICT: fails if referenced by a member.
+func (s *Store) DeleteSkill(ctx context.Context, id string) error {
+	result, err := s.queries.DeleteSkill(ctx, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("skill not found: %s", id)
+	}
+	return nil
+}
+
+// Settings
+
+func (s *Store) CreateSettings(ctx context.Context, st *resource.Settings) error {
+	_, err := s.queries.CreateSettings(ctx, generated.CreateSettingsParams{
+		ID:        st.ID,
+		Name:      st.Name,
+		Content:   st.Content,
+		CreatedAt: st.CreatedAt.Unix(),
+		UpdatedAt: st.UpdatedAt.Unix(),
+	})
+	return err
+}
+
+func (s *Store) GetSettings(ctx context.Context, id string) (resource.Settings, error) {
+	row, err := s.queries.GetSettings(ctx, id)
+	if err != nil {
+		return resource.Settings{}, err
+	}
+	return resource.Settings{
+		ID:        row.ID,
+		Name:      row.Name,
+		Content:   row.Content,
+		CreatedAt: time.Unix(row.CreatedAt, 0),
+		UpdatedAt: time.Unix(row.UpdatedAt, 0),
+	}, nil
+}
+
+func (s *Store) ListSettings(ctx context.Context) ([]resource.Settings, error) {
+	rows, err := s.queries.ListSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]resource.Settings, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, resource.Settings{
+			ID:        row.ID,
+			Name:      row.Name,
+			Content:   row.Content,
+			CreatedAt: time.Unix(row.CreatedAt, 0),
+			UpdatedAt: time.Unix(row.UpdatedAt, 0),
+		})
+	}
+	return items, nil
+}
+
+func (s *Store) UpdateSettings(ctx context.Context, st *resource.Settings) error {
+	_, err := s.queries.UpdateSettings(ctx, generated.UpdateSettingsParams{
+		Name:      st.Name,
+		Content:   st.Content,
+		UpdatedAt: st.UpdatedAt.Unix(),
+		ID:        st.ID,
+	})
+	return err
+}
+
+// DeleteSettings deletes a settings. RESTRICT: fails if referenced by a member.
+func (s *Store) DeleteSettings(ctx context.Context, id string) error {
+	result, err := s.queries.DeleteSettings(ctx, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("settings not found: %s", id)
+	}
+	return nil
+}
+
+// ClaudeJson
+
+func (s *Store) CreateClaudeJson(ctx context.Context, c *resource.ClaudeJson) error {
+	_, err := s.queries.CreateClaudeJson(ctx, generated.CreateClaudeJsonParams{
+		ID:        c.ID,
+		Name:      c.Name,
+		Content:   c.Content,
+		CreatedAt: c.CreatedAt.Unix(),
+		UpdatedAt: c.UpdatedAt.Unix(),
+	})
+	return err
+}
+
+func (s *Store) GetClaudeJson(ctx context.Context, id string) (resource.ClaudeJson, error) {
+	row, err := s.queries.GetClaudeJson(ctx, id)
+	if err != nil {
+		return resource.ClaudeJson{}, err
+	}
+	return resource.ClaudeJson{
+		ID:        row.ID,
+		Name:      row.Name,
+		Content:   row.Content,
+		CreatedAt: time.Unix(row.CreatedAt, 0),
+		UpdatedAt: time.Unix(row.UpdatedAt, 0),
+	}, nil
+}
+
+func (s *Store) ListClaudeJsons(ctx context.Context) ([]resource.ClaudeJson, error) {
+	rows, err := s.queries.ListClaudeJsons(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]resource.ClaudeJson, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, resource.ClaudeJson{
+			ID:        row.ID,
+			Name:      row.Name,
+			Content:   row.Content,
+			CreatedAt: time.Unix(row.CreatedAt, 0),
+			UpdatedAt: time.Unix(row.UpdatedAt, 0),
+		})
+	}
+	return items, nil
+}
+
+func (s *Store) UpdateClaudeJson(ctx context.Context, c *resource.ClaudeJson) error {
+	_, err := s.queries.UpdateClaudeJson(ctx, generated.UpdateClaudeJsonParams{
+		Name:      c.Name,
+		Content:   c.Content,
+		UpdatedAt: c.UpdatedAt.Unix(),
+		ID:        c.ID,
+	})
+	return err
+}
+
+// DeleteClaudeJson deletes a claude json. RESTRICT: fails if referenced by a member.
+func (s *Store) DeleteClaudeJson(ctx context.Context, id string) error {
+	result, err := s.queries.DeleteClaudeJson(ctx, id)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("claude json not found: %s", id)
 	}
 	return nil
 }

@@ -87,27 +87,18 @@ func buildEnvCommand(command string, env []string) string {
 }
 
 // buildAgentCommand builds the "cd <workDir> && claude <args...>" portion.
-func buildAgentCommand(model string, systemArgs, customArgs []string,
-	prompt, workDir string) string {
-
-	args := []string{"claude"}
-	args = append(args, quoteArgs(systemArgs)...)
-	args = append(args, "--model", shellQuote(model))
-	args = append(args, quoteArgs(customArgs)...)
-	base := fmt.Sprintf("cd %s &&\n%s", shellQuote(workDir), strings.Join(args, " "))
-	if prompt != "" {
-		return base + " --append-system-prompt \\\n" + shellQuote(prompt)
-	}
-	return base
+// No --append-system-prompt — instructions go into CLAUDE.md.
+func buildAgentCommand(model string, args []string, workDir string) string {
+	parts := []string{"claude"}
+	parts = append(parts, quoteArgs(args)...)
+	parts = append(parts, "--model", shellQuote(model))
+	return fmt.Sprintf("cd %s &&\n%s", shellQuote(workDir), strings.Join(parts, " "))
 }
 
-// buildCommand returns the complete shell command for launching an agent,
-// including environment variable exports.
-func buildCommand(profile resource.CliProfile, prompt, teamName, memberName, taskID, memberID string,
+// buildCommand returns the complete shell command for launching an agent.
+func buildCommand(model string, args []string, workDir, teamName, memberName, taskID, memberID string,
 	userEnvs []resource.Env) string {
-
-	workDir := PlaceholderMemberspace + "/project"
-	cmd := buildAgentCommand(profile.Model, profile.SystemArgs, profile.CustomArgs, prompt, workDir)
+	cmd := buildAgentCommand(model, args, workDir)
 	env := buildEnv(teamName, memberName, taskID, memberID, userEnvs)
 	return buildEnvCommand(cmd, env)
 }

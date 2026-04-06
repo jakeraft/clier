@@ -24,16 +24,19 @@ func setupTestStore(t *testing.T) *db.Store {
 func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (string, string, string) {
 	t.Helper()
 
-	sp, _ := resource.NewSystemPrompt("test-prompt", "do things")
-	if err := store.CreateSystemPrompt(ctx, sp); err != nil {
-		t.Fatalf("CreateSystemPrompt: %v", err)
+	claudeMd, _ := resource.NewClaudeMd("test-md", "do things")
+	if err := store.CreateClaudeMd(ctx, claudeMd); err != nil {
+		t.Fatalf("CreateClaudeMd: %v", err)
 	}
 
-	profile, _ := resource.NewCliProfileRaw("test-profile", "claude-sonnet-4-6", resource.BinaryClaude,
-		[]string{"--dangerously-skip-permissions"}, []string{},
-		`{"key":"val"}`, `{"hasCompletedOnboarding":true}`)
-	if err := store.CreateCliProfile(ctx, profile); err != nil {
-		t.Fatalf("CreateCliProfile: %v", err)
+	settings, _ := resource.NewSettings("test-settings", `{"key":"val"}`)
+	if err := store.CreateSettings(ctx, settings); err != nil {
+		t.Fatalf("CreateSettings: %v", err)
+	}
+
+	claudeJson, _ := resource.NewClaudeJson("test-cj", `{"hasCompletedOnboarding":true}`)
+	if err := store.CreateClaudeJson(ctx, claudeJson); err != nil {
+		t.Fatalf("CreateClaudeJson: %v", err)
 	}
 
 	repo, _ := resource.NewGitRepo("test-repo", "https://example.com/repo.git")
@@ -41,12 +44,16 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (stri
 		t.Fatalf("CreateGitRepo: %v", err)
 	}
 
-	root, _ := domain.NewMember("alice", profile.ID, []string{sp.ID}, repo.ID, nil)
+	root, _ := domain.NewMember("alice", "claude-sonnet-4-6",
+		[]string{"--dangerously-skip-permissions"},
+		claudeMd.ID, nil, settings.ID, claudeJson.ID, nil, repo.ID)
 	if err := store.CreateMember(ctx, root); err != nil {
 		t.Fatalf("CreateMember root: %v", err)
 	}
 
-	worker, _ := domain.NewMember("bob", profile.ID, []string{sp.ID}, "", nil)
+	worker, _ := domain.NewMember("bob", "claude-sonnet-4-6",
+		[]string{"--dangerously-skip-permissions"},
+		claudeMd.ID, nil, settings.ID, claudeJson.ID, nil, "")
 	if err := store.CreateMember(ctx, worker); err != nil {
 		t.Fatalf("CreateMember worker: %v", err)
 	}

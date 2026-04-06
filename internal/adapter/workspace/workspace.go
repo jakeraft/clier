@@ -43,8 +43,12 @@ func (w *Workspace) Cleanup(taskID string) error {
 func (w *Workspace) prepareMember(ctx context.Context, m domain.MemberPlan) error {
 	ws := m.Workspace
 	workDir := filepath.Join(ws.Memberspace, "project")
-	if err := os.MkdirAll(workDir, 0755); err != nil {
-		return fmt.Errorf("create member dir: %w", err)
+
+	// Git first: clone needs an empty or non-existent directory.
+	// Files (CLAUDE.md, skills, etc.) are written after so they land
+	// inside the cloned repo or freshly-init'd directory.
+	if err := w.setupGit(ctx, ws, workDir); err != nil {
+		return fmt.Errorf("setup git: %w", err)
 	}
 
 	for _, f := range ws.Files {
@@ -55,10 +59,6 @@ func (w *Workspace) prepareMember(ctx context.Context, m domain.MemberPlan) erro
 		if err := os.WriteFile(f.Path, []byte(f.Content), 0644); err != nil {
 			return fmt.Errorf("write %s: %w", f.Path, err)
 		}
-	}
-
-	if err := w.setupGit(ctx, ws, workDir); err != nil {
-		return fmt.Errorf("setup git: %w", err)
 	}
 
 	return nil

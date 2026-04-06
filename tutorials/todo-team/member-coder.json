@@ -3,10 +3,12 @@
   "data": {
     "id": "c3030303-0002-4000-8000-000000000002",
     "name": "coder",
-    "cli_profile_id": "31acb5b7-1c89-4458-9306-d17741f0eff0",
-    "system_prompt_ids": [
-      "a1010101-0002-4000-8000-000000000002"
-    ],
+    "model": "claude-sonnet-4-6",
+    "args": ["--dangerously-skip-permissions"],
+    "claude_md_id": "a1010101-0002-4000-8000-000000000002",
+    "skill_ids": [],
+    "settings_id": "e5050505-0001-4000-8000-000000000001",
+    "claude_json_id": "e5050505-0002-4000-8000-000000000002",
     "env_ids": [],
     "git_repo_id": "b2020202-0001-4000-8000-000000000001"
   }

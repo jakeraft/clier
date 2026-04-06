@@ -22,9 +22,8 @@ func newMemberCmd() *cobra.Command {
 }
 
 func newMemberCreateCmd() *cobra.Command {
-	var name, profile, repo string
-	var prompts []string
-	var envs []string
+	var name, model, claudeMd, settings, claudeJson, repo string
+	var cliArgs, skills, envs []string
 
 	cmd := &cobra.Command{
 		Use:         "create",
@@ -41,7 +40,7 @@ func newMemberCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			m, err := domain.NewMember(name, profile, prompts, repo, envs)
+			m, err := domain.NewMember(name, model, cliArgs, claudeMd, skills, settings, claudeJson, envs, repo)
 			if err != nil {
 				return err
 			}
@@ -52,12 +51,16 @@ func newMemberCreateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Member name")
-	cmd.Flags().StringVar(&profile, "profile", "", "CLI profile ID")
-	cmd.Flags().StringSliceVar(&prompts, "prompts", nil, "System prompt IDs (comma-separated)")
-	cmd.Flags().StringVar(&repo, "repo", "", "Git repo ID")
+	cmd.Flags().StringVar(&model, "model", "", "Model identifier")
+	cmd.Flags().StringSliceVar(&cliArgs, "args", nil, "CLI arguments (comma-separated)")
+	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "CLAUDE.md resource ID")
+	cmd.Flags().StringSliceVar(&skills, "skills", nil, "Skill IDs (comma-separated)")
+	cmd.Flags().StringVar(&settings, "settings", "", "Settings resource ID")
+	cmd.Flags().StringVar(&claudeJson, "claude-json", "", "ClaudeJson resource ID")
 	cmd.Flags().StringSliceVar(&envs, "envs", nil, "Env IDs (comma-separated)")
+	cmd.Flags().StringVar(&repo, "repo", "", "Git repo ID")
 	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("profile")
+	_ = cmd.MarkFlagRequired("model")
 	return cmd
 }
 
@@ -86,9 +89,8 @@ func newMemberListCmd() *cobra.Command {
 }
 
 func newMemberUpdateCmd() *cobra.Command {
-	var name, profile, repo string
-	var prompts []string
-	var envs []string
+	var name, model, claudeMd, settings, claudeJson, repo string
+	var cliArgs, skills, envs []string
 
 	cmd := &cobra.Command{
 		Use:         "update <id>",
@@ -115,24 +117,40 @@ func newMemberUpdateCmd() *cobra.Command {
 			if cmd.Flags().Changed("name") {
 				namePtr = &name
 			}
-			var profilePtr *string
-			if cmd.Flags().Changed("profile") {
-				profilePtr = &profile
+			var modelPtr *string
+			if cmd.Flags().Changed("model") {
+				modelPtr = &model
 			}
-			var promptIDsPtr *[]string
-			if cmd.Flags().Changed("prompts") {
-				promptIDsPtr = &prompts
+			var argsPtr *[]string
+			if cmd.Flags().Changed("args") {
+				argsPtr = &cliArgs
+			}
+			var claudeMdPtr *string
+			if cmd.Flags().Changed("claude-md") {
+				claudeMdPtr = &claudeMd
+			}
+			var skillsPtr *[]string
+			if cmd.Flags().Changed("skills") {
+				skillsPtr = &skills
+			}
+			var settingsPtr *string
+			if cmd.Flags().Changed("settings") {
+				settingsPtr = &settings
+			}
+			var claudeJsonPtr *string
+			if cmd.Flags().Changed("claude-json") {
+				claudeJsonPtr = &claudeJson
+			}
+			var envsPtr *[]string
+			if cmd.Flags().Changed("envs") {
+				envsPtr = &envs
 			}
 			var repoPtr *string
 			if cmd.Flags().Changed("repo") {
 				repoPtr = &repo
 			}
-			var envIDsPtr *[]string
-			if cmd.Flags().Changed("envs") {
-				envIDsPtr = &envs
-			}
 
-			if err := m.Update(namePtr, profilePtr, promptIDsPtr, repoPtr, envIDsPtr); err != nil {
+			if err := m.Update(namePtr, modelPtr, argsPtr, claudeMdPtr, skillsPtr, settingsPtr, claudeJsonPtr, envsPtr, repoPtr); err != nil {
 				return err
 			}
 			if err := store.UpdateMember(cmd.Context(), &m); err != nil {
@@ -142,10 +160,14 @@ func newMemberUpdateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New member name")
-	cmd.Flags().StringVar(&profile, "profile", "", "New CLI profile ID")
-	cmd.Flags().StringSliceVar(&prompts, "prompts", nil, "New system prompt IDs (comma-separated)")
-	cmd.Flags().StringVar(&repo, "repo", "", "New git repo ID")
+	cmd.Flags().StringVar(&model, "model", "", "New model identifier")
+	cmd.Flags().StringSliceVar(&cliArgs, "args", nil, "New CLI arguments (comma-separated)")
+	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "New CLAUDE.md resource ID")
+	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill IDs (comma-separated)")
+	cmd.Flags().StringVar(&settings, "settings", "", "New settings resource ID")
+	cmd.Flags().StringVar(&claudeJson, "claude-json", "", "New ClaudeJson resource ID")
 	cmd.Flags().StringSliceVar(&envs, "envs", nil, "New env IDs (comma-separated)")
+	cmd.Flags().StringVar(&repo, "repo", "", "New git repo ID")
 	return cmd
 }
 

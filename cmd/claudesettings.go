@@ -6,28 +6,27 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(newProfileCmd())
+	rootCmd.AddCommand(newClaudeSettingsCmd())
 }
 
-func newProfileCmd() *cobra.Command {
+func newClaudeSettingsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "profile",
-		Short: "Manage CLI profiles",
+		Use:   "claude-settings",
+		Short: "Manage Claude settings.json files",
 	}
-	cmd.AddCommand(newProfileCreateCmd())
-	cmd.AddCommand(newProfileListCmd())
-	cmd.AddCommand(newProfileUpdateCmd())
-	cmd.AddCommand(newProfileDeleteCmd())
+	cmd.AddCommand(newClaudeSettingsCreateCmd())
+	cmd.AddCommand(newClaudeSettingsListCmd())
+	cmd.AddCommand(newClaudeSettingsUpdateCmd())
+	cmd.AddCommand(newClaudeSettingsDeleteCmd())
 	return cmd
 }
 
-func newProfileCreateCmd() *cobra.Command {
-	var name, preset string
-	var customArgs []string
+func newClaudeSettingsCreateCmd() *cobra.Command {
+	var name, content string
 
 	cmd := &cobra.Command{
 		Use:         "create",
-		Short:       "Create a CLI profile",
+		Short:       "Create a Claude settings.json file",
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
@@ -40,28 +39,27 @@ func newProfileCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			p, err := resource.NewCliProfile(name, preset, customArgs)
+			s, err := resource.NewSettings(name, content)
 			if err != nil {
 				return err
 			}
-			if err := store.CreateCliProfile(cmd.Context(), p); err != nil {
+			if err := store.CreateSettings(cmd.Context(), s); err != nil {
 				return err
 			}
-			return printJSON(p)
+			return printJSON(s)
 		},
 	}
-	cmd.Flags().StringVar(&name, "name", "", "Profile name")
-	cmd.Flags().StringVar(&preset, "preset", "", "Preset key (e.g. claude-sonnet, claude-opus)")
-	cmd.Flags().StringSliceVar(&customArgs, "args", nil, "Custom CLI arguments (comma-separated)")
+	cmd.Flags().StringVar(&name, "name", "", "Settings name (human identifier)")
+	cmd.Flags().StringVar(&content, "content", "", "Settings JSON content")
 	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("preset")
+	_ = cmd.MarkFlagRequired("content")
 	return cmd
 }
 
-func newProfileListCmd() *cobra.Command {
+func newClaudeSettingsListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List all CLI profiles",
+		Short: "List all Claude settings.json files",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -73,22 +71,21 @@ func newProfileListCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			profiles, err := store.ListCliProfiles(cmd.Context())
+			items, err := store.ListSettings(cmd.Context())
 			if err != nil {
 				return err
 			}
-			return printJSON(profiles)
+			return printJSON(items)
 		},
 	}
 }
 
-func newProfileUpdateCmd() *cobra.Command {
-	var name string
-	var customArgs []string
+func newClaudeSettingsUpdateCmd() *cobra.Command {
+	var name, content string
 
 	cmd := &cobra.Command{
 		Use:         "update <id>",
-		Short:       "Update a CLI profile",
+		Short:       "Update a Claude settings.json file",
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -102,7 +99,7 @@ func newProfileUpdateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			p, err := store.GetCliProfile(cmd.Context(), args[0])
+			s, err := store.GetSettings(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -111,29 +108,29 @@ func newProfileUpdateCmd() *cobra.Command {
 			if cmd.Flags().Changed("name") {
 				namePtr = &name
 			}
-			var customArgsPtr *[]string
-			if cmd.Flags().Changed("args") {
-				customArgsPtr = &customArgs
+			var contentPtr *string
+			if cmd.Flags().Changed("content") {
+				contentPtr = &content
 			}
 
-			if err := p.Update(namePtr, customArgsPtr); err != nil {
+			if err := s.Update(namePtr, contentPtr); err != nil {
 				return err
 			}
-			if err := store.UpdateCliProfile(cmd.Context(), &p); err != nil {
+			if err := store.UpdateSettings(cmd.Context(), &s); err != nil {
 				return err
 			}
-			return printJSON(p)
+			return printJSON(s)
 		},
 	}
-	cmd.Flags().StringVar(&name, "name", "", "New profile name")
-	cmd.Flags().StringSliceVar(&customArgs, "args", nil, "New custom CLI arguments (comma-separated)")
+	cmd.Flags().StringVar(&name, "name", "", "New settings name")
+	cmd.Flags().StringVar(&content, "content", "", "New settings JSON content")
 	return cmd
 }
 
-func newProfileDeleteCmd() *cobra.Command {
+func newClaudeSettingsDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:         "delete <id>",
-		Short:       "Delete a CLI profile",
+		Short:       "Delete a Claude settings.json file",
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -147,7 +144,7 @@ func newProfileDeleteCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if err := store.DeleteCliProfile(cmd.Context(), args[0]); err != nil {
+			if err := store.DeleteSettings(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

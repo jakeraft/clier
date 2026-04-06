@@ -6,27 +6,27 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(newPromptCmd())
+	rootCmd.AddCommand(newClaudeMdCmd())
 }
 
-func newPromptCmd() *cobra.Command {
+func newClaudeMdCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "prompt",
-		Short: "Manage system prompts",
+		Use:   "claude-md",
+		Short: "Manage CLAUDE.md files",
 	}
-	cmd.AddCommand(newPromptCreateCmd())
-	cmd.AddCommand(newPromptListCmd())
-	cmd.AddCommand(newPromptUpdateCmd())
-	cmd.AddCommand(newPromptDeleteCmd())
+	cmd.AddCommand(newClaudeMdCreateCmd())
+	cmd.AddCommand(newClaudeMdListCmd())
+	cmd.AddCommand(newClaudeMdUpdateCmd())
+	cmd.AddCommand(newClaudeMdDeleteCmd())
 	return cmd
 }
 
-func newPromptCreateCmd() *cobra.Command {
-	var name, prompt string
+func newClaudeMdCreateCmd() *cobra.Command {
+	var name, content string
 
 	cmd := &cobra.Command{
 		Use:         "create",
-		Short:       "Create a system prompt",
+		Short:       "Create a CLAUDE.md file",
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
@@ -39,27 +39,27 @@ func newPromptCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			s, err := resource.NewSystemPrompt(name, prompt)
+			c, err := resource.NewClaudeMd(name, content)
 			if err != nil {
 				return err
 			}
-			if err := store.CreateSystemPrompt(cmd.Context(), s); err != nil {
+			if err := store.CreateClaudeMd(cmd.Context(), c); err != nil {
 				return err
 			}
-			return printJSON(s)
+			return printJSON(c)
 		},
 	}
-	cmd.Flags().StringVar(&name, "name", "", "Prompt name")
-	cmd.Flags().StringVar(&prompt, "prompt", "", "Prompt text")
+	cmd.Flags().StringVar(&name, "name", "", "CLAUDE.md name (human identifier)")
+	cmd.Flags().StringVar(&content, "content", "", "CLAUDE.md content")
 	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("prompt")
+	_ = cmd.MarkFlagRequired("content")
 	return cmd
 }
 
-func newPromptListCmd() *cobra.Command {
+func newClaudeMdListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List all system prompts",
+		Short: "List all CLAUDE.md files",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -71,21 +71,21 @@ func newPromptListCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			prompts, err := store.ListSystemPrompts(cmd.Context())
+			items, err := store.ListClaudeMds(cmd.Context())
 			if err != nil {
 				return err
 			}
-			return printJSON(prompts)
+			return printJSON(items)
 		},
 	}
 }
 
-func newPromptUpdateCmd() *cobra.Command {
-	var name, prompt string
+func newClaudeMdUpdateCmd() *cobra.Command {
+	var name, content string
 
 	cmd := &cobra.Command{
 		Use:         "update <id>",
-		Short:       "Update a system prompt",
+		Short:       "Update a CLAUDE.md file",
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -99,7 +99,7 @@ func newPromptUpdateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			s, err := store.GetSystemPrompt(cmd.Context(), args[0])
+			c, err := store.GetClaudeMd(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -108,29 +108,29 @@ func newPromptUpdateCmd() *cobra.Command {
 			if cmd.Flags().Changed("name") {
 				namePtr = &name
 			}
-			var promptPtr *string
-			if cmd.Flags().Changed("prompt") {
-				promptPtr = &prompt
+			var contentPtr *string
+			if cmd.Flags().Changed("content") {
+				contentPtr = &content
 			}
 
-			if err := s.Update(namePtr, promptPtr); err != nil {
+			if err := c.Update(namePtr, contentPtr); err != nil {
 				return err
 			}
-			if err := store.UpdateSystemPrompt(cmd.Context(), &s); err != nil {
+			if err := store.UpdateClaudeMd(cmd.Context(), &c); err != nil {
 				return err
 			}
-			return printJSON(s)
+			return printJSON(c)
 		},
 	}
-	cmd.Flags().StringVar(&name, "name", "", "New prompt name")
-	cmd.Flags().StringVar(&prompt, "prompt", "", "New prompt text")
+	cmd.Flags().StringVar(&name, "name", "", "New CLAUDE.md name")
+	cmd.Flags().StringVar(&content, "content", "", "New CLAUDE.md content")
 	return cmd
 }
 
-func newPromptDeleteCmd() *cobra.Command {
+func newClaudeMdDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:         "delete <id>",
-		Short:       "Delete a system prompt",
+		Short:       "Delete a CLAUDE.md file",
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -144,7 +144,7 @@ func newPromptDeleteCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if err := store.DeleteSystemPrompt(cmd.Context(), args[0]); err != nil {
+			if err := store.DeleteClaudeMd(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

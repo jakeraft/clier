@@ -8,17 +8,20 @@ import (
 	"database/sql"
 )
 
-type CliProfile struct {
-	ID           string
-	Name         string
-	Model        string
-	Binary       string
-	SystemArgs   string
-	CustomArgs   string
-	SettingsJson string
-	ClaudeJson   string
-	CreatedAt    int64
-	UpdatedAt    int64
+type ClaudeJson struct {
+	ID        string
+	Name      string
+	Content   string
+	CreatedAt int64
+	UpdatedAt int64
+}
+
+type ClaudeMd struct {
+	ID        string
+	Name      string
+	Content   string
+	CreatedAt int64
+	UpdatedAt int64
 }
 
 type Env struct {
@@ -41,7 +44,11 @@ type GitRepo struct {
 type Member struct {
 	ID           string
 	Name         string
-	CliProfileID string
+	Model        string
+	Args         string
+	ClaudeMdID   sql.NullString
+	SettingsID   sql.NullString
+	ClaudeJsonID sql.NullString
 	GitRepoID    sql.NullString
 	CreatedAt    int64
 	UpdatedAt    int64
@@ -52,9 +59,9 @@ type MemberEnv struct {
 	EnvID    string
 }
 
-type MemberSystemPrompt struct {
-	MemberID       string
-	SystemPromptID string
+type MemberSkill struct {
+	MemberID string
+	SkillID  string
 }
 
 type Message struct {
@@ -74,10 +81,18 @@ type Note struct {
 	CreatedAt    int64
 }
 
-type SystemPrompt struct {
+type Setting struct {
 	ID        string
 	Name      string
-	Prompt    string
+	Content   string
+	CreatedAt int64
+	UpdatedAt int64
+}
+
+type Skill struct {
+	ID        string
+	Name      string
+	Content   string
 	CreatedAt int64
 	UpdatedAt int64
 }

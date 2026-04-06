@@ -1,0 +1,8 @@
+{
+  "type": "claude_json",
+  "data": {
+    "id": "e5050505-0002-4000-8000-000000000002",
+    "name": "default",
+    "content": "{\"hasCompletedOnboarding\":true}"
+  }
+}

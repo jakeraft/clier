@@ -23,28 +23,32 @@ func (q *Queries) AddMemberEnv(ctx context.Context, arg AddMemberEnvParams) (sql
 	return q.db.ExecContext(ctx, addMemberEnv, arg.MemberID, arg.EnvID)
 }
 
-const addMemberSystemPrompt = `-- name: AddMemberSystemPrompt :execresult
-INSERT INTO member_system_prompts (member_id, system_prompt_id) VALUES (?, ?)
+const addMemberSkill = `-- name: AddMemberSkill :execresult
+INSERT INTO member_skills (member_id, skill_id) VALUES (?, ?)
 `
 
-type AddMemberSystemPromptParams struct {
-	MemberID       string
-	SystemPromptID string
+type AddMemberSkillParams struct {
+	MemberID string
+	SkillID  string
 }
 
-func (q *Queries) AddMemberSystemPrompt(ctx context.Context, arg AddMemberSystemPromptParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, addMemberSystemPrompt, arg.MemberID, arg.SystemPromptID)
+func (q *Queries) AddMemberSkill(ctx context.Context, arg AddMemberSkillParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, addMemberSkill, arg.MemberID, arg.SkillID)
 }
 
 const createMember = `-- name: CreateMember :execresult
-INSERT INTO members (id, name, cli_profile_id, git_repo_id, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO members (id, name, model, args, claude_md_id, settings_id, claude_json_id, git_repo_id, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateMemberParams struct {
 	ID           string
 	Name         string
-	CliProfileID string
+	Model        string
+	Args         string
+	ClaudeMdID   sql.NullString
+	SettingsID   sql.NullString
+	ClaudeJsonID sql.NullString
 	GitRepoID    sql.NullString
 	CreatedAt    int64
 	UpdatedAt    int64
@@ -54,7 +58,11 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (sql
 	return q.db.ExecContext(ctx, createMember,
 		arg.ID,
 		arg.Name,
-		arg.CliProfileID,
+		arg.Model,
+		arg.Args,
+		arg.ClaudeMdID,
+		arg.SettingsID,
+		arg.ClaudeJsonID,
 		arg.GitRepoID,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -77,16 +85,16 @@ func (q *Queries) DeleteMemberEnvs(ctx context.Context, memberID string) (sql.Re
 	return q.db.ExecContext(ctx, deleteMemberEnvs, memberID)
 }
 
-const deleteMemberSystemPrompts = `-- name: DeleteMemberSystemPrompts :execresult
-DELETE FROM member_system_prompts WHERE member_id = ?
+const deleteMemberSkills = `-- name: DeleteMemberSkills :execresult
+DELETE FROM member_skills WHERE member_id = ?
 `
 
-func (q *Queries) DeleteMemberSystemPrompts(ctx context.Context, memberID string) (sql.Result, error) {
-	return q.db.ExecContext(ctx, deleteMemberSystemPrompts, memberID)
+func (q *Queries) DeleteMemberSkills(ctx context.Context, memberID string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteMemberSkills, memberID)
 }
 
 const getMember = `-- name: GetMember :one
-SELECT id, name, cli_profile_id, git_repo_id, created_at, updated_at FROM members WHERE id = ?
+SELECT id, name, model, args, claude_md_id, settings_id, claude_json_id, git_repo_id, created_at, updated_at FROM members WHERE id = ?
 `
 
 func (q *Queries) GetMember(ctx context.Context, id string) (Member, error) {
@@ -95,7 +103,11 @@ func (q *Queries) GetMember(ctx context.Context, id string) (Member, error) {
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
-		&i.CliProfileID,
+		&i.Model,
+		&i.Args,
+		&i.ClaudeMdID,
+		&i.SettingsID,
+		&i.ClaudeJsonID,
 		&i.GitRepoID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -130,23 +142,23 @@ func (q *Queries) ListMemberEnvIDs(ctx context.Context, memberID string) ([]stri
 	return items, nil
 }
 
-const listMemberSystemPromptIDs = `-- name: ListMemberSystemPromptIDs :many
-SELECT system_prompt_id FROM member_system_prompts WHERE member_id = ? ORDER BY rowid
+const listMemberSkillIDs = `-- name: ListMemberSkillIDs :many
+SELECT skill_id FROM member_skills WHERE member_id = ? ORDER BY rowid
 `
 
-func (q *Queries) ListMemberSystemPromptIDs(ctx context.Context, memberID string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listMemberSystemPromptIDs, memberID)
+func (q *Queries) ListMemberSkillIDs(ctx context.Context, memberID string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listMemberSkillIDs, memberID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	var items []string
 	for rows.Next() {
-		var system_prompt_id string
-		if err := rows.Scan(&system_prompt_id); err != nil {
+		var skill_id string
+		if err := rows.Scan(&skill_id); err != nil {
 			return nil, err
 		}
-		items = append(items, system_prompt_id)
+		items = append(items, skill_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -158,7 +170,7 @@ func (q *Queries) ListMemberSystemPromptIDs(ctx context.Context, memberID string
 }
 
 const listMembers = `-- name: ListMembers :many
-SELECT id, name, cli_profile_id, git_repo_id, created_at, updated_at FROM members ORDER BY created_at
+SELECT id, name, model, args, claude_md_id, settings_id, claude_json_id, git_repo_id, created_at, updated_at FROM members ORDER BY created_at
 `
 
 func (q *Queries) ListMembers(ctx context.Context) ([]Member, error) {
@@ -173,7 +185,11 @@ func (q *Queries) ListMembers(ctx context.Context) ([]Member, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.CliProfileID,
+			&i.Model,
+			&i.Args,
+			&i.ClaudeMdID,
+			&i.SettingsID,
+			&i.ClaudeJsonID,
 			&i.GitRepoID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -204,26 +220,30 @@ func (q *Queries) RemoveMemberEnv(ctx context.Context, arg RemoveMemberEnvParams
 	return q.db.ExecContext(ctx, removeMemberEnv, arg.MemberID, arg.EnvID)
 }
 
-const removeMemberSystemPrompt = `-- name: RemoveMemberSystemPrompt :execresult
-DELETE FROM member_system_prompts WHERE member_id = ? AND system_prompt_id = ?
+const removeMemberSkill = `-- name: RemoveMemberSkill :execresult
+DELETE FROM member_skills WHERE member_id = ? AND skill_id = ?
 `
 
-type RemoveMemberSystemPromptParams struct {
-	MemberID       string
-	SystemPromptID string
+type RemoveMemberSkillParams struct {
+	MemberID string
+	SkillID  string
 }
 
-func (q *Queries) RemoveMemberSystemPrompt(ctx context.Context, arg RemoveMemberSystemPromptParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, removeMemberSystemPrompt, arg.MemberID, arg.SystemPromptID)
+func (q *Queries) RemoveMemberSkill(ctx context.Context, arg RemoveMemberSkillParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, removeMemberSkill, arg.MemberID, arg.SkillID)
 }
 
 const updateMember = `-- name: UpdateMember :execresult
-UPDATE members SET name = ?, cli_profile_id = ?, git_repo_id = ?, updated_at = ? WHERE id = ?
+UPDATE members SET name = ?, model = ?, args = ?, claude_md_id = ?, settings_id = ?, claude_json_id = ?, git_repo_id = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdateMemberParams struct {
 	Name         string
-	CliProfileID string
+	Model        string
+	Args         string
+	ClaudeMdID   sql.NullString
+	SettingsID   sql.NullString
+	ClaudeJsonID sql.NullString
 	GitRepoID    sql.NullString
 	UpdatedAt    int64
 	ID           string
@@ -232,7 +252,11 @@ type UpdateMemberParams struct {
 func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) (sql.Result, error) {
 	return q.db.ExecContext(ctx, updateMember,
 		arg.Name,
-		arg.CliProfileID,
+		arg.Model,
+		arg.Args,
+		arg.ClaudeMdID,
+		arg.SettingsID,
+		arg.ClaudeJsonID,
 		arg.GitRepoID,
 		arg.UpdatedAt,
 		arg.ID,

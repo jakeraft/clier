@@ -3,8 +3,10 @@ import type {
   TeamView,
   MemberView,
   MemberPlanView,
-  CliProfileView,
-  SystemPromptView,
+  ClaudeMdView,
+  SkillView,
+  SettingsView,
+  ClaudeJsonView,
   GitRepoView,
   EnvView,
   TaskView,
@@ -27,8 +29,10 @@ function findById<T extends { id: string }>(items: T[], id: string): T | undefin
 }
 
 export type {
-  CliProfileView,
-  SystemPromptView,
+  ClaudeMdView,
+  SkillView,
+  SettingsView,
+  ClaudeJsonView,
   GitRepoView,
   MemberView,
   MemberPlanView,
@@ -40,17 +44,31 @@ export type {
 };
 
 export const api = {
-  cliProfiles: {
-    list: (): Promise<CliProfileView[]> => Promise.resolve(getData().cliProfiles),
-    get: (id: string): Promise<CliProfileView> => {
-      const item = findById(getData().cliProfiles, id);
+  claudeMds: {
+    list: (): Promise<ClaudeMdView[]> => Promise.resolve(getData().claudeMds),
+    get: (id: string): Promise<ClaudeMdView> => {
+      const item = findById(getData().claudeMds, id);
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },
-  systemPrompts: {
-    list: (): Promise<SystemPromptView[]> => Promise.resolve(getData().systemPrompts),
-    get: (id: string): Promise<SystemPromptView> => {
-      const item = findById(getData().systemPrompts, id);
+  skills: {
+    list: (): Promise<SkillView[]> => Promise.resolve(getData().skills),
+    get: (id: string): Promise<SkillView> => {
+      const item = findById(getData().skills, id);
+      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
+    },
+  },
+  settings: {
+    list: (): Promise<SettingsView[]> => Promise.resolve(getData().settings),
+    get: (id: string): Promise<SettingsView> => {
+      const item = findById(getData().settings, id);
+      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
+    },
+  },
+  claudeJsons: {
+    list: (): Promise<ClaudeJsonView[]> => Promise.resolve(getData().claudeJsons),
+    get: (id: string): Promise<ClaudeJsonView> => {
+      const item = findById(getData().claudeJsons, id);
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },
@@ -75,10 +93,9 @@ export const api = {
         id: string;
         memberId: string;
         name: string;
-        cliProfileId: string;
-        systemPromptIds: string[];
-        cliProfileName: string;
-        systemPromptNames: string[];
+        model: string;
+        skillIds: string[];
+        skillNames: string[];
       }>;
       relations: Array<{ from: string; to: string }>;
     }> => {
@@ -92,10 +109,9 @@ export const api = {
           id: tm.id,
           memberId: tm.memberId,
           name: tm.name,
-          cliProfileId: spec?.cliProfileId ?? "",
-          systemPromptIds: spec?.systemPromptIds ?? [],
-          cliProfileName: spec?.cliProfileName ?? "",
-          systemPromptNames: spec?.systemPromptNames ?? [],
+          model: spec?.model ?? "",
+          skillIds: spec?.skillIds ?? [],
+          skillNames: spec?.skillNames ?? [],
         };
       });
       return Promise.resolve({

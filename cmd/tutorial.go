@@ -52,6 +52,7 @@ Monitor progress:
 
   clier task notes <task-id>       Check agent progress notes
   clier task attach <task-id>      Watch agents work in real time
+  clier dashboard                  Open the dashboard in the browser
 
 When the task is done:
 
