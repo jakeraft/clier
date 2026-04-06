@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS members (
 CREATE TABLE IF NOT EXISTS teams (
     id                   TEXT PRIMARY KEY,
     name                 TEXT NOT NULL,
+    -- References team_members(id). FK intentionally omitted: circular dependency
+    -- (team must exist before team_member, but root requires team_member).
+    -- Invariant enforced at domain layer (domain/team.go).
     root_team_member_id  TEXT NOT NULL,
     created_at           INTEGER NOT NULL,
     updated_at           INTEGER NOT NULL
@@ -47,7 +50,7 @@ CREATE TABLE IF NOT EXISTS teams (
 CREATE TABLE IF NOT EXISTS tasks (
     id            TEXT PRIMARY KEY,
     name          TEXT NOT NULL DEFAULT '',
-    team_id       TEXT NOT NULL REFERENCES teams(id),
+    team_id       TEXT NOT NULL REFERENCES teams(id) ON DELETE RESTRICT,
     status        TEXT NOT NULL DEFAULT 'running',
     plan          TEXT NOT NULL DEFAULT '[]',
     created_at    INTEGER NOT NULL,
@@ -74,7 +77,7 @@ CREATE TABLE IF NOT EXISTS notes (
 CREATE TABLE IF NOT EXISTS team_members (
     id        TEXT PRIMARY KEY,
     team_id   TEXT NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-    member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    member_id TEXT NOT NULL REFERENCES members(id) ON DELETE RESTRICT,
     name      TEXT NOT NULL
 );
 
