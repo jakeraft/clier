@@ -52,28 +52,28 @@ export function MemberDetail() {
             {
               label: "CLAUDE.md",
               children: member.claudeMdId ? (
-                <EntityBadge to={`/claude-mds/${member.claudeMdId}`}>{member.claudeMdName || EMPTY_DATA}</EntityBadge>
+                <EntityBadge to={`/prompts/claude-mds/${member.claudeMdId}`}>{member.claudeMdName || EMPTY_DATA}</EntityBadge>
               ) : (
                 <EmptyEntityBadge entity="claude-md" />
               ),
             },
             {
-              label: "Skills",
+              label: "SKILL.md",
               children: (
                 <EntityBadgeList
                   entity="skill"
                   items={member.skillIds.map((id, i) => ({
                     id,
                     name: member.skillNames[i] ?? EMPTY_DATA,
-                    to: `/skills/${id}`,
+                    to: `/prompts/skills/${id}`,
                   }))}
                 />
               ),
             },
             {
-              label: "Settings",
+              label: "settings.json",
               children: member.settingsId ? (
-                <EntityBadge to={`/claude-settings/${member.settingsId}`}>{member.settingsName || EMPTY_DATA}</EntityBadge>
+                <EntityBadge to={`/claude/settings/${member.settingsId}`}>{member.settingsName || EMPTY_DATA}</EntityBadge>
               ) : (
                 <EmptyEntityBadge entity="claude-settings" />
               ),
@@ -81,7 +81,7 @@ export function MemberDetail() {
             {
               label: ".claude.json",
               children: member.claudeJsonId ? (
-                <EntityBadge to={`/claude-jsons/${member.claudeJsonId}`}>{member.claudeJsonName || EMPTY_DATA}</EntityBadge>
+                <EntityBadge to={`/claude/claude-jsons/${member.claudeJsonId}`}>{member.claudeJsonName || EMPTY_DATA}</EntityBadge>
               ) : (
                 <EmptyEntityBadge entity="claude-json" />
               ),

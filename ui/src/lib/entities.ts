@@ -32,16 +32,18 @@ const SEGMENT_TO_ENTITY = new Map<string, Entity>([
   ["teams", "team"],
   ["tasks", "task"],
   ["members", "member"],
+  ["prompts", "claude-md"],
+  ["claude", "claude-settings"],
   ["claude-mds", "claude-md"],
   ["skills", "skill"],
-  ["claude-settings", "claude-settings"],
+  ["settings", "claude-settings"],
   ["claude-jsons", "claude-json"],
   ["git-repos", "git-repo"],
   ["envs", "env"],
 ]);
 
 function entityFromPath(path: string): Entity | undefined {
-  const match = /^\/(teams|tasks|members|claude-mds|skills|claude-settings|claude-jsons|git-repos|envs)(\/|$)/.exec(path);
+  const match = /^\/(teams|tasks|members|prompts|claude|claude-mds|skills|settings|claude-jsons|git-repos|envs)(\/|$)/.exec(path);
   if (!match) return undefined;
   return SEGMENT_TO_ENTITY.get(match[1]);
 }
