@@ -1,10 +1,10 @@
 {
   "files": [
-    "claude-sonnet.json",
-    "claude-haiku.json",
-    "prompt-tech-lead.json",
-    "prompt-coder.json",
-    "prompt-reviewer.json",
+    "settings-default.json",
+    "claude-json-default.json",
+    "claude-md-tech-lead.json",
+    "claude-md-coder.json",
+    "claude-md-reviewer.json",
     "todo-repo.json",
     "member-tech-lead.json",
     "member-coder.json",
