@@ -17,8 +17,8 @@ func TestReadContent_FromArgs(t *testing.T) {
 
 func TestReadContent_FromStdin(t *testing.T) {
 	r, w, _ := os.Pipe()
-	w.WriteString("from stdin\n")
-	w.Close()
+	_, _ = w.WriteString("from stdin\n")
+	_ = w.Close()
 
 	origStdin := os.Stdin
 	os.Stdin = r
@@ -35,8 +35,8 @@ func TestReadContent_FromStdin(t *testing.T) {
 
 func TestReadContent_DashMeansStdin(t *testing.T) {
 	r, w, _ := os.Pipe()
-	w.WriteString("via dash\n")
-	w.Close()
+	_, _ = w.WriteString("via dash\n")
+	_ = w.Close()
 
 	origStdin := os.Stdin
 	os.Stdin = r
@@ -53,7 +53,7 @@ func TestReadContent_DashMeansStdin(t *testing.T) {
 
 func TestReadContent_EmptyStdinError(t *testing.T) {
 	r, w, _ := os.Pipe()
-	w.Close()
+	_ = w.Close()
 
 	origStdin := os.Stdin
 	os.Stdin = r

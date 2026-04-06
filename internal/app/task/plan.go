@@ -83,7 +83,7 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 
 // buildPlans constructs MemberPlans from a resolved team.
 // This is the build phase: resolved objects -> execution plan with placeholders.
-func buildPlans(resolved *domain.ResolvedTeam, taskID string) ([]domain.MemberPlan, error) {
+func buildPlans(resolved *domain.ResolvedTeam, taskID string) []domain.MemberPlan {
 	nameByID := make(map[string]string, len(resolved.Members))
 	for _, rm := range resolved.Members {
 		nameByID[rm.TeamMemberID] = rm.Name
@@ -94,7 +94,7 @@ func buildPlans(resolved *domain.ResolvedTeam, taskID string) ([]domain.MemberPl
 		plan := buildMemberPlan(&rm, nameByID, resolved.Name, taskID)
 		plans = append(plans, plan)
 	}
-	return plans, nil
+	return plans
 }
 
 // buildMemberPlan constructs a single MemberPlan from a resolved member.

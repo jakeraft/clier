@@ -133,10 +133,7 @@ func TestBuildPlans(t *testing.T) {
 		t.Fatalf("resolveTeam: %v", err)
 	}
 
-	plans, err := buildPlans(resolved, "test-task")
-	if err != nil {
-		t.Fatalf("buildPlans: %v", err)
-	}
+	plans := buildPlans(resolved, "test-task")
 
 	if len(plans) != 2 {
 		t.Fatalf("plans = %d members, want 2", len(plans))

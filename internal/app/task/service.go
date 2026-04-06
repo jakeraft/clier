@@ -77,10 +77,7 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 	taskName := domain.TaskName(team.Name, taskID)
 
 	// Build: resolved objects -> execution plan (with placeholders)
-	plan, err := buildPlans(resolved, taskID)
-	if err != nil {
-		return nil, fmt.Errorf("build plans: %w", err)
-	}
+	plan := buildPlans(resolved, taskID)
 
 	t, err := domain.NewTask(taskID, taskName, team.ID)
 	if err != nil {
