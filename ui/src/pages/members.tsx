@@ -9,8 +9,8 @@ import type { EntityTableColumn } from "@/components/entity-table";
 
 const columns: EntityTableColumn<MemberView>[] = [
   {
-    header: "CLI Profile",
-    cell: (m) => <EntityBadge to={`/cli-profiles/${m.cliProfileId}`}>{m.cliProfileName || EMPTY_DATA}</EntityBadge>,
+    header: "Model",
+    cell: (m) => m.model || EMPTY_DATA,
     flex: 2,
   },
   {
@@ -24,8 +24,8 @@ const columns: EntityTableColumn<MemberView>[] = [
     flex: 2,
   },
   {
-    header: "System Prompt",
-    cell: (m) => <CountBadge count={m.systemPromptIds.length} />,
+    header: "Skills",
+    cell: (m) => <CountBadge count={m.skillIds.length} />,
   },
 ];
 

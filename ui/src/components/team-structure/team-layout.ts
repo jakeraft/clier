@@ -8,14 +8,13 @@ export interface StructureMember {
   id: string;
   memberId: string;
   name: string;
-  cliProfileId: string;
-  systemPromptIds: string[];
+  model: string;
+  skillIds: string[];
+  skillNames: string[];
 }
 
 export interface LayoutOptions {
   rootId?: string;
-  cliProfileNames?: Map<string, string>;
-  systemPromptNames?: Map<string, string>;
 }
 
 export const NODE_W = 200;
@@ -54,9 +53,6 @@ export function teamLayout(
 
   dagre.layout(g);
 
-  const cliProfileNames: Map<string, string> = options?.cliProfileNames ?? new Map<string, string>();
-  const spNames: Map<string, string> = options?.systemPromptNames ?? new Map<string, string>();
-
   const nodes: Node<MemberNodeData>[] = members.map((member) => {
     const pos = g.node(member.id) as DagreNode;
     return {
@@ -67,11 +63,8 @@ export function teamLayout(
         name: member.name,
         memberId: member.memberId,
         isRoot: options?.rootId === member.id,
-        cliProfileId: member.cliProfileId,
-        cliProfileName: member.cliProfileId ? cliProfileNames.get(member.cliProfileId) : undefined,
-        systemPrompts: member.systemPromptIds
-          .map((id) => ({ id, name: spNames.get(id) }))
-          .filter((index): index is { id: string; name: string } => index.name != undefined),
+        model: member.model,
+        skillCount: member.skillIds.length,
       },
       sourcePosition: Position.Bottom,
       targetPosition: Position.Top,

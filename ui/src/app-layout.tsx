@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { Moon, Sun, Users, Play, User, BookOpen, Bot, FolderGit2, KeyRound } from "lucide-react";
+import { Moon, Sun, Users, Play, User, FileText, BookOpen, Settings2, FileJson, FolderGit2, KeyRound } from "lucide-react";
 import { typography, typographyIcon } from "@/lib/typography";
 import { cn } from "@/lib/utilities";
 import { flex, gap } from "@/lib/layout";
@@ -13,9 +13,11 @@ const NAV_ITEMS = [
   { to: "/tasks", label: "Task", icon: Play },
   { to: "/teams", label: "Team", icon: Users },
   { to: "/members", label: "Member", icon: User },
-  { to: "/cli-profiles", label: "CLI", icon: Bot },
+  { to: "/claude-mds", label: "CLAUDE.md", icon: FileText },
+  { to: "/skills", label: "Skill", icon: BookOpen },
+  { to: "/claude-settings", label: "Settings", icon: Settings2 },
+  { to: "/claude-jsons", label: ".claude.json", icon: FileJson },
   { to: "/git-repos", label: "Repo", icon: FolderGit2 },
-  { to: "/system-prompts", label: "Prompt", icon: BookOpen },
   { to: "/envs", label: "Env", icon: KeyRound },
 ];
 

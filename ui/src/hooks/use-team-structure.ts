@@ -9,7 +9,7 @@ import { teamLayout, type StructureMember } from "@/components/team-structure/te
 
 interface StructureData {
   rootTeamMemberId: string;
-  members: Array<StructureMember & { cliProfileName: string; systemPromptNames: string[] }>;
+  members: Array<StructureMember & { model: string; skillNames: string[] }>;
   relations: Array<{ from: string; to: string }>;
 }
 
@@ -20,15 +20,8 @@ const EMPTY_LAYOUT = { nodes: [] as Node[], edges: [] as Edge[] };
 function buildLayout(structure: StructureData | undefined) {
   if (!structure) return EMPTY_LAYOUT;
 
-  const cliProfileNames = new Map(structure.members.map((m) => [m.cliProfileId, m.cliProfileName]));
-  const systemPromptNames = new Map(
-    structure.members.flatMap((m) => m.systemPromptIds.map((id, i) => [id, m.systemPromptNames[i]] as const)),
-  );
-
   return teamLayout(structure.members, structure.relations, {
     rootId: structure.rootTeamMemberId,
-    cliProfileNames,
-    systemPromptNames,
   });
 }
 

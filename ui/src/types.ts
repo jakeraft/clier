@@ -1,8 +1,10 @@
 export interface DashboardData {
   teams: TeamView[];
   members: MemberView[];
-  cliProfiles: CliProfileView[];
-  systemPrompts: SystemPromptView[];
+  claudeMds: ClaudeMdView[];
+  skills: SkillView[];
+  settings: SettingsView[];
+  claudeJsons: ClaudeJsonView[];
   gitRepos: GitRepoView[];
   envs: EnvView[];
   tasks: TaskView[];
@@ -75,35 +77,52 @@ export interface RelationView {
 export interface MemberView {
   id: string;
   name: string;
-  cliProfileId: string;
-  systemPromptIds: string[];
+  model: string;
+  args: string[];
+  claudeMdId: string | null;
+  skillIds: string[];
+  settingsId: string | null;
+  claudeJsonId: string | null;
   envIds: string[];
   gitRepoId: string | null;
-  cliProfileName: string;
-  systemPromptNames: string[];
+  claudeMdName: string | null;
+  skillNames: string[];
+  settingsName: string | null;
+  claudeJsonName: string | null;
   envNames: string[];
   gitRepoName: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CliProfileView {
+export interface ClaudeMdView {
   id: string;
   name: string;
-  model: string;
-  binary: "claude";
-  systemArgs: string[];
-  customArgs: string[];
-  settingsJson: Record<string, unknown>;
-  claudeJson: Record<string, unknown>;
+  content: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface SystemPromptView {
+export interface SkillView {
   id: string;
   name: string;
-  prompt: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SettingsView {
+  id: string;
+  name: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClaudeJsonView {
+  id: string;
+  name: string;
+  content: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -124,4 +143,3 @@ export interface EnvView {
   createdAt: string;
   updatedAt: string;
 }
-

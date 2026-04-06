@@ -30,6 +30,18 @@ export function MemberDetail() {
               children: <span className={typography[5]}>{member.name}</span>,
             },
             {
+              label: "Model",
+              children: <span className={typography[5]}>{member.model || EMPTY_DATA}</span>,
+            },
+            {
+              label: "Args",
+              children: member.args.length > 0 ? (
+                <span className={typography[5]}>{member.args.join(" ")}</span>
+              ) : (
+                EMPTY_DATA
+              ),
+            },
+            {
               label: "Git Repo",
               children: member.gitRepoId ? (
                 <EntityBadge to="/git-repos">{member.gitRepoName || EMPTY_DATA}</EntityBadge>
@@ -38,24 +50,40 @@ export function MemberDetail() {
               ),
             },
             {
-              label: "CLI Profile",
-              children: member.cliProfileId ? (
-                <EntityBadge to={`/cli-profiles/${member.cliProfileId}`}>{member.cliProfileName || EMPTY_DATA}</EntityBadge>
+              label: "CLAUDE.md",
+              children: member.claudeMdId ? (
+                <EntityBadge to={`/claude-mds/${member.claudeMdId}`}>{member.claudeMdName || EMPTY_DATA}</EntityBadge>
               ) : (
-                <EmptyEntityBadge entity="cli-profile" />
+                <EmptyEntityBadge entity="claude-md" />
               ),
             },
             {
-              label: "System Prompt",
+              label: "Skills",
               children: (
                 <EntityBadgeList
-                  entity="system-prompt"
-                  items={member.systemPromptIds.map((id, i) => ({
+                  entity="skill"
+                  items={member.skillIds.map((id, i) => ({
                     id,
-                    name: member.systemPromptNames[i] ?? EMPTY_DATA,
-                    to: `/system-prompts/${id}`,
+                    name: member.skillNames[i] ?? EMPTY_DATA,
+                    to: `/skills/${id}`,
                   }))}
                 />
+              ),
+            },
+            {
+              label: "Settings",
+              children: member.settingsId ? (
+                <EntityBadge to={`/claude-settings/${member.settingsId}`}>{member.settingsName || EMPTY_DATA}</EntityBadge>
+              ) : (
+                <EmptyEntityBadge entity="claude-settings" />
+              ),
+            },
+            {
+              label: ".claude.json",
+              children: member.claudeJsonId ? (
+                <EntityBadge to={`/claude-jsons/${member.claudeJsonId}`}>{member.claudeJsonName || EMPTY_DATA}</EntityBadge>
+              ) : (
+                <EmptyEntityBadge entity="claude-json" />
               ),
             },
             {
