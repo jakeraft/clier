@@ -81,7 +81,7 @@ func columnExists(db *sql.DB, table, column string) bool {
 	if err != nil {
 		return false
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var cid int
 		var name, ctype string

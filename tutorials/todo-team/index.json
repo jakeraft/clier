@@ -1,14 +1,14 @@
 {
   "files": [
-    "01-claude-sonnet.json",
-    "02-claude-haiku.json",
-    "03-prompt-tech-lead.json",
-    "04-prompt-coder.json",
-    "05-prompt-reviewer.json",
-    "07-todo-repo.json",
-    "10-member-tech-lead.json",
-    "11-member-coder.json",
-    "12-member-reviewer.json",
-    "15-team.json"
+    "claude-sonnet.json",
+    "claude-haiku.json",
+    "prompt-tech-lead.json",
+    "prompt-coder.json",
+    "prompt-reviewer.json",
+    "todo-repo.json",
+    "member-tech-lead.json",
+    "member-coder.json",
+    "member-reviewer.json",
+    "team.json"
   ]
 }

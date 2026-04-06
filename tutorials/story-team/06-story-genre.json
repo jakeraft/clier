@@ -1,9 +1,0 @@
-{
-  "type": "env",
-  "data": {
-    "id": "abfec5e6-18d9-4d72-99b8-328c4e004c43",
-    "name": "story-genre",
-    "key": "STORY_GENRE",
-    "value": "mystery"
-  }
-}

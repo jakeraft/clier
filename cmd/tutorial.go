@@ -14,8 +14,8 @@ import (
 
 const (
 	tutorialImportURL    = "https://raw.githubusercontent.com/jakeraft/clier/main/tutorials/todo-team"
-	tutorialTeamID       = "d4040404-0001-4000-8000-000000000001"       // Source: tutorials/todo-team/15-team.json
-	tutorialRootMemberID = "d4040404-aa01-4000-8000-000000000001"       // Source: tutorials/todo-team/15-team.json
+	tutorialTeamID       = "d4040404-0001-4000-8000-000000000001"       // Source: tutorials/todo-team/team.json
+	tutorialRootMemberID = "d4040404-aa01-4000-8000-000000000001"       // Source: tutorials/todo-team/team.json
 	tutorialMessage      = "Add a list --done flag to filter completed todos."
 )
 
@@ -128,9 +128,13 @@ func newTutorialStartCmd() *cobra.Command {
 			}
 
 			fmt.Fprintln(os.Stderr, "\nTutorial task started successfully.")
-			fmt.Fprintln(os.Stderr, "\nNext steps:")
+			fmt.Fprintln(os.Stderr, "\nMonitor progress:")
 			fmt.Fprintf(os.Stderr, "  clier task notes %s\n", tk.ID)
 			fmt.Fprintf(os.Stderr, "  clier task attach %s\n", tk.ID)
+			fmt.Fprintln(os.Stderr, "\nWhen all agents are done:")
+			fmt.Fprintf(os.Stderr, "  clier task stop %s\n", tk.ID)
+			fmt.Fprintln(os.Stderr, "\nSee the result:")
+			fmt.Fprintln(os.Stderr, "  gh pr list -R jakeraft/clier_todo --web")
 
 			return printJSON(tk)
 		},

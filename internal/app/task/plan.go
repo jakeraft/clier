@@ -91,17 +91,14 @@ func buildPlans(resolved *domain.ResolvedTeam, taskID string) ([]domain.MemberPl
 
 	plans := make([]domain.MemberPlan, 0, len(resolved.Members))
 	for _, rm := range resolved.Members {
-		plan, err := buildMemberPlan(&rm, nameByID, resolved.Team.Name, taskID)
-		if err != nil {
-			return nil, err
-		}
+		plan := buildMemberPlan(&rm, nameByID, resolved.Name, taskID)
 		plans = append(plans, plan)
 	}
 	return plans, nil
 }
 
 // buildMemberPlan constructs a single MemberPlan from a resolved member.
-func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, teamName, taskID string) (domain.MemberPlan, error) {
+func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, teamName, taskID string) domain.MemberPlan {
 	memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, PlaceholderTaskID, rm.TeamMemberID)
 
 	clierPrompt := buildClierPrompt(teamName, rm.Name, rm.Relations, nameByID)
@@ -131,5 +128,5 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 			Files:       files,
 			GitRepo:     gitRepo,
 		},
-	}, nil
+	}
 }
