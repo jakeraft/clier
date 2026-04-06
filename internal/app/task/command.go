@@ -41,13 +41,14 @@ func authEnvs() []string {
 	return []string{"CLAUDE_CODE_OAUTH_TOKEN=" + PlaceholderAuthClaude}
 }
 
-// identityEnvs returns git identity environment variables derived from the member name.
-func identityEnvs(memberName string) []string {
-	email := memberName + "@clier.local"
+// identityEnvs returns git identity environment variables derived from the team and member name.
+func identityEnvs(teamName, memberName string) []string {
+	name := teamName + "/" + memberName
+	email := "noreply@clier.com"
 	return []string{
-		"GIT_AUTHOR_NAME=" + memberName,
+		"GIT_AUTHOR_NAME=" + name,
 		"GIT_AUTHOR_EMAIL=" + email,
-		"GIT_COMMITTER_NAME=" + memberName,
+		"GIT_COMMITTER_NAME=" + name,
 		"GIT_COMMITTER_EMAIL=" + email,
 	}
 }
@@ -62,11 +63,11 @@ func userDefinedEnvs(envs []resource.Env) []string {
 }
 
 // buildEnv assembles the full set of environment variables for a member command.
-func buildEnv(memberName, taskID, memberID string, userEnvs []resource.Env) []string {
+func buildEnv(teamName, memberName, taskID, memberID string, userEnvs []resource.Env) []string {
 	var env []string
 	env = append(env, systemEnvs(taskID, memberID)...)
 	env = append(env, authEnvs()...)
-	env = append(env, identityEnvs(memberName)...)
+	env = append(env, identityEnvs(teamName, memberName)...)
 	env = append(env, userDefinedEnvs(userEnvs)...)
 	return env
 }
@@ -102,11 +103,11 @@ func buildAgentCommand(model string, systemArgs, customArgs []string,
 
 // buildCommand returns the complete shell command for launching an agent,
 // including environment variable exports.
-func buildCommand(profile resource.CliProfile, prompt, memberName, taskID, memberID string,
+func buildCommand(profile resource.CliProfile, prompt, teamName, memberName, taskID, memberID string,
 	userEnvs []resource.Env) string {
 
 	workDir := PlaceholderMemberspace + "/project"
 	cmd := buildAgentCommand(profile.Model, profile.SystemArgs, profile.CustomArgs, prompt, workDir)
-	env := buildEnv(memberName, taskID, memberID, userEnvs)
+	env := buildEnv(teamName, memberName, taskID, memberID, userEnvs)
 	return buildEnvCommand(cmd, env)
 }

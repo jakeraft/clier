@@ -61,7 +61,7 @@ func TestBuildEnv(t *testing.T) {
 			{Key: "GITHUB_TOKEN", Value: "ghp_xxx"},
 		}
 
-		env := buildEnv("reviewer", "task-1", "m1", userEnvs)
+		env := buildEnv("my-team", "reviewer", "task-1", "m1", userEnvs)
 
 		envMap := make(map[string]string)
 		for _, e := range env {
@@ -74,10 +74,10 @@ func TestBuildEnv(t *testing.T) {
 			"CLIER_TASK_ID":           "task-1",
 			"CLIER_MEMBER_ID":         "m1",
 			"CLAUDE_CODE_OAUTH_TOKEN": PlaceholderAuthClaude,
-			"GIT_AUTHOR_NAME":         "reviewer",
-			"GIT_AUTHOR_EMAIL":        "reviewer@clier.local",
-			"GIT_COMMITTER_NAME":      "reviewer",
-			"GIT_COMMITTER_EMAIL":     "reviewer@clier.local",
+			"GIT_AUTHOR_NAME":         "my-team/reviewer",
+			"GIT_AUTHOR_EMAIL":        "noreply@clier.com",
+			"GIT_COMMITTER_NAME":      "my-team/reviewer",
+			"GIT_COMMITTER_EMAIL":     "noreply@clier.com",
 			"GITHUB_TOKEN":            "ghp_xxx",
 		} {
 			if envMap[k] != want {
@@ -87,7 +87,7 @@ func TestBuildEnv(t *testing.T) {
 	})
 
 	t.Run("NoUserEnvs_HasSystemAuthIdentity", func(t *testing.T) {
-		env := buildEnv("coder", "task-1", "m2", nil)
+		env := buildEnv("my-team", "coder", "task-1", "m2", nil)
 
 		// system(3) + auth(1) + identity(4) = 8
 		if len(env) != 8 {
@@ -97,8 +97,8 @@ func TestBuildEnv(t *testing.T) {
 }
 
 func TestIdentityEnvs(t *testing.T) {
-	t.Run("DerivedFromMemberName", func(t *testing.T) {
-		envs := identityEnvs("alice")
+	t.Run("DerivedFromTeamAndMemberName", func(t *testing.T) {
+		envs := identityEnvs("dev-team", "alice")
 
 		envMap := make(map[string]string)
 		for _, e := range envs {
@@ -106,17 +106,17 @@ func TestIdentityEnvs(t *testing.T) {
 			envMap[k] = v
 		}
 
-		if envMap["GIT_AUTHOR_NAME"] != "alice" {
-			t.Errorf("GIT_AUTHOR_NAME = %q, want %q", envMap["GIT_AUTHOR_NAME"], "alice")
+		if envMap["GIT_AUTHOR_NAME"] != "dev-team/alice" {
+			t.Errorf("GIT_AUTHOR_NAME = %q, want %q", envMap["GIT_AUTHOR_NAME"], "dev-team/alice")
 		}
-		if envMap["GIT_AUTHOR_EMAIL"] != "alice@clier.local" {
-			t.Errorf("GIT_AUTHOR_EMAIL = %q, want %q", envMap["GIT_AUTHOR_EMAIL"], "alice@clier.local")
+		if envMap["GIT_AUTHOR_EMAIL"] != "noreply@clier.com" {
+			t.Errorf("GIT_AUTHOR_EMAIL = %q, want %q", envMap["GIT_AUTHOR_EMAIL"], "noreply@clier.com")
 		}
-		if envMap["GIT_COMMITTER_NAME"] != "alice" {
-			t.Errorf("GIT_COMMITTER_NAME = %q, want %q", envMap["GIT_COMMITTER_NAME"], "alice")
+		if envMap["GIT_COMMITTER_NAME"] != "dev-team/alice" {
+			t.Errorf("GIT_COMMITTER_NAME = %q, want %q", envMap["GIT_COMMITTER_NAME"], "dev-team/alice")
 		}
-		if envMap["GIT_COMMITTER_EMAIL"] != "alice@clier.local" {
-			t.Errorf("GIT_COMMITTER_EMAIL = %q, want %q", envMap["GIT_COMMITTER_EMAIL"], "alice@clier.local")
+		if envMap["GIT_COMMITTER_EMAIL"] != "noreply@clier.com" {
+			t.Errorf("GIT_COMMITTER_EMAIL = %q, want %q", envMap["GIT_COMMITTER_EMAIL"], "noreply@clier.com")
 		}
 	})
 }
@@ -153,7 +153,7 @@ func TestBuildCommand(t *testing.T) {
 			SystemArgs: []string{"--dangerously-skip-permissions"},
 			CustomArgs: []string{"--verbose"},
 		}
-		cmd := buildCommand(profile, "you are a coder", "coder", "task-1", "m1", nil)
+		cmd := buildCommand(profile, "you are a coder", "my-team", "coder", "task-1", "m1", nil)
 
 		for _, want := range []string{
 			"claude",
@@ -165,10 +165,10 @@ func TestBuildCommand(t *testing.T) {
 			"export CLIER_TASK_ID='task-1'",
 			"export CLIER_MEMBER_ID='m1'",
 			"export CLAUDE_CODE_OAUTH_TOKEN='" + PlaceholderAuthClaude + "'",
-			"export GIT_AUTHOR_NAME='coder'",
-			"export GIT_AUTHOR_EMAIL='coder@clier.local'",
-			"export GIT_COMMITTER_NAME='coder'",
-			"export GIT_COMMITTER_EMAIL='coder@clier.local'",
+			"export GIT_AUTHOR_NAME='my-team/coder'",
+			"export GIT_AUTHOR_EMAIL='noreply@clier.com'",
+			"export GIT_COMMITTER_NAME='my-team/coder'",
+			"export GIT_COMMITTER_EMAIL='noreply@clier.com'",
 			"cd '" + PlaceholderMemberspace + "/project'",
 		} {
 			if !strings.Contains(cmd, want) {
@@ -184,7 +184,7 @@ func TestBuildCommand(t *testing.T) {
 		}
 
 		profile := resource.CliProfile{Model: "opus"}
-		cmd := buildCommand(profile, "", "alice", "task-1", "m1", userEnvs)
+		cmd := buildCommand(profile, "", "my-team", "alice", "task-1", "m1", userEnvs)
 
 		if !strings.Contains(cmd, "export GITHUB_TOKEN='ghp_xxx'") {
 			t.Errorf("missing GITHUB_TOKEN in:\n%s", cmd)
