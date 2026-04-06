@@ -1,5 +1,5 @@
 import { useParams } from "react-router";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Settings2 } from "lucide-react";
 import { api } from "@/api";
 import { typography } from "@/lib/typography";
 import { SectionCard as Section } from "@/components/section-card";
@@ -25,12 +25,14 @@ export function SettingsDetail() {
               label: "Name",
               children: <span className={typography[5]}>{data.name}</span>,
             },
-            {
-              label: "Content",
-              children: <pre className="whitespace-pre-wrap text-sm">{data.content}</pre>,
-            },
           ]}
         />
+      </Section>
+
+      <Section icon={Settings2} title="Content">
+        <pre className={`rounded-base bg-muted/50 border p-3 whitespace-pre-wrap ${typography[5]}`}>
+          {data.content}
+        </pre>
       </Section>
     </DetailLayout>
   );
