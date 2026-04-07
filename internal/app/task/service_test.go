@@ -53,9 +53,6 @@ func (s *stubStore) GetSettings(_ context.Context, _ string) (resource.Settings,
 func (s *stubStore) GetClaudeJson(_ context.Context, _ string) (resource.ClaudeJson, error) {
 	return resource.ClaudeJson{}, errors.New("not implemented")
 }
-func (s *stubStore) GetGitRepo(_ context.Context, _ string) (resource.GitRepo, error) {
-	return resource.GitRepo{}, errors.New("not implemented")
-}
 
 type stubTerminal struct {
 	sent []string

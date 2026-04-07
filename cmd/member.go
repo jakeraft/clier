@@ -57,7 +57,7 @@ func newMemberCreateCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "Skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&settings, "settings", "", "Settings resource ID")
 	cmd.Flags().StringVar(&claudeJson, "claude-json", "", "ClaudeJson resource ID")
-	cmd.Flags().StringVar(&repo, "repo", "", "Git repo ID")
+	cmd.Flags().StringVar(&repo, "repo", "", "Git repo URL")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("model")
 	return cmd
@@ -161,7 +161,7 @@ func newMemberUpdateCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&settings, "settings", "", "New settings resource ID")
 	cmd.Flags().StringVar(&claudeJson, "claude-json", "", "New ClaudeJson resource ID")
-	cmd.Flags().StringVar(&repo, "repo", "", "New git repo ID")
+	cmd.Flags().StringVar(&repo, "repo", "", "New git repo URL")
 	return cmd
 }
 

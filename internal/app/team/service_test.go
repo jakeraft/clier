@@ -39,14 +39,9 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (stri
 		t.Fatalf("CreateClaudeJson: %v", err)
 	}
 
-	repo, _ := resource.NewGitRepo("test-repo", "https://example.com/repo.git")
-	if err := store.CreateGitRepo(ctx, repo); err != nil {
-		t.Fatalf("CreateGitRepo: %v", err)
-	}
-
 	root, _ := domain.NewMember("alice", "claude-sonnet-4-6",
 		[]string{"--dangerously-skip-permissions"},
-		claudeMd.ID, nil, settings.ID, claudeJson.ID, repo.ID)
+		claudeMd.ID, nil, settings.ID, claudeJson.ID, "https://example.com/repo.git")
 	if err := store.CreateMember(ctx, root); err != nil {
 		t.Fatalf("CreateMember root: %v", err)
 	}

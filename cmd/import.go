@@ -242,26 +242,6 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		}
 		return printJSON(cj)
 
-	case "git_repo":
-		var r resource.GitRepo
-		if err := json.Unmarshal(envelope.Data, &r); err != nil {
-			return fmt.Errorf("unmarshal git_repo: %w", err)
-		}
-		setTimestamps(&r.CreatedAt, &r.UpdatedAt)
-		if existing, err := store.GetGitRepo(ctx, r.ID); err == nil {
-			if err := existing.Update(&r.Name, &r.URL); err != nil {
-				return err
-			}
-			if err := store.UpdateGitRepo(ctx, &existing); err != nil {
-				return err
-			}
-			return printJSON(existing)
-		}
-		if err := store.CreateGitRepo(ctx, &r); err != nil {
-			return err
-		}
-		return printJSON(r)
-
 	case "member":
 		var m domain.Member
 		if err := json.Unmarshal(envelope.Data, &m); err != nil {
@@ -270,7 +250,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		setTimestamps(&m.CreatedAt, &m.UpdatedAt)
 		if existing, err := store.GetMember(ctx, m.ID); err == nil {
 			if err := existing.Update(&m.Name, &m.Model, &m.Args, &m.ClaudeMdID, &m.SkillIDs,
-				&m.SettingsID, &m.ClaudeJsonID, &m.GitRepoID); err != nil {
+				&m.SettingsID, &m.ClaudeJsonID, &m.GitRepoURL); err != nil {
 				return err
 			}
 			if err := store.UpdateMember(ctx, &existing); err != nil {
