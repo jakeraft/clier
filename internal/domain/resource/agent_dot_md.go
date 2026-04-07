@@ -8,9 +8,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// ClaudeMd is a CLAUDE.md file that gets written to {workspace}/project/CLAUDE.md.
-// Maps 1:1 to the Claude Code project-level CLAUDE.md.
-type ClaudeMd struct {
+// AgentDotMd is a project instruction file shared across agent types.
+// Written as CLAUDE.md (Claude), AGENTS.md (Codex), or GEMINI.md (Gemini).
+type AgentDotMd struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Content   string    `json:"content"`
@@ -18,18 +18,18 @@ type ClaudeMd struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func NewClaudeMd(name, content string) (*ClaudeMd, error) {
+func NewAgentDotMd(name, content string) (*AgentDotMd, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, errors.New("claude md name must not be empty")
+		return nil, errors.New("agent dot md name must not be empty")
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return nil, errors.New("claude md content must not be empty")
+		return nil, errors.New("agent dot md content must not be empty")
 	}
 
 	now := time.Now()
-	return &ClaudeMd{
+	return &AgentDotMd{
 		ID:        uuid.NewString(),
 		Name:      name,
 		Content:   content,
@@ -38,21 +38,21 @@ func NewClaudeMd(name, content string) (*ClaudeMd, error) {
 	}, nil
 }
 
-func (c *ClaudeMd) Update(name, content *string) error {
+func (a *AgentDotMd) Update(name, content *string) error {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
-			return errors.New("claude md name must not be empty")
+			return errors.New("agent dot md name must not be empty")
 		}
-		c.Name = trimmed
+		a.Name = trimmed
 	}
 	if content != nil {
 		trimmed := strings.TrimSpace(*content)
 		if trimmed == "" {
-			return errors.New("claude md content must not be empty")
+			return errors.New("agent dot md content must not be empty")
 		}
-		c.Content = trimmed
+		a.Content = trimmed
 	}
-	c.UpdatedAt = time.Now()
+	a.UpdatedAt = time.Now()
 	return nil
 }
