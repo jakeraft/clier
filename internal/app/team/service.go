@@ -18,7 +18,6 @@ type Store interface {
 	CreateSkill(ctx context.Context, sk *resource.Skill) error
 	CreateSettings(ctx context.Context, st *resource.Settings) error
 	CreateClaudeJson(ctx context.Context, cj *resource.ClaudeJson) error
-	CreateEnv(ctx context.Context, e *resource.Env) error
 	CreateGitRepo(ctx context.Context, r *resource.GitRepo) error
 	CreateMember(ctx context.Context, m *domain.Member) error
 	CreateTeam(ctx context.Context, t *domain.Team) error
@@ -26,7 +25,6 @@ type Store interface {
 	UpdateSkill(ctx context.Context, sk *resource.Skill) error
 	UpdateSettings(ctx context.Context, st *resource.Settings) error
 	UpdateClaudeJson(ctx context.Context, cj *resource.ClaudeJson) error
-	UpdateEnv(ctx context.Context, e *resource.Env) error
 	UpdateGitRepo(ctx context.Context, r *resource.GitRepo) error
 	UpdateMember(ctx context.Context, m *domain.Member) error
 	UpdateTeam(ctx context.Context, t *domain.Team) error

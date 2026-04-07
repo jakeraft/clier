@@ -17,7 +17,6 @@ import { TaskDetail } from "@/pages/task-detail";
 import { Members } from "@/pages/members";
 import { MemberDetail } from "@/pages/member-detail";
 import { GitRepos } from "@/pages/git-repos";
-import { Envs } from "@/pages/envs";
 
 // React Router reuses the same component instance when only the :id param changes
 // (e.g. /members/A → /members/B). This preserves all hook state, causing stale data bugs.
@@ -44,7 +43,6 @@ export default function App() {
               <Route path="/members" element={<Members />} />
               <Route path="/members/:id" element={<Keyed Component={MemberDetail} />} />
               <Route path="/git-repos" element={<GitRepos />} />
-              <Route path="/envs" element={<Envs />} />
               <Route path="/teams" element={<Teams />} />
               <Route path="/teams/:id" element={<Keyed Component={TeamDetail} />} />
               <Route path="/tasks" element={<Tasks />} />

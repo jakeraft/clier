@@ -23,7 +23,7 @@ func newMemberCmd() *cobra.Command {
 
 func newMemberCreateCmd() *cobra.Command {
 	var name, model, claudeMd, settings, claudeJson, repo string
-	var cliArgs, skills, envs []string
+	var cliArgs, skills []string
 
 	cmd := &cobra.Command{
 		Use:         "create",
@@ -40,7 +40,7 @@ func newMemberCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			m, err := domain.NewMember(name, model, cliArgs, claudeMd, skills, settings, claudeJson, envs, repo)
+			m, err := domain.NewMember(name, model, cliArgs, claudeMd, skills, settings, claudeJson, repo)
 			if err != nil {
 				return err
 			}
@@ -57,7 +57,6 @@ func newMemberCreateCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "Skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&settings, "settings", "", "Settings resource ID")
 	cmd.Flags().StringVar(&claudeJson, "claude-json", "", "ClaudeJson resource ID")
-	cmd.Flags().StringSliceVar(&envs, "envs", nil, "Env IDs (comma-separated)")
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repo ID")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("model")
@@ -90,7 +89,7 @@ func newMemberListCmd() *cobra.Command {
 
 func newMemberUpdateCmd() *cobra.Command {
 	var name, model, claudeMd, settings, claudeJson, repo string
-	var cliArgs, skills, envs []string
+	var cliArgs, skills []string
 
 	cmd := &cobra.Command{
 		Use:         "update <id>",
@@ -141,16 +140,12 @@ func newMemberUpdateCmd() *cobra.Command {
 			if cmd.Flags().Changed("claude-json") {
 				claudeJsonPtr = &claudeJson
 			}
-			var envsPtr *[]string
-			if cmd.Flags().Changed("envs") {
-				envsPtr = &envs
-			}
 			var repoPtr *string
 			if cmd.Flags().Changed("repo") {
 				repoPtr = &repo
 			}
 
-			if err := m.Update(namePtr, modelPtr, argsPtr, claudeMdPtr, skillsPtr, settingsPtr, claudeJsonPtr, envsPtr, repoPtr); err != nil {
+			if err := m.Update(namePtr, modelPtr, argsPtr, claudeMdPtr, skillsPtr, settingsPtr, claudeJsonPtr, repoPtr); err != nil {
 				return err
 			}
 			if err := store.UpdateMember(cmd.Context(), &m); err != nil {
@@ -166,7 +161,6 @@ func newMemberUpdateCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&settings, "settings", "", "New settings resource ID")
 	cmd.Flags().StringVar(&claudeJson, "claude-json", "", "New ClaudeJson resource ID")
-	cmd.Flags().StringSliceVar(&envs, "envs", nil, "New env IDs (comma-separated)")
 	cmd.Flags().StringVar(&repo, "repo", "", "New git repo ID")
 	return cmd
 }
