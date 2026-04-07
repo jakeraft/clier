@@ -7,7 +7,6 @@ import type {
   SkillView,
   SettingsView,
   ClaudeJsonView,
-  GitRepoView,
   TaskView,
   NoteView,
   MessageView,
@@ -32,7 +31,6 @@ export type {
   SkillView,
   SettingsView,
   ClaudeJsonView,
-  GitRepoView,
   MemberView,
   MemberPlanView,
   TeamView,
@@ -130,13 +128,6 @@ export const api = {
       const team = findById(getData().teams, id);
       if (!team) return Promise.reject(new Error("Not found"));
       return Promise.resolve(team.relations);
-    },
-  },
-  gitRepos: {
-    list: (): Promise<GitRepoView[]> => Promise.resolve(getData().gitRepos),
-    get: (id: string): Promise<GitRepoView> => {
-      const item = findById(getData().gitRepos, id);
-      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },
   tasks: {

@@ -5,7 +5,6 @@ export interface DashboardData {
   skills: SkillView[];
   settings: SettingsView[];
   claudeJsons: ClaudeJsonView[];
-  gitRepos: GitRepoView[];
   tasks: TaskView[];
 }
 
@@ -33,7 +32,7 @@ export interface MemberPlanView {
   memberName: string;
   memberspace: string;
   command: string;
-  gitRepo: { name: string; url: string } | null;
+  gitRepoUrl: string;
   files: { path: string; content: string }[];
 }
 
@@ -82,12 +81,11 @@ export interface MemberView {
   skillIds: string[];
   settingsId: string | null;
   claudeJsonId: string | null;
-  gitRepoId: string | null;
+  gitRepoUrl: string;
   claudeMdName: string | null;
   skillNames: string[];
   settingsName: string | null;
   claudeJsonName: string | null;
-  gitRepoName: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -124,11 +122,4 @@ export interface ClaudeJsonView {
   updatedAt: string;
 }
 
-export interface GitRepoView {
-  id: string;
-  name: string;
-  url: string;
-  createdAt: string;
-  updatedAt: string;
-}
 

@@ -193,8 +193,8 @@ function PlanMemberSection({ member }: Readonly<{ member: MemberPlanView }>) {
               { label: "Memberspace", children: <span className={typography[5]}>{member.memberspace}</span> },
               {
                 label: "GitRepo",
-                children: member.gitRepo ? (
-                  <span className={typography[5]}>{member.gitRepo.url}</span>
+                children: member.gitRepoUrl ? (
+                  <span className={typography[5]}>{member.gitRepoUrl}</span>
                 ) : (
                   <span className={typography[6]}>-</span>
                 ),

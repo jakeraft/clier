@@ -43,10 +43,10 @@ export function MemberDetail() {
             },
             {
               label: "Git Repo",
-              children: member.gitRepoId ? (
-                <EntityBadge to="/git-repos">{member.gitRepoName || EMPTY_DATA}</EntityBadge>
+              children: member.gitRepoUrl ? (
+                <span className={typography[5]}>{member.gitRepoUrl}</span>
               ) : (
-                <EmptyEntityBadge entity="git-repo" />
+                EMPTY_DATA
               ),
             },
             {

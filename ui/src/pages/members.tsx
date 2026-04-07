@@ -1,8 +1,6 @@
 import { api } from "@/api";
 import type { MemberView } from "@/api";
 import { EMPTY_DATA } from "@/components/empty-cell";
-import { EntityBadge } from "@/components/entity-badge";
-import { EmptyEntityBadge } from "@/components/empty-entity-badge";
 import { CountBadge } from "@/components/count-badge";
 import { EntityListPage } from "@/components/entity-list-page";
 import type { EntityTableColumn } from "@/components/entity-table";
@@ -15,12 +13,7 @@ const columns: EntityTableColumn<MemberView>[] = [
   },
   {
     header: "Git Repo",
-    cell: (m) =>
-      m.gitRepoId ? (
-        <EntityBadge to="/git-repos">{m.gitRepoName || EMPTY_DATA}</EntityBadge>
-      ) : (
-        <EmptyEntityBadge entity="git-repo" />
-      ),
+    cell: (m) => m.gitRepoUrl || EMPTY_DATA,
     flex: 2,
   },
   {
