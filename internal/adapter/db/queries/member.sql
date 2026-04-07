@@ -1,6 +1,6 @@
 -- name: CreateMember :execresult
-INSERT INTO members (id, name, model, args, claude_md_id, settings_id, claude_json_id, git_repo_id, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO members (id, name, agent_type, model, args, agent_dot_md_id, claude_settings_id, claude_json_id, git_repo_id, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetMember :one
 SELECT * FROM members WHERE id = ?;
@@ -9,7 +9,7 @@ SELECT * FROM members WHERE id = ?;
 SELECT * FROM members ORDER BY created_at;
 
 -- name: UpdateMember :execresult
-UPDATE members SET name = ?, model = ?, args = ?, claude_md_id = ?, settings_id = ?, claude_json_id = ?, git_repo_id = ?, updated_at = ? WHERE id = ?;
+UPDATE members SET name = ?, agent_type = ?, model = ?, args = ?, agent_dot_md_id = ?, claude_settings_id = ?, claude_json_id = ?, git_repo_id = ?, updated_at = ? WHERE id = ?;
 
 -- name: DeleteMember :execresult
 DELETE FROM members WHERE id = ?;
