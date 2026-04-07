@@ -121,5 +121,3 @@ export interface ClaudeJsonView {
   createdAt: string;
   updatedAt: string;
 }
-
-
