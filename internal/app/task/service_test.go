@@ -53,9 +53,6 @@ func (s *stubStore) GetClaudeSettings(_ context.Context, _ string) (resource.Cla
 func (s *stubStore) GetClaudeJson(_ context.Context, _ string) (resource.ClaudeJson, error) {
 	return resource.ClaudeJson{}, errors.New("not implemented")
 }
-func (s *stubStore) GetEnv(_ context.Context, _ string) (resource.Env, error) {
-	return resource.Env{}, errors.New("not implemented")
-}
 func (s *stubStore) GetGitRepo(_ context.Context, _ string) (resource.GitRepo, error) {
 	return resource.GitRepo{}, errors.New("not implemented")
 }

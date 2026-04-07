@@ -38,15 +38,6 @@ CREATE TABLE IF NOT EXISTS git_repos (
     updated_at INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS envs (
-    id         TEXT PRIMARY KEY,
-    name       TEXT NOT NULL,
-    key        TEXT NOT NULL,
-    value      TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS members (
     id                TEXT PRIMARY KEY,
     name              TEXT NOT NULL,
@@ -65,12 +56,6 @@ CREATE TABLE IF NOT EXISTS member_skills (
     member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
     skill_id  TEXT NOT NULL REFERENCES skills(id)  ON DELETE RESTRICT,
     PRIMARY KEY (member_id, skill_id)
-);
-
-CREATE TABLE IF NOT EXISTS member_envs (
-    member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-    env_id    TEXT NOT NULL REFERENCES envs(id)    ON DELETE RESTRICT,
-    PRIMARY KEY (member_id, env_id)
 );
 
 CREATE TABLE IF NOT EXISTS teams (

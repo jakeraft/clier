@@ -10,19 +10,6 @@ import (
 	"database/sql"
 )
 
-const addMemberEnv = `-- name: AddMemberEnv :execresult
-INSERT INTO member_envs (member_id, env_id) VALUES (?, ?)
-`
-
-type AddMemberEnvParams struct {
-	MemberID string
-	EnvID    string
-}
-
-func (q *Queries) AddMemberEnv(ctx context.Context, arg AddMemberEnvParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, addMemberEnv, arg.MemberID, arg.EnvID)
-}
-
 const addMemberSkill = `-- name: AddMemberSkill :execresult
 INSERT INTO member_skills (member_id, skill_id) VALUES (?, ?)
 `
@@ -79,14 +66,6 @@ func (q *Queries) DeleteMember(ctx context.Context, id string) (sql.Result, erro
 	return q.db.ExecContext(ctx, deleteMember, id)
 }
 
-const deleteMemberEnvs = `-- name: DeleteMemberEnvs :execresult
-DELETE FROM member_envs WHERE member_id = ?
-`
-
-func (q *Queries) DeleteMemberEnvs(ctx context.Context, memberID string) (sql.Result, error) {
-	return q.db.ExecContext(ctx, deleteMemberEnvs, memberID)
-}
-
 const deleteMemberSkills = `-- name: DeleteMemberSkills :execresult
 DELETE FROM member_skills WHERE member_id = ?
 `
@@ -116,33 +95,6 @@ func (q *Queries) GetMember(ctx context.Context, id string) (Member, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const listMemberEnvIDs = `-- name: ListMemberEnvIDs :many
-SELECT env_id FROM member_envs WHERE member_id = ? ORDER BY rowid
-`
-
-func (q *Queries) ListMemberEnvIDs(ctx context.Context, memberID string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listMemberEnvIDs, memberID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var env_id string
-		if err := rows.Scan(&env_id); err != nil {
-			return nil, err
-		}
-		items = append(items, env_id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const listMemberSkillIDs = `-- name: ListMemberSkillIDs :many
@@ -209,19 +161,6 @@ func (q *Queries) ListMembers(ctx context.Context) ([]Member, error) {
 		return nil, err
 	}
 	return items, nil
-}
-
-const removeMemberEnv = `-- name: RemoveMemberEnv :execresult
-DELETE FROM member_envs WHERE member_id = ? AND env_id = ?
-`
-
-type RemoveMemberEnvParams struct {
-	MemberID string
-	EnvID    string
-}
-
-func (q *Queries) RemoveMemberEnv(ctx context.Context, arg RemoveMemberEnvParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, removeMemberEnv, arg.MemberID, arg.EnvID)
 }
 
 const removeMemberSkill = `-- name: RemoveMemberSkill :execresult

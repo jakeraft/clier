@@ -156,15 +156,15 @@ func newImportCmd() *cobra.Command {
 
 // importEnvelope imports a single JSON envelope into the store.
 func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
-	var env Envelope
-	if err := json.Unmarshal(data, &env); err != nil {
+	var envelope Envelope
+	if err := json.Unmarshal(data, &envelope); err != nil {
 		return fmt.Errorf("parse envelope: %w", err)
 	}
 
-	switch env.Type {
+	switch envelope.Type {
 	case "agent_dot_md":
 		var c resource.AgentDotMd
-		if err := json.Unmarshal(env.Data, &c); err != nil {
+		if err := json.Unmarshal(envelope.Data, &c); err != nil {
 			return fmt.Errorf("unmarshal agent_dot_md: %w", err)
 		}
 		setTimestamps(&c.CreatedAt, &c.UpdatedAt)
@@ -184,7 +184,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 
 	case "skill":
 		var sk resource.Skill
-		if err := json.Unmarshal(env.Data, &sk); err != nil {
+		if err := json.Unmarshal(envelope.Data, &sk); err != nil {
 			return fmt.Errorf("unmarshal skill: %w", err)
 		}
 		setTimestamps(&sk.CreatedAt, &sk.UpdatedAt)
@@ -204,7 +204,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 
 	case "claude_settings":
 		var st resource.ClaudeSettings
-		if err := json.Unmarshal(env.Data, &st); err != nil {
+		if err := json.Unmarshal(envelope.Data, &st); err != nil {
 			return fmt.Errorf("unmarshal claude_settings: %w", err)
 		}
 		setTimestamps(&st.CreatedAt, &st.UpdatedAt)
@@ -224,7 +224,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 
 	case "claude_json":
 		var cj resource.ClaudeJson
-		if err := json.Unmarshal(env.Data, &cj); err != nil {
+		if err := json.Unmarshal(envelope.Data, &cj); err != nil {
 			return fmt.Errorf("unmarshal claude_json: %w", err)
 		}
 		setTimestamps(&cj.CreatedAt, &cj.UpdatedAt)
@@ -244,7 +244,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 
 	case "git_repo":
 		var r resource.GitRepo
-		if err := json.Unmarshal(env.Data, &r); err != nil {
+		if err := json.Unmarshal(envelope.Data, &r); err != nil {
 			return fmt.Errorf("unmarshal git_repo: %w", err)
 		}
 		setTimestamps(&r.CreatedAt, &r.UpdatedAt)
@@ -262,35 +262,15 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		}
 		return printJSON(r)
 
-	case "env":
-		var e resource.Env
-		if err := json.Unmarshal(env.Data, &e); err != nil {
-			return fmt.Errorf("unmarshal env: %w", err)
-		}
-		setTimestamps(&e.CreatedAt, &e.UpdatedAt)
-		if existing, err := store.GetEnv(ctx, e.ID); err == nil {
-			if err := existing.Update(&e.Name, &e.Key, &e.Value); err != nil {
-				return err
-			}
-			if err := store.UpdateEnv(ctx, &existing); err != nil {
-				return err
-			}
-			return printJSON(existing)
-		}
-		if err := store.CreateEnv(ctx, &e); err != nil {
-			return err
-		}
-		return printJSON(e)
-
 	case "member":
 		var m domain.Member
-		if err := json.Unmarshal(env.Data, &m); err != nil {
+		if err := json.Unmarshal(envelope.Data, &m); err != nil {
 			return fmt.Errorf("unmarshal member: %w", err)
 		}
 		setTimestamps(&m.CreatedAt, &m.UpdatedAt)
 		if existing, err := store.GetMember(ctx, m.ID); err == nil {
 			if err := existing.Update(&m.Name, &m.AgentType, &m.Model, &m.Args, &m.AgentDotMdID, &m.SkillIDs,
-				&m.ClaudeSettingsID, &m.ClaudeJsonID, &m.EnvIDs, &m.GitRepoID); err != nil {
+				&m.ClaudeSettingsID, &m.ClaudeJsonID, &m.GitRepoID); err != nil {
 				return err
 			}
 			if err := store.UpdateMember(ctx, &existing); err != nil {
@@ -305,7 +285,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 
 	case "team":
 		var t domain.Team
-		if err := json.Unmarshal(env.Data, &t); err != nil {
+		if err := json.Unmarshal(envelope.Data, &t); err != nil {
 			return fmt.Errorf("unmarshal team: %w", err)
 		}
 		setTimestamps(&t.CreatedAt, &t.UpdatedAt)
@@ -322,7 +302,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		return printJSON(updated)
 
 	default:
-		return fmt.Errorf("unknown envelope type: %q", env.Type)
+		return fmt.Errorf("unknown envelope type: %q", envelope.Type)
 	}
 }
 

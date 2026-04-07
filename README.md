@@ -4,13 +4,13 @@
 
 **Design your agent team. Run them in real terminals, not API calls.**
 
-Define your team in JSON — roles, hierarchy, scoped environments. Start a task, and agents collaborate while you watch and intervene in real time.
+Define your team in JSON — roles, hierarchy, scoped workspaces. Start a task, and agents collaborate while you watch and intervene in real time.
 
 ## Why Clier?
 
 **1. Deep, multi-agent teams** — No depth limit. Build hierarchies with Claude agents in a single team.
 
-**2. Scoped roles** — Each member gets its own system prompt, environment variables, git repo, and CLI profile. Agents see only what they need — no excess context, no unrestricted access.
+**2. Scoped roles** — Each member gets its own system prompt, git repo, and CLI profile. Agents see only what they need — no excess context, no unrestricted access.
 
 **3. Agent-first** — Every command output, help text, and hint is designed for agents to parse and act on. The dashboard is read-only — you observe, agents operate. You chat with agents in their terminal, not click buttons.
 

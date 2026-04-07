@@ -3,8 +3,6 @@ package task
 import (
 	"fmt"
 	"strings"
-
-	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 // shellQuote wraps a string in single quotes, escaping embedded single quotes.
@@ -42,22 +40,12 @@ func identityEnvs(teamName, memberName string) []string {
 	}
 }
 
-// userDefinedEnvs converts user-created Env resources to KEY=VALUE strings.
-func userDefinedEnvs(envs []resource.Env) []string {
-	out := make([]string, len(envs))
-	for i, e := range envs {
-		out[i] = e.Key + "=" + e.Value
-	}
-	return out
-}
-
 // buildEnv assembles the full set of environment variables for a member command.
-func buildEnv(rt AgentRuntime, memberspace, teamName, memberName, taskID, memberID, authPlaceholder string, userEnvs []resource.Env) []string {
+func buildEnv(rt AgentRuntime, memberspace, teamName, memberName, taskID, memberID, authPlaceholder string) []string {
 	var env []string
 	env = append(env, systemEnvs(rt, memberspace, taskID, memberID)...)
 	env = append(env, rt.AuthEnvs(authPlaceholder)...)
 	env = append(env, identityEnvs(teamName, memberName)...)
-	env = append(env, userDefinedEnvs(userEnvs)...)
 	return env
 }
 
@@ -85,9 +73,8 @@ func buildAgentCommand(rt AgentRuntime, model string, args []string, workDir str
 }
 
 // buildCommand returns the complete shell command for launching an agent.
-func buildCommand(rt AgentRuntime, model string, args []string, workDir, memberspace, teamName, memberName, taskID, memberID, authPlaceholder string,
-	userEnvs []resource.Env) string {
+func buildCommand(rt AgentRuntime, model string, args []string, workDir, memberspace, teamName, memberName, taskID, memberID, authPlaceholder string) string {
 	cmd := buildAgentCommand(rt, model, args, workDir)
-	env := buildEnv(rt, memberspace, teamName, memberName, taskID, memberID, authPlaceholder, userEnvs)
+	env := buildEnv(rt, memberspace, teamName, memberName, taskID, memberID, authPlaceholder)
 	return buildEnvCommand(cmd, env)
 }

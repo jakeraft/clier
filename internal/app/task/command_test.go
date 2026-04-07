@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	agentrt "github.com/jakeraft/clier/internal/adapter/runtime"
-	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 func TestShellQuote(t *testing.T) {
@@ -36,11 +35,7 @@ func TestBuildEnv(t *testing.T) {
 	rt := &agentrt.ClaudeRuntime{}
 
 	t.Run("IncludesAllCategories", func(t *testing.T) {
-		userEnvs := []resource.Env{
-			{Key: "GITHUB_TOKEN", Value: "ghp_xxx"},
-		}
-
-		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "reviewer", "task-1", "m1", PlaceholderAuthClaude, userEnvs)
+		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "reviewer", "task-1", "m1", PlaceholderAuthClaude)
 
 		envMap := make(map[string]string)
 		for _, e := range env {
@@ -57,7 +52,6 @@ func TestBuildEnv(t *testing.T) {
 			"GIT_AUTHOR_EMAIL":        "noreply@clier.com",
 			"GIT_COMMITTER_NAME":      "my-team/reviewer",
 			"GIT_COMMITTER_EMAIL":     "noreply@clier.com",
-			"GITHUB_TOKEN":            "ghp_xxx",
 		} {
 			if envMap[k] != want {
 				t.Errorf("%s = %q, want %q", k, envMap[k], want)
@@ -65,8 +59,8 @@ func TestBuildEnv(t *testing.T) {
 		}
 	})
 
-	t.Run("NoUserEnvs_HasSystemAuthIdentity", func(t *testing.T) {
-		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "coder", "task-1", "m2", PlaceholderAuthClaude, nil)
+	t.Run("HasSystemAuthIdentity", func(t *testing.T) {
+		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "coder", "task-1", "m2", PlaceholderAuthClaude)
 
 		// system(3) + auth(1) + identity(4) = 8
 		if len(env) != 8 {
@@ -132,7 +126,7 @@ func TestBuildCommand(t *testing.T) {
 		cmd := buildCommand(rt, "claude-sonnet-4-6",
 			[]string{"--dangerously-skip-permissions", "--verbose"},
 			PlaceholderMemberspace+"/project",
-			PlaceholderMemberspace, "my-team", "coder", "task-1", "m1", PlaceholderAuthClaude, nil)
+			PlaceholderMemberspace, "my-team", "coder", "task-1", "m1", PlaceholderAuthClaude)
 
 		for _, want := range []string{
 			"claude",
@@ -154,23 +148,6 @@ func TestBuildCommand(t *testing.T) {
 		// --append-system-prompt should NOT be present
 		if strings.Contains(cmd, "--append-system-prompt") {
 			t.Error("--append-system-prompt should not be in the command")
-		}
-	})
-
-	t.Run("WithUserEnvs_BakedIntoCommand", func(t *testing.T) {
-		userEnvs := []resource.Env{
-			{Key: "GITHUB_TOKEN", Value: "ghp_xxx"},
-			{Key: "SSH_AUTH_SOCK", Value: "/tmp/ssh.sock"},
-		}
-
-		cmd := buildCommand(rt, "opus", nil, PlaceholderMemberspace+"/project",
-			PlaceholderMemberspace, "my-team", "alice", "task-1", "m1", PlaceholderAuthClaude, userEnvs)
-
-		if !strings.Contains(cmd, "export GITHUB_TOKEN='ghp_xxx'") {
-			t.Errorf("missing GITHUB_TOKEN in:\n%s", cmd)
-		}
-		if !strings.Contains(cmd, "export SSH_AUTH_SOCK='/tmp/ssh.sock'") {
-			t.Errorf("missing SSH_AUTH_SOCK in:\n%s", cmd)
 		}
 	})
 }

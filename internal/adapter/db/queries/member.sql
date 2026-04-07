@@ -26,14 +26,3 @@ SELECT skill_id FROM member_skills WHERE member_id = ? ORDER BY rowid;
 -- name: DeleteMemberSkills :execresult
 DELETE FROM member_skills WHERE member_id = ?;
 
--- name: AddMemberEnv :execresult
-INSERT INTO member_envs (member_id, env_id) VALUES (?, ?);
-
--- name: RemoveMemberEnv :execresult
-DELETE FROM member_envs WHERE member_id = ? AND env_id = ?;
-
--- name: ListMemberEnvIDs :many
-SELECT env_id FROM member_envs WHERE member_id = ? ORDER BY rowid;
-
--- name: DeleteMemberEnvs :execresult
-DELETE FROM member_envs WHERE member_id = ?;

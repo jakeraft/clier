@@ -55,7 +55,6 @@ func newExportCmd() *cobra.Command {
 				{"claude_settings", func() (any, error) { st, e := store.GetClaudeSettings(ctx, id); return st, e }},
 				{"claude_json", func() (any, error) { cj, e := store.GetClaudeJson(ctx, id); return cj, e }},
 				{"git_repo", func() (any, error) { r, e := store.GetGitRepo(ctx, id); return r, e }},
-				{"env", func() (any, error) { e, err := store.GetEnv(ctx, id); return e, err }},
 			}
 
 			for _, p := range probes {
@@ -72,12 +71,12 @@ func newExportCmd() *cobra.Command {
 					return fmt.Errorf("marshal %s: %w", p.typeName, err)
 				}
 
-				env := Envelope{
+				envelope := Envelope{
 					Type: p.typeName,
 					Data: dataBytes,
 				}
 
-				out, err := json.MarshalIndent(env, "", "  ")
+				out, err := json.MarshalIndent(envelope, "", "  ")
 				if err != nil {
 					return fmt.Errorf("marshal envelope: %w", err)
 				}

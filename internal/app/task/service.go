@@ -28,7 +28,6 @@ type TaskStore interface {
 	GetSkill(ctx context.Context, id string) (resource.Skill, error)
 	GetClaudeSettings(ctx context.Context, id string) (resource.ClaudeSettings, error)
 	GetClaudeJson(ctx context.Context, id string) (resource.ClaudeJson, error)
-	GetEnv(ctx context.Context, id string) (resource.Env, error)
 	GetGitRepo(ctx context.Context, id string) (resource.GitRepo, error)
 }
 

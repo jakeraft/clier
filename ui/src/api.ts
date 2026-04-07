@@ -8,7 +8,6 @@ import type {
   ClaudeSettingsView,
   ClaudeJsonView,
   GitRepoView,
-  EnvView,
   TaskView,
   NoteView,
   MessageView,
@@ -37,7 +36,6 @@ export type {
   MemberView,
   MemberPlanView,
   TeamView,
-  EnvView,
   TaskView,
   NoteView,
   MessageView,
@@ -138,13 +136,6 @@ export const api = {
     list: (): Promise<GitRepoView[]> => Promise.resolve(getData().gitRepos),
     get: (id: string): Promise<GitRepoView> => {
       const item = findById(getData().gitRepos, id);
-      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
-    },
-  },
-  envs: {
-    list: (): Promise<EnvView[]> => Promise.resolve(getData().envs),
-    get: (id: string): Promise<EnvView> => {
-      const item = findById(getData().envs, id);
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },

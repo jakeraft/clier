@@ -295,13 +295,6 @@ func (s *Store) CreateMember(ctx context.Context, m *domain.Member) error {
 			return err
 		}
 	}
-	for _, envID := range m.EnvIDs {
-		if _, err := qtx.AddMemberEnv(ctx, generated.AddMemberEnvParams{
-			MemberID: m.ID, EnvID: envID,
-		}); err != nil {
-			return err
-		}
-	}
 	return tx.Commit()
 }
 
@@ -324,13 +317,6 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 	if skillIDs == nil {
 		skillIDs = []string{}
 	}
-	envIDs, err := s.queries.ListMemberEnvIDs(ctx, id)
-	if err != nil {
-		return domain.Member{}, err
-	}
-	if envIDs == nil {
-		envIDs = []string{}
-	}
 	return domain.Member{
 		ID:               row.ID,
 		Name:             row.Name,
@@ -341,7 +327,6 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 		SkillIDs:         skillIDs,
 		ClaudeSettingsID: row.ClaudeSettingsID.String,
 		ClaudeJsonID:     row.ClaudeJsonID.String,
-		EnvIDs:           envIDs,
 		GitRepoID:        row.GitRepoID.String,
 		CreatedAt:        time.Unix(row.CreatedAt, 0),
 		UpdatedAt:        time.Unix(row.UpdatedAt, 0),
@@ -402,21 +387,10 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 			return err
 		}
 	}
-	// Replace env junction rows
-	if _, err := qtx.DeleteMemberEnvs(ctx, m.ID); err != nil {
-		return err
-	}
-	for _, envID := range m.EnvIDs {
-		if _, err := qtx.AddMemberEnv(ctx, generated.AddMemberEnvParams{
-			MemberID: m.ID, EnvID: envID,
-		}); err != nil {
-			return err
-		}
-	}
 	return tx.Commit()
 }
 
-// DeleteMember deletes a member. CASCADE: member_skills, member_envs.
+// DeleteMember deletes a member. CASCADE: member_skills.
 // RESTRICT: team_members.member_id — fails if member is referenced by a team.
 func (s *Store) DeleteMember(ctx context.Context, id string) error {
 	result, err := s.queries.DeleteMember(ctx, id)
@@ -713,81 +687,6 @@ func (s *Store) DeleteClaudeJson(ctx context.Context, id string) error {
 	}
 	if rows == 0 {
 		return fmt.Errorf("claude json not found: %s", id)
-	}
-	return nil
-}
-
-// Env
-
-func (s *Store) CreateEnv(ctx context.Context, e *resource.Env) error {
-	_, err := s.queries.CreateEnv(ctx, generated.CreateEnvParams{
-		ID:        e.ID,
-		Name:      e.Name,
-		Key:       e.Key,
-		Value:     e.Value,
-		CreatedAt: e.CreatedAt.Unix(),
-		UpdatedAt: e.UpdatedAt.Unix(),
-	})
-	return err
-}
-
-func (s *Store) GetEnv(ctx context.Context, id string) (resource.Env, error) {
-	row, err := s.queries.GetEnv(ctx, id)
-	if err != nil {
-		return resource.Env{}, err
-	}
-	return resource.Env{
-		ID:        row.ID,
-		Name:      row.Name,
-		Key:       row.Key,
-		Value:     row.Value,
-		CreatedAt: time.Unix(row.CreatedAt, 0),
-		UpdatedAt: time.Unix(row.UpdatedAt, 0),
-	}, nil
-}
-
-func (s *Store) ListEnvs(ctx context.Context) ([]resource.Env, error) {
-	rows, err := s.queries.ListEnvs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	envs := make([]resource.Env, 0, len(rows))
-	for _, row := range rows {
-		envs = append(envs, resource.Env{
-			ID:        row.ID,
-			Name:      row.Name,
-			Key:       row.Key,
-			Value:     row.Value,
-			CreatedAt: time.Unix(row.CreatedAt, 0),
-			UpdatedAt: time.Unix(row.UpdatedAt, 0),
-		})
-	}
-	return envs, nil
-}
-
-func (s *Store) UpdateEnv(ctx context.Context, e *resource.Env) error {
-	_, err := s.queries.UpdateEnv(ctx, generated.UpdateEnvParams{
-		Name:      e.Name,
-		Key:       e.Key,
-		Value:     e.Value,
-		UpdatedAt: e.UpdatedAt.Unix(),
-		ID:        e.ID,
-	})
-	return err
-}
-
-// DeleteEnv deletes an env. RESTRICT: fails if referenced by a member.
-func (s *Store) DeleteEnv(ctx context.Context, id string) error {
-	result, err := s.queries.DeleteEnv(ctx, id)
-	if err != nil {
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return fmt.Errorf("env not found: %s", id)
 	}
 	return nil
 }
