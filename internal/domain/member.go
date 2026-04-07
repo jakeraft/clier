@@ -18,7 +18,6 @@ type Member struct {
 	SkillIDs     []string  `json:"skill_ids"`
 	SettingsID   string    `json:"settings_id"`     // empty string = not set (nullable FK)
 	ClaudeJsonID string    `json:"claude_json_id"`  // empty string = not set (nullable FK)
-	EnvIDs       []string  `json:"env_ids"`
 	GitRepoID    string    `json:"git_repo_id"`     // empty string = not set (nullable FK)
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -27,7 +26,7 @@ type Member struct {
 func NewMember(name, model string, args []string,
 	claudeMdID string, skillIDs []string,
 	settingsID, claudeJsonID string,
-	envIDs []string, gitRepoID string) (*Member, error) {
+	gitRepoID string) (*Member, error) {
 
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -43,9 +42,6 @@ func NewMember(name, model string, args []string,
 	if skillIDs == nil {
 		skillIDs = []string{}
 	}
-	if envIDs == nil {
-		envIDs = []string{}
-	}
 
 	now := time.Now()
 	return &Member{
@@ -57,7 +53,6 @@ func NewMember(name, model string, args []string,
 		SkillIDs:     skillIDs,
 		SettingsID:   settingsID,
 		ClaudeJsonID: claudeJsonID,
-		EnvIDs:       envIDs,
 		GitRepoID:    gitRepoID,
 		CreatedAt:    now,
 		UpdatedAt:    now,
@@ -67,7 +62,7 @@ func NewMember(name, model string, args []string,
 func (m *Member) Update(name, model *string, args *[]string,
 	claudeMdID *string, skillIDs *[]string,
 	settingsID, claudeJsonID *string,
-	envIDs *[]string, gitRepoID *string) error {
+	gitRepoID *string) error {
 
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
@@ -98,9 +93,6 @@ func (m *Member) Update(name, model *string, args *[]string,
 	if claudeJsonID != nil {
 		m.ClaudeJsonID = *claudeJsonID
 	}
-	if envIDs != nil {
-		m.EnvIDs = *envIDs
-	}
 	if gitRepoID != nil {
 		m.GitRepoID = *gitRepoID
 	}
@@ -119,7 +111,6 @@ type ResolvedMember struct {
 	Skills       []resource.Skill
 	Settings     *resource.Settings
 	ClaudeJson   *resource.ClaudeJson
-	Envs         []resource.Env
 	Repo         *resource.GitRepo
 	Relations    MemberRelations
 }

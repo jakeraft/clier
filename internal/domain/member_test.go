@@ -5,7 +5,7 @@ import "testing"
 func TestNewMember(t *testing.T) {
 	m, err := NewMember("coder", "claude-sonnet-4-6", []string{"--dangerously-skip-permissions"},
 		"claude-md-1", []string{"skill-1"}, "settings-1", "claude-json-1",
-		[]string{"env-1"}, "repo-1")
+		"repo-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -36,21 +36,21 @@ func TestNewMember(t *testing.T) {
 }
 
 func TestNewMember_EmptyName(t *testing.T) {
-	_, err := NewMember("", "model", nil, "", nil, "", "", nil, "")
+	_, err := NewMember("", "model", nil, "", nil, "", "", "")
 	if err == nil {
 		t.Error("expected error for empty name")
 	}
 }
 
 func TestNewMember_EmptyModel(t *testing.T) {
-	_, err := NewMember("name", "", nil, "", nil, "", "", nil, "")
+	_, err := NewMember("name", "", nil, "", nil, "", "", "")
 	if err == nil {
 		t.Error("expected error for empty model")
 	}
 }
 
 func TestMember_NilSlicesDefault(t *testing.T) {
-	m, err := NewMember("coder", "claude-sonnet-4-6", nil, "", nil, "", "", nil, "")
+	m, err := NewMember("coder", "claude-sonnet-4-6", nil, "", nil, "", "", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,13 +60,10 @@ func TestMember_NilSlicesDefault(t *testing.T) {
 	if m.SkillIDs == nil {
 		t.Error("SkillIDs should be empty slice, not nil")
 	}
-	if m.EnvIDs == nil {
-		t.Error("EnvIDs should be empty slice, not nil")
-	}
 }
 
 func TestMember_Update(t *testing.T) {
-	m, _ := NewMember("old", "old-model", nil, "", nil, "", "", nil, "")
+	m, _ := NewMember("old", "old-model", nil, "", nil, "", "", "")
 	newName := "new"
 	newModel := "new-model"
 	newArgs := []string{"--flag"}
@@ -74,9 +71,8 @@ func TestMember_Update(t *testing.T) {
 	newSkills := []string{"s-1", "s-2"}
 	newSettings := "set-1"
 	newCJ := "cj-1"
-	newEnvs := []string{"e-1"}
 	newRepo := "r-1"
-	if err := m.Update(&newName, &newModel, &newArgs, &newMdID, &newSkills, &newSettings, &newCJ, &newEnvs, &newRepo); err != nil {
+	if err := m.Update(&newName, &newModel, &newArgs, &newMdID, &newSkills, &newSettings, &newCJ, &newRepo); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if m.Name != "new" {

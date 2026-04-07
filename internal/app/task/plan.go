@@ -72,15 +72,6 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		claudeJson = &cj
 	}
 
-	envs := make([]resource.Env, 0, len(member.EnvIDs))
-	for _, id := range member.EnvIDs {
-		env, err := s.store.GetEnv(ctx, id)
-		if err != nil {
-			return nil, fmt.Errorf("get env %s: %w", id, err)
-		}
-		envs = append(envs, env)
-	}
-
 	var repo *resource.GitRepo
 	if member.GitRepoID != "" {
 		r, err := s.store.GetGitRepo(ctx, member.GitRepoID)
@@ -101,7 +92,6 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		Skills:       skills,
 		Settings:     settings,
 		ClaudeJson:   claudeJson,
-		Envs:         envs,
 		Repo:         repo,
 		Relations:    relations,
 	}, nil
@@ -157,13 +147,12 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 	// === Command: user building blocks ===
 	model := rm.Model
 	args := rm.Args
-	userEnvs := rm.Envs
 
 	// === Command: Clier system-generated ===
 	// (system envs are assembled inside buildCommand -> buildEnv)
 
 	// === Assemble command ===
-	cmd := buildCommand(model, args, PlaceholderMemberspace+"/project", teamName, rm.Name, taskID, rm.TeamMemberID, userEnvs)
+	cmd := buildCommand(model, args, PlaceholderMemberspace+"/project", teamName, rm.Name, taskID, rm.TeamMemberID)
 
 	launchPath := PlaceholderMemberspace + "/launch.sh"
 	files = append(files, domain.FileEntry{Path: launchPath, Content: cmd})
