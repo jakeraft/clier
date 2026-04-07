@@ -10,6 +10,6 @@
     "settings_id": "e5050505-0001-4000-8000-000000000001",
     "claude_json_id": "e5050505-0002-4000-8000-000000000002",
     "env_ids": [],
-    "git_repo_id": "b2020202-0001-4000-8000-000000000001"
+    "git_repo_url": "https://github.com/jakeraft/clier_todo.git"
   }
 }

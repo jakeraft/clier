@@ -1,8 +1,0 @@
-{
-  "type": "git_repo",
-  "data": {
-    "id": "b2020202-0001-4000-8000-000000000001",
-    "name": "todo-repo",
-    "url": "https://github.com/jakeraft/clier_todo.git"
-  }
-}
