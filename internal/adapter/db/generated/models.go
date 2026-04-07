@@ -24,15 +24,6 @@ type ClaudeMd struct {
 	UpdatedAt int64
 }
 
-type Env struct {
-	ID        string
-	Name      string
-	Key       string
-	Value     string
-	CreatedAt int64
-	UpdatedAt int64
-}
-
 type GitRepo struct {
 	ID        string
 	Name      string
@@ -52,11 +43,6 @@ type Member struct {
 	GitRepoID    sql.NullString
 	CreatedAt    int64
 	UpdatedAt    int64
-}
-
-type MemberEnv struct {
-	MemberID string
-	EnvID    string
 }
 
 type MemberSkill struct {
