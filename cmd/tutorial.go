@@ -57,6 +57,7 @@ Step 5. Watch them work
 
   clier task attach <task-id>        Watch agents in real time
   clier task notes <task-id>         Check progress notes
+  clier task messages <task-id>      Check messages between agents
   clier dashboard                    Open the dashboard
 
 Step 6. When done, stop the task

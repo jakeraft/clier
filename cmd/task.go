@@ -28,6 +28,7 @@ func newTaskCmd() *cobra.Command {
 	cmd.AddCommand(newTaskTellCmd())
 	cmd.AddCommand(newTaskNoteCmd())
 	cmd.AddCommand(newTaskNotesCmd())
+	cmd.AddCommand(newTaskMessagesCmd())
 	cmd.AddCommand(newTaskAttachCmd())
 	return cmd
 }
@@ -258,6 +259,31 @@ func newTaskNotesCmd() *cobra.Command {
 				return err
 			}
 			return printJSON(notes)
+		},
+	}
+}
+
+func newTaskMessagesCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "messages <task-id>",
+		Short: "List task messages",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := newSettings()
+			if err != nil {
+				return err
+			}
+			store, err := newStore(cfg)
+			if err != nil {
+				return err
+			}
+			defer store.Close()
+
+			msgs, err := store.ListMessagesByTaskID(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			return printJSON(msgs)
 		},
 	}
 }
