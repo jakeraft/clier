@@ -71,12 +71,12 @@ func newExportCmd() *cobra.Command {
 					return fmt.Errorf("marshal %s: %w", p.typeName, err)
 				}
 
-				env := Envelope{
+				envelope := Envelope{
 					Type: p.typeName,
 					Data: dataBytes,
 				}
 
-				out, err := json.MarshalIndent(env, "", "  ")
+				out, err := json.MarshalIndent(envelope, "", "  ")
 				if err != nil {
 					return fmt.Errorf("marshal envelope: %w", err)
 				}
