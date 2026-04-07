@@ -72,15 +72,6 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		claudeJson = &cj
 	}
 
-	var repo *resource.GitRepo
-	if member.GitRepoID != "" {
-		r, err := s.store.GetGitRepo(ctx, member.GitRepoID)
-		if err != nil {
-			return nil, fmt.Errorf("get git repo for %s: %w", tm.Name, err)
-		}
-		repo = &r
-	}
-
 	relations := team.MemberRelations(tm.ID)
 
 	return &domain.ResolvedMember{
@@ -92,7 +83,7 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		Skills:       skills,
 		Settings:     settings,
 		ClaudeJson:   claudeJson,
-		Repo:         repo,
+		GitRepoURL:   member.GitRepoURL,
 		Relations:    relations,
 	}, nil
 }
@@ -157,11 +148,6 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 	launchPath := PlaceholderMemberspace + "/launch.sh"
 	files = append(files, domain.FileEntry{Path: launchPath, Content: cmd})
 
-	var gitRepo *domain.GitRepoRef
-	if rm.Repo != nil {
-		gitRepo = &domain.GitRepoRef{Name: rm.Repo.Name, URL: rm.Repo.URL}
-	}
-
 	return domain.MemberPlan{
 		TeamMemberID: rm.TeamMemberID,
 		MemberName:   rm.Name,
@@ -169,7 +155,7 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 		Workspace: domain.WorkspacePlan{
 			Memberspace: memberspace,
 			Files:       files,
-			GitRepo:     gitRepo,
+			GitRepoURL:  rm.GitRepoURL,
 		},
 	}
 }

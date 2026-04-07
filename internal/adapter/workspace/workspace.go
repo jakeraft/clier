@@ -65,11 +65,11 @@ func (w *Workspace) prepareMember(ctx context.Context, m domain.MemberPlan) erro
 }
 
 func (w *Workspace) setupGit(ctx context.Context, ws domain.WorkspacePlan, workDir string) error {
-	if ws.GitRepo == nil {
+	if ws.GitRepoURL == "" {
 		return exec.CommandContext(ctx, "git", "init", workDir).Run()
 	}
-	if err := exec.CommandContext(ctx, "git", "clone", "--depth", "1", ws.GitRepo.URL, workDir).Run(); err != nil {
-		return fmt.Errorf("git clone %s: %w", ws.GitRepo.URL, err)
+	if err := exec.CommandContext(ctx, "git", "clone", "--depth", "1", ws.GitRepoURL, workDir).Run(); err != nil {
+		return fmt.Errorf("git clone %s: %w", ws.GitRepoURL, err)
 	}
 	return nil
 }

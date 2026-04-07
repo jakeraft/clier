@@ -38,14 +38,9 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (doma
 		t.Fatalf("CreateClaudeJson: %v", err)
 	}
 
-	repo, _ := resource.NewGitRepo("test-repo", "https://example.com/repo.git")
-	if err := store.CreateGitRepo(ctx, repo); err != nil {
-		t.Fatalf("CreateGitRepo: %v", err)
-	}
-
 	root, _ := domain.NewMember("alice", "claude-sonnet-4-6",
 		[]string{"--dangerously-skip-permissions"},
-		claudeMd.ID, nil, settings.ID, claudeJson.ID, repo.ID)
+		claudeMd.ID, nil, settings.ID, claudeJson.ID, "https://example.com/repo.git")
 	if err := store.CreateMember(ctx, root); err != nil {
 		t.Fatalf("CreateMember root: %v", err)
 	}
@@ -109,8 +104,8 @@ func TestResolveTeam(t *testing.T) {
 	if root.ClaudeMd == nil {
 		t.Error("root ClaudeMd should not be nil")
 	}
-	if root.Repo == nil {
-		t.Error("root Repo should not be nil")
+	if root.GitRepoURL == "" {
+		t.Error("root GitRepoURL should not be empty")
 	}
 	if len(root.Relations.Workers) != 1 {
 		t.Errorf("root Workers = %d, want 1", len(root.Relations.Workers))
@@ -120,8 +115,8 @@ func TestResolveTeam(t *testing.T) {
 	if worker.Name != "bob" {
 		t.Errorf("worker Name = %q, want bob", worker.Name)
 	}
-	if worker.Repo != nil {
-		t.Error("worker Repo should be nil")
+	if worker.GitRepoURL != "" {
+		t.Error("worker GitRepoURL should be empty")
 	}
 	if len(worker.Relations.Leaders) != 1 {
 		t.Errorf("worker Leaders = %d, want 1", len(worker.Relations.Leaders))
@@ -158,15 +153,15 @@ func TestBuildPlans(t *testing.T) {
 	if rootPlan.Terminal.Command == "" {
 		t.Error("root Terminal.Command is empty")
 	}
-	if rootPlan.Workspace.GitRepo == nil {
-		t.Error("root should have git repo")
+	if rootPlan.Workspace.GitRepoURL == "" {
+		t.Error("root should have git repo URL")
 	}
 
 	workerPlan := planByTMID[workerTMID]
 	if workerPlan.MemberName != "bob" {
 		t.Errorf("worker MemberName = %q, want bob", workerPlan.MemberName)
 	}
-	if workerPlan.Workspace.GitRepo != nil {
-		t.Error("worker should not have git repo")
+	if workerPlan.Workspace.GitRepoURL != "" {
+		t.Error("worker should not have git repo URL")
 	}
 }
