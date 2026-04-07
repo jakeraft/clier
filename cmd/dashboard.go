@@ -89,7 +89,7 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 	if err != nil {
 		return dashboardData{}, err
 	}
-	claudeMds, err := store.ListClaudeMds(ctx)
+	agentDotMds, err := store.ListAgentDotMds(ctx)
 	if err != nil {
 		return dashboardData{}, err
 	}
@@ -97,7 +97,7 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 	if err != nil {
 		return dashboardData{}, err
 	}
-	settingsList, err := store.ListSettings(ctx)
+	claudeSettingsList, err := store.ListClaudeSettings(ctx)
 	if err != nil {
 		return dashboardData{}, err
 	}
@@ -114,9 +114,9 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 		return dashboardData{}, err
 	}
 
-	claudeMdNames := nameMap(claudeMds, func(c resource.ClaudeMd) (string, string) { return c.ID, c.Name })
+	agentDotMdNames := nameMap(agentDotMds, func(c resource.AgentDotMd) (string, string) { return c.ID, c.Name })
 	skillNames := nameMap(skills, func(s resource.Skill) (string, string) { return s.ID, s.Name })
-	settingsNames := nameMap(settingsList, func(s resource.Settings) (string, string) { return s.ID, s.Name })
+	claudeSettingsNames := nameMap(claudeSettingsList, func(s resource.ClaudeSettings) (string, string) { return s.ID, s.Name })
 	claudeJsonNames := nameMap(claudeJsons, func(c resource.ClaudeJson) (string, string) { return c.ID, c.Name })
 	repoNames := nameMap(repos, func(r resource.GitRepo) (string, string) { return r.ID, r.Name })
 	teamNames := nameMap(teams, func(t domain.Team) (string, string) { return t.ID, t.Name })
@@ -127,14 +127,14 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 	}
 
 	return dashboardData{
-		Teams:       convertTeams(teams),
-		Members:     convertMembers(members, claudeMdNames, skillNames, settingsNames, claudeJsonNames, repoNames),
-		ClaudeMds:   convertClaudeMds(claudeMds),
-		Skills:      convertSkills(skills),
-		Settings:    convertSettings(settingsList),
-		ClaudeJsons: convertClaudeJsons(claudeJsons),
-		GitRepos:    convertGitRepos(repos),
-		Tasks:       taskViews,
+		Teams:          convertTeams(teams),
+		Members:        convertMembers(members, agentDotMdNames, skillNames, claudeSettingsNames, claudeJsonNames, repoNames),
+		AgentDotMds:    convertAgentDotMds(agentDotMds),
+		Skills:         convertSkills(skills),
+		ClaudeSettings: convertClaudeSettings(claudeSettingsList),
+		ClaudeJsons:    convertClaudeJsons(claudeJsons),
+		GitRepos:       convertGitRepos(repos),
+		Tasks:          taskViews,
 	}, nil
 }
 
@@ -195,7 +195,7 @@ func convertTeams(teams []domain.Team) []teamView {
 	return views
 }
 
-func convertMembers(members []domain.Member, claudeMdNames, skillNames, settingsNames, claudeJsonNames, repoNames map[string]string) []memberView {
+func convertMembers(members []domain.Member, agentDotMdNames, skillNames, claudeSettingsNames, claudeJsonNames, repoNames map[string]string) []memberView {
 	views := make([]memberView, 0, len(members))
 	for _, m := range members {
 		skNames := make([]string, 0, len(m.SkillIDs))
@@ -204,25 +204,26 @@ func convertMembers(members []domain.Member, claudeMdNames, skillNames, settings
 		}
 
 		mv := memberView{
-			ID:         m.ID,
-			Name:       m.Name,
-			Model:      m.Model,
-			Args:       m.Args,
-			SkillIDs:   m.SkillIDs,
+			ID:        m.ID,
+			Name:      m.Name,
+			AgentType: m.AgentType,
+			Model:     m.Model,
+			Args:      m.Args,
+			SkillIDs:  m.SkillIDs,
 			SkillNames: skNames,
 			CreatedAt:  m.CreatedAt,
 			UpdatedAt:  m.UpdatedAt,
 		}
 
-		if m.ClaudeMdID != "" {
-			mv.ClaudeMdID = &m.ClaudeMdID
-			name := claudeMdNames[m.ClaudeMdID]
-			mv.ClaudeMdName = &name
+		if m.AgentDotMdID != "" {
+			mv.AgentDotMdID = &m.AgentDotMdID
+			name := agentDotMdNames[m.AgentDotMdID]
+			mv.AgentDotMdName = &name
 		}
-		if m.SettingsID != "" {
-			mv.SettingsID = &m.SettingsID
-			name := settingsNames[m.SettingsID]
-			mv.SettingsName = &name
+		if m.ClaudeSettingsID != "" {
+			mv.ClaudeSettingsID = &m.ClaudeSettingsID
+			name := claudeSettingsNames[m.ClaudeSettingsID]
+			mv.ClaudeSettingsName = &name
 		}
 		if m.ClaudeJsonID != "" {
 			mv.ClaudeJsonID = &m.ClaudeJsonID
@@ -240,10 +241,10 @@ func convertMembers(members []domain.Member, claudeMdNames, skillNames, settings
 	return views
 }
 
-func convertClaudeMds(items []resource.ClaudeMd) []claudeMdView {
-	views := make([]claudeMdView, 0, len(items))
+func convertAgentDotMds(items []resource.AgentDotMd) []agentDotMdView {
+	views := make([]agentDotMdView, 0, len(items))
 	for _, c := range items {
-		views = append(views, claudeMdView{
+		views = append(views, agentDotMdView{
 			ID:        c.ID,
 			Name:      c.Name,
 			Content:   c.Content,
@@ -268,10 +269,10 @@ func convertSkills(items []resource.Skill) []skillView {
 	return views
 }
 
-func convertSettings(items []resource.Settings) []settingsView {
-	views := make([]settingsView, 0, len(items))
+func convertClaudeSettings(items []resource.ClaudeSettings) []claudeSettingsView {
+	views := make([]claudeSettingsView, 0, len(items))
 	for _, s := range items {
-		views = append(views, settingsView{
+		views = append(views, claudeSettingsView{
 			ID:        s.ID,
 			Name:      s.Name,
 			Content:   s.Content,
@@ -313,14 +314,14 @@ func convertGitRepos(repos []resource.GitRepo) []gitRepoView {
 // --- view types (JSON serialization for the frontend) ---
 
 type dashboardData struct {
-	Teams       []teamView       `json:"teams"`
-	Members     []memberView     `json:"members"`
-	ClaudeMds   []claudeMdView   `json:"claudeMds"`
-	Skills      []skillView      `json:"skills"`
-	Settings    []settingsView   `json:"settings"`
-	ClaudeJsons []claudeJsonView `json:"claudeJsons"`
-	GitRepos    []gitRepoView    `json:"gitRepos"`
-	Tasks       []taskView       `json:"tasks"`
+	Teams          []teamView           `json:"teams"`
+	Members        []memberView         `json:"members"`
+	AgentDotMds    []agentDotMdView     `json:"agentDotMds"`
+	Skills         []skillView          `json:"skills"`
+	ClaudeSettings []claudeSettingsView `json:"claudeSettings"`
+	ClaudeJsons    []claudeJsonView     `json:"claudeJsons"`
+	GitRepos       []gitRepoView        `json:"gitRepos"`
+	Tasks          []taskView           `json:"tasks"`
 }
 
 type teamMemberView struct {
@@ -348,25 +349,26 @@ type relationView struct {
 }
 
 type memberView struct {
-	ID             string    `json:"id"`
-	Name           string    `json:"name"`
-	Model          string    `json:"model"`
-	Args           []string  `json:"args"`
-	ClaudeMdID     *string   `json:"claudeMdId"`
-	SkillIDs       []string  `json:"skillIds"`
-	SettingsID     *string   `json:"settingsId"`
-	ClaudeJsonID   *string   `json:"claudeJsonId"`
-	GitRepoID      *string   `json:"gitRepoId"`
-	ClaudeMdName   *string   `json:"claudeMdName"`
-	SkillNames     []string  `json:"skillNames"`
-	SettingsName   *string   `json:"settingsName"`
-	ClaudeJsonName *string   `json:"claudeJsonName"`
-	GitRepoName    *string   `json:"gitRepoName"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
+	ID                  string    `json:"id"`
+	Name                string    `json:"name"`
+	AgentType           string    `json:"agentType"`
+	Model               string    `json:"model"`
+	Args                []string  `json:"args"`
+	AgentDotMdID        *string   `json:"agentDotMdId"`
+	SkillIDs            []string  `json:"skillIds"`
+	ClaudeSettingsID    *string   `json:"claudeSettingsId"`
+	ClaudeJsonID        *string   `json:"claudeJsonId"`
+	GitRepoID           *string   `json:"gitRepoId"`
+	AgentDotMdName      *string   `json:"agentDotMdName"`
+	SkillNames          []string  `json:"skillNames"`
+	ClaudeSettingsName  *string   `json:"claudeSettingsName"`
+	ClaudeJsonName      *string   `json:"claudeJsonName"`
+	GitRepoName         *string   `json:"gitRepoName"`
+	CreatedAt           time.Time `json:"createdAt"`
+	UpdatedAt           time.Time `json:"updatedAt"`
 }
 
-type claudeMdView struct {
+type agentDotMdView struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Content   string    `json:"content"`
@@ -382,7 +384,7 @@ type skillView struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-type settingsView struct {
+type claudeSettingsView struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Content   string    `json:"content"`

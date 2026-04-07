@@ -3,6 +3,8 @@ package task
 import (
 	"strings"
 	"testing"
+
+	agentrt "github.com/jakeraft/clier/internal/adapter/runtime"
 )
 
 func TestShellQuote(t *testing.T) {
@@ -29,33 +31,11 @@ func TestShellQuote(t *testing.T) {
 	})
 }
 
-func TestConfigDirEnv(t *testing.T) {
-	t.Run("ReturnsClaudeConfigDir", func(t *testing.T) {
-		got := configDirEnv()
-		want := "CLAUDE_CONFIG_DIR=" + PlaceholderMemberspace + "/.claude"
-		if got != want {
-			t.Errorf("got %q, want %q", got, want)
-		}
-	})
-}
-
-func TestAuthEnvs(t *testing.T) {
-	t.Run("ReturnsCommandEnvWithPlaceholder", func(t *testing.T) {
-		envs := authEnvs()
-
-		if len(envs) != 1 {
-			t.Fatalf("expected 1 env, got %d", len(envs))
-		}
-		want := "CLAUDE_CODE_OAUTH_TOKEN=" + PlaceholderAuthClaude
-		if envs[0] != want {
-			t.Errorf("got %q, want %q", envs[0], want)
-		}
-	})
-}
-
 func TestBuildEnv(t *testing.T) {
+	rt := &agentrt.ClaudeRuntime{}
+
 	t.Run("IncludesAllCategories", func(t *testing.T) {
-		env := buildEnv("my-team", "reviewer", "task-1", "m1")
+		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "reviewer", "task-1", "m1", PlaceholderAuthClaude)
 
 		envMap := make(map[string]string)
 		for _, e := range env {
@@ -79,8 +59,8 @@ func TestBuildEnv(t *testing.T) {
 		}
 	})
 
-	t.Run("NoUserEnvs_HasSystemAuthIdentity", func(t *testing.T) {
-		env := buildEnv("my-team", "coder", "task-1", "m2")
+	t.Run("HasSystemAuthIdentity", func(t *testing.T) {
+		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "coder", "task-1", "m2", PlaceholderAuthClaude)
 
 		// system(3) + auth(1) + identity(4) = 8
 		if len(env) != 8 {
@@ -140,11 +120,13 @@ func TestBuildEnvCommand(t *testing.T) {
 }
 
 func TestBuildCommand(t *testing.T) {
+	rt := &agentrt.ClaudeRuntime{}
+
 	t.Run("AllArgs_IncludesPlaceholders", func(t *testing.T) {
-		cmd := buildCommand("claude-sonnet-4-6",
+		cmd := buildCommand(rt, "claude-sonnet-4-6",
 			[]string{"--dangerously-skip-permissions", "--verbose"},
 			PlaceholderMemberspace+"/project",
-			"my-team", "coder", "task-1", "m1")
+			PlaceholderMemberspace, "my-team", "coder", "task-1", "m1", PlaceholderAuthClaude)
 
 		for _, want := range []string{
 			"claude",
@@ -168,5 +150,4 @@ func TestBuildCommand(t *testing.T) {
 			t.Error("--append-system-prompt should not be in the command")
 		}
 	})
-
 }

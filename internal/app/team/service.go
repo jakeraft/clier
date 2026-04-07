@@ -14,16 +14,16 @@ type Store interface {
 	GetMember(ctx context.Context, id string) (domain.Member, error)
 
 	// Write (used by Import)
-	CreateClaudeMd(ctx context.Context, cm *resource.ClaudeMd) error
+	CreateAgentDotMd(ctx context.Context, cm *resource.AgentDotMd) error
 	CreateSkill(ctx context.Context, sk *resource.Skill) error
-	CreateSettings(ctx context.Context, st *resource.Settings) error
+	CreateClaudeSettings(ctx context.Context, st *resource.ClaudeSettings) error
 	CreateClaudeJson(ctx context.Context, cj *resource.ClaudeJson) error
 	CreateGitRepo(ctx context.Context, r *resource.GitRepo) error
 	CreateMember(ctx context.Context, m *domain.Member) error
 	CreateTeam(ctx context.Context, t *domain.Team) error
-	UpdateClaudeMd(ctx context.Context, cm *resource.ClaudeMd) error
+	UpdateAgentDotMd(ctx context.Context, cm *resource.AgentDotMd) error
 	UpdateSkill(ctx context.Context, sk *resource.Skill) error
-	UpdateSettings(ctx context.Context, st *resource.Settings) error
+	UpdateClaudeSettings(ctx context.Context, st *resource.ClaudeSettings) error
 	UpdateClaudeJson(ctx context.Context, cj *resource.ClaudeJson) error
 	UpdateGitRepo(ctx context.Context, r *resource.GitRepo) error
 	UpdateMember(ctx context.Context, m *domain.Member) error

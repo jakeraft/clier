@@ -10,42 +10,42 @@ import (
 
 // buildWorkspaceFiles creates all file entries for a member's workspace.
 // Clearly separates system-generated and user-defined content.
-func buildWorkspaceFiles(memberspace, systemClaudeMd, userClaudeMd, userSettings, systemClaudeJson, userClaudeJson string, userSkills []resource.Skill) []domain.FileEntry {
+func buildWorkspaceFiles(rt AgentRuntime, memberspace, systemAgentDotMd, userAgentDotMd, userClaudeSettings, systemProjectConfig, userProjectConfig string, userSkills []resource.Skill) []domain.FileEntry {
 	var files []domain.FileEntry
 
-	// CLAUDE.md -> {memberspace}/project/CLAUDE.md
-	claudeMdContent := systemClaudeMd
-	if userClaudeMd != "" {
-		claudeMdContent += "\n\n---\n\n" + userClaudeMd
+	// Instruction file -> {memberspace}/project/{rt.InstructionFile()}
+	agentDotMdContent := systemAgentDotMd
+	if userAgentDotMd != "" {
+		agentDotMdContent += "\n\n---\n\n" + userAgentDotMd
 	}
-	if claudeMdContent != "" {
+	if agentDotMdContent != "" {
 		files = append(files, domain.FileEntry{
-			Path:    memberspace + "/project/CLAUDE.md",
-			Content: claudeMdContent,
+			Path:    memberspace + "/project/" + rt.InstructionFile(),
+			Content: agentDotMdContent,
 		})
 	}
 
-	// settings.json -> {memberspace}/.claude/settings.json
-	if userSettings != "" {
+	// Settings -> {memberspace}/{rt.ConfigDir()}/{rt.SettingsFile()}
+	if userClaudeSettings != "" {
 		files = append(files, domain.FileEntry{
-			Path:    memberspace + "/.claude/settings.json",
-			Content: userSettings,
+			Path:    fmt.Sprintf("%s/%s/%s", memberspace, rt.ConfigDir(), rt.SettingsFile()),
+			Content: userClaudeSettings,
 		})
 	}
 
-	// .claude.json -> {memberspace}/.claude/.claude.json
-	claudeJsonContent := mergeJSON(systemClaudeJson, userClaudeJson)
-	if claudeJsonContent != "" {
+	// Project config -> {memberspace}/{rt.ConfigDir()}/{rt.ProjectConfigFile()}
+	projectConfigContent := mergeJSON(systemProjectConfig, userProjectConfig)
+	if projectConfigContent != "" {
 		files = append(files, domain.FileEntry{
-			Path:    memberspace + "/.claude/.claude.json",
-			Content: claudeJsonContent,
+			Path:    fmt.Sprintf("%s/%s/%s", memberspace, rt.ConfigDir(), rt.ProjectConfigFile()),
+			Content: projectConfigContent,
 		})
 	}
 
-	// Skills -> {memberspace}/.claude/skills/{name}/SKILL.md
+	// Skills -> {memberspace}/{rt.SkillsDir()}/{name}/SKILL.md
 	for _, skill := range userSkills {
 		files = append(files, domain.FileEntry{
-			Path:    fmt.Sprintf("%s/.claude/skills/%s/SKILL.md", memberspace, skill.Name),
+			Path:    fmt.Sprintf("%s/%s/%s/SKILL.md", memberspace, rt.SkillsDir(), skill.Name),
 			Content: skill.Content,
 		})
 	}
@@ -53,12 +53,7 @@ func buildWorkspaceFiles(memberspace, systemClaudeMd, userClaudeMd, userSettings
 	return files
 }
 
-// buildSystemClaudeJson generates the system-required .claude.json fields.
-// The projects key ensures Claude recognizes the workspace directory.
-func buildSystemClaudeJson(memberspace string) string {
-	return fmt.Sprintf(`{"hasCompletedOnboarding":true,"projects":{"%s/project":{"hasTrustDialogAccepted":true,"hasCompletedProjectOnboarding":true}}}`, memberspace)
-}
-
+// NOTE: Claude-specific JSON merge. Other agent runtimes may need different merge strategy (e.g. TOML for Codex).
 // mergeJSON merges two JSON object strings. System keys are set first, then user keys override/extend.
 // The "projects" key is deep-merged: system project entries and user project entries are combined.
 // Returns empty string if both inputs are empty.

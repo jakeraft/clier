@@ -39,11 +39,11 @@ func newClaudeSettingsCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			s, err := resource.NewSettings(name, content)
+			s, err := resource.NewClaudeSettings(name, content)
 			if err != nil {
 				return err
 			}
-			if err := store.CreateSettings(cmd.Context(), s); err != nil {
+			if err := store.CreateClaudeSettings(cmd.Context(), s); err != nil {
 				return err
 			}
 			return printJSON(s)
@@ -71,7 +71,7 @@ func newClaudeSettingsListCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			items, err := store.ListSettings(cmd.Context())
+			items, err := store.ListClaudeSettings(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -99,7 +99,7 @@ func newClaudeSettingsUpdateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			s, err := store.GetSettings(cmd.Context(), args[0])
+			s, err := store.GetClaudeSettings(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -116,7 +116,7 @@ func newClaudeSettingsUpdateCmd() *cobra.Command {
 			if err := s.Update(namePtr, contentPtr); err != nil {
 				return err
 			}
-			if err := store.UpdateSettings(cmd.Context(), &s); err != nil {
+			if err := store.UpdateClaudeSettings(cmd.Context(), &s); err != nil {
 				return err
 			}
 			return printJSON(s)
@@ -144,7 +144,7 @@ func newClaudeSettingsDeleteCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if err := store.DeleteSettings(cmd.Context(), args[0]); err != nil {
+			if err := store.DeleteClaudeSettings(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

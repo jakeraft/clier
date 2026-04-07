@@ -162,22 +162,22 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 	}
 
 	switch envelope.Type {
-	case "claude_md":
-		var c resource.ClaudeMd
+	case "agent_dot_md":
+		var c resource.AgentDotMd
 		if err := json.Unmarshal(envelope.Data, &c); err != nil {
-			return fmt.Errorf("unmarshal claude_md: %w", err)
+			return fmt.Errorf("unmarshal agent_dot_md: %w", err)
 		}
 		setTimestamps(&c.CreatedAt, &c.UpdatedAt)
-		if existing, err := store.GetClaudeMd(ctx, c.ID); err == nil {
+		if existing, err := store.GetAgentDotMd(ctx, c.ID); err == nil {
 			if err := existing.Update(&c.Name, &c.Content); err != nil {
 				return err
 			}
-			if err := store.UpdateClaudeMd(ctx, &existing); err != nil {
+			if err := store.UpdateAgentDotMd(ctx, &existing); err != nil {
 				return err
 			}
 			return printJSON(existing)
 		}
-		if err := store.CreateClaudeMd(ctx, &c); err != nil {
+		if err := store.CreateAgentDotMd(ctx, &c); err != nil {
 			return err
 		}
 		return printJSON(c)
@@ -202,22 +202,22 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		}
 		return printJSON(sk)
 
-	case "settings":
-		var st resource.Settings
+	case "claude_settings":
+		var st resource.ClaudeSettings
 		if err := json.Unmarshal(envelope.Data, &st); err != nil {
-			return fmt.Errorf("unmarshal settings: %w", err)
+			return fmt.Errorf("unmarshal claude_settings: %w", err)
 		}
 		setTimestamps(&st.CreatedAt, &st.UpdatedAt)
-		if existing, err := store.GetSettings(ctx, st.ID); err == nil {
+		if existing, err := store.GetClaudeSettings(ctx, st.ID); err == nil {
 			if err := existing.Update(&st.Name, &st.Content); err != nil {
 				return err
 			}
-			if err := store.UpdateSettings(ctx, &existing); err != nil {
+			if err := store.UpdateClaudeSettings(ctx, &existing); err != nil {
 				return err
 			}
 			return printJSON(existing)
 		}
-		if err := store.CreateSettings(ctx, &st); err != nil {
+		if err := store.CreateClaudeSettings(ctx, &st); err != nil {
 			return err
 		}
 		return printJSON(st)
@@ -269,8 +269,8 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		}
 		setTimestamps(&m.CreatedAt, &m.UpdatedAt)
 		if existing, err := store.GetMember(ctx, m.ID); err == nil {
-			if err := existing.Update(&m.Name, &m.Model, &m.Args, &m.ClaudeMdID, &m.SkillIDs,
-				&m.SettingsID, &m.ClaudeJsonID, &m.GitRepoID); err != nil {
+			if err := existing.Update(&m.Name, &m.AgentType, &m.Model, &m.Args, &m.AgentDotMdID, &m.SkillIDs,
+				&m.ClaudeSettingsID, &m.ClaudeJsonID, &m.GitRepoID); err != nil {
 				return err
 			}
 			if err := store.UpdateMember(ctx, &existing); err != nil {

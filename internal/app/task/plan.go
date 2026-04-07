@@ -36,13 +36,13 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		return nil, fmt.Errorf("get member %s: %w", tm.MemberID, err)
 	}
 
-	var claudeMd *resource.ClaudeMd
-	if member.ClaudeMdID != "" {
-		cm, err := s.store.GetClaudeMd(ctx, member.ClaudeMdID)
+	var agentDotMd *resource.AgentDotMd
+	if member.AgentDotMdID != "" {
+		adm, err := s.store.GetAgentDotMd(ctx, member.AgentDotMdID)
 		if err != nil {
-			return nil, fmt.Errorf("get claude md for %s: %w", tm.Name, err)
+			return nil, fmt.Errorf("get agent dot md for %s: %w", tm.Name, err)
 		}
-		claudeMd = &cm
+		agentDotMd = &adm
 	}
 
 	skills := make([]resource.Skill, 0, len(member.SkillIDs))
@@ -54,13 +54,13 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		skills = append(skills, sk)
 	}
 
-	var settings *resource.Settings
-	if member.SettingsID != "" {
-		st, err := s.store.GetSettings(ctx, member.SettingsID)
+	var claudeSettings *resource.ClaudeSettings
+	if member.ClaudeSettingsID != "" {
+		cs, err := s.store.GetClaudeSettings(ctx, member.ClaudeSettingsID)
 		if err != nil {
-			return nil, fmt.Errorf("get settings for %s: %w", tm.Name, err)
+			return nil, fmt.Errorf("get claude settings for %s: %w", tm.Name, err)
 		}
-		settings = &st
+		claudeSettings = &cs
 	}
 
 	var claudeJson *resource.ClaudeJson
@@ -84,22 +84,23 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 	relations := team.MemberRelations(tm.ID)
 
 	return &domain.ResolvedMember{
-		TeamMemberID: tm.ID,
-		Name:         tm.Name,
-		Model:        member.Model,
-		Args:         member.Args,
-		ClaudeMd:     claudeMd,
-		Skills:       skills,
-		Settings:     settings,
-		ClaudeJson:   claudeJson,
-		Repo:         repo,
-		Relations:    relations,
+		TeamMemberID:   tm.ID,
+		Name:           tm.Name,
+		AgentType:      member.AgentType,
+		Model:          member.Model,
+		Args:           member.Args,
+		AgentDotMd:     agentDotMd,
+		Skills:         skills,
+		ClaudeSettings: claudeSettings,
+		ClaudeJson:     claudeJson,
+		Repo:           repo,
+		Relations:      relations,
 	}, nil
 }
 
 // buildPlans constructs MemberPlans from a resolved team.
 // This is the build phase: resolved objects -> execution plan with placeholders.
-func buildPlans(resolved *domain.ResolvedTeam, taskID string) []domain.MemberPlan {
+func buildPlans(resolved *domain.ResolvedTeam, taskID string, runtimes map[string]AgentRuntime) []domain.MemberPlan {
 	nameByID := make(map[string]string, len(resolved.Members))
 	for _, rm := range resolved.Members {
 		nameByID[rm.TeamMemberID] = rm.Name
@@ -107,7 +108,7 @@ func buildPlans(resolved *domain.ResolvedTeam, taskID string) []domain.MemberPla
 
 	plans := make([]domain.MemberPlan, 0, len(resolved.Members))
 	for _, rm := range resolved.Members {
-		plan := buildMemberPlan(&rm, nameByID, resolved.Name, taskID)
+		plan := buildMemberPlan(&rm, nameByID, resolved.Name, taskID, runtimes)
 		plans = append(plans, plan)
 	}
 	return plans
@@ -115,34 +116,39 @@ func buildPlans(resolved *domain.ResolvedTeam, taskID string) []domain.MemberPla
 
 // buildMemberPlan constructs a single MemberPlan from a resolved member.
 // This is the transparent facade: each building block and its destination is visible.
-func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, teamName, taskID string) domain.MemberPlan {
+func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, teamName, taskID string, runtimes map[string]AgentRuntime) domain.MemberPlan {
 	memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, PlaceholderTaskID, rm.TeamMemberID)
 
-	// === CLAUDE.md ===
-	systemClaudeMd := buildClierPrompt(teamName, rm.Name, rm.Relations, nameByID) // Clier system
-	var userClaudeMd string                                                        // user building block
-	if rm.ClaudeMd != nil {
-		userClaudeMd = rm.ClaudeMd.Content
+	rt := runtimes[rm.AgentType]
+	if rt == nil {
+		rt = runtimes["claude"]
 	}
 
-	// === settings.json ===
-	var userSettings string // user building block (no system injection currently)
-	if rm.Settings != nil {
-		userSettings = rm.Settings.Content
+	// === Instruction file (e.g. CLAUDE.md) ===
+	systemAgentDotMd := buildClierPrompt(teamName, rm.Name, rm.Relations, nameByID) // Clier system
+	var userAgentDotMd string                                                        // user building block
+	if rm.AgentDotMd != nil {
+		userAgentDotMd = rm.AgentDotMd.Content
 	}
 
-	// === .claude.json ===
-	systemClaudeJson := buildSystemClaudeJson(PlaceholderMemberspace) // Clier system: projects path
-	var userClaudeJson string                                         // user building block
+	// === settings (e.g. settings.json) ===
+	var userClaudeSettings string // user building block (no system injection currently)
+	if rm.ClaudeSettings != nil {
+		userClaudeSettings = rm.ClaudeSettings.Content
+	}
+
+	// === project config (e.g. .claude.json) ===
+	systemProjectConfig := rt.SystemConfig(PlaceholderMemberspace) // runtime-provided system config
+	var userProjectConfig string                                   // user building block
 	if rm.ClaudeJson != nil {
-		userClaudeJson = rm.ClaudeJson.Content
+		userProjectConfig = rm.ClaudeJson.Content
 	}
 
 	// === Skills ===
 	userSkills := rm.Skills // user building block (no system injection)
 
 	// === Assemble workspace files ===
-	files := buildWorkspaceFiles(PlaceholderMemberspace, systemClaudeMd, userClaudeMd, userSettings, systemClaudeJson, userClaudeJson, userSkills)
+	files := buildWorkspaceFiles(rt, PlaceholderMemberspace, systemAgentDotMd, userAgentDotMd, userClaudeSettings, systemProjectConfig, userProjectConfig, userSkills)
 
 	// === Command: user building blocks ===
 	model := rm.Model
@@ -152,7 +158,8 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 	// (system envs are assembled inside buildCommand -> buildEnv)
 
 	// === Assemble command ===
-	cmd := buildCommand(model, args, PlaceholderMemberspace+"/project", teamName, rm.Name, taskID, rm.TeamMemberID)
+	cmd := buildCommand(rt, model, args, PlaceholderMemberspace+"/project",
+		PlaceholderMemberspace, teamName, rm.Name, taskID, rm.TeamMemberID, PlaceholderAuthClaude)
 
 	launchPath := PlaceholderMemberspace + "/launch.sh"
 	files = append(files, domain.FileEntry{Path: launchPath, Content: cmd})

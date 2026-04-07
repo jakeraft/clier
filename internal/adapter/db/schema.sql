@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS claude_mds (
+CREATE TABLE IF NOT EXISTS agent_dot_mds (
     id         TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
     content    TEXT NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS skills (
     updated_at INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS settings (
+CREATE TABLE IF NOT EXISTS claude_settings (
     id         TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
     content    TEXT NOT NULL,
@@ -39,16 +39,17 @@ CREATE TABLE IF NOT EXISTS git_repos (
 );
 
 CREATE TABLE IF NOT EXISTS members (
-    id             TEXT PRIMARY KEY,
-    name           TEXT NOT NULL,
-    model          TEXT NOT NULL,
-    args           TEXT NOT NULL DEFAULT '[]',
-    claude_md_id   TEXT REFERENCES claude_mds(id) ON DELETE RESTRICT,
-    settings_id    TEXT REFERENCES settings(id) ON DELETE RESTRICT,
-    claude_json_id TEXT REFERENCES claude_jsons(id) ON DELETE RESTRICT,
-    git_repo_id    TEXT REFERENCES git_repos(id) ON DELETE RESTRICT,
-    created_at     INTEGER NOT NULL,
-    updated_at     INTEGER NOT NULL
+    id                TEXT PRIMARY KEY,
+    name              TEXT NOT NULL,
+    agent_type        TEXT NOT NULL DEFAULT 'claude',
+    model             TEXT NOT NULL,
+    args              TEXT NOT NULL DEFAULT '[]',
+    agent_dot_md_id   TEXT REFERENCES agent_dot_mds(id) ON DELETE RESTRICT,
+    claude_settings_id TEXT REFERENCES claude_settings(id) ON DELETE RESTRICT,
+    claude_json_id    TEXT REFERENCES claude_jsons(id) ON DELETE RESTRICT,
+    git_repo_id       TEXT REFERENCES git_repos(id) ON DELETE RESTRICT,
+    created_at        INTEGER NOT NULL,
+    updated_at        INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS member_skills (

@@ -24,9 +24,9 @@ type TaskStore interface {
 	// Team and member spec reads (used by plan building)
 	GetTeam(ctx context.Context, id string) (domain.Team, error)
 	GetMember(ctx context.Context, id string) (domain.Member, error)
-	GetClaudeMd(ctx context.Context, id string) (resource.ClaudeMd, error)
+	GetAgentDotMd(ctx context.Context, id string) (resource.AgentDotMd, error)
 	GetSkill(ctx context.Context, id string) (resource.Skill, error)
-	GetSettings(ctx context.Context, id string) (resource.Settings, error)
+	GetClaudeSettings(ctx context.Context, id string) (resource.ClaudeSettings, error)
 	GetClaudeJson(ctx context.Context, id string) (resource.ClaudeJson, error)
 	GetGitRepo(ctx context.Context, id string) (resource.GitRepo, error)
 }
@@ -58,11 +58,12 @@ type Service struct {
 	workspace Workspace
 	base      string
 	homeDir   string
+	runtimes  map[string]AgentRuntime
 }
 
 // New creates a task Service.
-func New(store TaskStore, term Terminal, ws Workspace, base, homeDir string) *Service {
-	return &Service{store: store, terminal: term, workspace: ws, base: base, homeDir: homeDir}
+func New(store TaskStore, term Terminal, ws Workspace, base, homeDir string, runtimes map[string]AgentRuntime) *Service {
+	return &Service{store: store, terminal: term, workspace: ws, base: base, homeDir: homeDir, runtimes: runtimes}
 }
 
 // Start resolves the team, builds the execution plan, expands placeholders,
@@ -78,7 +79,7 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 	taskName := domain.TaskName(team.Name, taskID)
 
 	// Build: resolved objects -> execution plan (with placeholders)
-	plan := buildPlans(resolved, taskID)
+	plan := buildPlans(resolved, taskID, s.runtimes)
 
 	t, err := domain.NewTask(taskID, taskName, team.ID)
 	if err != nil {
@@ -87,10 +88,10 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 	t.Plan = plan
 
 	// Expand: placeholders -> concrete paths
-	claudeToken := readAuth(auth)
+	authToken := readAuth(auth)
 	members := make([]domain.MemberPlan, 0, len(plan))
 	for _, m := range plan {
-		members = append(members, expandPlaceholders(m, s.base, s.homeDir, taskID, claudeToken))
+		members = append(members, expandPlaceholders(m, s.base, s.homeDir, taskID, authToken))
 	}
 
 	success := false
@@ -194,7 +195,7 @@ func (s *Service) Note(ctx context.Context, taskID, teamMemberID, content string
 	return nil
 }
 
-// readAuth reads the Claude auth token.
+// readAuth reads the auth token.
 func readAuth(auth AuthChecker) string {
 	token, err := auth.ReadToken()
 	if err == nil && token != "" {

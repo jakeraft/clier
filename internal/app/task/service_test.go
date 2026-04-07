@@ -41,14 +41,14 @@ func (s *stubStore) CreateNote(_ context.Context, n *domain.Note) error {
 func (s *stubStore) GetMember(_ context.Context, _ string) (domain.Member, error) {
 	return domain.Member{}, errors.New("not implemented")
 }
-func (s *stubStore) GetClaudeMd(_ context.Context, _ string) (resource.ClaudeMd, error) {
-	return resource.ClaudeMd{}, errors.New("not implemented")
+func (s *stubStore) GetAgentDotMd(_ context.Context, _ string) (resource.AgentDotMd, error) {
+	return resource.AgentDotMd{}, errors.New("not implemented")
 }
 func (s *stubStore) GetSkill(_ context.Context, _ string) (resource.Skill, error) {
 	return resource.Skill{}, errors.New("not implemented")
 }
-func (s *stubStore) GetSettings(_ context.Context, _ string) (resource.Settings, error) {
-	return resource.Settings{}, errors.New("not implemented")
+func (s *stubStore) GetClaudeSettings(_ context.Context, _ string) (resource.ClaudeSettings, error) {
+	return resource.ClaudeSettings{}, errors.New("not implemented")
 }
 func (s *stubStore) GetClaudeJson(_ context.Context, _ string) (resource.ClaudeJson, error) {
 	return resource.ClaudeJson{}, errors.New("not implemented")
@@ -77,7 +77,7 @@ func (w *stubWorkspace) Cleanup(_ string) error                                 
 func TestService_Note(t *testing.T) {
 	tk := &domain.Task{ID: "s-1", TeamID: "t-1", Status: domain.TaskRunning}
 	store := &stubStore{task: tk}
-	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "", "")
+	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "", "", nil)
 
 	t.Run("success", func(t *testing.T) {
 		store.notes = nil
@@ -125,7 +125,7 @@ func TestService_Send(t *testing.T) {
 	t.Run("agent message includes sender name", func(t *testing.T) {
 		store := &stubStore{task: tk, team: team}
 		term := &stubTerminal{}
-		svc := New(store, term, &stubWorkspace{}, "", "")
+		svc := New(store, term, &stubWorkspace{}, "", "", nil)
 
 		if err := svc.Send(context.Background(), "s-1", "m-1", "m-2", "hello"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -145,7 +145,7 @@ func TestService_Send(t *testing.T) {
 	t.Run("empty sender has no prefix", func(t *testing.T) {
 		store := &stubStore{task: tk, team: team}
 		term := &stubTerminal{}
-		svc := New(store, term, &stubWorkspace{}, "", "")
+		svc := New(store, term, &stubWorkspace{}, "", "", nil)
 
 		if err := svc.Send(context.Background(), "s-1", "", "m-2", "do this"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -158,7 +158,7 @@ func TestService_Send(t *testing.T) {
 	t.Run("delivery failure prevents save", func(t *testing.T) {
 		store := &stubStore{task: tk, team: team}
 		term := &failTerminal{}
-		svc := New(store, term, &stubWorkspace{}, "", "")
+		svc := New(store, term, &stubWorkspace{}, "", "", nil)
 
 		err := svc.Send(context.Background(), "s-1", "m-1", "bad-member", "hello")
 		if err == nil {

@@ -1,11 +1,11 @@
 import { Users, User, FileText, BookOpen, Settings2, FileJson, FolderGit2, Play, type LucideIcon } from "lucide-react";
-type Entity = "team" | "task" | "member" | "claude-md" | "skill" | "claude-settings" | "claude-json" | "git-repo";
+type Entity = "team" | "task" | "member" | "agent-dot-md" | "skill" | "claude-settings" | "claude-json" | "git-repo";
 
 const ENTITY_STYLE = new Map<Entity, string>([
   ["team", "bg-entity-team/10 text-entity-team hover:bg-entity-team/20 [a&]:hover:bg-entity-team/20"],
   ["task", "bg-entity-task/10 text-entity-task hover:bg-entity-task/20 [a&]:hover:bg-entity-task/20"],
   ["member", "bg-entity-member/10 text-entity-member hover:bg-entity-member/20 [a&]:hover:bg-entity-member/20"],
-  ["claude-md", "bg-entity-instruction/10 text-entity-instruction hover:bg-entity-instruction/20 [a&]:hover:bg-entity-instruction/20"],
+  ["agent-dot-md", "bg-entity-instruction/10 text-entity-instruction hover:bg-entity-instruction/20 [a&]:hover:bg-entity-instruction/20"],
   ["skill", "bg-entity-instruction/10 text-entity-instruction hover:bg-entity-instruction/20 [a&]:hover:bg-entity-instruction/20"],
   ["claude-settings", "bg-entity-model/10 text-entity-model hover:bg-entity-model/20 [a&]:hover:bg-entity-model/20"],
   ["claude-json", "bg-entity-model/10 text-entity-model hover:bg-entity-model/20 [a&]:hover:bg-entity-model/20"],
@@ -19,7 +19,7 @@ const ENTITY_ICON = new Map<Entity, LucideIcon>([
   ["team", Users],
   ["task", Play],
   ["member", User],
-  ["claude-md", FileText],
+  ["agent-dot-md", FileText],
   ["skill", BookOpen],
   ["claude-settings", Settings2],
   ["claude-json", FileJson],
@@ -30,17 +30,17 @@ const SEGMENT_TO_ENTITY = new Map<string, Entity>([
   ["teams", "team"],
   ["tasks", "task"],
   ["members", "member"],
-  ["prompts", "claude-md"],
+  ["prompts", "agent-dot-md"],
   ["claude", "claude-settings"],
-  ["claude-mds", "claude-md"],
+  ["agent-dot-mds", "agent-dot-md"],
   ["skills", "skill"],
-  ["settings", "claude-settings"],
+  ["claude-settings", "claude-settings"],
   ["claude-jsons", "claude-json"],
   ["git-repos", "git-repo"],
 ]);
 
 function entityFromPath(path: string): Entity | undefined {
-  const match = /^\/(teams|tasks|members|prompts|claude|claude-mds|skills|settings|claude-jsons|git-repos)(\/|$)/.exec(path);
+  const match = /^\/(teams|tasks|members|prompts|claude|agent-dot-mds|skills|claude-settings|claude-jsons|git-repos)(\/|$)/.exec(path);
   if (!match) return undefined;
   return SEGMENT_TO_ENTITY.get(match[1]);
 }

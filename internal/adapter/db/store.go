@@ -274,16 +274,17 @@ func (s *Store) CreateMember(ctx context.Context, m *domain.Member) error {
 
 	qtx := generated.New(tx)
 	if _, err := qtx.CreateMember(ctx, generated.CreateMemberParams{
-		ID:           m.ID,
-		Name:         m.Name,
-		Model:        m.Model,
-		Args:         string(argsJSON),
-		ClaudeMdID:   sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
-		SettingsID:   sql.NullString{String: m.SettingsID, Valid: m.SettingsID != ""},
-		ClaudeJsonID: sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
-		GitRepoID:    sql.NullString{String: m.GitRepoID, Valid: m.GitRepoID != ""},
-		CreatedAt:    m.CreatedAt.Unix(),
-		UpdatedAt:    m.UpdatedAt.Unix(),
+		ID:               m.ID,
+		Name:             m.Name,
+		AgentType:        m.AgentType,
+		Model:            m.Model,
+		Args:             string(argsJSON),
+		AgentDotMdID:     sql.NullString{String: m.AgentDotMdID, Valid: m.AgentDotMdID != ""},
+		ClaudeSettingsID: sql.NullString{String: m.ClaudeSettingsID, Valid: m.ClaudeSettingsID != ""},
+		ClaudeJsonID:     sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
+		GitRepoID:        sql.NullString{String: m.GitRepoID, Valid: m.GitRepoID != ""},
+		CreatedAt:        m.CreatedAt.Unix(),
+		UpdatedAt:        m.UpdatedAt.Unix(),
 	}); err != nil {
 		return err
 	}
@@ -317,17 +318,18 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 		skillIDs = []string{}
 	}
 	return domain.Member{
-		ID:           row.ID,
-		Name:         row.Name,
-		Model:        row.Model,
-		Args:         args,
-		ClaudeMdID:   row.ClaudeMdID.String,
-		SkillIDs:     skillIDs,
-		SettingsID:   row.SettingsID.String,
-		ClaudeJsonID: row.ClaudeJsonID.String,
-		GitRepoID:    row.GitRepoID.String,
-		CreatedAt:    time.Unix(row.CreatedAt, 0),
-		UpdatedAt:    time.Unix(row.UpdatedAt, 0),
+		ID:               row.ID,
+		Name:             row.Name,
+		AgentType:        row.AgentType,
+		Model:            row.Model,
+		Args:             args,
+		AgentDotMdID:     row.AgentDotMdID.String,
+		SkillIDs:         skillIDs,
+		ClaudeSettingsID: row.ClaudeSettingsID.String,
+		ClaudeJsonID:     row.ClaudeJsonID.String,
+		GitRepoID:        row.GitRepoID.String,
+		CreatedAt:        time.Unix(row.CreatedAt, 0),
+		UpdatedAt:        time.Unix(row.UpdatedAt, 0),
 	}, nil
 }
 
@@ -361,15 +363,16 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 
 	qtx := generated.New(tx)
 	if _, err := qtx.UpdateMember(ctx, generated.UpdateMemberParams{
-		Name:         m.Name,
-		Model:        m.Model,
-		Args:         string(argsJSON),
-		ClaudeMdID:   sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
-		SettingsID:   sql.NullString{String: m.SettingsID, Valid: m.SettingsID != ""},
-		ClaudeJsonID: sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
-		GitRepoID:    sql.NullString{String: m.GitRepoID, Valid: m.GitRepoID != ""},
-		UpdatedAt:    m.UpdatedAt.Unix(),
-		ID:           m.ID,
+		Name:             m.Name,
+		AgentType:        m.AgentType,
+		Model:            m.Model,
+		Args:             string(argsJSON),
+		AgentDotMdID:     sql.NullString{String: m.AgentDotMdID, Valid: m.AgentDotMdID != ""},
+		ClaudeSettingsID: sql.NullString{String: m.ClaudeSettingsID, Valid: m.ClaudeSettingsID != ""},
+		ClaudeJsonID:     sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
+		GitRepoID:        sql.NullString{String: m.GitRepoID, Valid: m.GitRepoID != ""},
+		UpdatedAt:        m.UpdatedAt.Unix(),
+		ID:               m.ID,
 	}); err != nil {
 		return err
 	}
@@ -404,10 +407,10 @@ func (s *Store) DeleteMember(ctx context.Context, id string) error {
 	return nil
 }
 
-// ClaudeMd
+// AgentDotMd
 
-func (s *Store) CreateClaudeMd(ctx context.Context, c *resource.ClaudeMd) error {
-	_, err := s.queries.CreateClaudeMd(ctx, generated.CreateClaudeMdParams{
+func (s *Store) CreateAgentDotMd(ctx context.Context, c *resource.AgentDotMd) error {
+	_, err := s.queries.CreateAgentDotMd(ctx, generated.CreateAgentDotMdParams{
 		ID:        c.ID,
 		Name:      c.Name,
 		Content:   c.Content,
@@ -417,12 +420,12 @@ func (s *Store) CreateClaudeMd(ctx context.Context, c *resource.ClaudeMd) error 
 	return err
 }
 
-func (s *Store) GetClaudeMd(ctx context.Context, id string) (resource.ClaudeMd, error) {
-	row, err := s.queries.GetClaudeMd(ctx, id)
+func (s *Store) GetAgentDotMd(ctx context.Context, id string) (resource.AgentDotMd, error) {
+	row, err := s.queries.GetAgentDotMd(ctx, id)
 	if err != nil {
-		return resource.ClaudeMd{}, err
+		return resource.AgentDotMd{}, err
 	}
-	return resource.ClaudeMd{
+	return resource.AgentDotMd{
 		ID:        row.ID,
 		Name:      row.Name,
 		Content:   row.Content,
@@ -431,14 +434,14 @@ func (s *Store) GetClaudeMd(ctx context.Context, id string) (resource.ClaudeMd, 
 	}, nil
 }
 
-func (s *Store) ListClaudeMds(ctx context.Context) ([]resource.ClaudeMd, error) {
-	rows, err := s.queries.ListClaudeMds(ctx)
+func (s *Store) ListAgentDotMds(ctx context.Context) ([]resource.AgentDotMd, error) {
+	rows, err := s.queries.ListAgentDotMds(ctx)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]resource.ClaudeMd, 0, len(rows))
+	items := make([]resource.AgentDotMd, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, resource.ClaudeMd{
+		items = append(items, resource.AgentDotMd{
 			ID:        row.ID,
 			Name:      row.Name,
 			Content:   row.Content,
@@ -449,8 +452,8 @@ func (s *Store) ListClaudeMds(ctx context.Context) ([]resource.ClaudeMd, error) 
 	return items, nil
 }
 
-func (s *Store) UpdateClaudeMd(ctx context.Context, c *resource.ClaudeMd) error {
-	_, err := s.queries.UpdateClaudeMd(ctx, generated.UpdateClaudeMdParams{
+func (s *Store) UpdateAgentDotMd(ctx context.Context, c *resource.AgentDotMd) error {
+	_, err := s.queries.UpdateAgentDotMd(ctx, generated.UpdateAgentDotMdParams{
 		Name:      c.Name,
 		Content:   c.Content,
 		UpdatedAt: c.UpdatedAt.Unix(),
@@ -459,9 +462,9 @@ func (s *Store) UpdateClaudeMd(ctx context.Context, c *resource.ClaudeMd) error 
 	return err
 }
 
-// DeleteClaudeMd deletes a claude md. RESTRICT: fails if referenced by a member.
-func (s *Store) DeleteClaudeMd(ctx context.Context, id string) error {
-	result, err := s.queries.DeleteClaudeMd(ctx, id)
+// DeleteAgentDotMd deletes an agent dot md. RESTRICT: fails if referenced by a member.
+func (s *Store) DeleteAgentDotMd(ctx context.Context, id string) error {
+	result, err := s.queries.DeleteAgentDotMd(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -470,7 +473,7 @@ func (s *Store) DeleteClaudeMd(ctx context.Context, id string) error {
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("claude md not found: %s", id)
+		return fmt.Errorf("agent dot md not found: %s", id)
 	}
 	return nil
 }
@@ -546,10 +549,10 @@ func (s *Store) DeleteSkill(ctx context.Context, id string) error {
 	return nil
 }
 
-// Settings
+// ClaudeSettings
 
-func (s *Store) CreateSettings(ctx context.Context, st *resource.Settings) error {
-	_, err := s.queries.CreateSettings(ctx, generated.CreateSettingsParams{
+func (s *Store) CreateClaudeSettings(ctx context.Context, st *resource.ClaudeSettings) error {
+	_, err := s.queries.CreateClaudeSettings(ctx, generated.CreateClaudeSettingsParams{
 		ID:        st.ID,
 		Name:      st.Name,
 		Content:   st.Content,
@@ -559,12 +562,12 @@ func (s *Store) CreateSettings(ctx context.Context, st *resource.Settings) error
 	return err
 }
 
-func (s *Store) GetSettings(ctx context.Context, id string) (resource.Settings, error) {
-	row, err := s.queries.GetSettings(ctx, id)
+func (s *Store) GetClaudeSettings(ctx context.Context, id string) (resource.ClaudeSettings, error) {
+	row, err := s.queries.GetClaudeSettings(ctx, id)
 	if err != nil {
-		return resource.Settings{}, err
+		return resource.ClaudeSettings{}, err
 	}
-	return resource.Settings{
+	return resource.ClaudeSettings{
 		ID:        row.ID,
 		Name:      row.Name,
 		Content:   row.Content,
@@ -573,14 +576,14 @@ func (s *Store) GetSettings(ctx context.Context, id string) (resource.Settings, 
 	}, nil
 }
 
-func (s *Store) ListSettings(ctx context.Context) ([]resource.Settings, error) {
-	rows, err := s.queries.ListSettings(ctx)
+func (s *Store) ListClaudeSettings(ctx context.Context) ([]resource.ClaudeSettings, error) {
+	rows, err := s.queries.ListClaudeSettings(ctx)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]resource.Settings, 0, len(rows))
+	items := make([]resource.ClaudeSettings, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, resource.Settings{
+		items = append(items, resource.ClaudeSettings{
 			ID:        row.ID,
 			Name:      row.Name,
 			Content:   row.Content,
@@ -591,8 +594,8 @@ func (s *Store) ListSettings(ctx context.Context) ([]resource.Settings, error) {
 	return items, nil
 }
 
-func (s *Store) UpdateSettings(ctx context.Context, st *resource.Settings) error {
-	_, err := s.queries.UpdateSettings(ctx, generated.UpdateSettingsParams{
+func (s *Store) UpdateClaudeSettings(ctx context.Context, st *resource.ClaudeSettings) error {
+	_, err := s.queries.UpdateClaudeSettings(ctx, generated.UpdateClaudeSettingsParams{
 		Name:      st.Name,
 		Content:   st.Content,
 		UpdatedAt: st.UpdatedAt.Unix(),
@@ -601,9 +604,9 @@ func (s *Store) UpdateSettings(ctx context.Context, st *resource.Settings) error
 	return err
 }
 
-// DeleteSettings deletes a settings. RESTRICT: fails if referenced by a member.
-func (s *Store) DeleteSettings(ctx context.Context, id string) error {
-	result, err := s.queries.DeleteSettings(ctx, id)
+// DeleteClaudeSettings deletes a claude settings. RESTRICT: fails if referenced by a member.
+func (s *Store) DeleteClaudeSettings(ctx context.Context, id string) error {
+	result, err := s.queries.DeleteClaudeSettings(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -612,7 +615,7 @@ func (s *Store) DeleteSettings(ctx context.Context, id string) error {
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("settings not found: %s", id)
+		return fmt.Errorf("claude settings not found: %s", id)
 	}
 	return nil
 }
