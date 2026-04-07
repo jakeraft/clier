@@ -24,14 +24,6 @@ type ClaudeMd struct {
 	UpdatedAt int64
 }
 
-type GitRepo struct {
-	ID        string
-	Name      string
-	Url       string
-	CreatedAt int64
-	UpdatedAt int64
-}
-
 type Member struct {
 	ID           string
 	Name         string
@@ -40,7 +32,7 @@ type Member struct {
 	ClaudeMdID   sql.NullString
 	SettingsID   sql.NullString
 	ClaudeJsonID sql.NullString
-	GitRepoID    sql.NullString
+	GitRepoUrl   string
 	CreatedAt    int64
 	UpdatedAt    int64
 }

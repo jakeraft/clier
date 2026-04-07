@@ -281,7 +281,7 @@ func (s *Store) CreateMember(ctx context.Context, m *domain.Member) error {
 		ClaudeMdID:   sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
 		SettingsID:   sql.NullString{String: m.SettingsID, Valid: m.SettingsID != ""},
 		ClaudeJsonID: sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
-		GitRepoID:    sql.NullString{String: m.GitRepoID, Valid: m.GitRepoID != ""},
+		GitRepoUrl:   m.GitRepoURL,
 		CreatedAt:    m.CreatedAt.Unix(),
 		UpdatedAt:    m.UpdatedAt.Unix(),
 	}); err != nil {
@@ -325,7 +325,7 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 		SkillIDs:     skillIDs,
 		SettingsID:   row.SettingsID.String,
 		ClaudeJsonID: row.ClaudeJsonID.String,
-		GitRepoID:    row.GitRepoID.String,
+		GitRepoURL:   row.GitRepoUrl,
 		CreatedAt:    time.Unix(row.CreatedAt, 0),
 		UpdatedAt:    time.Unix(row.UpdatedAt, 0),
 	}, nil
@@ -367,7 +367,7 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 		ClaudeMdID:   sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
 		SettingsID:   sql.NullString{String: m.SettingsID, Valid: m.SettingsID != ""},
 		ClaudeJsonID: sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
-		GitRepoID:    sql.NullString{String: m.GitRepoID, Valid: m.GitRepoID != ""},
+		GitRepoUrl:   m.GitRepoURL,
 		UpdatedAt:    m.UpdatedAt.Unix(),
 		ID:           m.ID,
 	}); err != nil {
@@ -684,77 +684,6 @@ func (s *Store) DeleteClaudeJson(ctx context.Context, id string) error {
 	}
 	if rows == 0 {
 		return fmt.Errorf("claude json not found: %s", id)
-	}
-	return nil
-}
-
-// GitRepo
-
-func (s *Store) CreateGitRepo(ctx context.Context, r *resource.GitRepo) error {
-	_, err := s.queries.CreateGitRepo(ctx, generated.CreateGitRepoParams{
-		ID:        r.ID,
-		Name:      r.Name,
-		Url:       r.URL,
-		CreatedAt: r.CreatedAt.Unix(),
-		UpdatedAt: r.UpdatedAt.Unix(),
-	})
-	return err
-}
-
-func (s *Store) GetGitRepo(ctx context.Context, id string) (resource.GitRepo, error) {
-	row, err := s.queries.GetGitRepo(ctx, id)
-	if err != nil {
-		return resource.GitRepo{}, err
-	}
-	return resource.GitRepo{
-		ID:        row.ID,
-		Name:      row.Name,
-		URL:       row.Url,
-		CreatedAt: time.Unix(row.CreatedAt, 0),
-		UpdatedAt: time.Unix(row.UpdatedAt, 0),
-	}, nil
-}
-
-func (s *Store) ListGitRepos(ctx context.Context) ([]resource.GitRepo, error) {
-	rows, err := s.queries.ListGitRepos(ctx)
-	if err != nil {
-		return nil, err
-	}
-	repos := make([]resource.GitRepo, 0, len(rows))
-	for _, row := range rows {
-		repos = append(repos, resource.GitRepo{
-			ID:        row.ID,
-			Name:      row.Name,
-			URL:       row.Url,
-			CreatedAt: time.Unix(row.CreatedAt, 0),
-			UpdatedAt: time.Unix(row.UpdatedAt, 0),
-		})
-	}
-	return repos, nil
-}
-
-func (s *Store) UpdateGitRepo(ctx context.Context, r *resource.GitRepo) error {
-	_, err := s.queries.UpdateGitRepo(ctx, generated.UpdateGitRepoParams{
-		Name:      r.Name,
-		Url:       r.URL,
-		UpdatedAt: r.UpdatedAt.Unix(),
-		ID:        r.ID,
-	})
-	return err
-}
-
-// DeleteGitRepo deletes a git repo. RESTRICT: fails if referenced by a member.
-func (s *Store) DeleteGitRepo(ctx context.Context, id string) error {
-	result, err := s.queries.DeleteGitRepo(ctx, id)
-	if err != nil {
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return fmt.Errorf("git repo not found: %s", id)
 	}
 	return nil
 }
