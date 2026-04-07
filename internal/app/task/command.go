@@ -21,24 +21,13 @@ func quoteArgs(args []string) []string {
 	return quoted
 }
 
-// configDirEnv returns the env-var assignment that controls where the CLI
-// stores its dotfiles, using PlaceholderMemberspace as the base path.
-func configDirEnv() string {
-	return "CLAUDE_CONFIG_DIR=" + PlaceholderMemberspace + "/.claude"
-}
-
 // systemEnvs returns clier infrastructure environment variables.
-func systemEnvs(taskID, memberID string) []string {
+func systemEnvs(rt AgentRuntime, memberspace, taskID, memberID string) []string {
 	return []string{
-		configDirEnv(),
+		rt.ConfigDirEnv(memberspace),
 		"CLIER_TASK_ID=" + taskID,
 		"CLIER_MEMBER_ID=" + memberID,
 	}
-}
-
-// authEnvs returns authentication environment variables for the Claude CLI.
-func authEnvs() []string {
-	return []string{"CLAUDE_CODE_OAUTH_TOKEN=" + PlaceholderAuthClaude}
 }
 
 // identityEnvs returns git identity environment variables derived from the team and member name.
@@ -63,10 +52,10 @@ func userDefinedEnvs(envs []resource.Env) []string {
 }
 
 // buildEnv assembles the full set of environment variables for a member command.
-func buildEnv(teamName, memberName, taskID, memberID string, userEnvs []resource.Env) []string {
+func buildEnv(rt AgentRuntime, memberspace, teamName, memberName, taskID, memberID, authPlaceholder string, userEnvs []resource.Env) []string {
 	var env []string
-	env = append(env, systemEnvs(taskID, memberID)...)
-	env = append(env, authEnvs()...)
+	env = append(env, systemEnvs(rt, memberspace, taskID, memberID)...)
+	env = append(env, rt.AuthEnvs(authPlaceholder)...)
 	env = append(env, identityEnvs(teamName, memberName)...)
 	env = append(env, userDefinedEnvs(userEnvs)...)
 	return env
@@ -86,19 +75,19 @@ func buildEnvCommand(command string, env []string) string {
 	return strings.Join(parts, " &&\n")
 }
 
-// buildAgentCommand builds the "cd <workDir> && claude <args...>" portion.
-// No --append-system-prompt — instructions go into CLAUDE.md.
-func buildAgentCommand(model string, args []string, workDir string) string {
-	parts := []string{"claude"}
+// buildAgentCommand builds the "cd <workDir> && <binary> <args...>" portion.
+// No --append-system-prompt — instructions go into the instruction file.
+func buildAgentCommand(rt AgentRuntime, model string, args []string, workDir string) string {
+	parts := []string{rt.Binary()}
 	parts = append(parts, quoteArgs(args)...)
 	parts = append(parts, "--model", shellQuote(model))
 	return fmt.Sprintf("cd %s &&\n%s", shellQuote(workDir), strings.Join(parts, " "))
 }
 
 // buildCommand returns the complete shell command for launching an agent.
-func buildCommand(model string, args []string, workDir, teamName, memberName, taskID, memberID string,
+func buildCommand(rt AgentRuntime, model string, args []string, workDir, memberspace, teamName, memberName, taskID, memberID, authPlaceholder string,
 	userEnvs []resource.Env) string {
-	cmd := buildAgentCommand(model, args, workDir)
-	env := buildEnv(teamName, memberName, taskID, memberID, userEnvs)
+	cmd := buildAgentCommand(rt, model, args, workDir)
+	env := buildEnv(rt, memberspace, teamName, memberName, taskID, memberID, authPlaceholder, userEnvs)
 	return buildEnvCommand(cmd, env)
 }
