@@ -24,14 +24,14 @@ func setupTestStore(t *testing.T) *db.Store {
 func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (string, string, string) {
 	t.Helper()
 
-	claudeMd, _ := resource.NewClaudeMd("test-md", "do things")
-	if err := store.CreateClaudeMd(ctx, claudeMd); err != nil {
-		t.Fatalf("CreateClaudeMd: %v", err)
+	claudeMd, _ := resource.NewAgentDotMd("test-md", "do things")
+	if err := store.CreateAgentDotMd(ctx, claudeMd); err != nil {
+		t.Fatalf("CreateAgentDotMd: %v", err)
 	}
 
-	settings, _ := resource.NewSettings("test-settings", `{"key":"val"}`)
-	if err := store.CreateSettings(ctx, settings); err != nil {
-		t.Fatalf("CreateSettings: %v", err)
+	settings, _ := resource.NewClaudeSettings("test-settings", `{"key":"val"}`)
+	if err := store.CreateClaudeSettings(ctx, settings); err != nil {
+		t.Fatalf("CreateClaudeSettings: %v", err)
 	}
 
 	claudeJson, _ := resource.NewClaudeJson("test-cj", `{"hasCompletedOnboarding":true}`)
@@ -44,14 +44,14 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (stri
 		t.Fatalf("CreateGitRepo: %v", err)
 	}
 
-	root, _ := domain.NewMember("alice", "claude-sonnet-4-6",
+	root, _ := domain.NewMember("alice", "claude", "claude-sonnet-4-6",
 		[]string{"--dangerously-skip-permissions"},
 		claudeMd.ID, nil, settings.ID, claudeJson.ID, nil, repo.ID)
 	if err := store.CreateMember(ctx, root); err != nil {
 		t.Fatalf("CreateMember root: %v", err)
 	}
 
-	worker, _ := domain.NewMember("bob", "claude-sonnet-4-6",
+	worker, _ := domain.NewMember("bob", "claude", "claude-sonnet-4-6",
 		[]string{"--dangerously-skip-permissions"},
 		claudeMd.ID, nil, settings.ID, claudeJson.ID, nil, "")
 	if err := store.CreateMember(ctx, worker); err != nil {

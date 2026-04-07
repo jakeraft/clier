@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	agentrt "github.com/jakeraft/clier/internal/adapter/runtime"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/adapter/workspace"
 	"github.com/jakeraft/clier/internal/app/task"
@@ -115,7 +116,10 @@ func newTutorialStartCmd() *cobra.Command {
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
-			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir())
+			runtimes := map[string]task.AgentRuntime{
+				"claude": &agentrt.ClaudeRuntime{},
+			}
+			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
 
 			tk, err := svc.Start(ctx, t, cfg.Auth)
 			if err != nil {

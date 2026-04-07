@@ -51,10 +51,10 @@ export function MemberDetail() {
             },
             {
               label: "CLAUDE.md",
-              children: member.claudeMdId ? (
-                <EntityBadge to={`/prompts/claude-mds/${member.claudeMdId}`}>{member.claudeMdName || EMPTY_DATA}</EntityBadge>
+              children: member.agentDotMdId ? (
+                <EntityBadge to={`/prompts/agent-dot-mds/${member.agentDotMdId}`}>{member.agentDotMdName || EMPTY_DATA}</EntityBadge>
               ) : (
-                <EmptyEntityBadge entity="claude-md" />
+                <EmptyEntityBadge entity="agent-dot-md" />
               ),
             },
             {
@@ -72,8 +72,8 @@ export function MemberDetail() {
             },
             {
               label: "settings.json",
-              children: member.settingsId ? (
-                <EntityBadge to={`/claude/settings/${member.settingsId}`}>{member.settingsName || EMPTY_DATA}</EntityBadge>
+              children: member.claudeSettingsId ? (
+                <EntityBadge to={`/claude/claude-settings/${member.claudeSettingsId}`}>{member.claudeSettingsName || EMPTY_DATA}</EntityBadge>
               ) : (
                 <EmptyEntityBadge entity="claude-settings" />
               ),

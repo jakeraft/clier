@@ -3,9 +3,9 @@ import type {
   TeamView,
   MemberView,
   MemberPlanView,
-  ClaudeMdView,
+  AgentDotMdView,
   SkillView,
-  SettingsView,
+  ClaudeSettingsView,
   ClaudeJsonView,
   GitRepoView,
   EnvView,
@@ -29,9 +29,9 @@ function findById<T extends { id: string }>(items: T[], id: string): T | undefin
 }
 
 export type {
-  ClaudeMdView,
+  AgentDotMdView,
   SkillView,
-  SettingsView,
+  ClaudeSettingsView,
   ClaudeJsonView,
   GitRepoView,
   MemberView,
@@ -44,10 +44,10 @@ export type {
 };
 
 export const api = {
-  claudeMds: {
-    list: (): Promise<ClaudeMdView[]> => Promise.resolve(getData().claudeMds),
-    get: (id: string): Promise<ClaudeMdView> => {
-      const item = findById(getData().claudeMds, id);
+  agentDotMds: {
+    list: (): Promise<AgentDotMdView[]> => Promise.resolve(getData().agentDotMds),
+    get: (id: string): Promise<AgentDotMdView> => {
+      const item = findById(getData().agentDotMds, id);
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },
@@ -58,10 +58,10 @@ export const api = {
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },
-  settings: {
-    list: (): Promise<SettingsView[]> => Promise.resolve(getData().settings),
-    get: (id: string): Promise<SettingsView> => {
-      const item = findById(getData().settings, id);
+  claudeSettings: {
+    list: (): Promise<ClaudeSettingsView[]> => Promise.resolve(getData().claudeSettings),
+    get: (id: string): Promise<ClaudeSettingsView> => {
+      const item = findById(getData().claudeSettings, id);
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },

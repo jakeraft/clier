@@ -6,27 +6,27 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(newClaudeMdCmd())
+	rootCmd.AddCommand(newAgentDotMdCmd())
 }
 
-func newClaudeMdCmd() *cobra.Command {
+func newAgentDotMdCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "claude-md",
-		Short: "Manage CLAUDE.md files",
+		Use:   "agent-dot-md",
+		Short: "Manage agent dot md files",
 	}
-	cmd.AddCommand(newClaudeMdCreateCmd())
-	cmd.AddCommand(newClaudeMdListCmd())
-	cmd.AddCommand(newClaudeMdUpdateCmd())
-	cmd.AddCommand(newClaudeMdDeleteCmd())
+	cmd.AddCommand(newAgentDotMdCreateCmd())
+	cmd.AddCommand(newAgentDotMdListCmd())
+	cmd.AddCommand(newAgentDotMdUpdateCmd())
+	cmd.AddCommand(newAgentDotMdDeleteCmd())
 	return cmd
 }
 
-func newClaudeMdCreateCmd() *cobra.Command {
+func newAgentDotMdCreateCmd() *cobra.Command {
 	var name, content string
 
 	cmd := &cobra.Command{
 		Use:         "create",
-		Short:       "Create a CLAUDE.md file",
+		Short:       "Create an agent dot md file",
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
@@ -39,27 +39,27 @@ func newClaudeMdCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			c, err := resource.NewClaudeMd(name, content)
+			c, err := resource.NewAgentDotMd(name, content)
 			if err != nil {
 				return err
 			}
-			if err := store.CreateClaudeMd(cmd.Context(), c); err != nil {
+			if err := store.CreateAgentDotMd(cmd.Context(), c); err != nil {
 				return err
 			}
 			return printJSON(c)
 		},
 	}
-	cmd.Flags().StringVar(&name, "name", "", "CLAUDE.md name (human identifier)")
-	cmd.Flags().StringVar(&content, "content", "", "CLAUDE.md content")
+	cmd.Flags().StringVar(&name, "name", "", "Agent dot md name (human identifier)")
+	cmd.Flags().StringVar(&content, "content", "", "Agent dot md content")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("content")
 	return cmd
 }
 
-func newClaudeMdListCmd() *cobra.Command {
+func newAgentDotMdListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List all CLAUDE.md files",
+		Short: "List all agent dot md files",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -71,7 +71,7 @@ func newClaudeMdListCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			items, err := store.ListClaudeMds(cmd.Context())
+			items, err := store.ListAgentDotMds(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -80,12 +80,12 @@ func newClaudeMdListCmd() *cobra.Command {
 	}
 }
 
-func newClaudeMdUpdateCmd() *cobra.Command {
+func newAgentDotMdUpdateCmd() *cobra.Command {
 	var name, content string
 
 	cmd := &cobra.Command{
 		Use:         "update <id>",
-		Short:       "Update a CLAUDE.md file",
+		Short:       "Update an agent dot md file",
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -99,7 +99,7 @@ func newClaudeMdUpdateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			c, err := store.GetClaudeMd(cmd.Context(), args[0])
+			c, err := store.GetAgentDotMd(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -116,21 +116,21 @@ func newClaudeMdUpdateCmd() *cobra.Command {
 			if err := c.Update(namePtr, contentPtr); err != nil {
 				return err
 			}
-			if err := store.UpdateClaudeMd(cmd.Context(), &c); err != nil {
+			if err := store.UpdateAgentDotMd(cmd.Context(), &c); err != nil {
 				return err
 			}
 			return printJSON(c)
 		},
 	}
-	cmd.Flags().StringVar(&name, "name", "", "New CLAUDE.md name")
-	cmd.Flags().StringVar(&content, "content", "", "New CLAUDE.md content")
+	cmd.Flags().StringVar(&name, "name", "", "New agent dot md name")
+	cmd.Flags().StringVar(&content, "content", "", "New agent dot md content")
 	return cmd
 }
 
-func newClaudeMdDeleteCmd() *cobra.Command {
+func newAgentDotMdDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:         "delete <id>",
-		Short:       "Delete a CLAUDE.md file",
+		Short:       "Delete an agent dot md file",
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -144,7 +144,7 @@ func newClaudeMdDeleteCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			if err := store.DeleteClaudeMd(cmd.Context(), args[0]); err != nil {
+			if err := store.DeleteAgentDotMd(cmd.Context(), args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})
