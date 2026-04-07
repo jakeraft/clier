@@ -53,7 +53,6 @@
   --color-entity-instruction: var(--entity-instruction);
   --color-entity-task: var(--entity-task);
   --color-entity-workspace: var(--entity-workspace);
-  --color-entity-env: var(--entity-env);
   --color-entity-tag: var(--entity-tag);
   --color-entity-plan: var(--entity-plan);
   /* custom: project-wide default radius — all components share this value */
@@ -103,7 +102,6 @@
   --entity-instruction: oklch(0.536 0.12 182.5);
   --entity-task: oklch(0.546 0.16 155.77);
   --entity-workspace: oklch(0.546 0.14 140);
-  --entity-env: oklch(0.546 0.16 30);
   --entity-tag: oklch(0.514 0.222 16.57);
   --entity-plan: oklch(0.546 0.18 330);
 }
@@ -150,7 +148,6 @@
   --entity-instruction: oklch(0.704 0.1 182.5);
   --entity-task: oklch(0.714 0.14 155.77);
   --entity-workspace: oklch(0.714 0.12 140);
-  --entity-env: oklch(0.714 0.14 30);
   --entity-tag: oklch(0.704 0.191 16.57);
   --entity-plan: oklch(0.714 0.15 330);
 }

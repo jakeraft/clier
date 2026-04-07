@@ -86,19 +86,6 @@ export function MemberDetail() {
                 <EmptyEntityBadge entity="claude-json" />
               ),
             },
-            {
-              label: "Env",
-              children: (
-                <EntityBadgeList
-                  entity="env"
-                  items={member.envIds.map((id, i) => ({
-                    id,
-                    name: member.envNames[i] ?? EMPTY_DATA,
-                    to: `/envs/${id}`,
-                  }))}
-                />
-              ),
-            },
           ]}
         />
       </Section>

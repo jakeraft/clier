@@ -1,5 +1,5 @@
-import { Users, User, FileText, BookOpen, Settings2, FileJson, FolderGit2, KeyRound, Play, type LucideIcon } from "lucide-react";
-type Entity = "team" | "task" | "member" | "claude-md" | "skill" | "claude-settings" | "claude-json" | "git-repo" | "env";
+import { Users, User, FileText, BookOpen, Settings2, FileJson, FolderGit2, Play, type LucideIcon } from "lucide-react";
+type Entity = "team" | "task" | "member" | "claude-md" | "skill" | "claude-settings" | "claude-json" | "git-repo";
 
 const ENTITY_STYLE = new Map<Entity, string>([
   ["team", "bg-entity-team/10 text-entity-team hover:bg-entity-team/20 [a&]:hover:bg-entity-team/20"],
@@ -13,7 +13,6 @@ const ENTITY_STYLE = new Map<Entity, string>([
     "git-repo",
     "bg-entity-workspace/10 text-entity-workspace hover:bg-entity-workspace/20 [a&]:hover:bg-entity-workspace/20",
   ],
-  ["env", "bg-entity-env/10 text-entity-env hover:bg-entity-env/20 [a&]:hover:bg-entity-env/20"],
 ]);
 
 const ENTITY_ICON = new Map<Entity, LucideIcon>([
@@ -25,7 +24,6 @@ const ENTITY_ICON = new Map<Entity, LucideIcon>([
   ["claude-settings", Settings2],
   ["claude-json", FileJson],
   ["git-repo", FolderGit2],
-  ["env", KeyRound],
 ]);
 
 const SEGMENT_TO_ENTITY = new Map<string, Entity>([
@@ -39,11 +37,10 @@ const SEGMENT_TO_ENTITY = new Map<string, Entity>([
   ["settings", "claude-settings"],
   ["claude-jsons", "claude-json"],
   ["git-repos", "git-repo"],
-  ["envs", "env"],
 ]);
 
 function entityFromPath(path: string): Entity | undefined {
-  const match = /^\/(teams|tasks|members|prompts|claude|claude-mds|skills|settings|claude-jsons|git-repos|envs)(\/|$)/.exec(path);
+  const match = /^\/(teams|tasks|members|prompts|claude|claude-mds|skills|settings|claude-jsons|git-repos)(\/|$)/.exec(path);
   if (!match) return undefined;
   return SEGMENT_TO_ENTITY.get(match[1]);
 }

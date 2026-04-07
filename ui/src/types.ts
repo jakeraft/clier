@@ -6,7 +6,6 @@ export interface DashboardData {
   settings: SettingsView[];
   claudeJsons: ClaudeJsonView[];
   gitRepos: GitRepoView[];
-  envs: EnvView[];
   tasks: TaskView[];
 }
 
@@ -83,13 +82,11 @@ export interface MemberView {
   skillIds: string[];
   settingsId: string | null;
   claudeJsonId: string | null;
-  envIds: string[];
   gitRepoId: string | null;
   claudeMdName: string | null;
   skillNames: string[];
   settingsName: string | null;
   claudeJsonName: string | null;
-  envNames: string[];
   gitRepoName: string | null;
   createdAt: string;
   updatedAt: string;
@@ -135,11 +132,3 @@ export interface GitRepoView {
   updatedAt: string;
 }
 
-export interface EnvView {
-  id: string;
-  name: string;
-  key: string;
-  value: string;
-  createdAt: string;
-  updatedAt: string;
-}
