@@ -8,6 +8,14 @@ import (
 	"database/sql"
 )
 
+type AgentDotMd struct {
+	ID        string
+	Name      string
+	Content   string
+	CreatedAt int64
+	UpdatedAt int64
+}
+
 type ClaudeJson struct {
 	ID        string
 	Name      string
@@ -16,7 +24,7 @@ type ClaudeJson struct {
 	UpdatedAt int64
 }
 
-type ClaudeMd struct {
+type ClaudeSetting struct {
 	ID        string
 	Name      string
 	Content   string
@@ -25,16 +33,17 @@ type ClaudeMd struct {
 }
 
 type Member struct {
-	ID           string
-	Name         string
-	Model        string
-	Args         string
-	ClaudeMdID   sql.NullString
-	SettingsID   sql.NullString
-	ClaudeJsonID sql.NullString
-	GitRepoUrl   string
-	CreatedAt    int64
-	UpdatedAt    int64
+	ID               string
+	Name             string
+	AgentType        string
+	Model            string
+	Args             string
+	AgentDotMdID     sql.NullString
+	ClaudeSettingsID sql.NullString
+	ClaudeJsonID     sql.NullString
+	GitRepoUrl       string
+	CreatedAt        int64
+	UpdatedAt        int64
 }
 
 type MemberSkill struct {
@@ -57,14 +66,6 @@ type Note struct {
 	TeamMemberID string
 	Content      string
 	CreatedAt    int64
-}
-
-type Setting struct {
-	ID        string
-	Name      string
-	Content   string
-	CreatedAt int64
-	UpdatedAt int64
 }
 
 type Skill struct {

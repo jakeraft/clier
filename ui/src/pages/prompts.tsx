@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileText, BookOpen } from "lucide-react";
 import { api } from "@/api";
-import type { ClaudeMdView, SkillView } from "@/api";
+import type { AgentDotMdView, SkillView } from "@/api";
 import { typography, typographyIcon } from "@/lib/typography";
 import { cn } from "@/lib/utilities";
 import { gap } from "@/lib/layout";
@@ -9,9 +9,9 @@ import { EntityListPage } from "@/components/entity-list-page";
 import type { EntityTableColumn } from "@/components/entity-table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-type Tab = "claude-md" | "skill";
+type Tab = "agent-dot-md" | "skill";
 
-const claudeMdColumns: EntityTableColumn<ClaudeMdView>[] = [
+const agentDotMdColumns: EntityTableColumn<AgentDotMdView>[] = [
   { header: "Content", cell: (c) => c.content, flex: 2 },
 ];
 
@@ -20,7 +20,7 @@ const skillColumns: EntityTableColumn<SkillView>[] = [
 ];
 
 export function Prompts() {
-  const [tab, setTab] = useState<Tab>("claude-md");
+  const [tab, setTab] = useState<Tab>("agent-dot-md");
 
   return (
     <>
@@ -31,7 +31,7 @@ export function Prompts() {
         onValueChange={(v) => { if (v) setTab(v as Tab); }}
       >
         <ToggleGroupItem
-          value="claude-md"
+          value="agent-dot-md"
           className={cn(
             gap[1],
             typography[3],
@@ -54,13 +54,13 @@ export function Prompts() {
         </ToggleGroupItem>
       </ToggleGroup>
 
-      {tab === "claude-md" && (
-        <EntityListPage<ClaudeMdView>
-          entityType="claude-md"
-          apiList={api.claudeMds.list}
-          columns={claudeMdColumns}
+      {tab === "agent-dot-md" && (
+        <EntityListPage<AgentDotMdView>
+          entityType="agent-dot-md"
+          apiList={api.agentDotMds.list}
+          columns={agentDotMdColumns}
           empty={{ title: "No CLAUDE.md files yet", description: "CLAUDE.md project instructions for team members" }}
-          routeBase="/prompts/claude-mds"
+          routeBase="/prompts/agent-dot-mds"
         />
       )}
       {tab === "skill" && (

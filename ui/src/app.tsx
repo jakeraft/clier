@@ -4,9 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppErrorBoundary } from "@/components/app-error-boundary";
 import { AppLayout } from "@/app-layout";
 import { NotFound } from "@/pages/not-found";
-import { ClaudeMdDetail } from "@/pages/claude-md-detail";
+import { AgentDotMdDetail } from "@/pages/agent-dot-md-detail";
 import { SkillDetail } from "@/pages/skill-detail";
-import { SettingsDetail } from "@/pages/settings-detail";
+import { ClaudeSettingsDetail } from "@/pages/claude-settings-detail";
 import { ClaudeJsonDetail } from "@/pages/claude-json-detail";
 import { Prompts } from "@/pages/prompts";
 import { ClaudeConfig } from "@/pages/claude-config";
@@ -34,10 +34,10 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/" element={<Navigate to="/tasks" replace />} />
               <Route path="/prompts" element={<Prompts />} />
-              <Route path="/prompts/claude-mds/:id" element={<Keyed Component={ClaudeMdDetail} />} />
+              <Route path="/prompts/agent-dot-mds/:id" element={<Keyed Component={AgentDotMdDetail} />} />
               <Route path="/prompts/skills/:id" element={<Keyed Component={SkillDetail} />} />
               <Route path="/claude" element={<ClaudeConfig />} />
-              <Route path="/claude/settings/:id" element={<Keyed Component={SettingsDetail} />} />
+              <Route path="/claude/claude-settings/:id" element={<Keyed Component={ClaudeSettingsDetail} />} />
               <Route path="/claude/claude-jsons/:id" element={<Keyed Component={ClaudeJsonDetail} />} />
               <Route path="/members" element={<Members />} />
               <Route path="/members/:id" element={<Keyed Component={MemberDetail} />} />

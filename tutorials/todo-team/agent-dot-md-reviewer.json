@@ -1,5 +1,5 @@
 {
-  "type": "claude_md",
+  "type": "agent_dot_md",
   "data": {
     "id": "a1010101-0003-4000-8000-000000000003",
     "name": "reviewer",

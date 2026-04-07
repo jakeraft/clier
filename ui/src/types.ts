@@ -1,9 +1,9 @@
 export interface DashboardData {
   teams: TeamView[];
   members: MemberView[];
-  claudeMds: ClaudeMdView[];
+  agentDotMds: AgentDotMdView[];
   skills: SkillView[];
-  settings: SettingsView[];
+  claudeSettings: ClaudeSettingsView[];
   claudeJsons: ClaudeJsonView[];
   tasks: TaskView[];
 }
@@ -75,22 +75,23 @@ export interface RelationView {
 export interface MemberView {
   id: string;
   name: string;
+  agentType: string;
   model: string;
   args: string[];
-  claudeMdId: string | null;
+  agentDotMdId: string | null;
   skillIds: string[];
-  settingsId: string | null;
+  claudeSettingsId: string | null;
   claudeJsonId: string | null;
   gitRepoUrl: string;
-  claudeMdName: string | null;
+  agentDotMdName: string | null;
   skillNames: string[];
-  settingsName: string | null;
+  claudeSettingsName: string | null;
   claudeJsonName: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface ClaudeMdView {
+export interface AgentDotMdView {
   id: string;
   name: string;
   content: string;
@@ -106,7 +107,7 @@ export interface SkillView {
   updatedAt: string;
 }
 
-export interface SettingsView {
+export interface ClaudeSettingsView {
   id: string;
   name: string;
   content: string;

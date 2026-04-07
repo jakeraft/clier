@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Settings2, FileJson } from "lucide-react";
 import { api } from "@/api";
-import type { SettingsView, ClaudeJsonView } from "@/api";
+import type { ClaudeSettingsView, ClaudeJsonView } from "@/api";
 import { typography, typographyIcon } from "@/lib/typography";
 import { cn } from "@/lib/utilities";
 import { gap } from "@/lib/layout";
@@ -9,9 +9,9 @@ import { EntityListPage } from "@/components/entity-list-page";
 import type { EntityTableColumn } from "@/components/entity-table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-type Tab = "settings" | "claude-json";
+type Tab = "claude-settings" | "claude-json";
 
-const settingsColumns: EntityTableColumn<SettingsView>[] = [
+const claudeSettingsColumns: EntityTableColumn<ClaudeSettingsView>[] = [
   { header: "Content", cell: (c) => c.content, flex: 2 },
 ];
 
@@ -20,7 +20,7 @@ const claudeJsonColumns: EntityTableColumn<ClaudeJsonView>[] = [
 ];
 
 export function ClaudeConfig() {
-  const [tab, setTab] = useState<Tab>("settings");
+  const [tab, setTab] = useState<Tab>("claude-settings");
 
   return (
     <>
@@ -31,7 +31,7 @@ export function ClaudeConfig() {
         onValueChange={(v) => { if (v) setTab(v as Tab); }}
       >
         <ToggleGroupItem
-          value="settings"
+          value="claude-settings"
           className={cn(
             gap[1],
             typography[3],
@@ -54,13 +54,13 @@ export function ClaudeConfig() {
         </ToggleGroupItem>
       </ToggleGroup>
 
-      {tab === "settings" && (
-        <EntityListPage<SettingsView>
+      {tab === "claude-settings" && (
+        <EntityListPage<ClaudeSettingsView>
           entityType="claude-settings"
-          apiList={api.settings.list}
-          columns={settingsColumns}
+          apiList={api.claudeSettings.list}
+          columns={claudeSettingsColumns}
           empty={{ title: "No settings.json yet", description: "Claude Code settings.json configurations" }}
-          routeBase="/claude/settings"
+          routeBase="/claude/claude-settings"
         />
       )}
       {tab === "claude-json" && (

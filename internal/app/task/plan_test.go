@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/adapter/db"
+	agentrt "github.com/jakeraft/clier/internal/adapter/runtime"
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/jakeraft/clier/internal/domain/resource"
 )
@@ -23,14 +24,14 @@ func setupTestStore(t *testing.T) *db.Store {
 func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (domain.Team, string, string) {
 	t.Helper()
 
-	claudeMd, _ := resource.NewClaudeMd("test-md", "do things")
-	if err := store.CreateClaudeMd(ctx, claudeMd); err != nil {
-		t.Fatalf("CreateClaudeMd: %v", err)
+	agentDotMd, _ := resource.NewAgentDotMd("test-md", "do things")
+	if err := store.CreateAgentDotMd(ctx, agentDotMd); err != nil {
+		t.Fatalf("CreateAgentDotMd: %v", err)
 	}
 
-	settings, _ := resource.NewSettings("test-settings", `{"key":"val"}`)
-	if err := store.CreateSettings(ctx, settings); err != nil {
-		t.Fatalf("CreateSettings: %v", err)
+	claudeSettings, _ := resource.NewClaudeSettings("test-settings", `{"key":"val"}`)
+	if err := store.CreateClaudeSettings(ctx, claudeSettings); err != nil {
+		t.Fatalf("CreateClaudeSettings: %v", err)
 	}
 
 	claudeJson, _ := resource.NewClaudeJson("test-cj", `{"hasCompletedOnboarding":true}`)
@@ -38,16 +39,16 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (doma
 		t.Fatalf("CreateClaudeJson: %v", err)
 	}
 
-	root, _ := domain.NewMember("alice", "claude-sonnet-4-6",
+	root, _ := domain.NewMember("alice", "claude", "claude-sonnet-4-6",
 		[]string{"--dangerously-skip-permissions"},
-		claudeMd.ID, nil, settings.ID, claudeJson.ID, "https://example.com/repo.git")
+		agentDotMd.ID, nil, claudeSettings.ID, claudeJson.ID, "https://example.com/repo.git")
 	if err := store.CreateMember(ctx, root); err != nil {
 		t.Fatalf("CreateMember root: %v", err)
 	}
 
-	worker, _ := domain.NewMember("bob", "claude-sonnet-4-6",
+	worker, _ := domain.NewMember("bob", "claude", "claude-sonnet-4-6",
 		[]string{"--dangerously-skip-permissions"},
-		claudeMd.ID, nil, settings.ID, claudeJson.ID, "")
+		agentDotMd.ID, nil, claudeSettings.ID, claudeJson.ID, "")
 	if err := store.CreateMember(ctx, worker); err != nil {
 		t.Fatalf("CreateMember worker: %v", err)
 	}
@@ -78,7 +79,7 @@ func TestResolveTeam(t *testing.T) {
 	store := setupTestStore(t)
 	team, rootTMID, workerTMID := createMinimalTeam(t, ctx, store)
 
-	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "/tmp/base", "/home/user")
+	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "/tmp/base", "/home/user", nil)
 
 	resolved, err := svc.resolveTeam(ctx, team)
 	if err != nil {
@@ -101,8 +102,8 @@ func TestResolveTeam(t *testing.T) {
 	if root.Model == "" {
 		t.Error("root Model is empty")
 	}
-	if root.ClaudeMd == nil {
-		t.Error("root ClaudeMd should not be nil")
+	if root.AgentDotMd == nil {
+		t.Error("root AgentDotMd should not be nil")
 	}
 	if root.GitRepoURL == "" {
 		t.Error("root GitRepoURL should not be empty")
@@ -128,14 +129,15 @@ func TestBuildPlans(t *testing.T) {
 	store := setupTestStore(t)
 	team, rootTMID, workerTMID := createMinimalTeam(t, ctx, store)
 
-	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "/tmp/base", "/home/user")
+	runtimes := map[string]AgentRuntime{"claude": &agentrt.ClaudeRuntime{}}
+	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "/tmp/base", "/home/user", runtimes)
 
 	resolved, err := svc.resolveTeam(ctx, team)
 	if err != nil {
 		t.Fatalf("resolveTeam: %v", err)
 	}
 
-	plans := buildPlans(resolved, "test-task")
+	plans := buildPlans(resolved, "test-task", runtimes)
 
 	if len(plans) != 2 {
 		t.Fatalf("plans = %d members, want 2", len(plans))

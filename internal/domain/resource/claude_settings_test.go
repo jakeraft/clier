@@ -2,8 +2,8 @@ package resource
 
 import "testing"
 
-func TestNewSettings(t *testing.T) {
-	s, err := NewSettings("skip-permissions", `{"skipDangerousModePermissionPrompt":true}`)
+func TestNewClaudeSettings(t *testing.T) {
+	s, err := NewClaudeSettings("skip-permissions", `{"skipDangerousModePermissionPrompt":true}`)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -15,29 +15,29 @@ func TestNewSettings(t *testing.T) {
 	}
 }
 
-func TestNewSettings_EmptyName(t *testing.T) {
-	_, err := NewSettings("", "{}")
+func TestNewClaudeSettings_EmptyName(t *testing.T) {
+	_, err := NewClaudeSettings("", "{}")
 	if err == nil {
 		t.Error("expected error for empty name")
 	}
 }
 
-func TestNewSettings_EmptyContent(t *testing.T) {
-	_, err := NewSettings("name", "")
+func TestNewClaudeSettings_EmptyContent(t *testing.T) {
+	_, err := NewClaudeSettings("name", "")
 	if err == nil {
 		t.Error("expected error for empty content")
 	}
 }
 
-func TestNewSettings_InvalidJSON(t *testing.T) {
-	_, err := NewSettings("name", "not json")
+func TestNewClaudeSettings_InvalidJSON(t *testing.T) {
+	_, err := NewClaudeSettings("name", "not json")
 	if err == nil {
 		t.Error("expected error for invalid JSON")
 	}
 }
 
-func TestSettings_Update(t *testing.T) {
-	s, _ := NewSettings("old", `{"old":true}`)
+func TestClaudeSettings_Update(t *testing.T) {
+	s, _ := NewClaudeSettings("old", `{"old":true}`)
 	newName := "new"
 	newContent := `{"new":true}`
 	if err := s.Update(&newName, &newContent); err != nil {

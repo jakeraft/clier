@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	agentrt "github.com/jakeraft/clier/internal/adapter/runtime"
 	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
@@ -75,15 +76,17 @@ func TestMergeJSON(t *testing.T) {
 }
 
 func TestBuildWorkspaceFiles(t *testing.T) {
+	rt := &agentrt.ClaudeRuntime{}
+
 	t.Run("AllEmpty", func(t *testing.T) {
-		files := buildWorkspaceFiles("/ws", "", "", "", "", "", nil)
+		files := buildWorkspaceFiles(rt, "/ws", "", "", "", "", "", nil)
 		if len(files) != 0 {
 			t.Errorf("expected 0 files, got %d", len(files))
 		}
 	})
 
-	t.Run("OnlySystemClaudeMd", func(t *testing.T) {
-		files := buildWorkspaceFiles("/ws", "# Protocol", "", "", "", "", nil)
+	t.Run("OnlySystemAgentDotMd", func(t *testing.T) {
+		files := buildWorkspaceFiles(rt, "/ws", "# Protocol", "", "", "", "", nil)
 		if len(files) != 1 {
 			t.Fatalf("expected 1 file, got %d", len(files))
 		}
@@ -95,8 +98,8 @@ func TestBuildWorkspaceFiles(t *testing.T) {
 		}
 	})
 
-	t.Run("SystemAndUserClaudeMd", func(t *testing.T) {
-		files := buildWorkspaceFiles("/ws", "# Protocol", "# User Rules", "", "", "", nil)
+	t.Run("SystemAndUserAgentDotMd", func(t *testing.T) {
+		files := buildWorkspaceFiles(rt, "/ws", "# Protocol", "# User Rules", "", "", "", nil)
 		if len(files) != 1 {
 			t.Fatalf("expected 1 file, got %d", len(files))
 		}
@@ -107,7 +110,7 @@ func TestBuildWorkspaceFiles(t *testing.T) {
 	})
 
 	t.Run("SettingsFile", func(t *testing.T) {
-		files := buildWorkspaceFiles("/ws", "", "", `{"key":"val"}`, "", "", nil)
+		files := buildWorkspaceFiles(rt, "/ws", "", "", `{"key":"val"}`, "", "", nil)
 		if len(files) != 1 {
 			t.Fatalf("expected 1 file, got %d", len(files))
 		}
@@ -121,7 +124,7 @@ func TestBuildWorkspaceFiles(t *testing.T) {
 			{Name: "code-review", Content: "Review code"},
 			{Name: "tdd", Content: "Test first"},
 		}
-		files := buildWorkspaceFiles("/ws", "", "", "", "", "", skills)
+		files := buildWorkspaceFiles(rt, "/ws", "", "", "", "", "", skills)
 		if len(files) != 2 {
 			t.Fatalf("expected 2 files, got %d", len(files))
 		}

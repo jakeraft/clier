@@ -10,27 +10,32 @@ import (
 )
 
 type Member struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Model        string    `json:"model"`
-	Args         []string  `json:"args"`
-	ClaudeMdID   string    `json:"claude_md_id"`   // empty string = not set (nullable FK)
-	SkillIDs     []string  `json:"skill_ids"`
-	SettingsID   string    `json:"settings_id"`     // empty string = not set (nullable FK)
-	ClaudeJsonID string    `json:"claude_json_id"`  // empty string = not set (nullable FK)
-	GitRepoURL   string    `json:"git_repo_url"`    // empty string = no repo
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	AgentType        string    `json:"agent_type"`
+	Model            string    `json:"model"`
+	Args             []string  `json:"args"`
+	AgentDotMdID     string    `json:"agent_dot_md_id"`     // empty string = not set (nullable FK)
+	SkillIDs         []string  `json:"skill_ids"`
+	ClaudeSettingsID string    `json:"claude_settings_id"`  // empty string = not set (nullable FK)
+	ClaudeJsonID     string    `json:"claude_json_id"`      // empty string = not set (nullable FK)
+	GitRepoURL       string    `json:"git_repo_url"`        // empty string = no repo
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
-func NewMember(name, model string, args []string,
-	claudeMdID string, skillIDs []string,
-	settingsID, claudeJsonID string,
+func NewMember(name, agentType, model string, args []string,
+	agentDotMdID string, skillIDs []string,
+	claudeSettingsID, claudeJsonID string,
 	gitRepoURL string) (*Member, error) {
 
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("member name must not be empty")
+	}
+	agentType = strings.TrimSpace(agentType)
+	if agentType == "" {
+		agentType = "claude"
 	}
 	model = strings.TrimSpace(model)
 	if model == "" {
@@ -45,23 +50,24 @@ func NewMember(name, model string, args []string,
 
 	now := time.Now()
 	return &Member{
-		ID:           uuid.NewString(),
-		Name:         name,
-		Model:        model,
-		Args:         args,
-		ClaudeMdID:   claudeMdID,
-		SkillIDs:     skillIDs,
-		SettingsID:   settingsID,
-		ClaudeJsonID: claudeJsonID,
-		GitRepoURL:   gitRepoURL,
-		CreatedAt:    now,
-		UpdatedAt:    now,
+		ID:               uuid.NewString(),
+		Name:             name,
+		AgentType:        agentType,
+		Model:            model,
+		Args:             args,
+		AgentDotMdID:     agentDotMdID,
+		SkillIDs:         skillIDs,
+		ClaudeSettingsID: claudeSettingsID,
+		ClaudeJsonID:     claudeJsonID,
+		GitRepoURL:       gitRepoURL,
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}, nil
 }
 
-func (m *Member) Update(name, model *string, args *[]string,
-	claudeMdID *string, skillIDs *[]string,
-	settingsID, claudeJsonID *string,
+func (m *Member) Update(name, agentType, model *string, args *[]string,
+	agentDotMdID *string, skillIDs *[]string,
+	claudeSettingsID, claudeJsonID *string,
 	gitRepoURL *string) error {
 
 	if name != nil {
@@ -70,6 +76,12 @@ func (m *Member) Update(name, model *string, args *[]string,
 			return errors.New("member name must not be empty")
 		}
 		m.Name = trimmed
+	}
+	if agentType != nil {
+		trimmed := strings.TrimSpace(*agentType)
+		if trimmed != "" {
+			m.AgentType = trimmed
+		}
 	}
 	if model != nil {
 		trimmed := strings.TrimSpace(*model)
@@ -81,14 +93,14 @@ func (m *Member) Update(name, model *string, args *[]string,
 	if args != nil {
 		m.Args = *args
 	}
-	if claudeMdID != nil {
-		m.ClaudeMdID = *claudeMdID
+	if agentDotMdID != nil {
+		m.AgentDotMdID = *agentDotMdID
 	}
 	if skillIDs != nil {
 		m.SkillIDs = *skillIDs
 	}
-	if settingsID != nil {
-		m.SettingsID = *settingsID
+	if claudeSettingsID != nil {
+		m.ClaudeSettingsID = *claudeSettingsID
 	}
 	if claudeJsonID != nil {
 		m.ClaudeJsonID = *claudeJsonID
@@ -103,14 +115,15 @@ func (m *Member) Update(name, model *string, args *[]string,
 // ResolvedMember is a Member spec with all referenced resources loaded.
 // Produced by the resolve phase; consumed by the build phase to create MemberPlan.
 type ResolvedMember struct {
-	TeamMemberID string
-	Name         string
-	Model        string
-	Args         []string
-	ClaudeMd     *resource.ClaudeMd
-	Skills       []resource.Skill
-	Settings     *resource.Settings
-	ClaudeJson   *resource.ClaudeJson
-	GitRepoURL   string
-	Relations    MemberRelations
+	TeamMemberID   string
+	Name           string
+	AgentType      string
+	Model          string
+	Args           []string
+	AgentDotMd     *resource.AgentDotMd
+	Skills         []resource.Skill
+	ClaudeSettings *resource.ClaudeSettings
+	ClaudeJson     *resource.ClaudeJson
+	GitRepoURL     string
+	Relations      MemberRelations
 }
