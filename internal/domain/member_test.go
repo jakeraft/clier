@@ -5,7 +5,7 @@ import "testing"
 func TestNewMember(t *testing.T) {
 	m, err := NewMember("coder", "claude-sonnet-4-6", []string{"--dangerously-skip-permissions"},
 		"claude-md-1", []string{"skill-1"}, "settings-1", "claude-json-1",
-		"repo-1")
+		"https://github.com/example/repo.git")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -30,8 +30,8 @@ func TestNewMember(t *testing.T) {
 	if m.ClaudeJsonID != "claude-json-1" {
 		t.Errorf("claude_json_id = %q, want %q", m.ClaudeJsonID, "claude-json-1")
 	}
-	if m.GitRepoID != "repo-1" {
-		t.Errorf("git_repo_id = %q, want %q", m.GitRepoID, "repo-1")
+	if m.GitRepoURL != "https://github.com/example/repo.git" {
+		t.Errorf("git_repo_url = %q, want %q", m.GitRepoURL, "https://github.com/example/repo.git")
 	}
 }
 
@@ -71,7 +71,7 @@ func TestMember_Update(t *testing.T) {
 	newSkills := []string{"s-1", "s-2"}
 	newSettings := "set-1"
 	newCJ := "cj-1"
-	newRepo := "r-1"
+	newRepo := "https://github.com/example/new.git"
 	if err := m.Update(&newName, &newModel, &newArgs, &newMdID, &newSkills, &newSettings, &newCJ, &newRepo); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestMember_Update(t *testing.T) {
 	if m.ClaudeJsonID != "cj-1" {
 		t.Errorf("claude_json_id = %q", m.ClaudeJsonID)
 	}
-	if m.GitRepoID != "r-1" {
-		t.Errorf("git_repo_id = %q", m.GitRepoID)
+	if m.GitRepoURL != "https://github.com/example/new.git" {
+		t.Errorf("git_repo_url = %q", m.GitRepoURL)
 	}
 }

@@ -18,7 +18,7 @@ type Member struct {
 	SkillIDs     []string  `json:"skill_ids"`
 	SettingsID   string    `json:"settings_id"`     // empty string = not set (nullable FK)
 	ClaudeJsonID string    `json:"claude_json_id"`  // empty string = not set (nullable FK)
-	GitRepoID    string    `json:"git_repo_id"`     // empty string = not set (nullable FK)
+	GitRepoURL   string    `json:"git_repo_url"`    // empty string = no repo
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
@@ -26,7 +26,7 @@ type Member struct {
 func NewMember(name, model string, args []string,
 	claudeMdID string, skillIDs []string,
 	settingsID, claudeJsonID string,
-	gitRepoID string) (*Member, error) {
+	gitRepoURL string) (*Member, error) {
 
 	name = strings.TrimSpace(name)
 	if name == "" {
@@ -53,7 +53,7 @@ func NewMember(name, model string, args []string,
 		SkillIDs:     skillIDs,
 		SettingsID:   settingsID,
 		ClaudeJsonID: claudeJsonID,
-		GitRepoID:    gitRepoID,
+		GitRepoURL:   gitRepoURL,
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}, nil
@@ -62,7 +62,7 @@ func NewMember(name, model string, args []string,
 func (m *Member) Update(name, model *string, args *[]string,
 	claudeMdID *string, skillIDs *[]string,
 	settingsID, claudeJsonID *string,
-	gitRepoID *string) error {
+	gitRepoURL *string) error {
 
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
@@ -93,8 +93,8 @@ func (m *Member) Update(name, model *string, args *[]string,
 	if claudeJsonID != nil {
 		m.ClaudeJsonID = *claudeJsonID
 	}
-	if gitRepoID != nil {
-		m.GitRepoID = *gitRepoID
+	if gitRepoURL != nil {
+		m.GitRepoURL = *gitRepoURL
 	}
 	m.UpdatedAt = time.Now()
 	return nil
@@ -111,6 +111,6 @@ type ResolvedMember struct {
 	Skills       []resource.Skill
 	Settings     *resource.Settings
 	ClaudeJson   *resource.ClaudeJson
-	Repo         *resource.GitRepo
+	GitRepoURL   string
 	Relations    MemberRelations
 }

@@ -156,12 +156,7 @@ type TerminalPlan struct {
 type WorkspacePlan struct {
 	Memberspace string      `json:"memberspace"`
 	Files       []FileEntry `json:"files"`
-	GitRepo     *GitRepoRef `json:"git_repo"`
-}
-
-type GitRepoRef struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	GitRepoURL  string      `json:"git_repo_url"`
 }
 
 // FileEntry is a config file to write to a member's workspace.
