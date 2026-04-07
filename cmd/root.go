@@ -26,7 +26,7 @@ var rootCmd = &cobra.Command{
 	Short: "Orchestrate AI coding agent teams in isolated workspaces",
 	Long: `Orchestrate AI coding agent teams in isolated workspaces.
 
-Building blocks (profile, prompt, env, repo) define agent capabilities.
+Building blocks (prompt, settings, repo) define agent capabilities.
 Combine them into a member, assemble members into a team with
 leader-worker relations, then start a task to launch the agents.
 Monitor progress through messages and notes, or open the dashboard.
