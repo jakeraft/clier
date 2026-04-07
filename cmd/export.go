@@ -55,7 +55,6 @@ func newExportCmd() *cobra.Command {
 				{"settings", func() (any, error) { st, e := store.GetSettings(ctx, id); return st, e }},
 				{"claude_json", func() (any, error) { cj, e := store.GetClaudeJson(ctx, id); return cj, e }},
 				{"git_repo", func() (any, error) { r, e := store.GetGitRepo(ctx, id); return r, e }},
-				{"env", func() (any, error) { e, err := store.GetEnv(ctx, id); return e, err }},
 			}
 
 			for _, p := range probes {

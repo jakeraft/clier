@@ -109,10 +109,6 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 	if err != nil {
 		return dashboardData{}, err
 	}
-	envs, err := store.ListEnvs(ctx)
-	if err != nil {
-		return dashboardData{}, err
-	}
 	tasks, err := store.ListTasks(ctx)
 	if err != nil {
 		return dashboardData{}, err
@@ -123,7 +119,6 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 	settingsNames := nameMap(settingsList, func(s resource.Settings) (string, string) { return s.ID, s.Name })
 	claudeJsonNames := nameMap(claudeJsons, func(c resource.ClaudeJson) (string, string) { return c.ID, c.Name })
 	repoNames := nameMap(repos, func(r resource.GitRepo) (string, string) { return r.ID, r.Name })
-	envNames := nameMap(envs, func(e resource.Env) (string, string) { return e.ID, e.Name })
 	teamNames := nameMap(teams, func(t domain.Team) (string, string) { return t.ID, t.Name })
 
 	taskViews, err := convertTasks(ctx, store, tasks, teamNames)
@@ -133,13 +128,12 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 
 	return dashboardData{
 		Teams:       convertTeams(teams),
-		Members:     convertMembers(members, claudeMdNames, skillNames, settingsNames, claudeJsonNames, repoNames, envNames),
+		Members:     convertMembers(members, claudeMdNames, skillNames, settingsNames, claudeJsonNames, repoNames),
 		ClaudeMds:   convertClaudeMds(claudeMds),
 		Skills:      convertSkills(skills),
 		Settings:    convertSettings(settingsList),
 		ClaudeJsons: convertClaudeJsons(claudeJsons),
 		GitRepos:    convertGitRepos(repos),
-		Envs:        convertEnvs(envs),
 		Tasks:       taskViews,
 	}, nil
 }
@@ -201,16 +195,12 @@ func convertTeams(teams []domain.Team) []teamView {
 	return views
 }
 
-func convertMembers(members []domain.Member, claudeMdNames, skillNames, settingsNames, claudeJsonNames, repoNames, envNames map[string]string) []memberView {
+func convertMembers(members []domain.Member, claudeMdNames, skillNames, settingsNames, claudeJsonNames, repoNames map[string]string) []memberView {
 	views := make([]memberView, 0, len(members))
 	for _, m := range members {
 		skNames := make([]string, 0, len(m.SkillIDs))
 		for _, id := range m.SkillIDs {
 			skNames = append(skNames, skillNames[id])
-		}
-		eNames := make([]string, 0, len(m.EnvIDs))
-		for _, id := range m.EnvIDs {
-			eNames = append(eNames, envNames[id])
 		}
 
 		mv := memberView{
@@ -220,8 +210,6 @@ func convertMembers(members []domain.Member, claudeMdNames, skillNames, settings
 			Args:       m.Args,
 			SkillIDs:   m.SkillIDs,
 			SkillNames: skNames,
-			EnvIDs:     m.EnvIDs,
-			EnvNames:   eNames,
 			CreatedAt:  m.CreatedAt,
 			UpdatedAt:  m.UpdatedAt,
 		}
@@ -322,21 +310,6 @@ func convertGitRepos(repos []resource.GitRepo) []gitRepoView {
 	return views
 }
 
-func convertEnvs(envs []resource.Env) []envView {
-	views := make([]envView, 0, len(envs))
-	for _, e := range envs {
-		views = append(views, envView{
-			ID:        e.ID,
-			Name:      e.Name,
-			Key:       e.Key,
-			Value:     e.Value,
-			CreatedAt: e.CreatedAt,
-			UpdatedAt: e.UpdatedAt,
-		})
-	}
-	return views
-}
-
 // --- view types (JSON serialization for the frontend) ---
 
 type dashboardData struct {
@@ -347,7 +320,6 @@ type dashboardData struct {
 	Settings    []settingsView   `json:"settings"`
 	ClaudeJsons []claudeJsonView `json:"claudeJsons"`
 	GitRepos    []gitRepoView    `json:"gitRepos"`
-	Envs        []envView        `json:"envs"`
 	Tasks       []taskView       `json:"tasks"`
 }
 
@@ -384,13 +356,11 @@ type memberView struct {
 	SkillIDs       []string  `json:"skillIds"`
 	SettingsID     *string   `json:"settingsId"`
 	ClaudeJsonID   *string   `json:"claudeJsonId"`
-	EnvIDs         []string  `json:"envIds"`
 	GitRepoID      *string   `json:"gitRepoId"`
 	ClaudeMdName   *string   `json:"claudeMdName"`
 	SkillNames     []string  `json:"skillNames"`
 	SettingsName   *string   `json:"settingsName"`
 	ClaudeJsonName *string   `json:"claudeJsonName"`
-	EnvNames       []string  `json:"envNames"`
 	GitRepoName    *string   `json:"gitRepoName"`
 	CreatedAt      time.Time `json:"createdAt"`
 	UpdatedAt      time.Time `json:"updatedAt"`
@@ -432,15 +402,6 @@ type gitRepoView struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	URL       string    `json:"url"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-}
-
-type envView struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Key       string    `json:"key"`
-	Value     string    `json:"value"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }

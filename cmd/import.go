@@ -262,26 +262,6 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		}
 		return printJSON(r)
 
-	case "env":
-		var e resource.Env
-		if err := json.Unmarshal(env.Data, &e); err != nil {
-			return fmt.Errorf("unmarshal env: %w", err)
-		}
-		setTimestamps(&e.CreatedAt, &e.UpdatedAt)
-		if existing, err := store.GetEnv(ctx, e.ID); err == nil {
-			if err := existing.Update(&e.Name, &e.Key, &e.Value); err != nil {
-				return err
-			}
-			if err := store.UpdateEnv(ctx, &existing); err != nil {
-				return err
-			}
-			return printJSON(existing)
-		}
-		if err := store.CreateEnv(ctx, &e); err != nil {
-			return err
-		}
-		return printJSON(e)
-
 	case "member":
 		var m domain.Member
 		if err := json.Unmarshal(env.Data, &m); err != nil {
@@ -290,7 +270,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		setTimestamps(&m.CreatedAt, &m.UpdatedAt)
 		if existing, err := store.GetMember(ctx, m.ID); err == nil {
 			if err := existing.Update(&m.Name, &m.Model, &m.Args, &m.ClaudeMdID, &m.SkillIDs,
-				&m.SettingsID, &m.ClaudeJsonID, &m.EnvIDs, &m.GitRepoID); err != nil {
+				&m.SettingsID, &m.ClaudeJsonID, &m.GitRepoID); err != nil {
 				return err
 			}
 			if err := store.UpdateMember(ctx, &existing); err != nil {
