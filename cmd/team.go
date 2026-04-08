@@ -22,28 +22,66 @@ func newTeamCmd() *cobra.Command {
 		Use:   "team",
 		Short: "Manage teams",
 	}
-	cmd.AddCommand(newTeamCreateCmd())
 	cmd.AddCommand(newTeamListCmd())
-	cmd.AddCommand(newTeamUpdateCmd())
+	cmd.AddCommand(newTeamViewCmd())
+	cmd.AddCommand(newTeamCreateCmd())
+	cmd.AddCommand(newTeamEditCmd())
 	cmd.AddCommand(newTeamDeleteCmd())
-	cmd.AddCommand(newTeamMemberCmd())
-	cmd.AddCommand(newTeamRelationCmd())
+	cmd.AddCommand(newTeamForkCmd())
 	cmd.AddCommand(newTeamWorkspaceCmd())
 	cmd.AddCommand(newTeamRunCmd())
 	return cmd
+}
+
+func newTeamListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list [owner]",
+		Short: "List teams",
+		Long:  "List your teams, or another user's teams if [owner] is given.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newAPIClient()
+			var owner string
+			if len(args) == 1 {
+				owner = args[0]
+			} else {
+				owner = requireLogin()
+			}
+			teams, err := client.ListTeams(owner)
+			if err != nil {
+				return err
+			}
+			return printJSON(teams)
+		},
+	}
+}
+
+func newTeamViewCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "view <[owner/]name>",
+		Short: "View a team",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newAPIClient()
+			owner, name := parseOwnerName(args[0])
+			team, err := client.GetTeam(owner, name)
+			if err != nil {
+				return err
+			}
+			return printJSON(team)
+		},
+	}
 }
 
 func newTeamCreateCmd() *cobra.Command {
 	var name, rootMemberID string
 
 	cmd := &cobra.Command{
-		Use:         "create",
-		Short:       "Create a team",
-
+		Use:   "create",
+		Short: "Create a team",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := resolveOwner()
-
+			owner := requireLogin()
 			resp, err := client.CreateTeam(owner, map[string]string{
 				"name":           name,
 				"root_member_id": rootMemberID,
@@ -61,34 +99,16 @@ func newTeamCreateCmd() *cobra.Command {
 	return cmd
 }
 
-func newTeamListCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "list",
-		Short: "List all teams",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			owner := resolveOwner()
-
-			teams, err := client.ListTeams(owner)
-			if err != nil {
-				return err
-			}
-			return printJSON(teams)
-		},
-	}
-}
-
-func newTeamUpdateCmd() *cobra.Command {
+func newTeamEditCmd() *cobra.Command {
 	var name, rootMemberID string
 
 	cmd := &cobra.Command{
-		Use:         "update <name>",
-		Short:       "Update a team by name",
-
-		Args:        cobra.ExactArgs(1),
+		Use:   "edit <name>",
+		Short: "Edit a team",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := resolveOwner()
+			owner := requireLogin()
 
 			body := map[string]string{}
 			if cmd.Flags().Changed("name") {
@@ -112,14 +132,12 @@ func newTeamUpdateCmd() *cobra.Command {
 
 func newTeamDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:         "delete <name>",
-		Short:       "Delete a team by name",
-
-		Args:        cobra.ExactArgs(1),
+		Use:   "delete <name>",
+		Short: "Delete a team",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := resolveOwner()
-
+			owner := requireLogin()
 			if err := client.DeleteTeam(owner, args[0]); err != nil {
 				return err
 			}
@@ -128,56 +146,20 @@ func newTeamDeleteCmd() *cobra.Command {
 	}
 }
 
-func newTeamMemberCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "member",
-		Short: "Manage team members",
-	}
-	cmd.AddCommand(newTeamMemberListCmd())
-	return cmd
-}
-
-func newTeamMemberListCmd() *cobra.Command {
+func newTeamForkCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "list <team-name>",
-		Short: "List members of a team",
+		Use:   "fork <owner/name>",
+		Short: "Fork a team to your namespace",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := resolveOwner()
-
-			team, err := client.GetTeam(owner, args[0])
+			_ = requireLogin()
+			owner, name := parseOwnerName(args[0])
+			resp, err := client.ForkTeam(owner, name)
 			if err != nil {
 				return err
 			}
-			return printJSON(team.TeamMembers)
-		},
-	}
-}
-
-func newTeamRelationCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "relation",
-		Short: "Manage team relations",
-	}
-	cmd.AddCommand(newTeamRelationListCmd())
-	return cmd
-}
-
-func newTeamRelationListCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "list <team-name>",
-		Short: "List relations of a team",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			owner := resolveOwner()
-
-			team, err := client.GetTeam(owner, args[0])
-			if err != nil {
-				return err
-			}
-			return printJSON(team.Relations)
+			return printJSON(resp)
 		},
 	}
 }
@@ -186,12 +168,12 @@ func newTeamWorkspaceCmd() *cobra.Command {
 	var dir string
 
 	cmd := &cobra.Command{
-		Use:   "workspace <team-name>",
+		Use:   "workspace <[owner/]name>",
 		Short: "Create workspaces for all team members",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := resolveOwner()
+			owner, name := parseOwnerName(args[0])
 			writer := appws.NewWriter(client, owner)
 
 			base := dir
@@ -199,12 +181,12 @@ func newTeamWorkspaceCmd() *cobra.Command {
 				base = "."
 			}
 
-			if err := writer.PrepareTeam(base, args[0]); err != nil {
+			if err := writer.PrepareTeam(base, name); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
 				"status": "prepared",
-				"team":   args[0],
+				"team":   name,
 				"dir":    base,
 			})
 		},
@@ -217,16 +199,15 @@ func newTeamRunCmd() *cobra.Command {
 	var dir string
 
 	cmd := &cobra.Command{
-		Use:   "run <team-name>",
+		Use:   "run <[owner/]name>",
 		Short: "Create workspaces and run the team",
 		Long: `Create workspaces (idempotent) for all team members and start a run.
 Each member gets its own tmux window within a single session.`,
-		Args:        cobra.ExactArgs(1),
-
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			teamID := args[0]
 			client := newAPIClient()
-			owner := resolveOwner()
+			owner, name := parseOwnerName(args[0])
+			_ = requireLogin()
 
 			base := dir
 			if base == "" {
@@ -237,13 +218,11 @@ Each member gets its own tmux window within a single session.`,
 				return fmt.Errorf("resolve base path: %w", err)
 			}
 
-			// 1. Get team definition
-			team, err := client.GetTeam(owner, teamID)
+			team, err := client.GetTeam(owner, name)
 			if err != nil {
 				return fmt.Errorf("get team: %w", err)
 			}
 
-			// 2. Workspace (idempotent) -- skip members whose project dir already exists
 			writer := appws.NewWriter(client, owner)
 			for _, tm := range team.TeamMembers {
 				memberBase := filepath.Join(absBase, tm.Name)
@@ -255,7 +234,6 @@ Each member gets its own tmux window within a single session.`,
 				}
 			}
 
-			// 3. Create Run on server
 			runResp, err := client.CreateRun(map[string]any{
 				"team_id": team.ID,
 			})
@@ -266,13 +244,11 @@ Each member gets its own tmux window within a single session.`,
 			runIDStr := strconv.FormatInt(runID, 10)
 			runName := apprun.SessionName(team.Name, runIDStr)
 
-			// 4. Build RunPlan + domain plans
 			runPlanPath := filepath.Join(absBase, ".clier", runIDStr+".json")
 			var memberTerminals []apprun.MemberTerminal
 			var domainPlans []domain.MemberPlan
 
 			for i, tm := range team.TeamMembers {
-				// Get member spec for command
 				member, err := client.GetMember(tm.Member.Owner, tm.Member.Name)
 				if err != nil {
 					return fmt.Errorf("get member %s: %w", tm.Name, err)
@@ -304,12 +280,10 @@ Each member gets its own tmux window within a single session.`,
 				Members: memberTerminals,
 			}
 
-			// 5. Save .clier/{RUN_ID}.json
 			if err := apprun.SavePlan(absBase, runIDStr, plan); err != nil {
 				return fmt.Errorf("save plan: %w", err)
 			}
 
-			// 6. Launch tmux
 			term := terminal.NewTmuxTerminal(terminal.NewLocalRefStore(""))
 			if err := term.Launch(runIDStr, plan.Session, domainPlans); err != nil {
 				return fmt.Errorf("launch: %w", err)
