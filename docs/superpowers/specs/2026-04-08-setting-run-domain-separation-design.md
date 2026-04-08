@@ -279,7 +279,6 @@ const (
 // Message — 에이전트 간 통신 기록 (Run 하위)
 type Message struct {
     ID               string    `json:"id"`
-    RunID            string    `json:"run_id"`
     FromTeamMemberID string    `json:"from_team_member_id"`
     ToTeamMemberID   string    `json:"to_team_member_id"`
     Content          string    `json:"content"`
@@ -289,7 +288,6 @@ type Message struct {
 // Note — 에이전트 진행 상황 기록 (Run 하위)
 type Note struct {
     ID           string    `json:"id"`
-    RunID        string    `json:"run_id"`
     TeamMemberID string    `json:"team_member_id"`
     Content      string    `json:"content"`
     CreatedAt    time.Time `json:"created_at"`
