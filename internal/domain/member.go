@@ -5,25 +5,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 type Member struct {
-	ID               string    `json:"id"`
+	ID               int64     `json:"id"`
 	Name             string    `json:"name"`
 	Command          string    `json:"command"`
-	ClaudeMdID       string    `json:"claude_md_id"`        // empty string = not set (nullable FK)
-	SkillIDs         []string  `json:"skill_ids"`
-	ClaudeSettingsID string    `json:"claude_settings_id"`  // empty string = not set (nullable FK)
-	GitRepoURL       string    `json:"git_repo_url"`        // empty string = no repo
+	ClaudeMdID       *int64    `json:"claude_md_id"`       // nil = not set (nullable FK)
+	SkillIDs         []int64   `json:"skill_ids"`
+	ClaudeSettingsID *int64    `json:"claude_settings_id"` // nil = not set (nullable FK)
+	GitRepoURL       string    `json:"git_repo_url"`       // empty string = no repo
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 func NewMember(name, command string,
-	claudeMdID string, skillIDs []string,
-	claudeSettingsID string,
+	claudeMdID *int64, skillIDs []int64,
+	claudeSettingsID *int64,
 	gitRepoURL string) (*Member, error) {
 
 	name = strings.TrimSpace(name)
@@ -35,12 +34,11 @@ func NewMember(name, command string,
 		return nil, errors.New("member command must not be empty")
 	}
 	if skillIDs == nil {
-		skillIDs = []string{}
+		skillIDs = []int64{}
 	}
 
 	now := time.Now()
 	return &Member{
-		ID:               uuid.NewString(),
 		Name:             name,
 		Command:          command,
 		ClaudeMdID:       claudeMdID,
@@ -53,8 +51,8 @@ func NewMember(name, command string,
 }
 
 func (m *Member) Update(name, command *string,
-	claudeMdID *string, skillIDs *[]string,
-	claudeSettingsID *string,
+	claudeMdID **int64, skillIDs *[]int64,
+	claudeSettingsID **int64,
 	gitRepoURL *string) error {
 
 	if name != nil {

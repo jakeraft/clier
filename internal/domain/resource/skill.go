@@ -5,8 +5,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // Skill is a Claude Code skill that gets written to {workspace}/.claude/skills/{name}/SKILL.md.
@@ -14,7 +12,7 @@ import (
 // Name is used as the folder name, so it must be a valid directory name
 // (lowercase, hyphens, no spaces or special chars).
 type Skill struct {
-	ID        string    `json:"id"`
+	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
@@ -40,7 +38,6 @@ func NewSkill(name, content string) (*Skill, error) {
 
 	now := time.Now()
 	return &Skill{
-		ID:        uuid.NewString(),
 		Name:      name,
 		Content:   content,
 		CreatedAt: now,

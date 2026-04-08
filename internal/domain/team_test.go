@@ -2,44 +2,68 @@ package domain
 
 import (
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 const (
-	rootMemberSpecID = "root-member-spec"
-	rootMemberName   = "Root Member"
+	rootMemberSpecID int64 = 100
+	rootMemberName         = "Root Member"
 )
 
-func createTeamWithMembers(t *testing.T, extras ...struct{ id, name string }) (*Team, []TeamMember) {
+// nextID is a simple counter to simulate server-assigned IDs in tests.
+var nextID int64 = 1000
+
+func nextTestID() int64 {
+	nextID++
+	return nextID
+}
+
+func createTeamWithMembers(t *testing.T, extras ...struct {
+	id   int64
+	name string
+}) (*Team, []TeamMember) {
 	t.Helper()
 	team, err := NewTeam("my-team", rootMemberSpecID, rootMemberName)
 	if err != nil {
 		t.Fatalf("NewTeam: %v", err)
 	}
+	// Simulate server assigning IDs to the root team member.
+	team.TeamMembers[0].ID = nextTestID()
+	rootID := team.TeamMembers[0].ID
+	team.RootTeamMemberID = &rootID
+
 	added := []TeamMember{}
 	for _, e := range extras {
 		tm, err := team.AddTeamMember(e.id, e.name)
 		if err != nil {
-			t.Fatalf("AddTeamMember(%q, %q): %v", e.id, e.name, err)
+			t.Fatalf("AddTeamMember(%d, %q): %v", e.id, e.name, err)
 		}
+		// Simulate server assigning an ID.
+		tm.ID = nextTestID()
+		// Update the slice element too.
+		team.TeamMembers[len(team.TeamMembers)-1].ID = tm.ID
 		added = append(added, *tm)
 	}
 	return team, added
 }
 
-func member(id, name string) struct{ id, name string } {
-	return struct{ id, name string }{id, name}
+func member(id int64, name string) struct {
+	id   int64
+	name string
+} {
+	return struct {
+		id   int64
+		name string
+	}{id, name}
 }
 
 func TestNewTeam(t *testing.T) {
 	t.Run("ValidInputs_CreatesTeamWithRootTeamMember", func(t *testing.T) {
-		team, err := NewTeam("my-team", "spec-1", "Agent One")
+		team, err := NewTeam("my-team", int64(1), "Agent One")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if _, err := uuid.Parse(team.ID); err != nil {
-			t.Errorf("Team.ID %q is not a valid UUID", team.ID)
+		if team.ID != 0 {
+			t.Errorf("Team.ID = %d, want 0 (server assigns)", team.ID)
 		}
 		if team.Name != "my-team" {
 			t.Errorf("Name = %q, want %q", team.Name, "my-team")
@@ -48,17 +72,14 @@ func TestNewTeam(t *testing.T) {
 			t.Fatalf("TeamMembers length = %d, want 1", len(team.TeamMembers))
 		}
 		root := team.TeamMembers[0]
-		if _, err := uuid.Parse(root.ID); err != nil {
-			t.Errorf("Root TeamMember.ID %q is not a valid UUID", root.ID)
-		}
-		if root.MemberID != "spec-1" {
-			t.Errorf("Root MemberID = %q, want %q", root.MemberID, "spec-1")
+		if root.MemberID != 1 {
+			t.Errorf("Root MemberID = %d, want %d", root.MemberID, 1)
 		}
 		if root.Name != "Agent One" {
 			t.Errorf("Root Name = %q, want %q", root.Name, "Agent One")
 		}
-		if team.RootTeamMemberID != root.ID {
-			t.Errorf("RootTeamMemberID = %q, want %q", team.RootTeamMemberID, root.ID)
+		if team.RootTeamMemberID != nil {
+			t.Errorf("RootTeamMemberID = %v, want nil (server assigns)", team.RootTeamMemberID)
 		}
 		if len(team.Relations) != 0 {
 			t.Errorf("Relations = %v, want []", team.Relations)
@@ -66,21 +87,21 @@ func TestNewTeam(t *testing.T) {
 	})
 
 	t.Run("EmptyName_ReturnsError", func(t *testing.T) {
-		_, err := NewTeam("  ", "spec-1", "Agent One")
+		_, err := NewTeam("  ", int64(1), "Agent One")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
-	t.Run("EmptyMemberID_ReturnsError", func(t *testing.T) {
-		_, err := NewTeam("my-team", "  ", "Agent One")
+	t.Run("ZeroMemberID_ReturnsError", func(t *testing.T) {
+		_, err := NewTeam("my-team", int64(0), "Agent One")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
 	t.Run("EmptyMemberName_ReturnsError", func(t *testing.T) {
-		_, err := NewTeam("my-team", "spec-1", "  ")
+		_, err := NewTeam("my-team", int64(1), "  ")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -88,27 +109,36 @@ func TestNewTeam(t *testing.T) {
 }
 
 func TestAddTeamMember_DuplicateMemberIDAllowed(t *testing.T) {
-	team, err := NewTeam("my-team", "spec-1", "Agent One")
+	team, err := NewTeam("my-team", int64(1), "Agent One")
 	if err != nil {
 		t.Fatalf("NewTeam: %v", err)
 	}
+	// Simulate server assigning root team member ID.
+	team.TeamMembers[0].ID = nextTestID()
+	rootID := team.TeamMembers[0].ID
+	team.RootTeamMemberID = &rootID
 
-	tm1, err := team.AddTeamMember("spec-1", "Agent One Copy")
+	tm1, err := team.AddTeamMember(int64(1), "Agent One Copy")
 	if err != nil {
 		t.Fatalf("first AddTeamMember: %v", err)
 	}
-	tm2, err := team.AddTeamMember("spec-1", "Agent One Third")
+	tm1.ID = nextTestID()
+	team.TeamMembers[len(team.TeamMembers)-1].ID = tm1.ID
+
+	tm2, err := team.AddTeamMember(int64(1), "Agent One Third")
 	if err != nil {
 		t.Fatalf("second AddTeamMember: %v", err)
 	}
+	tm2.ID = nextTestID()
+	team.TeamMembers[len(team.TeamMembers)-1].ID = tm2.ID
 
 	if len(team.TeamMembers) != 3 {
 		t.Fatalf("TeamMembers length = %d, want 3", len(team.TeamMembers))
 	}
 
 	// All three share the same MemberID but have different TeamMember IDs.
-	if tm1.MemberID != "spec-1" || tm2.MemberID != "spec-1" {
-		t.Errorf("MemberIDs should all be spec-1, got %q and %q", tm1.MemberID, tm2.MemberID)
+	if tm1.MemberID != 1 || tm2.MemberID != 1 {
+		t.Errorf("MemberIDs should all be 1, got %d and %d", tm1.MemberID, tm2.MemberID)
 	}
 	if tm1.ID == tm2.ID {
 		t.Error("TeamMember IDs should be unique")
@@ -119,17 +149,17 @@ func TestAddTeamMember_DuplicateMemberIDAllowed(t *testing.T) {
 }
 
 func TestAddTeamMember_Validation(t *testing.T) {
-	team, _ := NewTeam("my-team", "spec-1", "Agent One")
+	team, _ := NewTeam("my-team", int64(1), "Agent One")
 
-	t.Run("EmptyMemberID_ReturnsError", func(t *testing.T) {
-		_, err := team.AddTeamMember("", "Name")
+	t.Run("ZeroMemberID_ReturnsError", func(t *testing.T) {
+		_, err := team.AddTeamMember(int64(0), "Name")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
 	t.Run("EmptyName_ReturnsError", func(t *testing.T) {
-		_, err := team.AddTeamMember("spec-2", "  ")
+		_, err := team.AddTeamMember(int64(2), "  ")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -138,11 +168,11 @@ func TestAddTeamMember_Validation(t *testing.T) {
 
 func TestRemoveTeamMember(t *testing.T) {
 	t.Run("RemovesByTeamMemberID_AndCleansRelations", func(t *testing.T) {
-		team, added := createTeamWithMembers(t, member("spec-2", "Agent Two"))
+		team, added := createTeamWithMembers(t, member(2, "Agent Two"))
 		tmID := added[0].ID
-		rootID := team.RootTeamMemberID
+		rootID := *team.RootTeamMemberID
 
-		_ = team.AddRelation(Relation{From: rootID, To: tmID})
+		_ = team.AddRelation(Relation{FromTeamMemberID: rootID, ToTeamMemberID: tmID})
 		if err := team.RemoveTeamMember(tmID); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -155,16 +185,16 @@ func TestRemoveTeamMember(t *testing.T) {
 	})
 
 	t.Run("NonexistentTeamMember_ReturnsError", func(t *testing.T) {
-		team, _ := NewTeam("team", "spec-1", "Agent One")
-		if err := team.RemoveTeamMember("nonexistent-uuid"); err == nil {
+		team, _ := createTeamWithMembers(t)
+		if err := team.RemoveTeamMember(int64(999999)); err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 }
 
 func TestRemoveTeamMember_CannotRemoveRoot(t *testing.T) {
-	team, _ := NewTeam("team", "spec-1", "Agent One")
-	rootID := team.RootTeamMemberID
+	team, _ := createTeamWithMembers(t)
+	rootID := *team.RootTeamMemberID
 	if err := team.RemoveTeamMember(rootID); err == nil {
 		t.Fatal("expected error when removing root team member, got nil")
 	}
@@ -172,11 +202,11 @@ func TestRemoveTeamMember_CannotRemoveRoot(t *testing.T) {
 
 func TestAddRelation_UsesTeamMemberID(t *testing.T) {
 	t.Run("ValidLeader_AddsRelation", func(t *testing.T) {
-		team, added := createTeamWithMembers(t, member("spec-2", "Agent Two"))
-		rootID := team.RootTeamMemberID
+		team, added := createTeamWithMembers(t, member(2, "Agent Two"))
+		rootID := *team.RootTeamMemberID
 		tmID := added[0].ID
 
-		err := team.AddRelation(Relation{From: rootID, To: tmID})
+		err := team.AddRelation(Relation{FromTeamMemberID: rootID, ToTeamMemberID: tmID})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -184,66 +214,66 @@ func TestAddRelation_UsesTeamMemberID(t *testing.T) {
 			t.Fatalf("Relations length = %d, want 1", len(team.Relations))
 		}
 		r := team.Relations[0]
-		if r.From != rootID || r.To != tmID {
-			t.Errorf("Relation = %+v, want {From:%s To:%s}", r, rootID, tmID)
+		if r.FromTeamMemberID != rootID || r.ToTeamMemberID != tmID {
+			t.Errorf("Relation = %+v, want {From:%d To:%d}", r, rootID, tmID)
 		}
 	})
 
 	t.Run("SelfRelation_ReturnsError", func(t *testing.T) {
-		team, _ := NewTeam("team", "spec-1", "Agent One")
-		rootID := team.RootTeamMemberID
-		err := team.AddRelation(Relation{From: rootID, To: rootID})
+		team, _ := createTeamWithMembers(t)
+		rootID := *team.RootTeamMemberID
+		err := team.AddRelation(Relation{FromTeamMemberID: rootID, ToTeamMemberID: rootID})
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
 	t.Run("NonMemberFrom_ReturnsError", func(t *testing.T) {
-		team, added := createTeamWithMembers(t, member("spec-2", "Agent Two"))
-		err := team.AddRelation(Relation{From: "nonexistent", To: added[0].ID})
+		team, added := createTeamWithMembers(t, member(2, "Agent Two"))
+		err := team.AddRelation(Relation{FromTeamMemberID: int64(999999), ToTeamMemberID: added[0].ID})
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
 	t.Run("NonMemberTo_ReturnsError", func(t *testing.T) {
-		team, _ := NewTeam("team", "spec-1", "Agent One")
-		err := team.AddRelation(Relation{From: team.RootTeamMemberID, To: "nonexistent"})
+		team, _ := createTeamWithMembers(t)
+		err := team.AddRelation(Relation{FromTeamMemberID: *team.RootTeamMemberID, ToTeamMemberID: int64(999999)})
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
 	t.Run("Duplicate_ReturnsError", func(t *testing.T) {
-		team, added := createTeamWithMembers(t, member("spec-2", "Agent Two"))
-		rootID := team.RootTeamMemberID
+		team, added := createTeamWithMembers(t, member(2, "Agent Two"))
+		rootID := *team.RootTeamMemberID
 		tmID := added[0].ID
-		_ = team.AddRelation(Relation{From: rootID, To: tmID})
-		if err := team.AddRelation(Relation{From: rootID, To: tmID}); err == nil {
+		_ = team.AddRelation(Relation{FromTeamMemberID: rootID, ToTeamMemberID: tmID})
+		if err := team.AddRelation(Relation{FromTeamMemberID: rootID, ToTeamMemberID: tmID}); err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
 	t.Run("LeaderUniqueness_SecondLeader_ReturnsError", func(t *testing.T) {
 		team, added := createTeamWithMembers(t,
-			member("spec-2", "Agent Two"),
-			member("spec-3", "Agent Three"),
+			member(2, "Agent Two"),
+			member(3, "Agent Three"),
 		)
-		rootID := team.RootTeamMemberID
+		rootID := *team.RootTeamMemberID
 		tm2ID := added[0].ID
 		tm3ID := added[1].ID
-		_ = team.AddRelation(Relation{From: rootID, To: tm2ID})
-		if err := team.AddRelation(Relation{From: tm3ID, To: tm2ID}); err == nil {
+		_ = team.AddRelation(Relation{FromTeamMemberID: rootID, ToTeamMemberID: tm2ID})
+		if err := team.AddRelation(Relation{FromTeamMemberID: tm3ID, ToTeamMemberID: tm2ID}); err == nil {
 			t.Fatal("expected error for second leader, got nil")
 		}
 	})
 
 	t.Run("MutualLeaderCycle_ReturnsError", func(t *testing.T) {
-		team, added := createTeamWithMembers(t, member("spec-2", "Agent Two"))
-		rootID := team.RootTeamMemberID
+		team, added := createTeamWithMembers(t, member(2, "Agent Two"))
+		rootID := *team.RootTeamMemberID
 		tmID := added[0].ID
-		_ = team.AddRelation(Relation{From: rootID, To: tmID})
-		if err := team.AddRelation(Relation{From: tmID, To: rootID}); err == nil {
+		_ = team.AddRelation(Relation{FromTeamMemberID: rootID, ToTeamMemberID: tmID})
+		if err := team.AddRelation(Relation{FromTeamMemberID: tmID, ToTeamMemberID: rootID}); err == nil {
 			t.Fatal("expected error for mutual leader cycle, got nil")
 		}
 	})
@@ -251,10 +281,10 @@ func TestAddRelation_UsesTeamMemberID(t *testing.T) {
 
 func TestRemoveRelation(t *testing.T) {
 	t.Run("ExistingRelation_RemovesIt", func(t *testing.T) {
-		team, added := createTeamWithMembers(t, member("spec-2", "Agent Two"))
-		rootID := team.RootTeamMemberID
+		team, added := createTeamWithMembers(t, member(2, "Agent Two"))
+		rootID := *team.RootTeamMemberID
 		tmID := added[0].ID
-		_ = team.AddRelation(Relation{From: rootID, To: tmID})
+		_ = team.AddRelation(Relation{FromTeamMemberID: rootID, ToTeamMemberID: tmID})
 		if err := team.RemoveRelation(rootID, tmID); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -264,8 +294,8 @@ func TestRemoveRelation(t *testing.T) {
 	})
 
 	t.Run("Nonexistent_ReturnsError", func(t *testing.T) {
-		team, _ := NewTeam("team", "spec-1", "Agent One")
-		if err := team.RemoveRelation(team.RootTeamMemberID, "x"); err == nil {
+		team, _ := createTeamWithMembers(t)
+		if err := team.RemoveRelation(*team.RootTeamMemberID, int64(999999)); err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
@@ -274,29 +304,30 @@ func TestRemoveRelation(t *testing.T) {
 func TestMemberRelations_UsesTeamMemberID(t *testing.T) {
 	t.Run("MultipleRelations_ReturnsLeadersWorkers", func(t *testing.T) {
 		team, added := createTeamWithMembers(t,
-			member("spec-2", "Agent Two"),
-			member("spec-3", "Agent Three"),
+			member(2, "Agent Two"),
+			member(3, "Agent Three"),
 		)
-		rootID := team.RootTeamMemberID
+		rootID := *team.RootTeamMemberID
 		tm2ID := added[0].ID
 		tm3ID := added[1].ID
 
 		// root is leader of tm2 (root -> tm2 leader)
-		_ = team.AddRelation(Relation{From: rootID, To: tm2ID})
+		_ = team.AddRelation(Relation{FromTeamMemberID: rootID, ToTeamMemberID: tm2ID})
 		// tm3 is leader of root (tm3 -> root leader)
-		_ = team.AddRelation(Relation{From: tm3ID, To: rootID})
+		_ = team.AddRelation(Relation{FromTeamMemberID: tm3ID, ToTeamMemberID: rootID})
 
 		rel := team.MemberRelations(rootID)
 		if len(rel.Workers) != 1 || rel.Workers[0] != tm2ID {
-			t.Errorf("Workers = %v, want [%s]", rel.Workers, tm2ID)
+			t.Errorf("Workers = %v, want [%d]", rel.Workers, tm2ID)
 		}
 		if len(rel.Leaders) != 1 || rel.Leaders[0] != tm3ID {
-			t.Errorf("Leaders = %v, want [%s]", rel.Leaders, tm3ID)
+			t.Errorf("Leaders = %v, want [%d]", rel.Leaders, tm3ID)
 		}
 	})
 
 	t.Run("NoRelations_ReturnsEmptySlices", func(t *testing.T) {
-		team, added := createTeamWithMembers(t, member("spec-2", "Agent Two"))
+		team, added := createTeamWithMembers(t, member(2, "Agent Two"))
+		_ = team
 		rel := team.MemberRelations(added[0].ID)
 		if len(rel.Leaders) != 0 {
 			t.Errorf("Leaders = %v, want []", rel.Leaders)
@@ -309,16 +340,18 @@ func TestMemberRelations_UsesTeamMemberID(t *testing.T) {
 
 func TestReplaceComposition(t *testing.T) {
 	t.Run("ValidReplacement_ReplacesAtomically", func(t *testing.T) {
-		team, _ := NewTeam("old-team", "spec-1", "Agent One")
+		team, _ := createTeamWithMembers(t)
 
-		newRoot := TeamMember{ID: uuid.NewString(), MemberID: "spec-a", Name: "New Root"}
-		newMember := TeamMember{ID: uuid.NewString(), MemberID: "spec-b", Name: "New Member"}
+		newRootID := nextTestID()
+		newMemberID := nextTestID()
+		newRoot := TeamMember{ID: newRootID, MemberID: 10, Name: "New Root"}
+		newMember := TeamMember{ID: newMemberID, MemberID: 20, Name: "New Member"}
 
 		err := team.ReplaceComposition(
 			"new-team",
-			newRoot.ID,
+			newRootID,
 			[]TeamMember{newRoot, newMember},
-			[]Relation{{From: newRoot.ID, To: newMember.ID}},
+			[]Relation{{FromTeamMemberID: newRootID, ToTeamMemberID: newMemberID}},
 		)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -326,8 +359,8 @@ func TestReplaceComposition(t *testing.T) {
 		if team.Name != "new-team" {
 			t.Errorf("Name = %q, want %q", team.Name, "new-team")
 		}
-		if team.RootTeamMemberID != newRoot.ID {
-			t.Errorf("RootTeamMemberID = %q, want %q", team.RootTeamMemberID, newRoot.ID)
+		if team.RootTeamMemberID == nil || *team.RootTeamMemberID != newRootID {
+			t.Errorf("RootTeamMemberID = %v, want %d", team.RootTeamMemberID, newRootID)
 		}
 		if len(team.TeamMembers) != 2 {
 			t.Fatalf("TeamMembers length = %d, want 2", len(team.TeamMembers))
@@ -338,17 +371,19 @@ func TestReplaceComposition(t *testing.T) {
 	})
 
 	t.Run("EmptyName_ReturnsError", func(t *testing.T) {
-		team, _ := NewTeam("team", "spec-1", "Agent One")
-		err := team.ReplaceComposition("", team.RootTeamMemberID, team.TeamMembers, nil)
+		team, _ := createTeamWithMembers(t)
+		err := team.ReplaceComposition("", *team.RootTeamMemberID, team.TeamMembers, nil)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
 	t.Run("RootNotInMembers_ReturnsError", func(t *testing.T) {
-		team, _ := NewTeam("team", "spec-1", "Agent One")
-		err := team.ReplaceComposition("team", "nonexistent-id",
-			[]TeamMember{{ID: uuid.NewString(), MemberID: "spec-x", Name: "X"}},
+		team, _ := createTeamWithMembers(t)
+		nonexistentID := nextTestID()
+		memberTMID := nextTestID()
+		err := team.ReplaceComposition("team", nonexistentID,
+			[]TeamMember{{ID: memberTMID, MemberID: 10, Name: "X"}},
 			nil,
 		)
 		if err == nil {
@@ -357,32 +392,34 @@ func TestReplaceComposition(t *testing.T) {
 	})
 
 	t.Run("InvalidRelation_ReturnsError", func(t *testing.T) {
-		team, _ := NewTeam("team", "spec-1", "Agent One")
-		root := TeamMember{ID: uuid.NewString(), MemberID: "spec-a", Name: "A"}
-		err := team.ReplaceComposition("team", root.ID,
+		team, _ := createTeamWithMembers(t)
+		rootTMID := nextTestID()
+		root := TeamMember{ID: rootTMID, MemberID: 10, Name: "A"}
+		err := team.ReplaceComposition("team", rootTMID,
 			[]TeamMember{root},
-			[]Relation{{From: root.ID, To: "nonexistent"}},
+			[]Relation{{FromTeamMemberID: rootTMID, ToTeamMemberID: int64(999999)}},
 		)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
 
-	t.Run("EmptyTeamMemberID_ReturnsError", func(t *testing.T) {
-		team, _ := NewTeam("team", "spec-1", "Agent One")
-		err := team.ReplaceComposition("team", "some-id",
-			[]TeamMember{{ID: "", MemberID: "spec-a", Name: "A"}},
+	t.Run("ZeroTeamMemberID_ReturnsError", func(t *testing.T) {
+		team, _ := createTeamWithMembers(t)
+		err := team.ReplaceComposition("team", int64(1),
+			[]TeamMember{{ID: 0, MemberID: 10, Name: "A"}},
 			nil,
 		)
 		if err == nil {
-			t.Fatal("expected error for empty team member ID, got nil")
+			t.Fatal("expected error for zero team member ID, got nil")
 		}
 	})
 
 	t.Run("EmptyTeamMemberName_ReturnsError", func(t *testing.T) {
-		team, _ := NewTeam("team", "spec-1", "Agent One")
-		err := team.ReplaceComposition("team", "some-id",
-			[]TeamMember{{ID: uuid.NewString(), MemberID: "spec-a", Name: ""}},
+		team, _ := createTeamWithMembers(t)
+		tmID := nextTestID()
+		err := team.ReplaceComposition("team", int64(1),
+			[]TeamMember{{ID: tmID, MemberID: 10, Name: ""}},
 			nil,
 		)
 		if err == nil {
@@ -393,7 +430,7 @@ func TestReplaceComposition(t *testing.T) {
 
 func TestFindTeamMember(t *testing.T) {
 	t.Run("ExistingTeamMember_ReturnsIt", func(t *testing.T) {
-		team, added := createTeamWithMembers(t, member("spec-2", "Agent Two"))
+		team, added := createTeamWithMembers(t, member(2, "Agent Two"))
 		tmID := added[0].ID
 
 		found, ok := team.FindTeamMember(tmID)
@@ -401,10 +438,10 @@ func TestFindTeamMember(t *testing.T) {
 			t.Fatal("expected to find team member, got not found")
 		}
 		if found.ID != tmID {
-			t.Errorf("ID = %q, want %q", found.ID, tmID)
+			t.Errorf("ID = %d, want %d", found.ID, tmID)
 		}
-		if found.MemberID != "spec-2" {
-			t.Errorf("MemberID = %q, want %q", found.MemberID, "spec-2")
+		if found.MemberID != 2 {
+			t.Errorf("MemberID = %d, want %d", found.MemberID, 2)
 		}
 		if found.Name != "Agent Two" {
 			t.Errorf("Name = %q, want %q", found.Name, "Agent Two")
@@ -412,19 +449,19 @@ func TestFindTeamMember(t *testing.T) {
 	})
 
 	t.Run("FindRoot_ReturnsIt", func(t *testing.T) {
-		team, _ := NewTeam("team", "spec-1", "Agent One")
-		found, ok := team.FindTeamMember(team.RootTeamMemberID)
+		team, _ := createTeamWithMembers(t)
+		found, ok := team.FindTeamMember(*team.RootTeamMemberID)
 		if !ok {
 			t.Fatal("expected to find root team member")
 		}
-		if found.MemberID != "spec-1" {
-			t.Errorf("MemberID = %q, want %q", found.MemberID, "spec-1")
+		if found.MemberID != rootMemberSpecID {
+			t.Errorf("MemberID = %d, want %d", found.MemberID, rootMemberSpecID)
 		}
 	})
 
 	t.Run("Nonexistent_ReturnsFalse", func(t *testing.T) {
-		team, _ := NewTeam("team", "spec-1", "Agent One")
-		_, ok := team.FindTeamMember("nonexistent-uuid")
+		team, _ := createTeamWithMembers(t)
+		_, ok := team.FindTeamMember(int64(999999))
 		if ok {
 			t.Fatal("expected not found, got found")
 		}
@@ -433,7 +470,7 @@ func TestFindTeamMember(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	t.Run("ValidName_ChangesName", func(t *testing.T) {
-		team, _ := NewTeam("old", "spec-1", "Agent One")
+		team, _ := createTeamWithMembers(t)
 		name := "new"
 		if err := team.Update(&name, nil); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -444,18 +481,18 @@ func TestUpdate(t *testing.T) {
 	})
 
 	t.Run("ExistingTeamMember_ChangesRootTeamMemberID", func(t *testing.T) {
-		team, added := createTeamWithMembers(t, member("spec-2", "Agent Two"))
+		team, added := createTeamWithMembers(t, member(2, "Agent Two"))
 		tmID := added[0].ID
 		if err := team.Update(nil, &tmID); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if team.RootTeamMemberID != tmID {
-			t.Errorf("RootTeamMemberID = %q, want %q", team.RootTeamMemberID, tmID)
+		if team.RootTeamMemberID == nil || *team.RootTeamMemberID != tmID {
+			t.Errorf("RootTeamMemberID = %v, want %d", team.RootTeamMemberID, tmID)
 		}
 	})
 
 	t.Run("EmptyName_ReturnsError", func(t *testing.T) {
-		team, _ := NewTeam("valid", "spec-1", "Agent One")
+		team, _ := createTeamWithMembers(t)
 		name := ""
 		if err := team.Update(&name, nil); err == nil {
 			t.Fatal("expected error, got nil")
@@ -463,8 +500,8 @@ func TestUpdate(t *testing.T) {
 	})
 
 	t.Run("NonexistentRootTeamMemberID_ReturnsError", func(t *testing.T) {
-		team, _ := NewTeam("valid", "spec-1", "Agent One")
-		id := "nonexistent"
+		team, _ := createTeamWithMembers(t)
+		id := int64(999999)
 		if err := team.Update(nil, &id); err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -473,28 +510,28 @@ func TestUpdate(t *testing.T) {
 
 func TestIsConnectedTo(t *testing.T) {
 	rel := MemberRelations{
-		Leaders: []string{"leader-1"},
-		Workers: []string{"worker-1"},
+		Leaders: []int64{1},
+		Workers: []int64{2},
 	}
 
 	t.Run("Connected_ReturnsTrue", func(t *testing.T) {
-		for _, id := range []string{"leader-1", "worker-1"} {
+		for _, id := range []int64{1, 2} {
 			if !rel.IsConnectedTo(id) {
-				t.Errorf("IsConnectedTo(%q) = false, want true", id)
+				t.Errorf("IsConnectedTo(%d) = false, want true", id)
 			}
 		}
 	})
 
 	t.Run("NotConnected_ReturnsFalse", func(t *testing.T) {
-		if rel.IsConnectedTo("stranger") {
-			t.Error("IsConnectedTo(stranger) = true, want false")
+		if rel.IsConnectedTo(int64(999)) {
+			t.Error("IsConnectedTo(999) = true, want false")
 		}
 	})
 
 	t.Run("Empty_ReturnsFalse", func(t *testing.T) {
 		empty := MemberRelations{}
-		if empty.IsConnectedTo("anyone") {
-			t.Error("IsConnectedTo(anyone) = true, want false")
+		if empty.IsConnectedTo(int64(1)) {
+			t.Error("IsConnectedTo(1) = true, want false")
 		}
 	})
 }

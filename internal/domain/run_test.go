@@ -3,13 +3,15 @@ package domain_test
 import (
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
 func TestNewRun(t *testing.T) {
-	t.Run("valid run", func(t *testing.T) {
-		run, err := domain.NewRun("run-123", "my-team-run-123", "team-456")
+	teamID := int64(456)
+	memberID := int64(789)
+
+	t.Run("valid run with team", func(t *testing.T) {
+		run, err := domain.NewRun("run-123", "my-team-run-123", &teamID, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -19,8 +21,11 @@ func TestNewRun(t *testing.T) {
 		if run.Name != "my-team-run-123" {
 			t.Errorf("Name = %q, want %q", run.Name, "my-team-run-123")
 		}
-		if run.TeamID != "team-456" {
-			t.Errorf("TeamID = %q, want %q", run.TeamID, "team-456")
+		if run.TeamID == nil || *run.TeamID != 456 {
+			t.Errorf("TeamID = %v, want 456", run.TeamID)
+		}
+		if run.MemberID != nil {
+			t.Errorf("MemberID = %v, want nil", run.MemberID)
 		}
 		if run.Status != domain.RunRunning {
 			t.Errorf("Status = %q, want %q", run.Status, domain.RunRunning)
@@ -30,29 +35,48 @@ func TestNewRun(t *testing.T) {
 		}
 	})
 
+	t.Run("valid run with member", func(t *testing.T) {
+		run, err := domain.NewRun("run-456", "member-run-456", nil, &memberID)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if run.TeamID != nil {
+			t.Errorf("TeamID = %v, want nil", run.TeamID)
+		}
+		if run.MemberID == nil || *run.MemberID != 789 {
+			t.Errorf("MemberID = %v, want 789", run.MemberID)
+		}
+	})
+
 	t.Run("empty id", func(t *testing.T) {
-		_, err := domain.NewRun("", "name", "team-456")
+		_, err := domain.NewRun("", "name", &teamID, nil)
 		if err == nil {
 			t.Fatal("expected error for empty ID")
 		}
 	})
 
 	t.Run("empty name", func(t *testing.T) {
-		_, err := domain.NewRun("run-123", "", "team-456")
+		_, err := domain.NewRun("run-123", "", &teamID, nil)
 		if err == nil {
 			t.Fatal("expected error for empty name")
 		}
 	})
 
-	t.Run("empty team id", func(t *testing.T) {
-		_, err := domain.NewRun("run-123", "name", "")
-		if err == nil {
-			t.Fatal("expected error for empty team ID")
+	t.Run("nil team and member allowed", func(t *testing.T) {
+		run, err := domain.NewRun("run-123", "name", nil, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if run.TeamID != nil {
+			t.Errorf("TeamID = %v, want nil", run.TeamID)
+		}
+		if run.MemberID != nil {
+			t.Errorf("MemberID = %v, want nil", run.MemberID)
 		}
 	})
 
 	t.Run("stop", func(t *testing.T) {
-		run, _ := domain.NewRun("run-123", "my-team-run-123", "team-456")
+		run, _ := domain.NewRun("run-123", "my-team-run-123", &teamID, nil)
 		run.Stop()
 		if run.Status != domain.RunStopped {
 			t.Errorf("Status = %q, want %q", run.Status, domain.RunStopped)
@@ -84,14 +108,12 @@ func TestRunName(t *testing.T) {
 
 func TestMessage(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
-		t.Run("ValidInputs_GeneratesUUIDAndSetsFields", func(t *testing.T) {
+		t.Run("ValidInputs_SetsFields", func(t *testing.T) {
 			m, err := domain.NewMessage("run-1", "from-1", "to-1", "hello")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if _, err := uuid.Parse(m.ID); err != nil {
-				t.Errorf("ID %q is not a valid UUID", m.ID)
-			}
+			// ID is empty — server assigns it.
 			if m.RunID != "run-1" {
 				t.Errorf("RunID = %q, want %q", m.RunID, "run-1")
 			}
@@ -144,14 +166,12 @@ func TestMessage(t *testing.T) {
 
 func TestNote(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
-		t.Run("ValidInputs_GeneratesUUIDAndSetsFields", func(t *testing.T) {
+		t.Run("ValidInputs_SetsFields", func(t *testing.T) {
 			n, err := domain.NewNote("run-1", "member-1", "work started")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if _, err := uuid.Parse(n.ID); err != nil {
-				t.Errorf("ID %q is not a valid UUID", n.ID)
-			}
+			// ID is empty — server assigns it.
 			if n.RunID != "run-1" {
 				t.Errorf("RunID = %q, want %q", n.RunID, "run-1")
 			}

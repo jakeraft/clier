@@ -13,8 +13,8 @@ func TestNewClaudeMd(t *testing.T) {
 	if md.Content != "# Project Rules\n\nAlways use TDD." {
 		t.Errorf("content mismatch")
 	}
-	if md.ID == "" {
-		t.Error("ID should be set")
+	if md.ID != 0 {
+		t.Error("ID should be 0 (server assigns)")
 	}
 }
 

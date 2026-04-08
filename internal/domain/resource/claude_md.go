@@ -4,14 +4,12 @@ import (
 	"errors"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // ClaudeMd is a project instruction file shared across agent types.
 // Written as CLAUDE.md (Claude), AGENTS.md (Codex), or GEMINI.md (Gemini).
 type ClaudeMd struct {
-	ID        string    `json:"id"`
+	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
@@ -30,7 +28,6 @@ func NewClaudeMd(name, content string) (*ClaudeMd, error) {
 
 	now := time.Now()
 	return &ClaudeMd{
-		ID:        uuid.NewString(),
 		Name:      name,
 		Content:   content,
 		CreatedAt: now,

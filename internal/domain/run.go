@@ -4,8 +4,6 @@ import (
 	"errors"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type RunStatus string
@@ -19,15 +17,17 @@ const (
 // Execution plan is saved locally to .clier/{RUN_ID}.json.
 // Run stores only status and communication history (Messages, Notes).
 type Run struct {
-	ID     string    `json:"id"`
-	Name   string    `json:"name"`
-	TeamID string    `json:"team_id"`
-	Status RunStatus `json:"status"`
-	StartedAt time.Time    `json:"started_at"`
-	StoppedAt *time.Time   `json:"stopped_at"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	UserID    int64     `json:"user_id"`
+	TeamID    *int64    `json:"team_id"`    // nullable
+	MemberID  *int64    `json:"member_id"`  // nullable
+	Status    RunStatus `json:"status"`
+	StartedAt time.Time `json:"started_at"`
+	StoppedAt *time.Time `json:"stopped_at"`
 }
 
-func NewRun(id, name, teamID string) (*Run, error) {
+func NewRun(id, name string, teamID *int64, memberID *int64) (*Run, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
 		return nil, errors.New("run id must not be empty")
@@ -36,14 +36,11 @@ func NewRun(id, name, teamID string) (*Run, error) {
 	if name == "" {
 		return nil, errors.New("run name must not be empty")
 	}
-	teamID = strings.TrimSpace(teamID)
-	if teamID == "" {
-		return nil, errors.New("team id must not be empty")
-	}
 	return &Run{
 		ID:        id,
 		Name:      name,
 		TeamID:    teamID,
+		MemberID:  memberID,
 		Status:    RunRunning,
 		StartedAt: time.Now(),
 	}, nil
@@ -92,7 +89,6 @@ func NewMessage(runID, fromTeamMemberID, toTeamMemberID, content string) (*Messa
 	}
 
 	return &Message{
-		ID:               uuid.NewString(),
 		RunID:            runID,
 		FromTeamMemberID: fromTeamMemberID,
 		ToTeamMemberID:   toTeamMemberID,
@@ -123,7 +119,6 @@ func NewNote(runID, teamMemberID, content string) (*Note, error) {
 	}
 
 	return &Note{
-		ID:           uuid.NewString(),
 		RunID:        runID,
 		TeamMemberID: teamMemberID,
 		Content:      content,

@@ -13,8 +13,8 @@ func TestNewSkill(t *testing.T) {
 	if s.Content != "Review code for quality issues" {
 		t.Errorf("content mismatch")
 	}
-	if s.ID == "" {
-		t.Error("ID should be set")
+	if s.ID != 0 {
+		t.Error("ID should be 0 (server assigns)")
 	}
 }
 

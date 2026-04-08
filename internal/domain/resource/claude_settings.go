@@ -5,14 +5,12 @@ import (
 	"errors"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // ClaudeSettings is a settings.json file for Claude Code.
 // Written to CLAUDE_CONFIG_DIR/settings.json.
 type ClaudeSettings struct {
-	ID        string    `json:"id"`
+	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
@@ -34,7 +32,6 @@ func NewClaudeSettings(name, content string) (*ClaudeSettings, error) {
 
 	now := time.Now()
 	return &ClaudeSettings{
-		ID:        uuid.NewString(),
 		Name:      name,
 		Content:   content,
 		CreatedAt: now,
