@@ -35,7 +35,7 @@ func TestBuildEnv(t *testing.T) {
 	rt := &agentrt.ClaudeRuntime{}
 
 	t.Run("IncludesAllCategories", func(t *testing.T) {
-		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "reviewer", "run-1", "m1", PlaceholderAuthClaude)
+		env := buildEnv(rt, "/ws/member1", "my-team", "reviewer", "run-1", "m1")
 
 		envMap := make(map[string]string)
 		for _, e := range env {
@@ -44,15 +44,14 @@ func TestBuildEnv(t *testing.T) {
 		}
 
 		for k, want := range map[string]string{
-			"CLAUDE_CONFIG_DIR":       PlaceholderMemberspace + "/.claude",
-			"CLIER_AGENT":            "true",
-			"CLIER_RUN_ID":           "run-1",
-			"CLIER_MEMBER_ID":         "m1",
-			"CLAUDE_CODE_OAUTH_TOKEN": PlaceholderAuthClaude,
-			"GIT_AUTHOR_NAME":         "my-team/reviewer",
-			"GIT_AUTHOR_EMAIL":        "noreply@clier.com",
-			"GIT_COMMITTER_NAME":      "my-team/reviewer",
-			"GIT_COMMITTER_EMAIL":     "noreply@clier.com",
+			"CLAUDE_CONFIG_DIR":   "/ws/member1/.claude",
+			"CLIER_AGENT":        "true",
+			"CLIER_RUN_ID":       "run-1",
+			"CLIER_MEMBER_ID":    "m1",
+			"GIT_AUTHOR_NAME":    "my-team/reviewer",
+			"GIT_AUTHOR_EMAIL":   "noreply@clier.com",
+			"GIT_COMMITTER_NAME": "my-team/reviewer",
+			"GIT_COMMITTER_EMAIL": "noreply@clier.com",
 		} {
 			if envMap[k] != want {
 				t.Errorf("%s = %q, want %q", k, envMap[k], want)
@@ -60,12 +59,12 @@ func TestBuildEnv(t *testing.T) {
 		}
 	})
 
-	t.Run("HasSystemAuthIdentity", func(t *testing.T) {
-		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "coder", "run-1", "m2", PlaceholderAuthClaude)
+	t.Run("HasSystemAndIdentity", func(t *testing.T) {
+		env := buildEnv(rt, "/ws/member1", "my-team", "coder", "run-1", "m2")
 
-		// system(4) + auth(1) + identity(4) = 9
-		if len(env) != 9 {
-			t.Errorf("expected 9 env vars, got %d", len(env))
+		// system(4) + identity(4) = 8
+		if len(env) != 8 {
+			t.Errorf("expected 8 env vars, got %d", len(env))
 		}
 	})
 }
@@ -123,23 +122,22 @@ func TestBuildEnvCommand(t *testing.T) {
 func TestBuildCommand(t *testing.T) {
 	rt := &agentrt.ClaudeRuntime{}
 
-	t.Run("AllArgs_IncludesPlaceholders", func(t *testing.T) {
+	t.Run("AllArgs_IncludesConcretePaths", func(t *testing.T) {
 		cmd := buildCommand(rt, "claude --dangerously-skip-permissions --verbose --model claude-sonnet-4-6",
-			PlaceholderMemberspace+"/project",
-			PlaceholderMemberspace, "my-team", "coder", "run-1", "m1", PlaceholderAuthClaude)
+			"/ws/member1/project",
+			"/ws/member1", "my-team", "coder", "run-1", "m1")
 
 		for _, want := range []string{
 			"claude",
 			"--model claude-sonnet-4-6",
 			"--dangerously-skip-permissions",
 			"--verbose",
-			"export CLAUDE_CONFIG_DIR='" + PlaceholderMemberspace + "/.claude'",
+			"export CLAUDE_CONFIG_DIR='/ws/member1/.claude'",
 			"export CLIER_AGENT='true'",
 			"export CLIER_RUN_ID='run-1'",
 			"export CLIER_MEMBER_ID='m1'",
-			"export CLAUDE_CODE_OAUTH_TOKEN='" + PlaceholderAuthClaude + "'",
 			"export GIT_AUTHOR_NAME='my-team/coder'",
-			"cd '" + PlaceholderMemberspace + "/project'",
+			"cd '/ws/member1/project'",
 		} {
 			if !strings.Contains(cmd, want) {
 				t.Errorf("missing %q in:\n%s", want, cmd)
@@ -149,6 +147,11 @@ func TestBuildCommand(t *testing.T) {
 		// --append-system-prompt should NOT be present
 		if strings.Contains(cmd, "--append-system-prompt") {
 			t.Error("--append-system-prompt should not be in the command")
+		}
+
+		// CLAUDE_CODE_OAUTH_TOKEN should NOT be present (auth removed)
+		if strings.Contains(cmd, "CLAUDE_CODE_OAUTH_TOKEN") {
+			t.Error("CLAUDE_CODE_OAUTH_TOKEN should not be in the command")
 		}
 	})
 }

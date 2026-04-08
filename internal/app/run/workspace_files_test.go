@@ -22,7 +22,7 @@ func TestBuildWorkspaceFiles(t *testing.T) {
 		if len(files) != 1 {
 			t.Fatalf("expected 1 file, got %d", len(files))
 		}
-		if files[0].Path != "/ws/project/CLAUDE.md" {
+		if files[0].Path != "/ws/CLAUDE.md" {
 			t.Errorf("path = %q", files[0].Path)
 		}
 		if files[0].Content != "# Protocol" {
@@ -30,14 +30,24 @@ func TestBuildWorkspaceFiles(t *testing.T) {
 		}
 	})
 
-	t.Run("SystemAndUserClaudeMd", func(t *testing.T) {
+	t.Run("SystemAndUserClaudeMd_SeparateFiles", func(t *testing.T) {
 		files := buildWorkspaceFiles(rt, "/ws", "# Protocol", "# User Rules", "", "", nil)
-		if len(files) != 1 {
-			t.Fatalf("expected 1 file, got %d", len(files))
+		if len(files) != 2 {
+			t.Fatalf("expected 2 files, got %d", len(files))
 		}
-		want := "# Protocol\n\n---\n\n# User Rules"
-		if files[0].Content != want {
-			t.Errorf("content = %q, want %q", files[0].Content, want)
+		// System protocol in parent directory
+		if files[0].Path != "/ws/CLAUDE.md" {
+			t.Errorf("system path = %q, want /ws/CLAUDE.md", files[0].Path)
+		}
+		if files[0].Content != "# Protocol" {
+			t.Errorf("system content = %q", files[0].Content)
+		}
+		// User instructions in project directory
+		if files[1].Path != "/ws/project/CLAUDE.md" {
+			t.Errorf("user path = %q, want /ws/project/CLAUDE.md", files[1].Path)
+		}
+		if files[1].Content != "# User Rules" {
+			t.Errorf("user content = %q", files[1].Content)
 		}
 	})
 

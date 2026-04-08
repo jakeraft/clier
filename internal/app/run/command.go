@@ -33,10 +33,9 @@ func identityEnvs(teamName, memberName string) []string {
 }
 
 // buildEnv assembles the full set of environment variables for a member command.
-func buildEnv(rt AgentRuntime, memberspace, teamName, memberName, runID, memberID, authPlaceholder string) []string {
+func buildEnv(rt AgentRuntime, memberspace, teamName, memberName, runID, memberID string) []string {
 	var env []string
 	env = append(env, systemEnvs(rt, memberspace, runID, memberID)...)
-	env = append(env, rt.AuthEnvs(authPlaceholder)...)
 	env = append(env, identityEnvs(teamName, memberName)...)
 	return env
 }
@@ -63,8 +62,8 @@ func buildAgentCommand(command string, workDir string) string {
 }
 
 // buildCommand returns the complete shell command for launching an agent.
-func buildCommand(rt AgentRuntime, command, workDir, memberspace, teamName, memberName, runID, memberID, authPlaceholder string) string {
+func buildCommand(rt AgentRuntime, command, workDir, memberspace, teamName, memberName, runID, memberID string) string {
 	cmd := buildAgentCommand(command, workDir)
-	env := buildEnv(rt, memberspace, teamName, memberName, runID, memberID, authPlaceholder)
+	env := buildEnv(rt, memberspace, teamName, memberName, runID, memberID)
 	return buildEnvCommand(cmd, env)
 }

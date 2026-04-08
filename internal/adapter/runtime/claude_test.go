@@ -21,17 +21,6 @@ func TestClaudeRuntime_ConfigDirEnv(t *testing.T) {
 	}
 }
 
-func TestClaudeRuntime_AuthEnvs(t *testing.T) {
-	rt := &ClaudeRuntime{}
-	got := rt.AuthEnvs("sk-token")
-	if len(got) != 1 {
-		t.Fatalf("expected 1 env, got %d", len(got))
-	}
-	if got[0] != "CLAUDE_CODE_OAUTH_TOKEN=sk-token" {
-		t.Errorf("got %q", got[0])
-	}
-}
-
 func TestClaudeRuntime_InstructionFile(t *testing.T) {
 	rt := &ClaudeRuntime{}
 	if rt.InstructionFile() != "CLAUDE.md" {

@@ -12,15 +12,19 @@ import (
 func buildWorkspaceFiles(rt AgentRuntime, memberspace, systemClaudeMd, userClaudeMd, userClaudeSettings, systemProjectConfig string, userSkills []resource.Skill) []domain.FileEntry {
 	var files []domain.FileEntry
 
-	// Instruction file -> {memberspace}/project/{rt.InstructionFile()}
-	claudeMdContent := systemClaudeMd
-	if userClaudeMd != "" {
-		claudeMdContent += "\n\n---\n\n" + userClaudeMd
+	// System protocol -> {memberspace}/{rt.InstructionFile()} (parent directory)
+	if systemClaudeMd != "" {
+		files = append(files, domain.FileEntry{
+			Path:    memberspace + "/" + rt.InstructionFile(),
+			Content: systemClaudeMd,
+		})
 	}
-	if claudeMdContent != "" {
+
+	// User instruction file -> {memberspace}/project/{rt.InstructionFile()}
+	if userClaudeMd != "" {
 		files = append(files, domain.FileEntry{
 			Path:    memberspace + "/project/" + rt.InstructionFile(),
-			Content: claudeMdContent,
+			Content: userClaudeMd,
 		})
 	}
 

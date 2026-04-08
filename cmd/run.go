@@ -60,9 +60,9 @@ func newRunStartCmd() *cobra.Command {
 			runtimes := map[string]run.AgentRuntime{
 				"claude": &agentrt.ClaudeRuntime{},
 			}
-			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
+			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), runtimes)
 
-			r, err := svc.Start(cmd.Context(), t, cfg.Auth)
+			r, err := svc.Start(cmd.Context(), t)
 			if err != nil {
 				return err
 			}
@@ -94,7 +94,7 @@ func newRunStopCmd() *cobra.Command {
 			runtimes := map[string]run.AgentRuntime{
 				"claude": &agentrt.ClaudeRuntime{},
 			}
-			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
+			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), runtimes)
 
 			if err := svc.Stop(cmd.Context(), args[0]); err != nil {
 				return err
@@ -170,7 +170,7 @@ Examples:
 			runtimes := map[string]run.AgentRuntime{
 				"claude": &agentrt.ClaudeRuntime{},
 			}
-			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
+			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), runtimes)
 
 			if err := svc.Send(cmd.Context(), runID, fromMemberID, toMemberID, content); err != nil {
 				return err
@@ -222,7 +222,7 @@ func newRunNoteCmd() *cobra.Command {
 			runtimes := map[string]run.AgentRuntime{
 				"claude": &agentrt.ClaudeRuntime{},
 			}
-			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
+			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), runtimes)
 
 			if err := svc.Note(cmd.Context(), runID, memberID, content); err != nil {
 				return err

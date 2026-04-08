@@ -65,18 +65,3 @@ func TestNew(t *testing.T) {
 	})
 }
 
-func TestAuth(t *testing.T) {
-	auth := &Auth{}
-
-	t.Run("ReadToken", func(t *testing.T) {
-		// This test relies on either keychain or ~/.claude/.credentials.json existing.
-		// If neither is available, the test is skipped.
-		token, err := auth.ReadToken()
-		if err != nil {
-			t.Skipf("skipping: no claude credentials available: %v", err)
-		}
-		if token == "" {
-			t.Error("ReadToken() returned empty token")
-		}
-	})
-}

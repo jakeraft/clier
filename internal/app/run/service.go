@@ -43,11 +43,6 @@ type Workspace interface {
 	Cleanup(runID string) error
 }
 
-// AuthChecker reads authentication credentials for the CLI agent.
-type AuthChecker interface {
-	ReadToken() (string, error)
-}
-
 // Service orchestrates run execution: build plan, prepare workspace,
 // launch terminals, deliver messages.
 type Service struct {
@@ -55,18 +50,17 @@ type Service struct {
 	terminal  Terminal
 	workspace Workspace
 	base      string
-	homeDir   string
 	runtimes  map[string]AgentRuntime
 }
 
 // New creates a run Service.
-func New(store RunStore, term Terminal, ws Workspace, base, homeDir string, runtimes map[string]AgentRuntime) *Service {
-	return &Service{store: store, terminal: term, workspace: ws, base: base, homeDir: homeDir, runtimes: runtimes}
+func New(store RunStore, term Terminal, ws Workspace, base string, runtimes map[string]AgentRuntime) *Service {
+	return &Service{store: store, terminal: term, workspace: ws, base: base, runtimes: runtimes}
 }
 
-// Start resolves the team, builds the execution plan, expands placeholders,
+// Start resolves the team, builds the execution plan,
 // prepares the workspace, and launches terminals for each member.
-func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker) (*domain.Run, error) {
+func (s *Service) Start(ctx context.Context, team domain.Team) (*domain.Run, error) {
 	// Resolve: ID references -> loaded domain objects
 	resolved, err := s.resolveTeam(ctx, team)
 	if err != nil {
@@ -76,21 +70,14 @@ func (s *Service) Start(ctx context.Context, team domain.Team, auth AuthChecker)
 	runID := uuid.NewString()
 	runName := domain.RunName(team.Name, runID)
 
-	// Build: resolved objects -> execution plan (with placeholders)
-	plan := buildPlans(resolved, runID, s.runtimes)
+	// Build: resolved objects -> execution plan with concrete paths
+	members := buildPlans(resolved, s.base, runID, s.runtimes)
 
 	r, err := domain.NewRun(runID, runName, team.ID)
 	if err != nil {
 		return nil, fmt.Errorf("new run: %w", err)
 	}
-	r.Plan = plan
-
-	// Expand: placeholders -> concrete paths
-	authToken := readAuth(auth)
-	members := make([]domain.MemberPlan, 0, len(plan))
-	for _, m := range plan {
-		members = append(members, expandPlaceholders(m, s.base, s.homeDir, runID, authToken))
-	}
+	r.Plan = members
 
 	success := false
 	defer func() {
@@ -193,11 +180,3 @@ func (s *Service) Note(ctx context.Context, runID, teamMemberID, content string)
 	return nil
 }
 
-// readAuth reads the auth token.
-func readAuth(auth AuthChecker) string {
-	token, err := auth.ReadToken()
-	if err == nil && token != "" {
-		return token
-	}
-	return ""
-}

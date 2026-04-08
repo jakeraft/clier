@@ -71,7 +71,7 @@ func (w *stubWorkspace) Cleanup(_ string) error                                 
 func TestService_Note(t *testing.T) {
 	r := &domain.Run{ID: "s-1", TeamID: "t-1", Status: domain.RunRunning}
 	store := &stubStore{run: r}
-	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "", "", nil)
+	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "", nil)
 
 	t.Run("success", func(t *testing.T) {
 		store.notes = nil
@@ -119,7 +119,7 @@ func TestService_Send(t *testing.T) {
 	t.Run("agent message includes sender name", func(t *testing.T) {
 		store := &stubStore{run: r, team: team}
 		term := &stubTerminal{}
-		svc := New(store, term, &stubWorkspace{}, "", "", nil)
+		svc := New(store, term, &stubWorkspace{}, "", nil)
 
 		if err := svc.Send(context.Background(), "s-1", "m-1", "m-2", "hello"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -139,7 +139,7 @@ func TestService_Send(t *testing.T) {
 	t.Run("empty sender has no prefix", func(t *testing.T) {
 		store := &stubStore{run: r, team: team}
 		term := &stubTerminal{}
-		svc := New(store, term, &stubWorkspace{}, "", "", nil)
+		svc := New(store, term, &stubWorkspace{}, "", nil)
 
 		if err := svc.Send(context.Background(), "s-1", "", "m-2", "do this"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -152,7 +152,7 @@ func TestService_Send(t *testing.T) {
 	t.Run("delivery failure prevents save", func(t *testing.T) {
 		store := &stubStore{run: r, team: team}
 		term := &failTerminal{}
-		svc := New(store, term, &stubWorkspace{}, "", "", nil)
+		svc := New(store, term, &stubWorkspace{}, "", nil)
 
 		err := svc.Send(context.Background(), "s-1", "m-1", "bad-member", "hello")
 		if err == nil {

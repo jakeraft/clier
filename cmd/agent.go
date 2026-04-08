@@ -27,12 +27,9 @@ func newAgentCheckCmd() *cobra.Command {
 		Use:   "check",
 		Short: "Check Claude CLI auth status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
 			w := cmd.OutOrStdout()
-			if err := cfg.Auth.Check(); err != nil {
+			check := exec.Command("claude", "auth", "status")
+			if err := check.Run(); err != nil {
 				if isExitError(err) {
 					_, _ = fmt.Fprintf(w, "claude auth is invalid. Run: claude login\n")
 				} else {

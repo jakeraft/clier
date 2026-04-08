@@ -6,7 +6,6 @@ type AgentRuntime interface {
 	// Command building
 	Binary() string
 	ConfigDirEnv(memberspace string) string
-	AuthEnvs(token string) []string
 
 	// Workspace layout
 	InstructionFile() string

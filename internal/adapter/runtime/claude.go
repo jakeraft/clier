@@ -11,10 +11,6 @@ func (c *ClaudeRuntime) ConfigDirEnv(memberspace string) string {
 	return "CLAUDE_CONFIG_DIR=" + memberspace + "/.claude"
 }
 
-func (c *ClaudeRuntime) AuthEnvs(token string) []string {
-	return []string{"CLAUDE_CODE_OAUTH_TOKEN=" + token}
-}
-
 func (c *ClaudeRuntime) InstructionFile() string  { return "CLAUDE.md" }
 func (c *ClaudeRuntime) ConfigDir() string         { return ".claude" }
 func (c *ClaudeRuntime) SettingsFile() string      { return "settings.json" }

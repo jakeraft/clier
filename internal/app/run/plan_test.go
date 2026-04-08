@@ -72,7 +72,7 @@ func TestResolveTeam(t *testing.T) {
 	store := setupTestStore(t)
 	team, rootTMID, workerTMID := createMinimalTeam(t, ctx, store)
 
-	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "/tmp/base", "/home/user", nil)
+	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "/tmp/base", nil)
 
 	resolved, err := svc.resolveTeam(ctx, team)
 	if err != nil {
@@ -123,14 +123,14 @@ func TestBuildPlans(t *testing.T) {
 	team, rootTMID, workerTMID := createMinimalTeam(t, ctx, store)
 
 	runtimes := map[string]AgentRuntime{"claude": &agentrt.ClaudeRuntime{}}
-	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "/tmp/base", "/home/user", runtimes)
+	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "/tmp/base", runtimes)
 
 	resolved, err := svc.resolveTeam(ctx, team)
 	if err != nil {
 		t.Fatalf("resolveTeam: %v", err)
 	}
 
-	plans := buildPlans(resolved, "test-run", runtimes)
+	plans := buildPlans(resolved, "/tmp/base/workspaces", "test-run", runtimes)
 
 	if len(plans) != 2 {
 		t.Fatalf("plans = %d members, want 2", len(plans))
