@@ -6,28 +6,36 @@ import (
 	"strings"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/internal/auth"
 	"github.com/spf13/cobra"
 )
 
+const defaultServerURL = "http://localhost:8080"
+
+// newAPIClient creates an API client.
+// Token is loaded from credentials if available, empty otherwise.
 func newAPIClient() *api.Client {
-	serverURL := os.Getenv("CLIER_SERVER_URL")
-	if serverURL == "" {
-		serverURL = "http://localhost:8080"
+	token := ""
+	creds, err := auth.Load(auth.DefaultPath())
+	if err == nil {
+		token = creds.Token
 	}
-	token := os.Getenv("CLIER_TOKEN")
-	return api.NewClient(serverURL, token)
+	return api.NewClient(defaultServerURL, token)
 }
 
-func resolveOwner() string {
-	owner := os.Getenv("CLIER_OWNER")
-	if owner == "" {
-		owner = "default"
+// requireLogin loads credentials and returns login.
+// Exits with error if not logged in.
+func requireLogin() string {
+	creds, err := auth.Load(auth.DefaultPath())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error: not logged in. Run 'clier auth login' first.")
+		os.Exit(1)
 	}
-	return owner
+	return creds.Login
 }
 
 func newStore() *api.Store {
-	return api.NewStore(newAPIClient(), resolveOwner())
+	return api.NewStore(newAPIClient(), requireLogin())
 }
 
 var rootCmd = &cobra.Command{
@@ -79,13 +87,13 @@ func filterUserCommands() {
 }
 
 // parseOwnerName splits "owner/name" into owner and name.
-// If no slash is present, resolveOwner() is used as owner.
+// If no slash is present, requireLogin() is used as owner.
 func parseOwnerName(s string) (owner, name string) {
 	parts := strings.SplitN(s, "/", 2)
 	if len(parts) == 2 {
 		return parts[0], parts[1]
 	}
-	return resolveOwner(), s
+	return requireLogin(), s
 }
 
 // filterAgentCommands removes all commands except "run" when running as an agent,
