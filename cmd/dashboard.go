@@ -192,12 +192,10 @@ func convertMembers(members []domain.Member, claudeMdNames, skillNames, claudeSe
 		}
 
 		mv := memberView{
-			ID:        m.ID,
-			Name:      m.Name,
-			AgentType: m.AgentType,
-			Model:     m.Model,
-			Args:      m.Args,
-			SkillIDs:  m.SkillIDs,
+			ID:         m.ID,
+			Name:       m.Name,
+			Command:    m.Command,
+			SkillIDs:   m.SkillIDs,
 			SkillNames: skNames,
 			GitRepoURL: m.GitRepoURL,
 			CreatedAt:  m.CreatedAt,
@@ -300,14 +298,12 @@ type relationView struct {
 type memberView struct {
 	ID                 string    `json:"id"`
 	Name               string    `json:"name"`
-	AgentType          string    `json:"agentType"`
-	Model              string    `json:"model"`
-	Args               []string  `json:"args"`
-	ClaudeMdID       *string   `json:"claudeMdId"`
+	Command            string    `json:"command"`
+	ClaudeMdID         *string   `json:"claudeMdId"`
 	SkillIDs           []string  `json:"skillIds"`
 	ClaudeSettingsID   *string   `json:"claudeSettingsId"`
 	GitRepoURL         string    `json:"gitRepoUrl"`
-	ClaudeMdName     *string   `json:"claudeMdName"`
+	ClaudeMdName       *string   `json:"claudeMdName"`
 	SkillNames         []string  `json:"skillNames"`
 	ClaudeSettingsName *string   `json:"claudeSettingsName"`
 	CreatedAt          time.Time `json:"createdAt"`

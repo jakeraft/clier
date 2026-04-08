@@ -123,14 +123,13 @@ func TestBuildCommand(t *testing.T) {
 	rt := &agentrt.ClaudeRuntime{}
 
 	t.Run("AllArgs_IncludesPlaceholders", func(t *testing.T) {
-		cmd := buildCommand(rt, "claude-sonnet-4-6",
-			[]string{"--dangerously-skip-permissions", "--verbose"},
+		cmd := buildCommand(rt, "claude --dangerously-skip-permissions --verbose --model claude-sonnet-4-6",
 			PlaceholderMemberspace+"/project",
 			PlaceholderMemberspace, "my-team", "coder", "task-1", "m1", PlaceholderAuthClaude)
 
 		for _, want := range []string{
 			"claude",
-			"--model 'claude-sonnet-4-6'",
+			"--model claude-sonnet-4-6",
 			"--dangerously-skip-permissions",
 			"--verbose",
 			"export CLAUDE_CONFIG_DIR='" + PlaceholderMemberspace + "/.claude'",

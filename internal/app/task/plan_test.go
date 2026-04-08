@@ -34,15 +34,13 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (doma
 		t.Fatalf("CreateClaudeSettings: %v", err)
 	}
 
-	root, _ := domain.NewMember("alice", "claude", "claude-sonnet-4-6",
-		[]string{"--dangerously-skip-permissions"},
+	root, _ := domain.NewMember("alice", "claude --dangerously-skip-permissions --model claude-sonnet-4-6",
 		claudeMd.ID, nil, claudeSettings.ID, "https://example.com/repo.git")
 	if err := store.CreateMember(ctx, root); err != nil {
 		t.Fatalf("CreateMember root: %v", err)
 	}
 
-	worker, _ := domain.NewMember("bob", "claude", "claude-sonnet-4-6",
-		[]string{"--dangerously-skip-permissions"},
+	worker, _ := domain.NewMember("bob", "claude --dangerously-skip-permissions --model claude-sonnet-4-6",
 		claudeMd.ID, nil, claudeSettings.ID, "")
 	if err := store.CreateMember(ctx, worker); err != nil {
 		t.Fatalf("CreateMember worker: %v", err)
@@ -94,8 +92,8 @@ func TestResolveTeam(t *testing.T) {
 	if root.Name != "alice" {
 		t.Errorf("root Name = %q, want alice", root.Name)
 	}
-	if root.Model == "" {
-		t.Error("root Model is empty")
+	if root.Command == "" {
+		t.Error("root Command is empty")
 	}
 	if root.ClaudeMd == nil {
 		t.Error("root ClaudeMd should not be nil")

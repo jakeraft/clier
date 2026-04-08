@@ -22,8 +22,8 @@ func newMemberCmd() *cobra.Command {
 }
 
 func newMemberCreateCmd() *cobra.Command {
-	var name, agentType, model, claudeMd, claudeSettings, repo string
-	var cliArgs, skills []string
+	var name, command, claudeMd, claudeSettings, repo string
+	var skills []string
 
 	cmd := &cobra.Command{
 		Use:         "create",
@@ -40,7 +40,7 @@ func newMemberCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			m, err := domain.NewMember(name, agentType, model, cliArgs, claudeMd, skills, claudeSettings, repo)
+			m, err := domain.NewMember(name, command, claudeMd, skills, claudeSettings, repo)
 			if err != nil {
 				return err
 			}
@@ -51,15 +51,13 @@ func newMemberCreateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Member name")
-	cmd.Flags().StringVar(&agentType, "agent-type", "claude", "Agent type (e.g. claude)")
-	cmd.Flags().StringVar(&model, "model", "", "Model identifier")
-	cmd.Flags().StringSliceVar(&cliArgs, "args", nil, "CLI arguments (comma-separated)")
+	cmd.Flags().StringVar(&command, "command", "", "Command (binary + CLI flags, e.g. \"claude --dangerously-skip-permissions\")")
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "Claude md resource ID")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "Skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "Claude settings resource ID")
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repo URL")
 	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("model")
+	_ = cmd.MarkFlagRequired("command")
 	return cmd
 }
 
@@ -88,8 +86,8 @@ func newMemberListCmd() *cobra.Command {
 }
 
 func newMemberUpdateCmd() *cobra.Command {
-	var name, agentType, model, claudeMd, claudeSettings, repo string
-	var cliArgs, skills []string
+	var name, command, claudeMd, claudeSettings, repo string
+	var skills []string
 
 	cmd := &cobra.Command{
 		Use:         "update <id>",
@@ -116,17 +114,9 @@ func newMemberUpdateCmd() *cobra.Command {
 			if cmd.Flags().Changed("name") {
 				namePtr = &name
 			}
-			var agentTypePtr *string
-			if cmd.Flags().Changed("agent-type") {
-				agentTypePtr = &agentType
-			}
-			var modelPtr *string
-			if cmd.Flags().Changed("model") {
-				modelPtr = &model
-			}
-			var argsPtr *[]string
-			if cmd.Flags().Changed("args") {
-				argsPtr = &cliArgs
+			var commandPtr *string
+			if cmd.Flags().Changed("command") {
+				commandPtr = &command
 			}
 			var claudeMdPtr *string
 			if cmd.Flags().Changed("claude-md") {
@@ -145,7 +135,7 @@ func newMemberUpdateCmd() *cobra.Command {
 				repoPtr = &repo
 			}
 
-			if err := m.Update(namePtr, agentTypePtr, modelPtr, argsPtr, claudeMdPtr, skillsPtr, claudeSettingsPtr, repoPtr); err != nil {
+			if err := m.Update(namePtr, commandPtr, claudeMdPtr, skillsPtr, claudeSettingsPtr, repoPtr); err != nil {
 				return err
 			}
 			if err := store.UpdateMember(cmd.Context(), &m); err != nil {
@@ -155,9 +145,7 @@ func newMemberUpdateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New member name")
-	cmd.Flags().StringVar(&agentType, "agent-type", "", "New agent type")
-	cmd.Flags().StringVar(&model, "model", "", "New model identifier")
-	cmd.Flags().StringSliceVar(&cliArgs, "args", nil, "New CLI arguments (comma-separated)")
+	cmd.Flags().StringVar(&command, "command", "", "New command (binary + CLI flags)")
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "New agent dot md resource ID")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "New Claude settings resource ID")

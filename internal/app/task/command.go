@@ -10,15 +10,6 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }
 
-// quoteArgs quotes each element of args.
-func quoteArgs(args []string) []string {
-	quoted := make([]string, len(args))
-	for i, a := range args {
-		quoted[i] = shellQuote(a)
-	}
-	return quoted
-}
-
 // systemEnvs returns clier infrastructure environment variables.
 func systemEnvs(rt AgentRuntime, memberspace, taskID, memberID string) []string {
 	return []string{
@@ -63,18 +54,16 @@ func buildEnvCommand(command string, env []string) string {
 	return strings.Join(parts, " &&\n")
 }
 
-// buildAgentCommand builds the "cd <workDir> && <binary> <args...>" portion.
+// buildAgentCommand builds the "cd <workDir> && <command>" portion.
+// The command string contains the binary and all CLI flags (e.g. "claude --dangerously-skip-permissions").
 // No --append-system-prompt — instructions go into the instruction file.
-func buildAgentCommand(rt AgentRuntime, model string, args []string, workDir string) string {
-	parts := []string{rt.Binary()}
-	parts = append(parts, quoteArgs(args)...)
-	parts = append(parts, "--model", shellQuote(model))
-	return fmt.Sprintf("cd %s &&\n%s", shellQuote(workDir), strings.Join(parts, " "))
+func buildAgentCommand(command string, workDir string) string {
+	return fmt.Sprintf("cd %s &&\n%s", shellQuote(workDir), command)
 }
 
 // buildCommand returns the complete shell command for launching an agent.
-func buildCommand(rt AgentRuntime, model string, args []string, workDir, memberspace, teamName, memberName, taskID, memberID, authPlaceholder string) string {
-	cmd := buildAgentCommand(rt, model, args, workDir)
+func buildCommand(rt AgentRuntime, command, workDir, memberspace, teamName, memberName, taskID, memberID, authPlaceholder string) string {
+	cmd := buildAgentCommand(command, workDir)
 	env := buildEnv(rt, memberspace, teamName, memberName, taskID, memberID, authPlaceholder)
 	return buildEnvCommand(cmd, env)
 }

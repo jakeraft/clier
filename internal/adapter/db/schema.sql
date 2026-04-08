@@ -25,9 +25,7 @@ CREATE TABLE IF NOT EXISTS claude_settings (
 CREATE TABLE IF NOT EXISTS members (
     id                 TEXT PRIMARY KEY,
     name               TEXT NOT NULL,
-    agent_type         TEXT NOT NULL DEFAULT 'claude',
-    model              TEXT NOT NULL,
-    args               TEXT NOT NULL DEFAULT '[]',
+    command            TEXT NOT NULL,
     claude_md_id    TEXT REFERENCES claude_mds(id) ON DELETE RESTRICT,
     claude_settings_id TEXT REFERENCES claude_settings(id) ON DELETE RESTRICT,
     git_repo_url       TEXT NOT NULL DEFAULT '',

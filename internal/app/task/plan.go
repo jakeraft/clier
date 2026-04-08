@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/jakeraft/clier/internal/domain/resource"
@@ -68,9 +69,7 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 	return &domain.ResolvedMember{
 		TeamMemberID:   tm.ID,
 		Name:           tm.Name,
-		AgentType:      member.AgentType,
-		Model:          member.Model,
-		Args:           member.Args,
+		Command:        member.Command,
 		ClaudeMd:       claudeMd,
 		Skills:         skills,
 		ClaudeSettings: claudeSettings,
@@ -100,7 +99,9 @@ func buildPlans(resolved *domain.ResolvedTeam, taskID string, runtimes map[strin
 func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, teamName, taskID string, runtimes map[string]AgentRuntime) domain.MemberPlan {
 	memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, PlaceholderTaskID, rm.TeamMemberID)
 
-	rt := runtimes[rm.AgentType]
+	// Detect agent type from the first word of Command (e.g. "claude", "codex").
+	binary := strings.Fields(rm.Command)[0]
+	rt := runtimes[binary]
 	if rt == nil {
 		rt = runtimes["claude"]
 	}
@@ -127,15 +128,12 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 	// === Assemble workspace files ===
 	files := buildWorkspaceFiles(rt, PlaceholderMemberspace, systemClaudeMd, userClaudeMd, userClaudeSettings, systemProjectConfig, userSkills)
 
-	// === Command: user building blocks ===
-	model := rm.Model
-	args := rm.Args
-
+	// === Command: user-provided command string ===
 	// === Command: Clier system-generated ===
 	// (system envs are assembled inside buildCommand -> buildEnv)
 
 	// === Assemble command ===
-	cmd := buildCommand(rt, model, args, PlaceholderMemberspace+"/project",
+	cmd := buildCommand(rt, rm.Command, PlaceholderMemberspace+"/project",
 		PlaceholderMemberspace, teamName, rm.Name, taskID, rm.TeamMemberID, PlaceholderAuthClaude)
 
 	launchPath := PlaceholderMemberspace + "/launch.sh"

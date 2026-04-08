@@ -34,15 +34,13 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (stri
 		t.Fatalf("CreateClaudeSettings: %v", err)
 	}
 
-	root, _ := domain.NewMember("alice", "claude", "claude-sonnet-4-6",
-		[]string{"--dangerously-skip-permissions"},
+	root, _ := domain.NewMember("alice", "claude --dangerously-skip-permissions --model claude-sonnet-4-6",
 		claudeMd.ID, nil, settings.ID, "https://example.com/repo.git")
 	if err := store.CreateMember(ctx, root); err != nil {
 		t.Fatalf("CreateMember root: %v", err)
 	}
 
-	worker, _ := domain.NewMember("bob", "claude", "claude-sonnet-4-6",
-		[]string{"--dangerously-skip-permissions"},
+	worker, _ := domain.NewMember("bob", "claude --dangerously-skip-permissions --model claude-sonnet-4-6",
 		claudeMd.ID, nil, settings.ID, "")
 	if err := store.CreateMember(ctx, worker); err != nil {
 		t.Fatalf("CreateMember worker: %v", err)

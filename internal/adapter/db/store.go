@@ -267,19 +267,12 @@ func (s *Store) CreateMember(ctx context.Context, m *domain.Member) error {
 	}
 	defer tx.Rollback()
 
-	argsJSON, err := json.Marshal(m.Args)
-	if err != nil {
-		return fmt.Errorf("marshal args: %w", err)
-	}
-
 	qtx := generated.New(tx)
 	if _, err := qtx.CreateMember(ctx, generated.CreateMemberParams{
 		ID:               m.ID,
 		Name:             m.Name,
-		AgentType:        m.AgentType,
-		Model:            m.Model,
-		Args:             string(argsJSON),
-		ClaudeMdID:     sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
+		Command:          m.Command,
+		ClaudeMdID:       sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
 		ClaudeSettingsID: sql.NullString{String: m.ClaudeSettingsID, Valid: m.ClaudeSettingsID != ""},
 		GitRepoUrl:       m.GitRepoURL,
 		CreatedAt:        m.CreatedAt.Unix(),
@@ -302,13 +295,6 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 	if err != nil {
 		return domain.Member{}, err
 	}
-	var args []string
-	if err := json.Unmarshal([]byte(row.Args), &args); err != nil {
-		return domain.Member{}, fmt.Errorf("unmarshal args: %w", err)
-	}
-	if args == nil {
-		args = []string{}
-	}
 	skillIDs, err := s.queries.ListMemberSkillIDs(ctx, id)
 	if err != nil {
 		return domain.Member{}, err
@@ -319,10 +305,8 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 	return domain.Member{
 		ID:               row.ID,
 		Name:             row.Name,
-		AgentType:        row.AgentType,
-		Model:            row.Model,
-		Args:             args,
-		ClaudeMdID:     row.ClaudeMdID.String,
+		Command:          row.Command,
+		ClaudeMdID:       row.ClaudeMdID.String,
 		SkillIDs:         skillIDs,
 		ClaudeSettingsID: row.ClaudeSettingsID.String,
 		GitRepoURL:       row.GitRepoUrl,
@@ -354,18 +338,11 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 	}
 	defer tx.Rollback()
 
-	argsJSON, err := json.Marshal(m.Args)
-	if err != nil {
-		return fmt.Errorf("marshal args: %w", err)
-	}
-
 	qtx := generated.New(tx)
 	if _, err := qtx.UpdateMember(ctx, generated.UpdateMemberParams{
 		Name:             m.Name,
-		AgentType:        m.AgentType,
-		Model:            m.Model,
-		Args:             string(argsJSON),
-		ClaudeMdID:     sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
+		Command:          m.Command,
+		ClaudeMdID:       sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
 		ClaudeSettingsID: sql.NullString{String: m.ClaudeSettingsID, Valid: m.ClaudeSettingsID != ""},
 		GitRepoUrl:       m.GitRepoURL,
 		UpdatedAt:        m.UpdatedAt.Unix(),

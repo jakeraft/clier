@@ -27,10 +27,8 @@ type ClaudeSetting struct {
 type Member struct {
 	ID               string
 	Name             string
-	AgentType        string
-	Model            string
-	Args             string
-	ClaudeMdID     sql.NullString
+	Command          string
+	ClaudeMdID       sql.NullString
 	ClaudeSettingsID sql.NullString
 	GitRepoUrl       string
 	CreatedAt        int64

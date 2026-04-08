@@ -229,7 +229,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		}
 		setTimestamps(&m.CreatedAt, &m.UpdatedAt)
 		if existing, err := store.GetMember(ctx, m.ID); err == nil {
-			if err := existing.Update(&m.Name, &m.AgentType, &m.Model, &m.Args, &m.ClaudeMdID, &m.SkillIDs,
+			if err := existing.Update(&m.Name, &m.Command, &m.ClaudeMdID, &m.SkillIDs,
 				&m.ClaudeSettingsID, &m.GitRepoURL); err != nil {
 				return err
 			}
