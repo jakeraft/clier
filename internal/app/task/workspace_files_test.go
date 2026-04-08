@@ -85,7 +85,7 @@ func TestBuildWorkspaceFiles(t *testing.T) {
 		}
 	})
 
-	t.Run("OnlySystemAgentDotMd", func(t *testing.T) {
+	t.Run("OnlySystemClaudeMd", func(t *testing.T) {
 		files := buildWorkspaceFiles(rt, "/ws", "# Protocol", "", "", "", "", nil)
 		if len(files) != 1 {
 			t.Fatalf("expected 1 file, got %d", len(files))
@@ -98,7 +98,7 @@ func TestBuildWorkspaceFiles(t *testing.T) {
 		}
 	})
 
-	t.Run("SystemAndUserAgentDotMd", func(t *testing.T) {
+	t.Run("SystemAndUserClaudeMd", func(t *testing.T) {
 		files := buildWorkspaceFiles(rt, "/ws", "# Protocol", "# User Rules", "", "", "", nil)
 		if len(files) != 1 {
 			t.Fatalf("expected 1 file, got %d", len(files))

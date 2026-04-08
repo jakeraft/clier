@@ -8,7 +8,7 @@ import (
 	"database/sql"
 )
 
-type AgentDotMd struct {
+type ClaudeMd struct {
 	ID        string
 	Name      string
 	Content   string
@@ -38,7 +38,7 @@ type Member struct {
 	AgentType        string
 	Model            string
 	Args             string
-	AgentDotMdID     sql.NullString
+	ClaudeMdID     sql.NullString
 	ClaudeSettingsID sql.NullString
 	ClaudeJsonID     sql.NullString
 	GitRepoUrl       string

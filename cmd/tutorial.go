@@ -29,7 +29,7 @@ Step 1. Import the todo-team resources
 
   clier import tutorials/todo-team
 
-  This loads all building blocks (agent-dot-mds, skills, settings,
+  This loads all building blocks (claude-mds, skills, settings,
   members, and the team) into the local database.
 
 Step 2. Check what was imported

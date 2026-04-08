@@ -279,7 +279,7 @@ func (s *Store) CreateMember(ctx context.Context, m *domain.Member) error {
 		AgentType:        m.AgentType,
 		Model:            m.Model,
 		Args:             string(argsJSON),
-		AgentDotMdID:     sql.NullString{String: m.AgentDotMdID, Valid: m.AgentDotMdID != ""},
+		ClaudeMdID:     sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
 		ClaudeSettingsID: sql.NullString{String: m.ClaudeSettingsID, Valid: m.ClaudeSettingsID != ""},
 		ClaudeJsonID:     sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
 		GitRepoUrl:       m.GitRepoURL,
@@ -323,7 +323,7 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 		AgentType:        row.AgentType,
 		Model:            row.Model,
 		Args:             args,
-		AgentDotMdID:     row.AgentDotMdID.String,
+		ClaudeMdID:     row.ClaudeMdID.String,
 		SkillIDs:         skillIDs,
 		ClaudeSettingsID: row.ClaudeSettingsID.String,
 		ClaudeJsonID:     row.ClaudeJsonID.String,
@@ -367,7 +367,7 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 		AgentType:        m.AgentType,
 		Model:            m.Model,
 		Args:             string(argsJSON),
-		AgentDotMdID:     sql.NullString{String: m.AgentDotMdID, Valid: m.AgentDotMdID != ""},
+		ClaudeMdID:     sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
 		ClaudeSettingsID: sql.NullString{String: m.ClaudeSettingsID, Valid: m.ClaudeSettingsID != ""},
 		ClaudeJsonID:     sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
 		GitRepoUrl:       m.GitRepoURL,
@@ -407,10 +407,10 @@ func (s *Store) DeleteMember(ctx context.Context, id string) error {
 	return nil
 }
 
-// AgentDotMd
+// ClaudeMd
 
-func (s *Store) CreateAgentDotMd(ctx context.Context, c *resource.AgentDotMd) error {
-	_, err := s.queries.CreateAgentDotMd(ctx, generated.CreateAgentDotMdParams{
+func (s *Store) CreateClaudeMd(ctx context.Context, c *resource.ClaudeMd) error {
+	_, err := s.queries.CreateClaudeMd(ctx, generated.CreateClaudeMdParams{
 		ID:        c.ID,
 		Name:      c.Name,
 		Content:   c.Content,
@@ -420,12 +420,12 @@ func (s *Store) CreateAgentDotMd(ctx context.Context, c *resource.AgentDotMd) er
 	return err
 }
 
-func (s *Store) GetAgentDotMd(ctx context.Context, id string) (resource.AgentDotMd, error) {
-	row, err := s.queries.GetAgentDotMd(ctx, id)
+func (s *Store) GetClaudeMd(ctx context.Context, id string) (resource.ClaudeMd, error) {
+	row, err := s.queries.GetClaudeMd(ctx, id)
 	if err != nil {
-		return resource.AgentDotMd{}, err
+		return resource.ClaudeMd{}, err
 	}
-	return resource.AgentDotMd{
+	return resource.ClaudeMd{
 		ID:        row.ID,
 		Name:      row.Name,
 		Content:   row.Content,
@@ -434,14 +434,14 @@ func (s *Store) GetAgentDotMd(ctx context.Context, id string) (resource.AgentDot
 	}, nil
 }
 
-func (s *Store) ListAgentDotMds(ctx context.Context) ([]resource.AgentDotMd, error) {
-	rows, err := s.queries.ListAgentDotMds(ctx)
+func (s *Store) ListClaudeMds(ctx context.Context) ([]resource.ClaudeMd, error) {
+	rows, err := s.queries.ListClaudeMds(ctx)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]resource.AgentDotMd, 0, len(rows))
+	items := make([]resource.ClaudeMd, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, resource.AgentDotMd{
+		items = append(items, resource.ClaudeMd{
 			ID:        row.ID,
 			Name:      row.Name,
 			Content:   row.Content,
@@ -452,8 +452,8 @@ func (s *Store) ListAgentDotMds(ctx context.Context) ([]resource.AgentDotMd, err
 	return items, nil
 }
 
-func (s *Store) UpdateAgentDotMd(ctx context.Context, c *resource.AgentDotMd) error {
-	_, err := s.queries.UpdateAgentDotMd(ctx, generated.UpdateAgentDotMdParams{
+func (s *Store) UpdateClaudeMd(ctx context.Context, c *resource.ClaudeMd) error {
+	_, err := s.queries.UpdateClaudeMd(ctx, generated.UpdateClaudeMdParams{
 		Name:      c.Name,
 		Content:   c.Content,
 		UpdatedAt: c.UpdatedAt.Unix(),
@@ -462,9 +462,9 @@ func (s *Store) UpdateAgentDotMd(ctx context.Context, c *resource.AgentDotMd) er
 	return err
 }
 
-// DeleteAgentDotMd deletes an agent dot md. RESTRICT: fails if referenced by a member.
-func (s *Store) DeleteAgentDotMd(ctx context.Context, id string) error {
-	result, err := s.queries.DeleteAgentDotMd(ctx, id)
+// DeleteClaudeMd deletes a claude md. RESTRICT: fails if referenced by a member.
+func (s *Store) DeleteClaudeMd(ctx context.Context, id string) error {
+	result, err := s.queries.DeleteClaudeMd(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -473,7 +473,7 @@ func (s *Store) DeleteAgentDotMd(ctx context.Context, id string) error {
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("agent dot md not found: %s", id)
+		return fmt.Errorf("claude md not found: %s", id)
 	}
 	return nil
 }

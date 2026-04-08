@@ -24,7 +24,7 @@ type TaskStore interface {
 	// Team and member spec reads (used by plan building)
 	GetTeam(ctx context.Context, id string) (domain.Team, error)
 	GetMember(ctx context.Context, id string) (domain.Member, error)
-	GetAgentDotMd(ctx context.Context, id string) (resource.AgentDotMd, error)
+	GetClaudeMd(ctx context.Context, id string) (resource.ClaudeMd, error)
 	GetSkill(ctx context.Context, id string) (resource.Skill, error)
 	GetClaudeSettings(ctx context.Context, id string) (resource.ClaudeSettings, error)
 	GetClaudeJson(ctx context.Context, id string) (resource.ClaudeJson, error)

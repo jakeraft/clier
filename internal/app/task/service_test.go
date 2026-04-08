@@ -41,8 +41,8 @@ func (s *stubStore) CreateNote(_ context.Context, n *domain.Note) error {
 func (s *stubStore) GetMember(_ context.Context, _ string) (domain.Member, error) {
 	return domain.Member{}, errors.New("not implemented")
 }
-func (s *stubStore) GetAgentDotMd(_ context.Context, _ string) (resource.AgentDotMd, error) {
-	return resource.AgentDotMd{}, errors.New("not implemented")
+func (s *stubStore) GetClaudeMd(_ context.Context, _ string) (resource.ClaudeMd, error) {
+	return resource.ClaudeMd{}, errors.New("not implemented")
 }
 func (s *stubStore) GetSkill(_ context.Context, _ string) (resource.Skill, error) {
 	return resource.Skill{}, errors.New("not implemented")

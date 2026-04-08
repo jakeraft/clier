@@ -24,9 +24,9 @@ func setupTestStore(t *testing.T) *db.Store {
 func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (string, string, string) {
 	t.Helper()
 
-	claudeMd, _ := resource.NewAgentDotMd("test-md", "do things")
-	if err := store.CreateAgentDotMd(ctx, claudeMd); err != nil {
-		t.Fatalf("CreateAgentDotMd: %v", err)
+	claudeMd, _ := resource.NewClaudeMd("test-md", "do things")
+	if err := store.CreateClaudeMd(ctx, claudeMd); err != nil {
+		t.Fatalf("CreateClaudeMd: %v", err)
 	}
 
 	settings, _ := resource.NewClaudeSettings("test-settings", `{"key":"val"}`)

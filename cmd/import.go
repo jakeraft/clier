@@ -162,22 +162,22 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 	}
 
 	switch envelope.Type {
-	case "agent_dot_md":
-		var c resource.AgentDotMd
+	case "claude_md":
+		var c resource.ClaudeMd
 		if err := json.Unmarshal(envelope.Data, &c); err != nil {
-			return fmt.Errorf("unmarshal agent_dot_md: %w", err)
+			return fmt.Errorf("unmarshal claude_md: %w", err)
 		}
 		setTimestamps(&c.CreatedAt, &c.UpdatedAt)
-		if existing, err := store.GetAgentDotMd(ctx, c.ID); err == nil {
+		if existing, err := store.GetClaudeMd(ctx, c.ID); err == nil {
 			if err := existing.Update(&c.Name, &c.Content); err != nil {
 				return err
 			}
-			if err := store.UpdateAgentDotMd(ctx, &existing); err != nil {
+			if err := store.UpdateClaudeMd(ctx, &existing); err != nil {
 				return err
 			}
 			return printJSON(existing)
 		}
-		if err := store.CreateAgentDotMd(ctx, &c); err != nil {
+		if err := store.CreateClaudeMd(ctx, &c); err != nil {
 			return err
 		}
 		return printJSON(c)
@@ -249,7 +249,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		}
 		setTimestamps(&m.CreatedAt, &m.UpdatedAt)
 		if existing, err := store.GetMember(ctx, m.ID); err == nil {
-			if err := existing.Update(&m.Name, &m.AgentType, &m.Model, &m.Args, &m.AgentDotMdID, &m.SkillIDs,
+			if err := existing.Update(&m.Name, &m.AgentType, &m.Model, &m.Args, &m.ClaudeMdID, &m.SkillIDs,
 				&m.ClaudeSettingsID, &m.ClaudeJsonID, &m.GitRepoURL); err != nil {
 				return err
 			}

@@ -21,8 +21,8 @@ func TestNewMember(t *testing.T) {
 	if len(m.Args) != 1 || m.Args[0] != "--dangerously-skip-permissions" {
 		t.Errorf("args = %v, want [--dangerously-skip-permissions]", m.Args)
 	}
-	if m.AgentDotMdID != "claude-md-1" {
-		t.Errorf("agent_dot_md_id = %q, want %q", m.AgentDotMdID, "claude-md-1")
+	if m.ClaudeMdID != "claude-md-1" {
+		t.Errorf("claude_md_id = %q, want %q", m.ClaudeMdID, "claude-md-1")
 	}
 	if len(m.SkillIDs) != 1 || m.SkillIDs[0] != "skill-1" {
 		t.Errorf("skill_ids = %v, want [skill-1]", m.SkillIDs)
@@ -101,8 +101,8 @@ func TestMember_Update(t *testing.T) {
 	if len(m.Args) != 1 {
 		t.Errorf("args = %v", m.Args)
 	}
-	if m.AgentDotMdID != "md-1" {
-		t.Errorf("agent_dot_md_id = %q", m.AgentDotMdID)
+	if m.ClaudeMdID != "md-1" {
+		t.Errorf("claude_md_id = %q", m.ClaudeMdID)
 	}
 	if len(m.SkillIDs) != 2 {
 		t.Errorf("skill_ids = %v", m.SkillIDs)

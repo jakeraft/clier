@@ -3,7 +3,7 @@ import type {
   TeamView,
   MemberView,
   MemberPlanView,
-  AgentDotMdView,
+  ClaudeMdView,
   SkillView,
   ClaudeSettingsView,
   ClaudeJsonView,
@@ -27,7 +27,7 @@ function findById<T extends { id: string }>(items: T[], id: string): T | undefin
 }
 
 export type {
-  AgentDotMdView,
+  ClaudeMdView,
   SkillView,
   ClaudeSettingsView,
   ClaudeJsonView,
@@ -40,10 +40,10 @@ export type {
 };
 
 export const api = {
-  agentDotMds: {
-    list: (): Promise<AgentDotMdView[]> => Promise.resolve(getData().agentDotMds),
-    get: (id: string): Promise<AgentDotMdView> => {
-      const item = findById(getData().agentDotMds, id);
+  claudeMds: {
+    list: (): Promise<ClaudeMdView[]> => Promise.resolve(getData().claudeMds),
+    get: (id: string): Promise<ClaudeMdView> => {
+      const item = findById(getData().claudeMds, id);
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },

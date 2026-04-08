@@ -51,10 +51,10 @@ export function MemberDetail() {
             },
             {
               label: "CLAUDE.md",
-              children: member.agentDotMdId ? (
-                <EntityBadge to={`/prompts/agent-dot-mds/${member.agentDotMdId}`}>{member.agentDotMdName || EMPTY_DATA}</EntityBadge>
+              children: member.claudeMdId ? (
+                <EntityBadge to={`/prompts/claude-mds/${member.claudeMdId}`}>{member.claudeMdName || EMPTY_DATA}</EntityBadge>
               ) : (
-                <EmptyEntityBadge entity="agent-dot-md" />
+                <EmptyEntityBadge entity="claude-md" />
               ),
             },
             {

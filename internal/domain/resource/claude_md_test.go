@@ -2,8 +2,8 @@ package resource
 
 import "testing"
 
-func TestNewAgentDotMd(t *testing.T) {
-	md, err := NewAgentDotMd("my-rules", "# Project Rules\n\nAlways use TDD.")
+func TestNewClaudeMd(t *testing.T) {
+	md, err := NewClaudeMd("my-rules", "# Project Rules\n\nAlways use TDD.")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -18,22 +18,22 @@ func TestNewAgentDotMd(t *testing.T) {
 	}
 }
 
-func TestNewAgentDotMd_EmptyName(t *testing.T) {
-	_, err := NewAgentDotMd("", "content")
+func TestNewClaudeMd_EmptyName(t *testing.T) {
+	_, err := NewClaudeMd("", "content")
 	if err == nil {
 		t.Error("expected error for empty name")
 	}
 }
 
-func TestNewAgentDotMd_EmptyContent(t *testing.T) {
-	_, err := NewAgentDotMd("name", "")
+func TestNewClaudeMd_EmptyContent(t *testing.T) {
+	_, err := NewClaudeMd("name", "")
 	if err == nil {
 		t.Error("expected error for empty content")
 	}
 }
 
-func TestAgentDotMd_Update(t *testing.T) {
-	md, _ := NewAgentDotMd("old", "old content")
+func TestClaudeMd_Update(t *testing.T) {
+	md, _ := NewClaudeMd("old", "old content")
 	newName := "new"
 	newContent := "new content"
 	if err := md.Update(&newName, &newContent); err != nil {

@@ -7,9 +7,9 @@ import { OverviewTable } from "@/components/overview-table";
 import { DetailLayout } from "@/components/detail-layout";
 import { useDetailPage } from "@/hooks/use-detail-page";
 
-export function AgentDotMdDetail() {
+export function ClaudeMdDetail() {
   const { id: parameterId } = useParams<{ id: string }>();
-  const { data, error, loading } = useDetailPage(parameterId, api.agentDotMds.get);
+  const { data, error, loading } = useDetailPage(parameterId, api.claudeMds.get);
 
   if (!data) return <DetailLayout error={error} loading={loading}>{undefined}</DetailLayout>;
 

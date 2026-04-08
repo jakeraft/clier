@@ -10,18 +10,18 @@ import (
 
 // buildWorkspaceFiles creates all file entries for a member's workspace.
 // Clearly separates system-generated and user-defined content.
-func buildWorkspaceFiles(rt AgentRuntime, memberspace, systemAgentDotMd, userAgentDotMd, userClaudeSettings, systemProjectConfig, userProjectConfig string, userSkills []resource.Skill) []domain.FileEntry {
+func buildWorkspaceFiles(rt AgentRuntime, memberspace, systemClaudeMd, userClaudeMd, userClaudeSettings, systemProjectConfig, userProjectConfig string, userSkills []resource.Skill) []domain.FileEntry {
 	var files []domain.FileEntry
 
 	// Instruction file -> {memberspace}/project/{rt.InstructionFile()}
-	agentDotMdContent := systemAgentDotMd
-	if userAgentDotMd != "" {
-		agentDotMdContent += "\n\n---\n\n" + userAgentDotMd
+	claudeMdContent := systemClaudeMd
+	if userClaudeMd != "" {
+		claudeMdContent += "\n\n---\n\n" + userClaudeMd
 	}
-	if agentDotMdContent != "" {
+	if claudeMdContent != "" {
 		files = append(files, domain.FileEntry{
 			Path:    memberspace + "/project/" + rt.InstructionFile(),
-			Content: agentDotMdContent,
+			Content: claudeMdContent,
 		})
 	}
 

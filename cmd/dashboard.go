@@ -89,7 +89,7 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 	if err != nil {
 		return dashboardData{}, err
 	}
-	agentDotMds, err := store.ListAgentDotMds(ctx)
+	claudeMds, err := store.ListClaudeMds(ctx)
 	if err != nil {
 		return dashboardData{}, err
 	}
@@ -110,7 +110,7 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 		return dashboardData{}, err
 	}
 
-	agentDotMdNames := nameMap(agentDotMds, func(c resource.AgentDotMd) (string, string) { return c.ID, c.Name })
+	claudeMdNames := nameMap(claudeMds, func(c resource.ClaudeMd) (string, string) { return c.ID, c.Name })
 	skillNames := nameMap(skills, func(s resource.Skill) (string, string) { return s.ID, s.Name })
 	claudeSettingsNames := nameMap(claudeSettingsList, func(s resource.ClaudeSettings) (string, string) { return s.ID, s.Name })
 	claudeJsonNames := nameMap(claudeJsons, func(c resource.ClaudeJson) (string, string) { return c.ID, c.Name })
@@ -123,8 +123,8 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 
 	return dashboardData{
 		Teams:          convertTeams(teams),
-		Members:        convertMembers(members, agentDotMdNames, skillNames, claudeSettingsNames, claudeJsonNames),
-		AgentDotMds:    convertAgentDotMds(agentDotMds),
+		Members:        convertMembers(members, claudeMdNames, skillNames, claudeSettingsNames, claudeJsonNames),
+		ClaudeMds:    convertClaudeMds(claudeMds),
 		Skills:         convertSkills(skills),
 		ClaudeSettings: convertClaudeSettings(claudeSettingsList),
 		ClaudeJsons:    convertClaudeJsons(claudeJsons),
@@ -189,7 +189,7 @@ func convertTeams(teams []domain.Team) []teamView {
 	return views
 }
 
-func convertMembers(members []domain.Member, agentDotMdNames, skillNames, claudeSettingsNames, claudeJsonNames map[string]string) []memberView {
+func convertMembers(members []domain.Member, claudeMdNames, skillNames, claudeSettingsNames, claudeJsonNames map[string]string) []memberView {
 	views := make([]memberView, 0, len(members))
 	for _, m := range members {
 		skNames := make([]string, 0, len(m.SkillIDs))
@@ -210,10 +210,10 @@ func convertMembers(members []domain.Member, agentDotMdNames, skillNames, claude
 			UpdatedAt:  m.UpdatedAt,
 		}
 
-		if m.AgentDotMdID != "" {
-			mv.AgentDotMdID = &m.AgentDotMdID
-			name := agentDotMdNames[m.AgentDotMdID]
-			mv.AgentDotMdName = &name
+		if m.ClaudeMdID != "" {
+			mv.ClaudeMdID = &m.ClaudeMdID
+			name := claudeMdNames[m.ClaudeMdID]
+			mv.ClaudeMdName = &name
 		}
 		if m.ClaudeSettingsID != "" {
 			mv.ClaudeSettingsID = &m.ClaudeSettingsID
@@ -231,10 +231,10 @@ func convertMembers(members []domain.Member, agentDotMdNames, skillNames, claude
 	return views
 }
 
-func convertAgentDotMds(items []resource.AgentDotMd) []agentDotMdView {
-	views := make([]agentDotMdView, 0, len(items))
+func convertClaudeMds(items []resource.ClaudeMd) []claudeMdView {
+	views := make([]claudeMdView, 0, len(items))
 	for _, c := range items {
-		views = append(views, agentDotMdView{
+		views = append(views, claudeMdView{
 			ID:        c.ID,
 			Name:      c.Name,
 			Content:   c.Content,
@@ -292,7 +292,7 @@ func convertClaudeJsons(items []resource.ClaudeJson) []claudeJsonView {
 type dashboardData struct {
 	Teams          []teamView           `json:"teams"`
 	Members        []memberView         `json:"members"`
-	AgentDotMds    []agentDotMdView     `json:"agentDotMds"`
+	ClaudeMds    []claudeMdView     `json:"claudeMds"`
 	Skills         []skillView          `json:"skills"`
 	ClaudeSettings []claudeSettingsView `json:"claudeSettings"`
 	ClaudeJsons    []claudeJsonView     `json:"claudeJsons"`
@@ -329,12 +329,12 @@ type memberView struct {
 	AgentType          string    `json:"agentType"`
 	Model              string    `json:"model"`
 	Args               []string  `json:"args"`
-	AgentDotMdID       *string   `json:"agentDotMdId"`
+	ClaudeMdID       *string   `json:"claudeMdId"`
 	SkillIDs           []string  `json:"skillIds"`
 	ClaudeSettingsID   *string   `json:"claudeSettingsId"`
 	ClaudeJsonID       *string   `json:"claudeJsonId"`
 	GitRepoURL         string    `json:"gitRepoUrl"`
-	AgentDotMdName     *string   `json:"agentDotMdName"`
+	ClaudeMdName     *string   `json:"claudeMdName"`
 	SkillNames         []string  `json:"skillNames"`
 	ClaudeSettingsName *string   `json:"claudeSettingsName"`
 	ClaudeJsonName     *string   `json:"claudeJsonName"`
@@ -342,7 +342,7 @@ type memberView struct {
 	UpdatedAt          time.Time `json:"updatedAt"`
 }
 
-type agentDotMdView struct {
+type claudeMdView struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Content   string    `json:"content"`

@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppErrorBoundary } from "@/components/app-error-boundary";
 import { AppLayout } from "@/app-layout";
 import { NotFound } from "@/pages/not-found";
-import { AgentDotMdDetail } from "@/pages/agent-dot-md-detail";
+import { ClaudeMdDetail } from "@/pages/claude-md-detail";
 import { SkillDetail } from "@/pages/skill-detail";
 import { ClaudeSettingsDetail } from "@/pages/claude-settings-detail";
 import { ClaudeJsonDetail } from "@/pages/claude-json-detail";
@@ -34,7 +34,7 @@ export default function App() {
             <Route element={<AppLayout />}>
               <Route path="/" element={<Navigate to="/tasks" replace />} />
               <Route path="/prompts" element={<Prompts />} />
-              <Route path="/prompts/agent-dot-mds/:id" element={<Keyed Component={AgentDotMdDetail} />} />
+              <Route path="/prompts/claude-mds/:id" element={<Keyed Component={ClaudeMdDetail} />} />
               <Route path="/prompts/skills/:id" element={<Keyed Component={SkillDetail} />} />
               <Route path="/claude" element={<ClaudeConfig />} />
               <Route path="/claude/claude-settings/:id" element={<Keyed Component={ClaudeSettingsDetail} />} />

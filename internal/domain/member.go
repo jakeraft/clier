@@ -15,7 +15,7 @@ type Member struct {
 	AgentType        string    `json:"agent_type"`
 	Model            string    `json:"model"`
 	Args             []string  `json:"args"`
-	AgentDotMdID     string    `json:"agent_dot_md_id"`     // empty string = not set (nullable FK)
+	ClaudeMdID       string    `json:"claude_md_id"`        // empty string = not set (nullable FK)
 	SkillIDs         []string  `json:"skill_ids"`
 	ClaudeSettingsID string    `json:"claude_settings_id"`  // empty string = not set (nullable FK)
 	ClaudeJsonID     string    `json:"claude_json_id"`      // empty string = not set (nullable FK)
@@ -25,7 +25,7 @@ type Member struct {
 }
 
 func NewMember(name, agentType, model string, args []string,
-	agentDotMdID string, skillIDs []string,
+	claudeMdID string, skillIDs []string,
 	claudeSettingsID, claudeJsonID string,
 	gitRepoURL string) (*Member, error) {
 
@@ -55,7 +55,7 @@ func NewMember(name, agentType, model string, args []string,
 		AgentType:        agentType,
 		Model:            model,
 		Args:             args,
-		AgentDotMdID:     agentDotMdID,
+		ClaudeMdID:       claudeMdID,
 		SkillIDs:         skillIDs,
 		ClaudeSettingsID: claudeSettingsID,
 		ClaudeJsonID:     claudeJsonID,
@@ -66,7 +66,7 @@ func NewMember(name, agentType, model string, args []string,
 }
 
 func (m *Member) Update(name, agentType, model *string, args *[]string,
-	agentDotMdID *string, skillIDs *[]string,
+	claudeMdID *string, skillIDs *[]string,
 	claudeSettingsID, claudeJsonID *string,
 	gitRepoURL *string) error {
 
@@ -93,8 +93,8 @@ func (m *Member) Update(name, agentType, model *string, args *[]string,
 	if args != nil {
 		m.Args = *args
 	}
-	if agentDotMdID != nil {
-		m.AgentDotMdID = *agentDotMdID
+	if claudeMdID != nil {
+		m.ClaudeMdID = *claudeMdID
 	}
 	if skillIDs != nil {
 		m.SkillIDs = *skillIDs
@@ -120,7 +120,7 @@ type ResolvedMember struct {
 	AgentType      string
 	Model          string
 	Args           []string
-	AgentDotMd     *resource.AgentDotMd
+	ClaudeMd       *resource.ClaudeMd
 	Skills         []resource.Skill
 	ClaudeSettings *resource.ClaudeSettings
 	ClaudeJson     *resource.ClaudeJson

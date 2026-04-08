@@ -24,9 +24,9 @@ func setupTestStore(t *testing.T) *db.Store {
 func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (domain.Team, string, string) {
 	t.Helper()
 
-	agentDotMd, _ := resource.NewAgentDotMd("test-md", "do things")
-	if err := store.CreateAgentDotMd(ctx, agentDotMd); err != nil {
-		t.Fatalf("CreateAgentDotMd: %v", err)
+	claudeMd, _ := resource.NewClaudeMd("test-md", "do things")
+	if err := store.CreateClaudeMd(ctx, claudeMd); err != nil {
+		t.Fatalf("CreateClaudeMd: %v", err)
 	}
 
 	claudeSettings, _ := resource.NewClaudeSettings("test-settings", `{"key":"val"}`)
@@ -41,14 +41,14 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (doma
 
 	root, _ := domain.NewMember("alice", "claude", "claude-sonnet-4-6",
 		[]string{"--dangerously-skip-permissions"},
-		agentDotMd.ID, nil, claudeSettings.ID, claudeJson.ID, "https://example.com/repo.git")
+		claudeMd.ID, nil, claudeSettings.ID, claudeJson.ID, "https://example.com/repo.git")
 	if err := store.CreateMember(ctx, root); err != nil {
 		t.Fatalf("CreateMember root: %v", err)
 	}
 
 	worker, _ := domain.NewMember("bob", "claude", "claude-sonnet-4-6",
 		[]string{"--dangerously-skip-permissions"},
-		agentDotMd.ID, nil, claudeSettings.ID, claudeJson.ID, "")
+		claudeMd.ID, nil, claudeSettings.ID, claudeJson.ID, "")
 	if err := store.CreateMember(ctx, worker); err != nil {
 		t.Fatalf("CreateMember worker: %v", err)
 	}
@@ -102,8 +102,8 @@ func TestResolveTeam(t *testing.T) {
 	if root.Model == "" {
 		t.Error("root Model is empty")
 	}
-	if root.AgentDotMd == nil {
-		t.Error("root AgentDotMd should not be nil")
+	if root.ClaudeMd == nil {
+		t.Error("root ClaudeMd should not be nil")
 	}
 	if root.GitRepoURL == "" {
 		t.Error("root GitRepoURL should not be empty")

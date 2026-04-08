@@ -36,13 +36,13 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		return nil, fmt.Errorf("get member %s: %w", tm.MemberID, err)
 	}
 
-	var agentDotMd *resource.AgentDotMd
-	if member.AgentDotMdID != "" {
-		adm, err := s.store.GetAgentDotMd(ctx, member.AgentDotMdID)
+	var claudeMd *resource.ClaudeMd
+	if member.ClaudeMdID != "" {
+		cm, err := s.store.GetClaudeMd(ctx, member.ClaudeMdID)
 		if err != nil {
-			return nil, fmt.Errorf("get agent dot md for %s: %w", tm.Name, err)
+			return nil, fmt.Errorf("get claude md for %s: %w", tm.Name, err)
 		}
-		agentDotMd = &adm
+		claudeMd = &cm
 	}
 
 	skills := make([]resource.Skill, 0, len(member.SkillIDs))
@@ -80,7 +80,7 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		AgentType:      member.AgentType,
 		Model:          member.Model,
 		Args:           member.Args,
-		AgentDotMd:     agentDotMd,
+		ClaudeMd:       claudeMd,
 		Skills:         skills,
 		ClaudeSettings: claudeSettings,
 		ClaudeJson:     claudeJson,
@@ -116,10 +116,10 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 	}
 
 	// === Instruction file (e.g. CLAUDE.md) ===
-	systemAgentDotMd := buildClierPrompt(teamName, rm.Name, rm.Relations, nameByID) // Clier system
-	var userAgentDotMd string                                                        // user building block
-	if rm.AgentDotMd != nil {
-		userAgentDotMd = rm.AgentDotMd.Content
+	systemClaudeMd := buildClierPrompt(teamName, rm.Name, rm.Relations, nameByID) // Clier system
+	var userClaudeMd string                                                        // user building block
+	if rm.ClaudeMd != nil {
+		userClaudeMd = rm.ClaudeMd.Content
 	}
 
 	// === settings (e.g. settings.json) ===
@@ -139,7 +139,7 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 	userSkills := rm.Skills // user building block (no system injection)
 
 	// === Assemble workspace files ===
-	files := buildWorkspaceFiles(rt, PlaceholderMemberspace, systemAgentDotMd, userAgentDotMd, userClaudeSettings, systemProjectConfig, userProjectConfig, userSkills)
+	files := buildWorkspaceFiles(rt, PlaceholderMemberspace, systemClaudeMd, userClaudeMd, userClaudeSettings, systemProjectConfig, userProjectConfig, userSkills)
 
 	// === Command: user building blocks ===
 	model := rm.Model

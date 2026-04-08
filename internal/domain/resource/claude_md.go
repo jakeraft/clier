@@ -8,9 +8,9 @@ import (
 	"github.com/google/uuid"
 )
 
-// AgentDotMd is a project instruction file shared across agent types.
+// ClaudeMd is a project instruction file shared across agent types.
 // Written as CLAUDE.md (Claude), AGENTS.md (Codex), or GEMINI.md (Gemini).
-type AgentDotMd struct {
+type ClaudeMd struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Content   string    `json:"content"`
@@ -18,18 +18,18 @@ type AgentDotMd struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func NewAgentDotMd(name, content string) (*AgentDotMd, error) {
+func NewClaudeMd(name, content string) (*ClaudeMd, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, errors.New("agent dot md name must not be empty")
+		return nil, errors.New("claude md name must not be empty")
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return nil, errors.New("agent dot md content must not be empty")
+		return nil, errors.New("claude md content must not be empty")
 	}
 
 	now := time.Now()
-	return &AgentDotMd{
+	return &ClaudeMd{
 		ID:        uuid.NewString(),
 		Name:      name,
 		Content:   content,
@@ -38,18 +38,18 @@ func NewAgentDotMd(name, content string) (*AgentDotMd, error) {
 	}, nil
 }
 
-func (a *AgentDotMd) Update(name, content *string) error {
+func (a *ClaudeMd) Update(name, content *string) error {
 	if name != nil {
 		trimmed := strings.TrimSpace(*name)
 		if trimmed == "" {
-			return errors.New("agent dot md name must not be empty")
+			return errors.New("claude md name must not be empty")
 		}
 		a.Name = trimmed
 	}
 	if content != nil {
 		trimmed := strings.TrimSpace(*content)
 		if trimmed == "" {
-			return errors.New("agent dot md content must not be empty")
+			return errors.New("claude md content must not be empty")
 		}
 		a.Content = trimmed
 	}
