@@ -19,9 +19,20 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 - MemberPlan에 tmux 세션/윈도우 구조가 보이지 않음
 - `task`, `run`, `session` 용어 혼재
 
+### 용어 정의
+
+| 용어 | 정의 | 대상 |
+|---|---|---|
+| **Resource** | 마켓플레이스에서 공유 가능한 서버 엔티티. Visibility/Fork/Version 공통 패턴. | ClaudeMd, Skill, ClaudeSettings, Member, Team |
+| **Run** | 개인 전용 실행 기록. 공유 불가. 별도 스키마. | Run (+ Messages, Notes) |
+
+"빌딩블록", "스펙", "엔티티" 등의 용어를 사용하지 않는다.
+ClaudeMd/Skill/ClaudeSettings/Member/Team은 모두 **Resource**이다.
+Resource 간 계층(Member가 ClaudeMd를 FK 참조)은 이름이 아닌 FK 관계로 표현한다.
+
 ### 설계 원칙
 
-1. **서버 = DB**: 모든 엔티티(Workspace + Run)를 서버가 소유. CLI에 로컬 DB 없음.
+1. **서버 = DB**: 모든 Resource와 Run을 서버가 소유. CLI에 로컬 DB 없음.
 2. **CLI = 경량 런타임 도구**: 서버를 DB로 사용하되, 로컬 dependency가 있는 런타임 환경 로직(tmux, workspace 파일, 프로세스 실행)을 담당.
 3. **로컬 파일 기반 실행**: workspace 파일을 로컬에 생성하고, run은 로컬 파일 기준으로 실행. 실행 계획은 `.clier/{RUN_ID}.json`에 저장.
 4. **시스템 주입 투명화**: 숨겨진 머지 제거. Team Protocol도 workspace 생성 시 포함.
@@ -75,25 +86,22 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 | | 버전/fork 관리 |
 | env vars export + command 실행 | UI 서빙 |
 
-### 엔티티 분류: 공유 가능 vs 개인 전용
+### Resource vs Run
 
-서버 엔티티는 소유권/공유 여부에 따라 두 가지 패턴으로 나뉜다.
+| | Resource | Run |
+|---|---|---|
+| **대상** | ClaudeMd, Skill, ClaudeSettings, Member, Team | Run (+ Messages, Notes) |
+| **공유** | Yes (마켓플레이스) | No (항상 개인 소유) |
+| **Visibility** | Public/Private | 없음 |
+| **Fork** | Yes | 없음 |
+| **Version** | Yes | 없음 |
+| **서버 패턴** | 공통 필드 (OwnerID, Visibility, Fork, Version) | 별도 스키마 (UserID) |
 
-| 엔티티 | 마켓플레이스 공유 | Visibility | Fork | Version |
-|---|---|---|---|---|
-| ClaudeMd | Yes | Yes | Yes | Yes |
-| Skill | Yes | Yes | Yes | Yes |
-| ClaudeSettings | Yes | Yes | Yes | Yes |
-| Member | Yes | Yes | Yes | Yes |
-| Team | Yes | Yes | Yes | Yes |
-| **Run** | **No — 항상 개인 소유** | **No** | **No** | **No** |
+### Resource — 서버 소유, 공유 가능
 
-### Workspace Domain — 서버 소유, 공유 가능
+#### Resource 공통 패턴
 
-#### 서버 엔티티 공통 패턴 (공유 가능 리소스)
-
-마켓플레이스에서 공유되는 모든 리소스 엔티티는 동일한 패턴을 따른다.
-Run은 이 패턴을 따르지 않는다 (개인 전용, 별도 스키마).
+모든 Resource는 동일한 서버 패턴을 따른다.
 
 ```go
 // 공유 가능 리소스 공통 필드

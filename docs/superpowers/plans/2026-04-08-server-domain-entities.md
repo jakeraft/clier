@@ -1,12 +1,14 @@
-# Server Domain Entities Implementation Plan
+# Server Resource + Run Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** clier-server에 Workspace 엔티티(ClaudeMd, Skill, ClaudeSettings, Member, Team)와 Run 엔티티를 추가한다.
+**Goal:** clier-server에 Resource(ClaudeMd, Skill, ClaudeSettings, Member, Team)와 Run을 추가한다. UI 공용 컴포넌트를 추출하고 각 Resource의 페이지를 일관되게 생성한다.
 
-**Architecture:** 기존 GitRepo/AgentDotMd 패턴을 따라 각 엔티티를 migration → domain → store → service → handler → router 순서로 추가. Member는 빌딩블록을 FK로 참조하고, Team은 TeamMember/TeamRelation 하위 테이블을 가진다. Run은 개인 전용(Visibility/Fork/Version 없음).
+**Architecture:** 기존 GitRepo/AgentDotMd 패턴을 따라 각 Resource를 migration → domain → store → service → handler → router 순서로 추가. UI는 기존 entity-specific 컴포넌트를 공용 Resource 컴포넌트로 추출한 뒤 각 Resource 페이지를 생성. Member는 다른 Resource를 FK로 참조하고, Team은 TeamMember/TeamRelation 하위 테이블을 가진다. Run은 개인 전용(Visibility/Fork/Version 없음).
 
-**Tech Stack:** Go 1.25, Echo v4, PostgreSQL, Squirrel, sqlx
+**용어:** 공유 가능한 서버 엔티티 = **Resource**. 개인 전용 실행 기록 = **Run**. "빌딩블록", "스펙", "엔티티" 용어 사용하지 않음.
+
+**Tech Stack:** Go 1.25, Echo v4, PostgreSQL, Squirrel, sqlx / React 19, shadcn, Tailwind, React Router 7
 
 **Working Directory:** `/Users/jake_kakao/jakeraft/clier-server`
 
@@ -912,9 +914,299 @@ rm internal/handler/git_repo.go
 
 ```bash
 go build ./...
-git add -A && git commit -m "refactor: GitRepo 엔티티 삭제
+git add -A && git commit -m "refactor: GitRepo Resource 삭제
 
 Member.GitRepoURL 필드로 대체됨.
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 8: UI 공용 Resource 컴포넌트 추출
+
+현재 repo-detail.tsx와 agentdotmd-detail.tsx, repo-list.tsx와 agentdotmd-list.tsx가 거의 동일한 구조를 반복.
+Resource 5종(ClaudeMd, Skill, ClaudeSettings, Member, Team)을 일관되게 지원하려면 공용 컴포넌트가 필수.
+
+**Files:**
+- Create: `ui/src/components/resource-detail.tsx` (공용 상세 페이지)
+- Create: `ui/src/components/resource-list.tsx` (공용 목록 페이지)
+- Create: `ui/src/components/resource-columns.ts` (Resource별 컬럼 정의 레지스트리)
+- Modify: `ui/src/pages/repo-detail.tsx` → 공용 컴포넌트 사용으로 전환
+- Modify: `ui/src/pages/agentdotmd-detail.tsx` → 공용 컴포넌트 사용으로 전환
+- Modify: `ui/src/pages/repo-list.tsx` → 공용 컴포넌트 사용으로 전환
+- Modify: `ui/src/pages/agentdotmd-list.tsx` → 공용 컴포넌트 사용으로 전환
+- Modify: `ui/src/components/entity-table.tsx` → `resource-table.tsx` 리네임
+- Modify: `ui/src/components/entity-hub.tsx` → `resource-hub.tsx` 리네임
+- Modify: `ui/src/components/entity-cards.ts` → `resource-cards.ts` 리네임
+- Modify: `ui/src/lib/api.ts` (타입 추가/리네임)
+
+- [ ] **Step 1: entity-* → resource-* 리네임**
+
+```bash
+mv ui/src/components/entity-table.tsx ui/src/components/resource-table.tsx
+mv ui/src/components/entity-hub.tsx ui/src/components/resource-hub.tsx
+mv ui/src/components/entity-cards.ts ui/src/components/resource-cards.ts
+```
+
+파일 내부에서 `Entity` → `Resource` 치환:
+- `EntityTable` → `ResourceTable`
+- `EntityHub` → `ResourceHub`
+- `EntityColumn` → `ResourceColumn`
+- `EntityHubItem` → `ResourceHubItem`
+
+모든 import 경로 업데이트.
+
+- [ ] **Step 2: 공용 ResourceDetail 컴포넌트 추출**
+
+`ui/src/components/resource-detail.tsx`:
+
+```tsx
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
+import { Table, TableBody, TableCell, TableRow } from "./ui/table"
+import { Badge } from "./ui/badge"
+import { UserLink } from "./user-link"
+
+interface ResourceDetailProps {
+  // Resource 공통 필드
+  resource: {
+    name: string
+    owner_login: string
+    owner_avatar_url?: string
+    visibility: number
+    is_fork: boolean
+    fork_name?: string
+    fork_owner_login?: string
+    fork_count: number
+    latest_version?: number
+    created_at: string
+    updated_at: string
+  }
+  // Resource별 커스텀 콘텐츠
+  renderContent: (selectedVersion: any) => React.ReactNode
+  // 버전 데이터
+  versions: any[]
+  selectedVersion: any
+  onVersionSelect: (id: number) => void
+  // Resource별 추가 메타데이터 (optional)
+  renderMeta?: () => React.ReactNode
+}
+
+export function ResourceDetail({
+  resource, renderContent, versions, selectedVersion, onVersionSelect, renderMeta
+}: ResourceDetailProps) {
+  return (
+    <div className="grid grid-cols-4 gap-4">
+      {/* Left panel (1/4): Overview + Versions + Community */}
+      <div className="space-y-4">
+        <OverviewCard resource={resource} renderMeta={renderMeta} />
+        <VersionsCard versions={versions} selected={selectedVersion} onSelect={onVersionSelect} />
+        <CommunityCard resource={resource} />
+      </div>
+      {/* Right panel (3/4): Content */}
+      <div className="col-span-3">
+        {renderContent(selectedVersion)}
+      </div>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 3: 공용 ResourceList 컴포넌트 추출**
+
+`ui/src/components/resource-list.tsx`:
+
+```tsx
+import { ResourceTable, ResourceColumn } from "./resource-table"
+
+interface ResourceListProps<T> {
+  title: string
+  items: T[]
+  columns: ResourceColumn<T>[]
+  loading: boolean
+  onRowClick?: (item: T) => void
+  emptyMessage?: string
+}
+
+export function ResourceList<T>({
+  title, items, columns, loading, onRowClick, emptyMessage
+}: ResourceListProps<T>) {
+  return (
+    <div>
+      <h1 className="text-lg font-semibold mb-4">{title}</h1>
+      <ResourceTable
+        items={items}
+        columns={columns}
+        loading={loading}
+        onRowClick={onRowClick}
+        emptyMessage={emptyMessage || "No items found"}
+      />
+    </div>
+  )
+}
+```
+
+- [ ] **Step 4: 기존 페이지를 공용 컴포넌트 사용으로 전환**
+
+`repo-detail.tsx`, `agentdotmd-detail.tsx` → `ResourceDetail` 사용.
+`repo-list.tsx`, `agentdotmd-list.tsx` → `ResourceList` 사용.
+엔티티별 차이는 `columns`와 `renderContent` props로 표현.
+
+- [ ] **Step 5: 기존 엔티티별 columns 파일 정리**
+
+`repo-columns.tsx`, `agentdotmd-columns.tsx` → 유지하되 `ResourceColumn` 타입 사용으로 통일.
+
+- [ ] **Step 6: 빌드 확인 및 커밋**
+
+```bash
+cd ui && npm run build
+git add -A && git commit -m "refactor: Entity → Resource 리네임 + 공용 컴포넌트 추출
+
+- EntityTable → ResourceTable, EntityHub → ResourceHub
+- ResourceDetail 공용 상세 페이지 컴포넌트
+- ResourceList 공용 목록 페이지 컴포넌트
+- 기존 repo/agentdotmd 페이지를 공용 컴포넌트 사용으로 전환
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 9: UI — AgentDotMd → ClaudeMd 리네임 + GitRepo 제거
+
+**Files:**
+- Rename: `ui/src/pages/agentdotmd-*.tsx` → `ui/src/pages/claudemd-*.tsx`
+- Rename: `ui/src/components/agentdotmd-columns.tsx` → `ui/src/components/claudemd-columns.tsx`
+- Delete: `ui/src/pages/repo-*.tsx`
+- Delete: `ui/src/components/repo-columns.tsx`
+- Modify: `ui/src/router.tsx` (경로 변경)
+- Modify: `ui/src/lib/api.ts` (타입 리네임)
+
+- [ ] **Step 1: API 타입 리네임**
+
+`ui/src/lib/api.ts`:
+```typescript
+// Before
+interface AgentDotMd { ... }
+interface AgentDotMdVersion { ... }
+
+// After
+interface ClaudeMd { ... }
+interface ClaudeMdVersion { ... }
+```
+
+GitRepo 관련 타입 삭제.
+
+- [ ] **Step 2: 파일 리네임 + 코드 치환**
+
+```bash
+mv ui/src/pages/agentdotmd-list.tsx ui/src/pages/claudemd-list.tsx
+mv ui/src/pages/agentdotmd-detail.tsx ui/src/pages/claudemd-detail.tsx
+mv ui/src/components/agentdotmd-columns.tsx ui/src/components/claudemd-columns.tsx
+rm ui/src/pages/repo-list.tsx ui/src/pages/repo-detail.tsx
+rm ui/src/components/repo-columns.tsx
+```
+
+- [ ] **Step 3: Router 경로 업데이트**
+
+```typescript
+// Before
+/explore/agent-dot-mds → ExploreAgentDotMdListPage
+/explore/repos → ExploreRepoListPage
+
+// After
+/explore/claude-mds → ExploreClaudeMdListPage
+// repos 경로 삭제
+```
+
+- [ ] **Step 4: Explore/My 허브 페이지에서 항목 업데이트**
+
+GitRepo 카드 제거, AgentDotMd → ClaudeMd 리네임.
+
+- [ ] **Step 5: 빌드 확인 및 커밋**
+
+```bash
+cd ui && npm run build
+git add -A && git commit -m "refactor: UI AgentDotMd → ClaudeMd 리네임, GitRepo 제거
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+```
+
+---
+
+### Task 10: UI — Skill, ClaudeSettings, Member, Team 페이지 추가
+
+각 Resource에 대해 columns + list + detail 페이지를 공용 컴포넌트 기반으로 생성.
+
+**Files:**
+- Create: `ui/src/components/skill-columns.tsx`
+- Create: `ui/src/components/claude-settings-columns.tsx`
+- Create: `ui/src/components/member-columns.tsx`
+- Create: `ui/src/components/team-columns.tsx`
+- Create: `ui/src/pages/skill-list.tsx`
+- Create: `ui/src/pages/skill-detail.tsx`
+- Create: `ui/src/pages/claude-settings-list.tsx`
+- Create: `ui/src/pages/claude-settings-detail.tsx`
+- Create: `ui/src/pages/member-list.tsx`
+- Create: `ui/src/pages/member-detail.tsx`
+- Create: `ui/src/pages/team-list.tsx`
+- Create: `ui/src/pages/team-detail.tsx`
+- Modify: `ui/src/router.tsx`
+- Modify: `ui/src/lib/api.ts`
+- Modify: `ui/src/pages/explore.tsx` (허브에 카드 추가)
+- Modify: `ui/src/pages/my-home.tsx` (허브에 카드 추가)
+
+- [ ] **Step 1: API 타입 추가**
+
+`ui/src/lib/api.ts`에 Skill, ClaudeSettings, Member, Team 타입 추가.
+
+- [ ] **Step 2: 각 Resource의 columns 정의**
+
+각 Resource별로 테이블 컬럼을 정의. 공용 ResourceColumn 타입 사용.
+
+- [ ] **Step 3: 각 Resource의 list/detail 페이지 생성**
+
+ResourceList, ResourceDetail 공용 컴포넌트를 사용하여 각 Resource 페이지 생성.
+차이점은 columns와 renderContent만.
+
+- [ ] **Step 4: Router에 경로 추가**
+
+```typescript
+// Explore
+/explore/skills
+/explore/:owner/skills
+/explore/:owner/skills/:name
+/explore/claude-settings
+/explore/:owner/claude-settings
+/explore/:owner/claude-settings/:name
+/explore/members
+/explore/:owner/members
+/explore/:owner/members/:name
+/explore/teams
+/explore/:owner/teams
+/explore/:owner/teams/:name
+
+// My
+/my/skills
+/my/skills/:name
+/my/claude-settings
+/my/claude-settings/:name
+/my/members
+/my/members/:name
+/my/teams
+/my/teams/:name
+```
+
+- [ ] **Step 5: Explore/My 허브 페이지에 카드 추가**
+
+- [ ] **Step 6: 빌드 확인 및 커밋**
+
+```bash
+cd ui && npm run build
+git add -A && git commit -m "feat: UI — Skill, ClaudeSettings, Member, Team 페이지 추가
+
+공용 ResourceList/ResourceDetail 컴포넌트 기반.
+각 Resource별 columns + list + detail 페이지.
 
 Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
