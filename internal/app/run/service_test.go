@@ -52,7 +52,7 @@ func TestService_Note(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		store.notes = nil
-		if err := svc.Note(context.Background(), 1, 7, "run done"); err != nil {
+		if err := svc.Note(context.Background(), 1, int64Ptr(7), "run done"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(store.notes) != 1 {
@@ -61,20 +61,20 @@ func TestService_Note(t *testing.T) {
 		if store.notes[0].Content != "run done" {
 			t.Errorf("Content = %q, want %q", store.notes[0].Content, "run done")
 		}
-		if store.notes[0].TeamMemberID != 7 {
-			t.Errorf("TeamMemberID = %d, want %d", store.notes[0].TeamMemberID, 7)
+		if store.notes[0].TeamMemberID == nil || *store.notes[0].TeamMemberID != 7 {
+			t.Errorf("TeamMemberID = %v, want 7", store.notes[0].TeamMemberID)
 		}
 	})
 
 	t.Run("run not found", func(t *testing.T) {
-		err := svc.Note(context.Background(), 9999, 7, "hello")
+		err := svc.Note(context.Background(), 9999, int64Ptr(7), "hello")
 		if err == nil {
 			t.Fatal("expected error for unknown run")
 		}
 	})
 
 	t.Run("empty content", func(t *testing.T) {
-		err := svc.Note(context.Background(), 1, 7, "  ")
+		err := svc.Note(context.Background(), 1, int64Ptr(7), "  ")
 		if err == nil {
 			t.Fatal("expected error for empty content")
 		}
@@ -93,7 +93,7 @@ func TestService_Send(t *testing.T) {
 		term := &stubTerminal{}
 		svc := New(store, term)
 
-		if err := svc.Send(context.Background(), 1, 1, 2, "hello"); err != nil {
+		if err := svc.Send(context.Background(), 1, int64Ptr(1), int64Ptr(2), "hello"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(term.sent) != 1 {
@@ -108,12 +108,12 @@ func TestService_Send(t *testing.T) {
 		}
 	})
 
-	t.Run("zero sender has no prefix", func(t *testing.T) {
+	t.Run("nil sender has no prefix", func(t *testing.T) {
 		store := &stubStore{run: r}
 		term := &stubTerminal{}
 		svc := New(store, term)
 
-		if err := svc.Send(context.Background(), 1, 0, 2, "do this"); err != nil {
+		if err := svc.Send(context.Background(), 1, nil, int64Ptr(2), "do this"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if term.sent[0] != "do this" {
@@ -126,7 +126,7 @@ func TestService_Send(t *testing.T) {
 		term := &failTerminal{}
 		svc := New(store, term)
 
-		err := svc.Send(context.Background(), 1, 1, 99, "hello")
+		err := svc.Send(context.Background(), 1, int64Ptr(1), int64Ptr(99), "hello")
 		if err == nil {
 			t.Fatal("expected error for failed delivery")
 		}

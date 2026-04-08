@@ -64,18 +64,22 @@ func (s *Service) Stop(ctx context.Context, runID int64) error {
 
 // Send delivers a message to the recipient's terminal, then persists it.
 // Delivery happens first so that a bad recipient fails before anything is saved.
-func (s *Service) Send(ctx context.Context, runID int64, fromTeamMemberID, toTeamMemberID int64, content string) error {
+func (s *Service) Send(ctx context.Context, runID int64, fromTeamMemberID, toTeamMemberID *int64, content string) error {
 	if _, err := s.store.GetRun(ctx, runID); err != nil {
 		return fmt.Errorf("get run: %w", err)
 	}
 
 	text := content
-	if fromTeamMemberID != 0 {
-		text = fmt.Sprintf("[Message from %s] %s", strconv.FormatInt(fromTeamMemberID, 10), content)
+	if fromTeamMemberID != nil {
+		text = fmt.Sprintf("[Message from %s] %s", strconv.FormatInt(*fromTeamMemberID, 10), content)
 	}
 
+	toStr := ""
+	if toTeamMemberID != nil {
+		toStr = strconv.FormatInt(*toTeamMemberID, 10)
+	}
 	runIDStr := strconv.FormatInt(runID, 10)
-	if err := s.terminal.Send(runIDStr, strconv.FormatInt(toTeamMemberID, 10), text); err != nil {
+	if err := s.terminal.Send(runIDStr, toStr, text); err != nil {
 		return fmt.Errorf("deliver message: %w", err)
 	}
 
@@ -90,7 +94,7 @@ func (s *Service) Send(ctx context.Context, runID int64, fromTeamMemberID, toTea
 }
 
 // Note persists a progress entry posted by a team member.
-func (s *Service) Note(ctx context.Context, runID int64, teamMemberID int64, content string) error {
+func (s *Service) Note(ctx context.Context, runID int64, teamMemberID *int64, content string) error {
 	if _, err := s.store.GetRun(ctx, runID); err != nil {
 		return fmt.Errorf("get run: %w", err)
 	}

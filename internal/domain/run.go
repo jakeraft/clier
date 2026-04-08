@@ -65,22 +65,19 @@ func (r *Run) Stop() {
 }
 
 // Message represents an inter-member message within a run.
-// FromTeamMemberID is zero when the sender is not a team member.
+// FromTeamMemberID and ToTeamMemberID are nil when the sender/recipient is not a team member.
 type Message struct {
 	ID               int64     `json:"id"`
 	RunID            int64     `json:"run_id"`
-	FromTeamMemberID int64     `json:"from_team_member_id"`
-	ToTeamMemberID   int64     `json:"to_team_member_id"`
+	FromTeamMemberID *int64    `json:"from_team_member_id"`
+	ToTeamMemberID   *int64    `json:"to_team_member_id"`
 	Content          string    `json:"content"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 
-func NewMessage(runID int64, fromTeamMemberID, toTeamMemberID int64, content string) (*Message, error) {
+func NewMessage(runID int64, fromTeamMemberID, toTeamMemberID *int64, content string) (*Message, error) {
 	if runID == 0 {
 		return nil, errors.New("message run id must not be empty")
-	}
-	if toTeamMemberID == 0 {
-		return nil, errors.New("message recipient must not be empty")
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
@@ -100,17 +97,14 @@ func NewMessage(runID int64, fromTeamMemberID, toTeamMemberID int64, content str
 type Note struct {
 	ID           int64     `json:"id"`
 	RunID        int64     `json:"run_id"`
-	TeamMemberID int64     `json:"team_member_id"`
+	TeamMemberID *int64    `json:"team_member_id"`
 	Content      string    `json:"content"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-func NewNote(runID int64, teamMemberID int64, content string) (*Note, error) {
+func NewNote(runID int64, teamMemberID *int64, content string) (*Note, error) {
 	if runID == 0 {
 		return nil, errors.New("note run id must not be empty")
-	}
-	if teamMemberID == 0 {
-		return nil, errors.New("note team member id must not be empty")
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {

@@ -32,7 +32,7 @@ func newMemberCmd() *cobra.Command {
 }
 
 func newMemberCreateCmd() *cobra.Command {
-	var name, command, claudeMd, claudeSettings, repo string
+	var name, agentType, command, claudeMd, claudeSettings, repo string
 	var skills []string
 
 	cmd := &cobra.Command{
@@ -46,6 +46,9 @@ func newMemberCreateCmd() *cobra.Command {
 			body := map[string]any{
 				"name":    name,
 				"command": command,
+			}
+			if agentType != "" {
+				body["agent_type"] = agentType
 			}
 			if claudeMd != "" {
 				body["claude_md_id"] = claudeMd
@@ -68,6 +71,7 @@ func newMemberCreateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Member name")
+	cmd.Flags().StringVar(&agentType, "agent-type", "", "Agent type (e.g. claude, codex)")
 	cmd.Flags().StringVar(&command, "command", "", "Command (binary + CLI flags, e.g. \"claude --dangerously-skip-permissions\")")
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "Claude md resource ID")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "Skill IDs (comma-separated)")
@@ -96,7 +100,7 @@ func newMemberListCmd() *cobra.Command {
 }
 
 func newMemberUpdateCmd() *cobra.Command {
-	var name, command, claudeMd, claudeSettings, repo string
+	var name, agentType, command, claudeMd, claudeSettings, repo string
 	var skills []string
 
 	cmd := &cobra.Command{
@@ -111,6 +115,9 @@ func newMemberUpdateCmd() *cobra.Command {
 			body := map[string]any{}
 			if cmd.Flags().Changed("name") {
 				body["name"] = name
+			}
+			if cmd.Flags().Changed("agent-type") {
+				body["agent_type"] = agentType
 			}
 			if cmd.Flags().Changed("command") {
 				body["command"] = command
@@ -136,6 +143,7 @@ func newMemberUpdateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New member name")
+	cmd.Flags().StringVar(&agentType, "agent-type", "", "New agent type (e.g. claude, codex)")
 	cmd.Flags().StringVar(&command, "command", "", "New command (binary + CLI flags)")
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "New claude md resource ID")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill IDs (comma-separated)")

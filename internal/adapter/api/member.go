@@ -10,6 +10,7 @@ type MemberResponse struct {
 	ID               int64         `json:"id"`
 	OwnerID          int64         `json:"owner_id"`
 	Name             string        `json:"name"`
+	AgentType        string        `json:"agent_type"`
 	Command          string        `json:"command"`
 	GitRepoURL       string        `json:"git_repo_url"`
 	ClaudeMdID       *int64        `json:"claude_md_id,omitempty"`

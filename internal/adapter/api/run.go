@@ -7,24 +7,26 @@ import (
 
 // RunResponse is the server's JSON representation of a Run.
 type RunResponse struct {
-	ID        int64             `json:"id"`
-	UserID    int64             `json:"user_id"`
-	Name      string            `json:"name"`
-	TeamID    *int64            `json:"team_id,omitempty"`
-	MemberID  *int64            `json:"member_id,omitempty"`
-	Status    string            `json:"status"`
-	Messages  []MessageResponse `json:"messages"`
-	Notes     []NoteResponse    `json:"notes"`
-	StartedAt time.Time         `json:"started_at"`
-	StoppedAt *time.Time        `json:"stopped_at,omitempty"`
+	ID             int64             `json:"id"`
+	UserID         int64             `json:"user_id"`
+	Name           string            `json:"name"`
+	TeamID         *int64            `json:"team_id,omitempty"`
+	MemberID       *int64            `json:"member_id,omitempty"`
+	Status         string            `json:"status"`
+	Messages       []MessageResponse `json:"messages"`
+	Notes          []NoteResponse    `json:"notes"`
+	StartedAt      time.Time         `json:"started_at"`
+	StoppedAt      *time.Time        `json:"stopped_at,omitempty"`
+	OwnerLogin     string            `json:"owner_login"`
+	OwnerAvatarURL *string           `json:"owner_avatar_url,omitempty"`
 }
 
 // MessageResponse is the server's JSON representation of a Message.
 type MessageResponse struct {
 	ID               int64     `json:"id"`
 	RunID            int64     `json:"run_id"`
-	FromTeamMemberID int64     `json:"from_team_member_id"`
-	ToTeamMemberID   int64     `json:"to_team_member_id"`
+	FromTeamMemberID *int64    `json:"from_team_member_id"`
+	ToTeamMemberID   *int64    `json:"to_team_member_id"`
 	Content          string    `json:"content"`
 	CreatedAt        time.Time `json:"created_at"`
 }
@@ -33,7 +35,7 @@ type MessageResponse struct {
 type NoteResponse struct {
 	ID           int64     `json:"id"`
 	RunID        int64     `json:"run_id"`
-	TeamMemberID int64     `json:"team_member_id"`
+	TeamMemberID *int64    `json:"team_member_id"`
 	Content      string    `json:"content"`
 	CreatedAt    time.Time `json:"created_at"`
 }

@@ -7,10 +7,10 @@ import (
 
 // TeamMemberResponse is a team member instance within a team.
 type TeamMemberResponse struct {
-	ID     int64       `json:"id"`
-	TeamID int64       `json:"team_id"`
-	Name   string      `json:"name"`
-	Member ResourceRef `json:"member"`
+	ID     int64     `json:"id"`
+	TeamID int64     `json:"team_id"`
+	Name   string    `json:"name"`
+	Member MemberRef `json:"member"`
 }
 
 // TeamRelationResponse is a leader-worker relation within a team.

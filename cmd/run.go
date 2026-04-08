@@ -75,7 +75,7 @@ func newRunListCmd() *cobra.Command {
 
 func newRunTellCmd() *cobra.Command {
 	var runFlag string
-	var toMemberID int64
+	var toMemberIDRaw int64
 
 	cmd := &cobra.Command{
 		Use:   "tell [content]",
@@ -101,6 +101,8 @@ Examples:
 				return err
 			}
 
+			toMemberID := &toMemberIDRaw
+
 			store := newStore()
 			refs := terminal.NewLocalRefStore("")
 			term := terminal.NewTmuxTerminal(refs)
@@ -117,7 +119,7 @@ Examples:
 		},
 	}
 	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to CLIER_RUN_ID)")
-	cmd.Flags().Int64Var(&toMemberID, "to", 0, "Recipient member ID")
+	cmd.Flags().Int64Var(&toMemberIDRaw, "to", 0, "Recipient member ID")
 	_ = cmd.MarkFlagRequired("to")
 	return cmd
 }
@@ -149,9 +151,13 @@ func newRunNoteCmd() *cobra.Command {
 			if err := svc.Note(cmd.Context(), runID, memberID, content); err != nil {
 				return err
 			}
+			var memberVal any
+			if memberID != nil {
+				memberVal = *memberID
+			}
 			return printJSON(map[string]any{
 				"status": "posted",
-				"member": memberID,
+				"member": memberVal,
 				"run":    runID,
 			})
 		},
@@ -243,24 +249,25 @@ func readContent(args []string) (string, error) {
 }
 
 // resolveRunContext resolves run ID and member ID from env vars set by clier.
-// CLIER_RUN_ID identifies the run, CLIER_MEMBER_ID identifies the sender (int64).
-func resolveRunContext(runFlag string) (runID int64, memberID int64, err error) {
+// CLIER_RUN_ID identifies the run, CLIER_MEMBER_ID identifies the sender (*int64, nil if unset).
+func resolveRunContext(runFlag string) (runID int64, memberID *int64, err error) {
 	rawRunID := runFlag
 	if rawRunID == "" {
 		rawRunID = os.Getenv("CLIER_RUN_ID")
 	}
 	if rawRunID == "" {
-		return 0, 0, errors.New("--run flag or CLIER_RUN_ID must be set")
+		return 0, nil, errors.New("--run flag or CLIER_RUN_ID must be set")
 	}
 	runID, err = strconv.ParseInt(rawRunID, 10, 64)
 	if err != nil {
-		return 0, 0, fmt.Errorf("run id is not a valid int64: %w", err)
+		return 0, nil, fmt.Errorf("run id is not a valid int64: %w", err)
 	}
 	if raw := os.Getenv("CLIER_MEMBER_ID"); raw != "" {
-		memberID, err = strconv.ParseInt(raw, 10, 64)
-		if err != nil {
-			return 0, 0, fmt.Errorf("CLIER_MEMBER_ID is not a valid int64: %w", err)
+		v, parseErr := strconv.ParseInt(raw, 10, 64)
+		if parseErr != nil {
+			return 0, nil, fmt.Errorf("CLIER_MEMBER_ID is not a valid int64: %w", parseErr)
 		}
+		memberID = &v
 	}
 	return runID, memberID, nil
 }
