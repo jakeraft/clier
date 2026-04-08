@@ -298,73 +298,59 @@ type Note struct {
 
 run 시 CLI가 로컬에 생성하는 실행 계획. 사용자가 열어보면 tmux 세션 구조, 각 멤버에 전송되는 command, env vars가 전부 보인다.
 
-**Member 단독 실행 예시:**
+**Member 단독 실행 예시** (`.clier/abc123.json`):
 
 ```json
 {
-  "run_id": "abc123",
-  "member": "jakeraft/tutorial",
-  "created_at": "2026-04-08T15:30:00Z",
-  "terminal": {
-    "session": "tutorial-abc12345",
-    "members": [
-      {
-        "team_member_id": 42,
-        "name": "tutorial",
-        "window": 0,
-        "cwd": "/path/to/jakeraft/tutorial/project",
-        "command": "export CLAUDE_CONFIG_DIR='/path/.claude' && export CLIER_RUN_ID='abc123' && export CLIER_MEMBER_ID='42' && export CLAUDE_CODE_OAUTH_TOKEN='...' && export GIT_AUTHOR_NAME='tutorial' && export GIT_AUTHOR_EMAIL='noreply@clier.com' && export GIT_COMMITTER_NAME='tutorial' && export GIT_COMMITTER_EMAIL='noreply@clier.com' && cd '/path/to/project' && claude '--dangerously-skip-permissions' --model 'opus-4'"
-      }
-    ]
-  }
+  "session": "tutorial-abc12345",
+  "members": [
+    {
+      "name": "tutorial",
+      "window": 0,
+      "cwd": "/path/to/jakeraft/tutorial/project",
+      "command": "export CLIER_RUN_PLAN='/path/.clier/abc123.json' && export CLIER_MEMBER_ID='tutorial' && export CLAUDE_CONFIG_DIR='/path/.claude' && export CLAUDE_CODE_OAUTH_TOKEN='...' && export GIT_AUTHOR_NAME='tutorial' && export GIT_AUTHOR_EMAIL='noreply@clier.com' && export GIT_COMMITTER_NAME='tutorial' && export GIT_COMMITTER_EMAIL='noreply@clier.com' && cd '/path/to/project' && claude '--dangerously-skip-permissions' --model 'opus-4'"
+    }
+  ]
 }
 ```
 
-**Team 실행 예시:**
+**Team 실행 예시** (`.clier/def456.json`):
 
 ```json
 {
-  "run_id": "def456",
-  "team": "jakeraft/dev-squad",
-  "created_at": "2026-04-08T15:30:00Z",
-  "terminal": {
-    "session": "dev-squad-def45678",
-    "members": [
-      {
-        "team_member_id": 1,
-        "name": "leader",
-        "window": 0,
-        "cwd": "/path/to/jakeraft/dev-squad/leader/project",
-        "command": "export CLIER_RUN_ID='def456' && export CLIER_TEAM_ID='10' && export CLIER_MEMBER_ID='1' && export CLAUDE_CONFIG_DIR='/path/leader/.claude' && export CLAUDE_CODE_OAUTH_TOKEN='...' && export GIT_AUTHOR_NAME='dev-squad/leader' && export GIT_AUTHOR_EMAIL='noreply@clier.com' && export GIT_COMMITTER_NAME='dev-squad/leader' && export GIT_COMMITTER_EMAIL='noreply@clier.com' && cd '/path/leader/project' && claude --model 'opus-4'"
-      },
-      {
-        "team_member_id": 2,
-        "name": "worker-a",
-        "window": 1,
-        "cwd": "/path/to/jakeraft/dev-squad/worker-a/project",
-        "command": "export CLIER_RUN_ID='def456' && export CLIER_TEAM_ID='10' && export CLIER_MEMBER_ID='2' && export CLAUDE_CONFIG_DIR='/path/worker-a/.claude' && export CLAUDE_CODE_OAUTH_TOKEN='...' && export GIT_AUTHOR_NAME='dev-squad/worker-a' && export GIT_AUTHOR_EMAIL='noreply@clier.com' && export GIT_COMMITTER_NAME='dev-squad/worker-a' && export GIT_COMMITTER_EMAIL='noreply@clier.com' && cd '/path/worker-a/project' && codex --full-auto"
-      }
-    ]
-  }
+  "session": "dev-squad-def45678",
+  "members": [
+    {
+      "name": "leader",
+      "window": 0,
+      "cwd": "/path/to/jakeraft/dev-squad/leader/project",
+      "command": "export CLIER_RUN_PLAN='/path/.clier/def456.json' && export CLIER_MEMBER_ID='leader' && export CLAUDE_CONFIG_DIR='/path/leader/.claude' && export CLAUDE_CODE_OAUTH_TOKEN='...' && export GIT_AUTHOR_NAME='dev-squad/leader' && export GIT_AUTHOR_EMAIL='noreply@clier.com' && export GIT_COMMITTER_NAME='dev-squad/leader' && export GIT_COMMITTER_EMAIL='noreply@clier.com' && cd '/path/leader/project' && claude --model 'opus-4'"
+    },
+    {
+      "name": "worker-a",
+      "window": 1,
+      "cwd": "/path/to/jakeraft/dev-squad/worker-a/project",
+      "command": "export CLIER_RUN_PLAN='/path/.clier/def456.json' && export CLIER_MEMBER_ID='worker-a' && export CLAUDE_CONFIG_DIR='/path/worker-a/.claude' && export CLAUDE_CODE_OAUTH_TOKEN='...' && export GIT_AUTHOR_NAME='dev-squad/worker-a' && export GIT_AUTHOR_EMAIL='noreply@clier.com' && export GIT_COMMITTER_NAME='dev-squad/worker-a' && export GIT_COMMITTER_EMAIL='noreply@clier.com' && cd '/path/worker-a/project' && codex --full-auto"
+    }
+  ]
 }
 ```
 
-사용자가 `.clier/` 디렉토리를 열면:
-- 매 실행마다 `{RUN_ID}.json` 파일 생성
-- tmux 세션명, 윈도우 번호, 각 멤버에 전송되는 전체 command 확인 가능
-- 실행 이력이 파일로 남음
+RunPlan은 순수 터미널 실행 계획. 서버 엔티티 ID나 소유자 정보 없음.
+run_id는 파일명에서 추출 (`.clier/abc123.json` → `abc123`).
 
 #### RunPlan이 단일 진실 공급원 (Single Source of Truth)
 
 RunPlan에 모든 실행 정보가 포함되므로, 에이전트에게 필요한 env var은 2개뿐:
 
-| Env Var | 용도 |
-|---|---|
-| `CLIER_RUN_PLAN` | RunPlan 파일 경로 (나머지 전부 여기서 조회) |
-| `CLIER_MEMBER_ID` | 자신의 멤버 식별 (RunPlan에 여러 멤버가 있으므로) |
+| Env Var | 용도 | 출처 |
+|---|---|---|
+| `CLIER_RUN_PLAN` | RunPlan 파일 경로 | CLI가 command에 주입 |
+| `CLIER_MEMBER_ID` | 자신의 멤버 식별 | CLI가 command에 주입 |
 
-나머지(run_id, team_id, session, window, 다른 env vars)는 전부 RunPlan 파일 안에 있다.
-별도 env var 목록 불필요.
+run_id → `CLIER_RUN_PLAN` 파일명에서 추출. 별도 env var 불필요.
+session, window, 다른 env vars → 전부 RunPlan 파일 안에 있다.
+사용자가 RunPlan을 찾을 필요 없음 — 에이전트는 env var로, 사용자는 `clier run list`(서버 API)로 관리.
 
 #### `tell`과 `note`의 흐름
 
