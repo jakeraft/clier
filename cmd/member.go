@@ -22,13 +22,55 @@ func newMemberCmd() *cobra.Command {
 		Use:   "member",
 		Short: "Manage members",
 	}
-	cmd.AddCommand(newMemberCreateCmd())
 	cmd.AddCommand(newMemberListCmd())
-	cmd.AddCommand(newMemberUpdateCmd())
+	cmd.AddCommand(newMemberViewCmd())
+	cmd.AddCommand(newMemberCreateCmd())
+	cmd.AddCommand(newMemberEditCmd())
 	cmd.AddCommand(newMemberDeleteCmd())
+	cmd.AddCommand(newMemberForkCmd())
 	cmd.AddCommand(newMemberWorkspaceCmd())
 	cmd.AddCommand(newMemberRunCmd())
 	return cmd
+}
+
+func newMemberListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "list [owner]",
+		Short: "List members",
+		Long:  "List your members, or another user's members if [owner] is given.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newAPIClient()
+			var owner string
+			if len(args) == 1 {
+				owner = args[0]
+			} else {
+				owner = requireLogin()
+			}
+			members, err := client.ListMembers(owner)
+			if err != nil {
+				return err
+			}
+			return printJSON(members)
+		},
+	}
+}
+
+func newMemberViewCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "view <[owner/]name>",
+		Short: "View a member",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newAPIClient()
+			owner, name := parseOwnerName(args[0])
+			member, err := client.GetMember(owner, name)
+			if err != nil {
+				return err
+			}
+			return printJSON(member)
+		},
+	}
 }
 
 func newMemberCreateCmd() *cobra.Command {
@@ -36,12 +78,11 @@ func newMemberCreateCmd() *cobra.Command {
 	var skills []string
 
 	cmd := &cobra.Command{
-		Use:         "create",
-		Short:       "Create a member",
-
+		Use:   "create",
+		Short: "Create a member",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := resolveOwner()
+			owner := requireLogin()
 
 			body := map[string]any{
 				"name":    name,
@@ -72,7 +113,7 @@ func newMemberCreateCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Member name")
 	cmd.Flags().StringVar(&agentType, "agent-type", "", "Agent type (e.g. claude, codex)")
-	cmd.Flags().StringVar(&command, "command", "", "Command (binary + CLI flags, e.g. \"claude --dangerously-skip-permissions\")")
+	cmd.Flags().StringVar(&command, "command", "", "Command (binary + CLI flags)")
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "Claude md resource ID")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "Skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "Claude settings resource ID")
@@ -82,35 +123,17 @@ func newMemberCreateCmd() *cobra.Command {
 	return cmd
 }
 
-func newMemberListCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "list",
-		Short: "List all members",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			owner := resolveOwner()
-
-			members, err := client.ListMembers(owner)
-			if err != nil {
-				return err
-			}
-			return printJSON(members)
-		},
-	}
-}
-
-func newMemberUpdateCmd() *cobra.Command {
+func newMemberEditCmd() *cobra.Command {
 	var name, agentType, command, claudeMd, claudeSettings, repo string
 	var skills []string
 
 	cmd := &cobra.Command{
-		Use:         "update <name>",
-		Short:       "Update a member by name",
-
-		Args:        cobra.ExactArgs(1),
+		Use:   "edit <name>",
+		Short: "Edit a member",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := resolveOwner()
+			owner := requireLogin()
 
 			body := map[string]any{}
 			if cmd.Flags().Changed("name") {
@@ -143,10 +166,10 @@ func newMemberUpdateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New member name")
-	cmd.Flags().StringVar(&agentType, "agent-type", "", "New agent type (e.g. claude, codex)")
-	cmd.Flags().StringVar(&command, "command", "", "New command (binary + CLI flags)")
+	cmd.Flags().StringVar(&agentType, "agent-type", "", "New agent type")
+	cmd.Flags().StringVar(&command, "command", "", "New command")
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "New claude md resource ID")
-	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill IDs (comma-separated)")
+	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill IDs")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "New Claude settings resource ID")
 	cmd.Flags().StringVar(&repo, "repo", "", "New git repo URL")
 	return cmd
@@ -154,14 +177,12 @@ func newMemberUpdateCmd() *cobra.Command {
 
 func newMemberDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:         "delete <name>",
-		Short:       "Delete a member by name",
-
-		Args:        cobra.ExactArgs(1),
+		Use:   "delete <name>",
+		Short: "Delete a member",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := resolveOwner()
-
+			owner := requireLogin()
 			if err := client.DeleteMember(owner, args[0]); err != nil {
 				return err
 			}
@@ -170,16 +191,34 @@ func newMemberDeleteCmd() *cobra.Command {
 	}
 }
 
+func newMemberForkCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "fork <owner/name>",
+		Short: "Fork a member to your namespace",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newAPIClient()
+			_ = requireLogin()
+			owner, name := parseOwnerName(args[0])
+			resp, err := client.ForkMember(owner, name)
+			if err != nil {
+				return err
+			}
+			return printJSON(resp)
+		},
+	}
+}
+
 func newMemberWorkspaceCmd() *cobra.Command {
 	var dir string
 
 	cmd := &cobra.Command{
-		Use:   "workspace <member-name>",
+		Use:   "workspace <[owner/]name>",
 		Short: "Create workspace for a member",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := resolveOwner()
+			owner, name := parseOwnerName(args[0])
 			writer := appws.NewWriter(client, owner)
 
 			base := dir
@@ -187,12 +226,12 @@ func newMemberWorkspaceCmd() *cobra.Command {
 				base = "."
 			}
 
-			if err := writer.PrepareMember(base, args[0]); err != nil {
+			if err := writer.PrepareMember(base, name); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
 				"status": "prepared",
-				"member": args[0],
+				"member": name,
 				"dir":    base,
 			})
 		},
@@ -205,16 +244,15 @@ func newMemberRunCmd() *cobra.Command {
 	var dir string
 
 	cmd := &cobra.Command{
-		Use:   "run <member-name>",
+		Use:   "run <[owner/]name>",
 		Short: "Create workspace and run a single member",
 		Long: `Create workspace (idempotent) and run a single member.
 This prepares the workspace files and launches the agent in a tmux session.`,
-		Args:        cobra.ExactArgs(1),
-
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			memberID := args[0]
 			client := newAPIClient()
-			owner := resolveOwner()
+			owner, name := parseOwnerName(args[0])
+			_ = requireLogin()
 
 			base := dir
 			if base == "" {
@@ -225,22 +263,19 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 				return fmt.Errorf("resolve base path: %w", err)
 			}
 
-			// 1. Workspace (idempotent) -- skip if project dir already exists
 			projectDir := filepath.Join(absBase, "project")
 			if _, err := os.Stat(projectDir); os.IsNotExist(err) {
 				writer := appws.NewWriter(client, owner)
-				if err := writer.PrepareMember(absBase, memberID); err != nil {
+				if err := writer.PrepareMember(absBase, name); err != nil {
 					return fmt.Errorf("prepare workspace: %w", err)
 				}
 			}
 
-			// 2. Get member spec for command
-			member, err := client.GetMember(owner, memberID)
+			member, err := client.GetMember(owner, name)
 			if err != nil {
 				return fmt.Errorf("get member: %w", err)
 			}
 
-			// 3. Create Run on server
 			runResp, err := client.CreateRun(map[string]any{
 				"member_id": member.ID,
 			})
@@ -251,13 +286,11 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			runIDStr := strconv.FormatInt(runID, 10)
 			runName := apprun.SessionName(member.Name, runIDStr)
 
-			// 4. Build env vars + command
 			runPlanPath := filepath.Join(absBase, ".clier", runIDStr+".json")
 			envVars := buildMemberEnv(runID, member.ID, member.Name, runPlanPath, absBase)
 			projectPath := filepath.Join(absBase, "project")
 			fullCommand := buildFullCommand(envVars, member.Command, projectPath)
 
-			// 5. Build RunPlan
 			plan := &apprun.RunPlan{
 				Session: runName,
 				Members: []apprun.MemberTerminal{{
@@ -268,12 +301,10 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 				}},
 			}
 
-			// 6. Save .clier/{RUN_ID}.json
 			if err := apprun.SavePlan(absBase, runIDStr, plan); err != nil {
 				return fmt.Errorf("save plan: %w", err)
 			}
 
-			// 7. Launch tmux
 			term := terminal.NewTmuxTerminal(terminal.NewLocalRefStore(""))
 			domainPlans := []domain.MemberPlan{{
 				TeamMemberID: member.ID,
