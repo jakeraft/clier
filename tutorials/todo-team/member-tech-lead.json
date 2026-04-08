@@ -3,13 +3,10 @@
   "data": {
     "id": "c3030303-0001-4000-8000-000000000001",
     "name": "tech-lead",
-    "model": "claude-sonnet-4-6",
-    "args": ["--dangerously-skip-permissions"],
-    "agent_type": "claude",
+    "command": "claude --dangerously-skip-permissions",
     "claude_md_id": "a1010101-0001-4000-8000-000000000001",
     "skill_ids": ["f6060606-0001-4000-8000-000000000001"],
     "claude_settings_id": "e5050505-0001-4000-8000-000000000001",
-    "env_ids": [],
     "git_repo_url": "https://github.com/jakeraft/clier_todo.git"
   }
 }

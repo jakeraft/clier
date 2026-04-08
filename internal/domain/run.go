@@ -22,8 +22,8 @@ type Run struct {
 	Name   string    `json:"name"`
 	TeamID string    `json:"team_id"`
 	Status RunStatus `json:"status"`
-	// Plan retains {{CLIER_*}} placeholders as built. Safe for name/ID lookups;
-	// paths and commands require resolution before use.
+	// Plan holds concrete, fully-resolved MemberPlans built at Start() time.
+	// All paths are absolute; no placeholders remain.
 	Plan      []MemberPlan `json:"plan"`
 	StartedAt time.Time    `json:"started_at"`
 	StoppedAt *time.Time   `json:"stopped_at"`
@@ -136,10 +136,7 @@ func NewNote(runID, teamMemberID, content string) (*Note, error) {
 // MemberPlan is the execution plan for a single team member, built from resolved resources.
 // Binary, Model, Envs are NOT stored — they are already baked into Command.
 // Relations are NOT stored — they are in Team.Relations and baked into the prompt.
-//
-// Plan retains {{CLIER_*}} placeholders; these are expanded at run start
-// into concrete paths. The stored plan is safe for name/ID lookups but should
-// not be used to reconstruct the workspace without re-expanding placeholders.
+// All paths in MemberPlan are absolute and concrete, built at Start() time.
 type MemberPlan struct {
 	TeamMemberID string        `json:"team_member_id"`
 	MemberName   string        `json:"member_name"`

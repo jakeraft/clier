@@ -2,7 +2,7 @@ package runtime
 
 import "fmt"
 
-// ClaudeRuntime implements task.AgentRuntime for Claude Code.
+// ClaudeRuntime implements run.AgentRuntime for Claude Code.
 type ClaudeRuntime struct{}
 
 func (c *ClaudeRuntime) Binary() string { return "claude" }

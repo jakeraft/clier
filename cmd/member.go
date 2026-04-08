@@ -131,7 +131,7 @@ func newMemberUpdateCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New member name")
 	cmd.Flags().StringVar(&command, "command", "", "New command (binary + CLI flags)")
-	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "New agent dot md resource ID")
+	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "New claude md resource ID")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "New Claude settings resource ID")
 	cmd.Flags().StringVar(&repo, "repo", "", "New git repo URL")
