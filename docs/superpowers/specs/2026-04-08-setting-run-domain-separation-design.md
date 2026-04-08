@@ -357,6 +357,54 @@ run 시 CLI가 로컬에 생성하는 실행 계획. 사용자가 열어보면 t
 - tmux 세션명, 윈도우 번호, 각 멤버에 전송되는 전체 command 확인 가능
 - 실행 이력이 파일로 남음
 
+#### RunPlan이 단일 진실 공급원 (Single Source of Truth)
+
+RunPlan에 모든 실행 정보가 포함되므로, 에이전트에게 필요한 env var은 2개뿐:
+
+| Env Var | 용도 |
+|---|---|
+| `CLIER_RUN_PLAN` | RunPlan 파일 경로 (나머지 전부 여기서 조회) |
+| `CLIER_MEMBER_ID` | 자신의 멤버 식별 (RunPlan에 여러 멤버가 있으므로) |
+
+나머지(run_id, team_id, session, window, 다른 env vars)는 전부 RunPlan 파일 안에 있다.
+별도 env var 목록 불필요.
+
+#### `tell`과 `note`의 흐름
+
+```
+clier run tell --to worker-a <<'EOF'
+  이 파일 리뷰해줘
+EOF
+
+1. CLIER_RUN_PLAN, CLIER_MEMBER_ID 읽기 (env)
+2. RunPlan 파일 읽기 → run_id, session, members 확인
+3. "worker-a" → MemberTerminal 찾기 → session + window
+4. tmux send-keys → 해당 window에 메시지 전달
+5. POST /api/v1/runs/{run_id}/messages → 서버에 기록
+```
+
+```
+clier run note <<'EOF'
+  리뷰 완료
+EOF
+
+1. CLIER_RUN_PLAN, CLIER_MEMBER_ID 읽기 (env)
+2. RunPlan 파일 읽기 → run_id 확인
+3. POST /api/v1/runs/{run_id}/notes → 서버에 기록
+```
+
+#### RunPlan 사용 매트릭스
+
+| CLI 명령어 | RunPlan | 서버 API |
+|---|---|---|
+| `clier member run` | **생성** | POST /runs |
+| `clier run attach` | **읽기** (session 찾기) | - |
+| `clier run tell` | **읽기** (대상 window → send-keys) | POST /runs/{id}/messages |
+| `clier run note` | **읽기** (run_id 확인) | POST /runs/{id}/notes |
+| `clier run stop` | **읽기** (session → kill) | PATCH /runs/{id} |
+| `clier run list` | - | GET /runs |
+| `clier run logs` | - | GET /runs/{id} |
+
 ### Unified Workspace Layout
 
 `clier member workspace`와 `clier member run`이 동일한 디렉토리 구조를 사용한다.
@@ -446,10 +494,13 @@ clier member update myname/react-reviewer ...
 | 주입 | 시점 | 방식 | 확인 방법 |
 |---|---|---|---|
 | Team Protocol | workspace 생성 시 | 부모 디렉토리 CLAUDE.md 파일 | 파일 직접 확인 |
-| Env vars + command | run 시 | `.clier/{RUN_ID}.json`에 기록 후 tmux send-keys | `.clier/` 디렉토리 확인 |
+| RunPlan | run 시 | `.clier/{RUN_ID}.json` (tmux 구조, command, env 전부 포함) | `.clier/` 디렉토리 확인 |
+| `CLIER_RUN_PLAN` | run 시 | env var (RunPlan 파일 경로) | RunPlan의 command에 포함 |
+| `CLIER_MEMBER_ID` | run 시 | env var (자신의 멤버 ID) | RunPlan의 command에 포함 |
 | ~~.claude.json~~ | ~~삭제~~ | - | - |
 | ~~CLAUDE.md 머지~~ | ~~삭제~~ | - | - |
 | ~~.claude.json 머지~~ | ~~삭제~~ | - | - |
+| ~~별도 env var 목록~~ | ~~삭제~~ | RunPlan.command에 전부 포함 | - |
 
 ## 현재 대비 변경 요약
 
