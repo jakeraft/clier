@@ -15,16 +15,14 @@ const (
 	RunStopped RunStatus = "stopped"
 )
 
-// Run is an execution instance of a Team on a local machine.
-// Plan is built fresh at run start from the team's current state.
+// Run is an execution record of a Member or Team.
+// Execution plan is saved locally to .clier/{RUN_ID}.json.
+// Run stores only status and communication history (Messages, Notes).
 type Run struct {
 	ID     string    `json:"id"`
 	Name   string    `json:"name"`
 	TeamID string    `json:"team_id"`
 	Status RunStatus `json:"status"`
-	// Plan holds concrete, fully-resolved MemberPlans built at Start() time.
-	// All paths are absolute; no placeholders remain.
-	Plan      []MemberPlan `json:"plan"`
 	StartedAt time.Time    `json:"started_at"`
 	StoppedAt *time.Time   `json:"stopped_at"`
 }

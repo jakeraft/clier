@@ -29,7 +29,7 @@ Step 1. Import the todo-team resources
 
   clier import tutorials/todo-team
 
-  This loads all building blocks (claude-mds, skills, settings,
+  This loads all resources (claude-mds, skills, settings,
   members, and the team) into the server.
 
 Step 2. Check what was imported
@@ -37,12 +37,13 @@ Step 2. Check what was imported
   clier team list
   clier member list
 
-Step 3. Start a run
+Step 3. Run the team
 
-  clier run start <team-id>
+  clier team run default/todo-team
 
-  This clones the git repo for each member, sets up workspaces,
-  and launches all agents in tmux. Copy the run ID from the output.
+  This creates workspaces for each member, generates the
+  execution plan (.clier/{RUN_ID}.json), and launches all
+  agents in tmux. Copy the run ID from the output.
 
 Step 4. Give the team a job
 
@@ -58,7 +59,6 @@ Step 5. Watch them work
   clier run attach <run-id>        Watch agents in real time
   clier run notes <run-id>         Check progress notes
   clier run messages <run-id>      Check messages between agents
-  clier dashboard                  Open the dashboard
 
 Step 6. When done, stop the run
 

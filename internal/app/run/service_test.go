@@ -84,10 +84,6 @@ func TestService_Send(t *testing.T) {
 		ID:     "s-1",
 		TeamID: "t-1",
 		Status: domain.RunRunning,
-		Plan: []domain.MemberPlan{
-			{TeamMemberID: "m-1", MemberName: "alice"},
-			{TeamMemberID: "m-2", MemberName: "bob"},
-		},
 	}
 
 	t.Run("agent message includes sender name", func(t *testing.T) {
@@ -101,7 +97,7 @@ func TestService_Send(t *testing.T) {
 		if len(term.sent) != 1 {
 			t.Fatalf("expected 1 sent, got %d", len(term.sent))
 		}
-		want := "[Message from alice] hello"
+		want := "[Message from m-1] hello"
 		if term.sent[0] != want {
 			t.Errorf("sent = %q, want %q", term.sent[0], want)
 		}

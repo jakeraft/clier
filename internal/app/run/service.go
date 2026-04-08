@@ -63,20 +63,13 @@ func (s *Service) Stop(ctx context.Context, runID string) error {
 // Send delivers a message to the recipient's terminal, then persists it.
 // Delivery happens first so that a bad recipient fails before anything is saved.
 func (s *Service) Send(ctx context.Context, runID, fromTeamMemberID, toTeamMemberID, content string) error {
-	r, err := s.store.GetRun(ctx, runID)
-	if err != nil {
+	if _, err := s.store.GetRun(ctx, runID); err != nil {
 		return fmt.Errorf("get run: %w", err)
 	}
 
 	text := content
 	if fromTeamMemberID != "" {
 		senderName := fromTeamMemberID
-		for _, m := range r.Plan {
-			if m.TeamMemberID == fromTeamMemberID {
-				senderName = m.MemberName
-				break
-			}
-		}
 		text = fmt.Sprintf("[Message from %s] %s", senderName, content)
 	}
 

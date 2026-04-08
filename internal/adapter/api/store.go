@@ -36,7 +36,6 @@ func (s *Store) GetRun(_ context.Context, id string) (domain.Run, error) {
 		Name:      resp.Name,
 		TeamID:    resp.TeamID,
 		Status:    resp.Status,
-		Plan:      resp.Plan,
 		StartedAt: resp.StartedAt,
 		StoppedAt: resp.StoppedAt,
 	}, nil

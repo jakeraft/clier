@@ -9,13 +9,12 @@ import (
 
 // RunResponse is the server's JSON representation of a Run.
 type RunResponse struct {
-	ID        string             `json:"id"`
-	Name      string             `json:"name"`
-	TeamID    string             `json:"team_id"`
-	Status    domain.RunStatus   `json:"status"`
-	Plan      []domain.MemberPlan `json:"plan"`
-	StartedAt time.Time          `json:"started_at"`
-	StoppedAt *time.Time         `json:"stopped_at"`
+	ID        string           `json:"id"`
+	Name      string           `json:"name"`
+	TeamID    string           `json:"team_id"`
+	Status    domain.RunStatus `json:"status"`
+	StartedAt time.Time        `json:"started_at"`
+	StoppedAt *time.Time       `json:"stopped_at"`
 }
 
 // MessageResponse is the server's JSON representation of a Message.

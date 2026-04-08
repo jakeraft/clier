@@ -331,36 +331,20 @@ type claudeSettingsView struct {
 }
 
 type runView struct {
-	ID        string           `json:"id"`
-	Name      string           `json:"name"`
-	TeamID    string           `json:"teamId"`
-	TeamName  string           `json:"teamName"`
-	Status    string           `json:"status"`
-	Plan      []memberPlanView `json:"plan"`
-	Notes     []noteView       `json:"notes"`
-	Messages  []messageView    `json:"messages"`
-	StartedAt time.Time        `json:"startedAt"`
-	UpdatedAt time.Time        `json:"updatedAt"`
-}
-
-type memberPlanView struct {
-	TeamMemberID string                `json:"teamMemberId"`
-	MemberName   string                `json:"memberName"`
-	Memberspace  string                `json:"memberspace"`
-	Command      string                `json:"command"`
-	GitRepoURL   string                `json:"gitRepoUrl"`
-	Files        []memberPlanFileEntry `json:"files"`
-}
-
-type memberPlanFileEntry struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
+	ID        string        `json:"id"`
+	Name      string        `json:"name"`
+	TeamID    string        `json:"teamId"`
+	TeamName  string        `json:"teamName"`
+	Status    string        `json:"status"`
+	Notes     []noteView    `json:"notes"`
+	Messages  []messageView `json:"messages"`
+	StartedAt time.Time     `json:"startedAt"`
+	UpdatedAt time.Time     `json:"updatedAt"`
 }
 
 type noteView struct {
 	ID           string    `json:"id"`
 	TeamMemberID string    `json:"teamMemberId"`
-	MemberName   string    `json:"memberName"`
 	Content      string    `json:"content"`
 	CreatedAt    time.Time `json:"createdAt"`
 }
@@ -368,9 +352,7 @@ type noteView struct {
 type messageView struct {
 	ID               string    `json:"id"`
 	FromTeamMemberID string    `json:"fromTeamMemberId"`
-	FromMemberName   string    `json:"fromMemberName"`
 	ToTeamMemberID   string    `json:"toTeamMemberId"`
-	ToMemberName     string    `json:"toMemberName"`
 	Content          string    `json:"content"`
 	CreatedAt        time.Time `json:"createdAt"`
 }
@@ -387,34 +369,11 @@ func convertRuns(client *api.Client, runs []api.RunResponse, teamNames map[strin
 			return nil, err
 		}
 
-		// Build teamMemberID -> memberName map from plan
-		nameOf := make(map[string]string, len(r.Plan))
-		for _, mp := range r.Plan {
-			nameOf[mp.TeamMemberID] = mp.MemberName
-		}
-
-		planViews := make([]memberPlanView, 0, len(r.Plan))
-		for _, mp := range r.Plan {
-			files := make([]memberPlanFileEntry, 0, len(mp.Workspace.Files))
-			for _, f := range mp.Workspace.Files {
-				files = append(files, memberPlanFileEntry{Path: f.Path, Content: f.Content})
-			}
-			planViews = append(planViews, memberPlanView{
-				TeamMemberID: mp.TeamMemberID,
-				MemberName:   mp.MemberName,
-				Memberspace:  mp.Workspace.Memberspace,
-				Command:      mp.Terminal.Command,
-				GitRepoURL:   mp.Workspace.GitRepoURL,
-				Files:        files,
-			})
-		}
-
 		noteViews := make([]noteView, 0, len(notes))
 		for _, n := range notes {
 			noteViews = append(noteViews, noteView{
 				ID:           n.ID,
 				TeamMemberID: n.TeamMemberID,
-				MemberName:   nameOf[n.TeamMemberID],
 				Content:      n.Content,
 				CreatedAt:    n.CreatedAt,
 			})
@@ -425,9 +384,7 @@ func convertRuns(client *api.Client, runs []api.RunResponse, teamNames map[strin
 			msgViews = append(msgViews, messageView{
 				ID:               m.ID,
 				FromTeamMemberID: m.FromTeamMemberID,
-				FromMemberName:   nameOf[m.FromTeamMemberID],
 				ToTeamMemberID:   m.ToTeamMemberID,
-				ToMemberName:     nameOf[m.ToTeamMemberID],
 				Content:          m.Content,
 				CreatedAt:        m.CreatedAt,
 			})
@@ -444,7 +401,6 @@ func convertRuns(client *api.Client, runs []api.RunResponse, teamNames map[strin
 			TeamID:    r.TeamID,
 			TeamName:  teamNames[r.TeamID],
 			Status:    string(r.Status),
-			Plan:      planViews,
 			Notes:     noteViews,
 			Messages:  msgViews,
 			StartedAt: r.StartedAt,
