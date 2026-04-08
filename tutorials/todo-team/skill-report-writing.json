@@ -1,8 +1,0 @@
-{
-  "type": "skill",
-  "data": {
-    "id": "f6060606-0001-4000-8000-000000000001",
-    "name": "report-writing",
-    "content": "# Report Writing\n\nWhen writing a final report on a PR, follow this structure:\n\n## Structure\n\n1. **Summary** — One sentence describing the task that was requested.\n2. **Implementation** — What was actually implemented (files changed, approach taken).\n3. **Review** — Review outcome and any iterations that occurred.\n4. **Result** — Final status (approved/merged/pending).\n\n## Format\n\nWrite the report as a GitHub PR comment using:\n\n```bash\ngh pr comment <number> --body \"<report>\"\n```\n\nKeep it concise. Use bullet points. Include code snippets only if they clarify the change."
-  }
-}
