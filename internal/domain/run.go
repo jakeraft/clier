@@ -17,7 +17,7 @@ const (
 // Execution plan is saved locally to .clier/{RUN_ID}.json.
 // Run stores only status and communication history (Messages, Notes).
 type Run struct {
-	ID        string    `json:"id"`
+	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
 	UserID    int64     `json:"user_id"`
 	TeamID    *int64    `json:"team_id"`    // nullable
@@ -27,9 +27,8 @@ type Run struct {
 	StoppedAt *time.Time `json:"stopped_at"`
 }
 
-func NewRun(id, name string, teamID *int64, memberID *int64) (*Run, error) {
-	id = strings.TrimSpace(id)
-	if id == "" {
+func NewRun(id int64, name string, teamID *int64, memberID *int64) (*Run, error) {
+	if id == 0 {
 		return nil, errors.New("run id must not be empty")
 	}
 	name = strings.TrimSpace(name)
@@ -68,16 +67,16 @@ func (r *Run) Stop() {
 // Message represents an inter-member message within a run.
 // FromTeamMemberID is zero when the sender is not a team member.
 type Message struct {
-	ID               string    `json:"id"`
-	RunID            string    `json:"run_id"`
+	ID               int64     `json:"id"`
+	RunID            int64     `json:"run_id"`
 	FromTeamMemberID int64     `json:"from_team_member_id"`
 	ToTeamMemberID   int64     `json:"to_team_member_id"`
 	Content          string    `json:"content"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 
-func NewMessage(runID string, fromTeamMemberID, toTeamMemberID int64, content string) (*Message, error) {
-	if strings.TrimSpace(runID) == "" {
+func NewMessage(runID int64, fromTeamMemberID, toTeamMemberID int64, content string) (*Message, error) {
+	if runID == 0 {
 		return nil, errors.New("message run id must not be empty")
 	}
 	if toTeamMemberID == 0 {
@@ -99,15 +98,15 @@ func NewMessage(runID string, fromTeamMemberID, toTeamMemberID int64, content st
 
 // Note is a progress entry posted by a team member within a run.
 type Note struct {
-	ID           string    `json:"id"`
-	RunID        string    `json:"run_id"`
+	ID           int64     `json:"id"`
+	RunID        int64     `json:"run_id"`
 	TeamMemberID int64     `json:"team_member_id"`
 	Content      string    `json:"content"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-func NewNote(runID string, teamMemberID int64, content string) (*Note, error) {
-	if strings.TrimSpace(runID) == "" {
+func NewNote(runID int64, teamMemberID int64, content string) (*Note, error) {
+	if runID == 0 {
 		return nil, errors.New("note run id must not be empty")
 	}
 	if teamMemberID == 0 {

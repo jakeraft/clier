@@ -262,11 +262,12 @@ Each member gets its own tmux window within a single session.`,
 			if err != nil {
 				return fmt.Errorf("create run: %w", err)
 			}
-			runID := strconv.FormatInt(runResp.ID, 10)
-			runName := apprun.SessionName(team.Name, runID)
+			runID := runResp.ID
+			runIDStr := strconv.FormatInt(runID, 10)
+			runName := apprun.SessionName(team.Name, runIDStr)
 
 			// 4. Build RunPlan + domain plans
-			runPlanPath := filepath.Join(absBase, ".clier", runID+".json")
+			runPlanPath := filepath.Join(absBase, ".clier", runIDStr+".json")
 			var memberTerminals []apprun.MemberTerminal
 			var domainPlans []domain.MemberPlan
 
@@ -304,17 +305,17 @@ Each member gets its own tmux window within a single session.`,
 			}
 
 			// 5. Save .clier/{RUN_ID}.json
-			if err := apprun.SavePlan(absBase, runID, plan); err != nil {
+			if err := apprun.SavePlan(absBase, runIDStr, plan); err != nil {
 				return fmt.Errorf("save plan: %w", err)
 			}
 
 			// 6. Launch tmux
 			term := terminal.NewTmuxTerminal(terminal.NewLocalRefStore(""))
-			if err := term.Launch(runID, plan.Session, domainPlans); err != nil {
+			if err := term.Launch(runIDStr, plan.Session, domainPlans); err != nil {
 				return fmt.Errorf("launch: %w", err)
 			}
 
-			return printJSON(map[string]string{
+			return printJSON(map[string]any{
 				"run_id":  runID,
 				"session": plan.Session,
 			})

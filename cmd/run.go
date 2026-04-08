@@ -39,15 +39,20 @@ func newRunStopCmd() *cobra.Command {
 
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			runID, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid run id %q: %w", args[0], err)
+			}
+
 			store := newStore()
 			refs := terminal.NewLocalRefStore("")
 			term := terminal.NewTmuxTerminal(refs)
 			svc := run.New(store, term)
 
-			if err := svc.Stop(cmd.Context(), args[0]); err != nil {
+			if err := svc.Stop(cmd.Context(), runID); err != nil {
 				return err
 			}
-			return printJSON(map[string]string{"stopped": args[0]})
+			return printJSON(map[string]int64{"stopped": runID})
 		},
 	}
 }
@@ -161,9 +166,14 @@ func newRunNotesCmd() *cobra.Command {
 		Short: "List run notes",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			runID, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid run id %q: %w", args[0], err)
+			}
+
 			client := newAPIClient()
 
-			resp, err := client.GetRun(args[0])
+			resp, err := client.GetRun(runID)
 			if err != nil {
 				return err
 			}
@@ -178,9 +188,14 @@ func newRunMessagesCmd() *cobra.Command {
 		Short: "List run messages",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			runID, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid run id %q: %w", args[0], err)
+			}
+
 			client := newAPIClient()
 
-			resp, err := client.GetRun(args[0])
+			resp, err := client.GetRun(runID)
 			if err != nil {
 				return err
 			}
@@ -229,18 +244,22 @@ func readContent(args []string) (string, error) {
 
 // resolveRunContext resolves run ID and member ID from env vars set by clier.
 // CLIER_RUN_ID identifies the run, CLIER_MEMBER_ID identifies the sender (int64).
-func resolveRunContext(runFlag string) (runID string, memberID int64, err error) {
-	runID = runFlag
-	if runID == "" {
-		runID = os.Getenv("CLIER_RUN_ID")
+func resolveRunContext(runFlag string) (runID int64, memberID int64, err error) {
+	rawRunID := runFlag
+	if rawRunID == "" {
+		rawRunID = os.Getenv("CLIER_RUN_ID")
 	}
-	if runID == "" {
-		return "", 0, errors.New("--run flag or CLIER_RUN_ID must be set")
+	if rawRunID == "" {
+		return 0, 0, errors.New("--run flag or CLIER_RUN_ID must be set")
+	}
+	runID, err = strconv.ParseInt(rawRunID, 10, 64)
+	if err != nil {
+		return 0, 0, fmt.Errorf("run id is not a valid int64: %w", err)
 	}
 	if raw := os.Getenv("CLIER_MEMBER_ID"); raw != "" {
 		memberID, err = strconv.ParseInt(raw, 10, 64)
 		if err != nil {
-			return "", 0, fmt.Errorf("CLIER_MEMBER_ID is not a valid int64: %w", err)
+			return 0, 0, fmt.Errorf("CLIER_MEMBER_ID is not a valid int64: %w", err)
 		}
 	}
 	return runID, memberID, nil

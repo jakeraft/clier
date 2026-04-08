@@ -239,11 +239,12 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			if err != nil {
 				return fmt.Errorf("create run: %w", err)
 			}
-			runID := strconv.FormatInt(runResp.ID, 10)
-			runName := apprun.SessionName(member.Name, runID)
+			runID := runResp.ID
+			runIDStr := strconv.FormatInt(runID, 10)
+			runName := apprun.SessionName(member.Name, runIDStr)
 
 			// 4. Build env vars + command
-			runPlanPath := filepath.Join(absBase, ".clier", runID+".json")
+			runPlanPath := filepath.Join(absBase, ".clier", runIDStr+".json")
 			envVars := buildMemberEnv(runID, member.ID, member.Name, runPlanPath, absBase)
 			projectPath := filepath.Join(absBase, "project")
 			fullCommand := buildFullCommand(envVars, member.Command, projectPath)
@@ -260,7 +261,7 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			}
 
 			// 6. Save .clier/{RUN_ID}.json
-			if err := apprun.SavePlan(absBase, runID, plan); err != nil {
+			if err := apprun.SavePlan(absBase, runIDStr, plan); err != nil {
 				return fmt.Errorf("save plan: %w", err)
 			}
 
@@ -272,11 +273,11 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 				Terminal:     domain.TerminalPlan{Command: fullCommand},
 				Workspace:    domain.WorkspacePlan{Memberspace: absBase},
 			}}
-			if err := term.Launch(runID, plan.Session, domainPlans); err != nil {
+			if err := term.Launch(runIDStr, plan.Session, domainPlans); err != nil {
 				return fmt.Errorf("launch: %w", err)
 			}
 
-			return printJSON(map[string]string{
+			return printJSON(map[string]any{
 				"run_id":  runID,
 				"session": plan.Session,
 			})

@@ -21,8 +21,8 @@ type RunResponse struct {
 
 // MessageResponse is the server's JSON representation of a Message.
 type MessageResponse struct {
-	ID               string    `json:"id"`
-	RunID            string    `json:"run_id"`
+	ID               int64     `json:"id"`
+	RunID            int64     `json:"run_id"`
 	FromTeamMemberID int64     `json:"from_team_member_id"`
 	ToTeamMemberID   int64     `json:"to_team_member_id"`
 	Content          string    `json:"content"`
@@ -31,8 +31,8 @@ type MessageResponse struct {
 
 // NoteResponse is the server's JSON representation of a Note.
 type NoteResponse struct {
-	ID           string    `json:"id"`
-	RunID        string    `json:"run_id"`
+	ID           int64     `json:"id"`
+	RunID        int64     `json:"run_id"`
 	TeamMemberID int64     `json:"team_member_id"`
 	Content      string    `json:"content"`
 	CreatedAt    time.Time `json:"created_at"`
@@ -43,9 +43,9 @@ func (c *Client) CreateRun(body any) (*RunResponse, error) {
 	return &r, c.post("/api/v1/runs", body, &r)
 }
 
-func (c *Client) GetRun(id string) (*RunResponse, error) {
+func (c *Client) GetRun(id int64) (*RunResponse, error) {
 	var r RunResponse
-	return &r, c.get(fmt.Sprintf("/api/v1/runs/%s", id), &r)
+	return &r, c.get(fmt.Sprintf("/api/v1/runs/%d", id), &r)
 }
 
 func (c *Client) ListRuns() ([]RunResponse, error) {
@@ -53,20 +53,20 @@ func (c *Client) ListRuns() ([]RunResponse, error) {
 	return r, c.get("/api/v1/runs", &r)
 }
 
-func (c *Client) UpdateRunStatus(id string, body any) error {
-	return c.patch(fmt.Sprintf("/api/v1/runs/%s", id), body, nil)
+func (c *Client) UpdateRunStatus(id int64, body any) error {
+	return c.patch(fmt.Sprintf("/api/v1/runs/%d", id), body, nil)
 }
 
-func (c *Client) DeleteRun(id string) error {
-	return c.delete(fmt.Sprintf("/api/v1/runs/%s", id))
+func (c *Client) DeleteRun(id int64) error {
+	return c.delete(fmt.Sprintf("/api/v1/runs/%d", id))
 }
 
-func (c *Client) AddMessage(runID string, body any) (*MessageResponse, error) {
+func (c *Client) AddMessage(runID int64, body any) (*MessageResponse, error) {
 	var r MessageResponse
-	return &r, c.post(fmt.Sprintf("/api/v1/runs/%s/messages", runID), body, &r)
+	return &r, c.post(fmt.Sprintf("/api/v1/runs/%d/messages", runID), body, &r)
 }
 
-func (c *Client) AddNote(runID string, body any) (*NoteResponse, error) {
+func (c *Client) AddNote(runID int64, body any) (*NoteResponse, error) {
 	var r NoteResponse
-	return &r, c.post(fmt.Sprintf("/api/v1/runs/%s/notes", runID), body, &r)
+	return &r, c.post(fmt.Sprintf("/api/v1/runs/%d/notes", runID), body, &r)
 }

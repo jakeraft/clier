@@ -11,12 +11,12 @@ func TestNewRun(t *testing.T) {
 	memberID := int64(789)
 
 	t.Run("valid run with team", func(t *testing.T) {
-		run, err := domain.NewRun("run-123", "my-team-run-123", &teamID, nil)
+		run, err := domain.NewRun(123, "my-team-run-123", &teamID, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if run.ID != "run-123" {
-			t.Errorf("ID = %q, want %q", run.ID, "run-123")
+		if run.ID != 123 {
+			t.Errorf("ID = %d, want %d", run.ID, 123)
 		}
 		if run.Name != "my-team-run-123" {
 			t.Errorf("Name = %q, want %q", run.Name, "my-team-run-123")
@@ -36,7 +36,7 @@ func TestNewRun(t *testing.T) {
 	})
 
 	t.Run("valid run with member", func(t *testing.T) {
-		run, err := domain.NewRun("run-456", "member-run-456", nil, &memberID)
+		run, err := domain.NewRun(456, "member-run-456", nil, &memberID)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -48,22 +48,22 @@ func TestNewRun(t *testing.T) {
 		}
 	})
 
-	t.Run("empty id", func(t *testing.T) {
-		_, err := domain.NewRun("", "name", &teamID, nil)
+	t.Run("zero id", func(t *testing.T) {
+		_, err := domain.NewRun(0, "name", &teamID, nil)
 		if err == nil {
-			t.Fatal("expected error for empty ID")
+			t.Fatal("expected error for zero ID")
 		}
 	})
 
 	t.Run("empty name", func(t *testing.T) {
-		_, err := domain.NewRun("run-123", "", &teamID, nil)
+		_, err := domain.NewRun(123, "", &teamID, nil)
 		if err == nil {
 			t.Fatal("expected error for empty name")
 		}
 	})
 
 	t.Run("nil team and member allowed", func(t *testing.T) {
-		run, err := domain.NewRun("run-123", "name", nil, nil)
+		run, err := domain.NewRun(123, "name", nil, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -76,7 +76,7 @@ func TestNewRun(t *testing.T) {
 	})
 
 	t.Run("stop", func(t *testing.T) {
-		run, _ := domain.NewRun("run-123", "my-team-run-123", &teamID, nil)
+		run, _ := domain.NewRun(123, "my-team-run-123", &teamID, nil)
 		run.Stop()
 		if run.Status != domain.RunStopped {
 			t.Errorf("Status = %q, want %q", run.Status, domain.RunStopped)
@@ -109,13 +109,13 @@ func TestRunName(t *testing.T) {
 func TestMessage(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
 		t.Run("ValidInputs_SetsFields", func(t *testing.T) {
-			m, err := domain.NewMessage("run-1", 10, 20, "hello")
+			m, err := domain.NewMessage(1, 10, 20, "hello")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			// ID is empty — server assigns it.
-			if m.RunID != "run-1" {
-				t.Errorf("RunID = %q, want %q", m.RunID, "run-1")
+			// ID is zero — server assigns it.
+			if m.RunID != 1 {
+				t.Errorf("RunID = %d, want %d", m.RunID, 1)
 			}
 			if m.FromTeamMemberID != 10 {
 				t.Errorf("FromTeamMemberID = %d, want %d", m.FromTeamMemberID, 10)
@@ -131,22 +131,22 @@ func TestMessage(t *testing.T) {
 			}
 		})
 
-		t.Run("EmptyRunID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewMessage("", 10, 20, "hello")
+		t.Run("ZeroRunID_ReturnsError", func(t *testing.T) {
+			_, err := domain.NewMessage(0, 10, 20, "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
 		t.Run("ZeroToTeamMemberID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewMessage("run-1", 10, 0, "hello")
+			_, err := domain.NewMessage(1, 10, 0, "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
 		t.Run("ZeroFromTeamMemberID_Allowed", func(t *testing.T) {
-			m, err := domain.NewMessage("run-1", 0, 20, "hello")
+			m, err := domain.NewMessage(1, 0, 20, "hello")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -156,7 +156,7 @@ func TestMessage(t *testing.T) {
 		})
 
 		t.Run("EmptyContent_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewMessage("run-1", 10, 20, "  ")
+			_, err := domain.NewMessage(1, 10, 20, "  ")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -167,13 +167,13 @@ func TestMessage(t *testing.T) {
 func TestNote(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
 		t.Run("ValidInputs_SetsFields", func(t *testing.T) {
-			n, err := domain.NewNote("run-1", 42, "work started")
+			n, err := domain.NewNote(1, 42, "work started")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			// ID is empty — server assigns it.
-			if n.RunID != "run-1" {
-				t.Errorf("RunID = %q, want %q", n.RunID, "run-1")
+			// ID is zero — server assigns it.
+			if n.RunID != 1 {
+				t.Errorf("RunID = %d, want %d", n.RunID, 1)
 			}
 			if n.TeamMemberID != 42 {
 				t.Errorf("TeamMemberID = %d, want %d", n.TeamMemberID, 42)
@@ -186,22 +186,22 @@ func TestNote(t *testing.T) {
 			}
 		})
 
-		t.Run("EmptyRunID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewNote("", 42, "hello")
+		t.Run("ZeroRunID_ReturnsError", func(t *testing.T) {
+			_, err := domain.NewNote(0, 42, "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
 		t.Run("ZeroTeamMemberID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewNote("run-1", 0, "hello")
+			_, err := domain.NewNote(1, 0, "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
 		t.Run("EmptyContent_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewNote("run-1", 42, "  ")
+			_, err := domain.NewNote(1, 42, "  ")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
