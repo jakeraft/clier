@@ -11,13 +11,13 @@ import (
 )
 
 const createMessage = `-- name: CreateMessage :execresult
-INSERT INTO messages (id, task_id, from_team_member_id, to_team_member_id, content, created_at)
+INSERT INTO messages (id, run_id, from_team_member_id, to_team_member_id, content, created_at)
 VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateMessageParams struct {
 	ID               string
-	TaskID           string
+	RunID            string
 	FromTeamMemberID sql.NullString
 	ToTeamMemberID   string
 	Content          string
@@ -27,7 +27,7 @@ type CreateMessageParams struct {
 func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (sql.Result, error) {
 	return q.db.ExecContext(ctx, createMessage,
 		arg.ID,
-		arg.TaskID,
+		arg.RunID,
 		arg.FromTeamMemberID,
 		arg.ToTeamMemberID,
 		arg.Content,
@@ -35,20 +35,20 @@ func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (s
 	)
 }
 
-const listMessagesByTaskAndMember = `-- name: ListMessagesByTaskAndMember :many
-SELECT id, task_id, from_team_member_id, to_team_member_id, content, created_at FROM messages
-WHERE task_id = ? AND (from_team_member_id = ? OR to_team_member_id = ?)
+const listMessagesByRunAndMember = `-- name: ListMessagesByRunAndMember :many
+SELECT id, run_id, from_team_member_id, to_team_member_id, content, created_at FROM messages
+WHERE run_id = ? AND (from_team_member_id = ? OR to_team_member_id = ?)
 ORDER BY created_at
 `
 
-type ListMessagesByTaskAndMemberParams struct {
-	TaskID           string
+type ListMessagesByRunAndMemberParams struct {
+	RunID            string
 	FromTeamMemberID sql.NullString
 	ToTeamMemberID   string
 }
 
-func (q *Queries) ListMessagesByTaskAndMember(ctx context.Context, arg ListMessagesByTaskAndMemberParams) ([]Message, error) {
-	rows, err := q.db.QueryContext(ctx, listMessagesByTaskAndMember, arg.TaskID, arg.FromTeamMemberID, arg.ToTeamMemberID)
+func (q *Queries) ListMessagesByRunAndMember(ctx context.Context, arg ListMessagesByRunAndMemberParams) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, listMessagesByRunAndMember, arg.RunID, arg.FromTeamMemberID, arg.ToTeamMemberID)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (q *Queries) ListMessagesByTaskAndMember(ctx context.Context, arg ListMessa
 		var i Message
 		if err := rows.Scan(
 			&i.ID,
-			&i.TaskID,
+			&i.RunID,
 			&i.FromTeamMemberID,
 			&i.ToTeamMemberID,
 			&i.Content,
@@ -77,12 +77,12 @@ func (q *Queries) ListMessagesByTaskAndMember(ctx context.Context, arg ListMessa
 	return items, nil
 }
 
-const listMessagesByTaskID = `-- name: ListMessagesByTaskID :many
-SELECT id, task_id, from_team_member_id, to_team_member_id, content, created_at FROM messages WHERE task_id = ? ORDER BY created_at
+const listMessagesByRunID = `-- name: ListMessagesByRunID :many
+SELECT id, run_id, from_team_member_id, to_team_member_id, content, created_at FROM messages WHERE run_id = ? ORDER BY created_at
 `
 
-func (q *Queries) ListMessagesByTaskID(ctx context.Context, taskID string) ([]Message, error) {
-	rows, err := q.db.QueryContext(ctx, listMessagesByTaskID, taskID)
+func (q *Queries) ListMessagesByRunID(ctx context.Context, runID string) ([]Message, error) {
+	rows, err := q.db.QueryContext(ctx, listMessagesByRunID, runID)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +92,7 @@ func (q *Queries) ListMessagesByTaskID(ctx context.Context, taskID string) ([]Me
 		var i Message
 		if err := rows.Scan(
 			&i.ID,
-			&i.TaskID,
+			&i.RunID,
 			&i.FromTeamMemberID,
 			&i.ToTeamMemberID,
 			&i.Content,

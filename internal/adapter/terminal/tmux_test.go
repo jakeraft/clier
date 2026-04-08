@@ -33,23 +33,23 @@ func (f *fakeRunner) run(args ...string) (string, error) {
 
 // fakeRefStore is an in-memory RefStore for testing.
 type fakeRefStore struct {
-	refs map[string]map[string]map[string]string // taskID -> memberID -> refs
+	refs map[string]map[string]map[string]string // runID -> memberID -> refs
 }
 
 func newFakeRefStore() *fakeRefStore {
 	return &fakeRefStore{refs: make(map[string]map[string]map[string]string)}
 }
 
-func (f *fakeRefStore) SaveRefs(_ context.Context, taskID, memberID string, refs map[string]string) error {
-	if f.refs[taskID] == nil {
-		f.refs[taskID] = make(map[string]map[string]string)
+func (f *fakeRefStore) SaveRefs(_ context.Context, runID, memberID string, refs map[string]string) error {
+	if f.refs[runID] == nil {
+		f.refs[runID] = make(map[string]map[string]string)
 	}
-	f.refs[taskID][memberID] = refs
+	f.refs[runID][memberID] = refs
 	return nil
 }
 
-func (f *fakeRefStore) GetRefs(_ context.Context, taskID, memberID string) (map[string]string, error) {
-	if m, ok := f.refs[taskID]; ok {
+func (f *fakeRefStore) GetRefs(_ context.Context, runID, memberID string) (map[string]string, error) {
+	if m, ok := f.refs[runID]; ok {
 		if r, ok := m[memberID]; ok {
 			return r, nil
 		}
@@ -57,8 +57,8 @@ func (f *fakeRefStore) GetRefs(_ context.Context, taskID, memberID string) (map[
 	return nil, errors.New("not found")
 }
 
-func (f *fakeRefStore) GetTaskRefs(_ context.Context, taskID string) (map[string]string, error) {
-	if m, ok := f.refs[taskID]; ok {
+func (f *fakeRefStore) GetRunRefs(_ context.Context, runID string) (map[string]string, error) {
+	if m, ok := f.refs[runID]; ok {
 		for _, r := range m {
 			return r, nil
 		}
@@ -66,14 +66,14 @@ func (f *fakeRefStore) GetTaskRefs(_ context.Context, taskID string) (map[string
 	return nil, errors.New("not found")
 }
 
-func (f *fakeRefStore) DeleteRefs(_ context.Context, taskID string) error {
-	delete(f.refs, taskID)
+func (f *fakeRefStore) DeleteRefs(_ context.Context, runID string) error {
+	delete(f.refs, runID)
 	return nil
 }
 
 func TestTmuxTerminal_Launch(t *testing.T) {
 	runner := &fakeRunner{output: map[string]string{
-		"list-windows":  "0",
+		"list-windows":    "0",
 		"display-message": "✳ Claude Code",
 	}}
 	store := newFakeRefStore()
@@ -105,9 +105,9 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	if renameCount != 2 {
 		t.Errorf("expected 2 rename-window calls, got %d", renameCount)
 	}
-	// Verify task ID stored in tmux server env
-	if !hasCall(runner.calls, "set-environment -g CLIER_TASK_my-team s-1") {
-		t.Error("expected set-environment call for task env")
+	// Verify run ID stored in tmux server env
+	if !hasCall(runner.calls, "set-environment -g CLIER_RUN_my-team s-1") {
+		t.Error("expected set-environment call for run env")
 	}
 	// Verify command sent to first member
 	if !hasCall(runner.calls, "send-keys") {

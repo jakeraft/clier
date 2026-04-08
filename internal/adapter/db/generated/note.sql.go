@@ -11,13 +11,13 @@ import (
 )
 
 const createNote = `-- name: CreateNote :execresult
-INSERT INTO notes (id, task_id, team_member_id, content, created_at)
+INSERT INTO notes (id, run_id, team_member_id, content, created_at)
 VALUES (?, ?, ?, ?, ?)
 `
 
 type CreateNoteParams struct {
 	ID           string
-	TaskID       string
+	RunID        string
 	TeamMemberID string
 	Content      string
 	CreatedAt    int64
@@ -26,19 +26,19 @@ type CreateNoteParams struct {
 func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (sql.Result, error) {
 	return q.db.ExecContext(ctx, createNote,
 		arg.ID,
-		arg.TaskID,
+		arg.RunID,
 		arg.TeamMemberID,
 		arg.Content,
 		arg.CreatedAt,
 	)
 }
 
-const listNotesByTaskID = `-- name: ListNotesByTaskID :many
-SELECT id, task_id, team_member_id, content, created_at FROM notes WHERE task_id = ? ORDER BY created_at
+const listNotesByRunID = `-- name: ListNotesByRunID :many
+SELECT id, run_id, team_member_id, content, created_at FROM notes WHERE run_id = ? ORDER BY created_at
 `
 
-func (q *Queries) ListNotesByTaskID(ctx context.Context, taskID string) ([]Note, error) {
-	rows, err := q.db.QueryContext(ctx, listNotesByTaskID, taskID)
+func (q *Queries) ListNotesByRunID(ctx context.Context, runID string) ([]Note, error) {
+	rows, err := q.db.QueryContext(ctx, listNotesByRunID, runID)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (q *Queries) ListNotesByTaskID(ctx context.Context, taskID string) ([]Note,
 		var i Note
 		if err := rows.Scan(
 			&i.ID,
-			&i.TaskID,
+			&i.RunID,
 			&i.TeamMemberID,
 			&i.Content,
 			&i.CreatedAt,

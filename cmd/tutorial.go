@@ -37,16 +37,16 @@ Step 2. Check what was imported
   clier team list
   clier member list
 
-Step 3. Start a task
+Step 3. Start a run
 
-  clier task start <team-id>
+  clier run start <team-id>
 
   This clones the git repo for each member, sets up workspaces,
-  and launches all agents in tmux. Copy the task ID from the output.
+  and launches all agents in tmux. Copy the run ID from the output.
 
 Step 4. Give the team a job
 
-  clier task tell --task <task-id> --to <root-member-id> \
+  clier run tell --run <run-id> --to <root-member-id> \
     "Add a list --done flag to filter completed todos."
 
   The tech-lead plans the work, the coder implements it on a branch,
@@ -55,14 +55,14 @@ Step 4. Give the team a job
 
 Step 5. Watch them work
 
-  clier task attach <task-id>        Watch agents in real time
-  clier task notes <task-id>         Check progress notes
-  clier task messages <task-id>      Check messages between agents
-  clier dashboard                    Open the dashboard
+  clier run attach <run-id>        Watch agents in real time
+  clier run notes <run-id>         Check progress notes
+  clier run messages <run-id>      Check messages between agents
+  clier dashboard                  Open the dashboard
 
-Step 6. When done, stop the task
+Step 6. When done, stop the run
 
-  clier task stop <task-id>
+  clier run stop <run-id>
 
 Step 7. See the result
 

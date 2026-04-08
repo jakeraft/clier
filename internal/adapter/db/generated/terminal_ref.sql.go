@@ -11,20 +11,20 @@ import (
 )
 
 const deleteTerminalRefs = `-- name: DeleteTerminalRefs :execresult
-DELETE FROM terminal_refs WHERE task_id = ?
+DELETE FROM terminal_refs WHERE run_id = ?
 `
 
-func (q *Queries) DeleteTerminalRefs(ctx context.Context, taskID string) (sql.Result, error) {
-	return q.db.ExecContext(ctx, deleteTerminalRefs, taskID)
+func (q *Queries) DeleteTerminalRefs(ctx context.Context, runID string) (sql.Result, error) {
+	return q.db.ExecContext(ctx, deleteTerminalRefs, runID)
 }
 
-const getTaskTerminalRefs = `-- name: GetTaskTerminalRefs :one
+const getRunTerminalRefs = `-- name: GetRunTerminalRefs :one
 SELECT refs FROM terminal_refs
-WHERE task_id = ? LIMIT 1
+WHERE run_id = ? LIMIT 1
 `
 
-func (q *Queries) GetTaskTerminalRefs(ctx context.Context, taskID string) (string, error) {
-	row := q.db.QueryRowContext(ctx, getTaskTerminalRefs, taskID)
+func (q *Queries) GetRunTerminalRefs(ctx context.Context, runID string) (string, error) {
+	row := q.db.QueryRowContext(ctx, getRunTerminalRefs, runID)
 	var refs string
 	err := row.Scan(&refs)
 	return refs, err
@@ -32,33 +32,33 @@ func (q *Queries) GetTaskTerminalRefs(ctx context.Context, taskID string) (strin
 
 const getTerminalRefs = `-- name: GetTerminalRefs :one
 SELECT refs FROM terminal_refs
-WHERE task_id = ? AND team_member_id = ?
+WHERE run_id = ? AND team_member_id = ?
 `
 
 type GetTerminalRefsParams struct {
-	TaskID       string
+	RunID        string
 	TeamMemberID string
 }
 
 func (q *Queries) GetTerminalRefs(ctx context.Context, arg GetTerminalRefsParams) (string, error) {
-	row := q.db.QueryRowContext(ctx, getTerminalRefs, arg.TaskID, arg.TeamMemberID)
+	row := q.db.QueryRowContext(ctx, getTerminalRefs, arg.RunID, arg.TeamMemberID)
 	var refs string
 	err := row.Scan(&refs)
 	return refs, err
 }
 
 const saveTerminalRefs = `-- name: SaveTerminalRefs :execresult
-INSERT INTO terminal_refs (task_id, team_member_id, refs)
+INSERT INTO terminal_refs (run_id, team_member_id, refs)
 VALUES (?, ?, ?)
-ON CONFLICT (task_id, team_member_id) DO UPDATE SET refs = excluded.refs
+ON CONFLICT (run_id, team_member_id) DO UPDATE SET refs = excluded.refs
 `
 
 type SaveTerminalRefsParams struct {
-	TaskID       string
+	RunID        string
 	TeamMemberID string
 	Refs         string
 }
 
 func (q *Queries) SaveTerminalRefs(ctx context.Context, arg SaveTerminalRefsParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, saveTerminalRefs, arg.TaskID, arg.TeamMemberID, arg.Refs)
+	return q.db.ExecContext(ctx, saveTerminalRefs, arg.RunID, arg.TeamMemberID, arg.Refs)
 }

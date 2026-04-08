@@ -1,4 +1,4 @@
-package task
+package run
 
 import (
 	"context"
@@ -130,7 +130,7 @@ func TestBuildPlans(t *testing.T) {
 		t.Fatalf("resolveTeam: %v", err)
 	}
 
-	plans := buildPlans(resolved, "test-task", runtimes)
+	plans := buildPlans(resolved, "test-run", runtimes)
 
 	if len(plans) != 2 {
 		t.Fatalf("plans = %d members, want 2", len(plans))

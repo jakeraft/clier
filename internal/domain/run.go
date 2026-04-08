@@ -8,82 +8,82 @@ import (
 	"github.com/google/uuid"
 )
 
-type TaskStatus string
+type RunStatus string
 
 const (
-	TaskRunning TaskStatus = "running"
-	TaskStopped TaskStatus = "stopped"
+	RunRunning RunStatus = "running"
+	RunStopped RunStatus = "stopped"
 )
 
-// Task is an execution instance of a Team on a local machine.
-// Plan is built fresh at task start from the team's current state.
-type Task struct {
-	ID     string     `json:"id"`
-	Name   string     `json:"name"`
-	TeamID string     `json:"team_id"`
-	Status TaskStatus `json:"status"`
+// Run is an execution instance of a Team on a local machine.
+// Plan is built fresh at run start from the team's current state.
+type Run struct {
+	ID     string    `json:"id"`
+	Name   string    `json:"name"`
+	TeamID string    `json:"team_id"`
+	Status RunStatus `json:"status"`
 	// Plan retains {{CLIER_*}} placeholders as built. Safe for name/ID lookups;
 	// paths and commands require resolution before use.
 	Plan      []MemberPlan `json:"plan"`
-	CreatedAt time.Time    `json:"created_at"`
+	StartedAt time.Time    `json:"started_at"`
 	StoppedAt *time.Time   `json:"stopped_at"`
 }
 
-func NewTask(id, name, teamID string) (*Task, error) {
+func NewRun(id, name, teamID string) (*Run, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
-		return nil, errors.New("task id must not be empty")
+		return nil, errors.New("run id must not be empty")
 	}
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, errors.New("task name must not be empty")
+		return nil, errors.New("run name must not be empty")
 	}
 	teamID = strings.TrimSpace(teamID)
 	if teamID == "" {
 		return nil, errors.New("team id must not be empty")
 	}
-	return &Task{
+	return &Run{
 		ID:        id,
 		Name:      name,
 		TeamID:    teamID,
-		Status:    TaskRunning,
-		CreatedAt: time.Now(),
+		Status:    RunRunning,
+		StartedAt: time.Now(),
 	}, nil
 }
 
-// TaskName generates a task name from team name and task ID.
-func TaskName(teamName, taskID string) string {
+// RunName generates a run name from team name and run ID.
+func RunName(teamName, runID string) string {
 	name := strings.NewReplacer(".", "-", ":", "-", " ", "-").Replace(teamName)
 	if len(name) > 20 {
 		name = name[:20]
 	}
-	short := taskID
+	short := runID
 	if len(short) > 8 {
 		short = short[:8]
 	}
 	return name + "-" + short
 }
 
-func (t *Task) Stop() {
+func (r *Run) Stop() {
 	now := time.Now()
-	t.Status = TaskStopped
-	t.StoppedAt = &now
+	r.Status = RunStopped
+	r.StoppedAt = &now
 }
 
-// Message represents an inter-member message within a task.
+// Message represents an inter-member message within a run.
 // FromTeamMemberID is nullable — empty when the sender is not a team member.
 type Message struct {
 	ID               string    `json:"id"`
-	TaskID           string    `json:"task_id"`
+	RunID            string    `json:"run_id"`
 	FromTeamMemberID string    `json:"from_team_member_id"`
 	ToTeamMemberID   string    `json:"to_team_member_id"`
 	Content          string    `json:"content"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 
-func NewMessage(taskID, fromTeamMemberID, toTeamMemberID, content string) (*Message, error) {
-	if strings.TrimSpace(taskID) == "" {
-		return nil, errors.New("message task id must not be empty")
+func NewMessage(runID, fromTeamMemberID, toTeamMemberID, content string) (*Message, error) {
+	if strings.TrimSpace(runID) == "" {
+		return nil, errors.New("message run id must not be empty")
 	}
 	if strings.TrimSpace(toTeamMemberID) == "" {
 		return nil, errors.New("message recipient must not be empty")
@@ -95,7 +95,7 @@ func NewMessage(taskID, fromTeamMemberID, toTeamMemberID, content string) (*Mess
 
 	return &Message{
 		ID:               uuid.NewString(),
-		TaskID:           taskID,
+		RunID:            runID,
 		FromTeamMemberID: fromTeamMemberID,
 		ToTeamMemberID:   toTeamMemberID,
 		Content:          content,
@@ -103,18 +103,18 @@ func NewMessage(taskID, fromTeamMemberID, toTeamMemberID, content string) (*Mess
 	}, nil
 }
 
-// Note is a progress entry posted by a team member within a task.
+// Note is a progress entry posted by a team member within a run.
 type Note struct {
 	ID           string    `json:"id"`
-	TaskID       string    `json:"task_id"`
+	RunID        string    `json:"run_id"`
 	TeamMemberID string    `json:"team_member_id"`
 	Content      string    `json:"content"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-func NewNote(taskID, teamMemberID, content string) (*Note, error) {
-	if strings.TrimSpace(taskID) == "" {
-		return nil, errors.New("note task id must not be empty")
+func NewNote(runID, teamMemberID, content string) (*Note, error) {
+	if strings.TrimSpace(runID) == "" {
+		return nil, errors.New("note run id must not be empty")
 	}
 	if strings.TrimSpace(teamMemberID) == "" {
 		return nil, errors.New("note team member id must not be empty")
@@ -126,7 +126,7 @@ func NewNote(taskID, teamMemberID, content string) (*Note, error) {
 
 	return &Note{
 		ID:           uuid.NewString(),
-		TaskID:       taskID,
+		RunID:        runID,
 		TeamMemberID: teamMemberID,
 		Content:      content,
 		CreatedAt:    time.Now(),
@@ -137,7 +137,7 @@ func NewNote(taskID, teamMemberID, content string) (*Note, error) {
 // Binary, Model, Envs are NOT stored — they are already baked into Command.
 // Relations are NOT stored — they are in Team.Relations and baked into the prompt.
 //
-// Plan retains {{CLIER_*}} placeholders; these are expanded at task start
+// Plan retains {{CLIER_*}} placeholders; these are expanded at run start
 // into concrete paths. The stored plan is safe for name/ID lookups but should
 // not be used to reconstruct the workspace without re-expanding placeholders.
 type MemberPlan struct {

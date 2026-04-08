@@ -1,4 +1,4 @@
-package task
+package run
 
 import (
 	"strings"
@@ -9,13 +9,13 @@ import (
 // expandPlaceholders replaces all {{CLIER_*}} placeholders in a MemberPlan
 // and expands ~/ paths to the user's home directory.
 // This is the expand phase: plan with placeholders -> plan with concrete paths.
-func expandPlaceholders(m domain.MemberPlan, base, homeDir, taskID, authToken string) domain.MemberPlan {
+func expandPlaceholders(m domain.MemberPlan, base, homeDir, runID, authToken string) domain.MemberPlan {
 	memberspace := strings.ReplaceAll(m.Workspace.Memberspace, PlaceholderBase, base)
-	memberspace = strings.ReplaceAll(memberspace, PlaceholderTaskID, taskID)
+	memberspace = strings.ReplaceAll(memberspace, PlaceholderRunID, runID)
 
 	replacer := strings.NewReplacer(
 		PlaceholderMemberspace, memberspace,
-		PlaceholderTaskID, taskID,
+		PlaceholderRunID, runID,
 		PlaceholderAuthClaude, authToken,
 	)
 

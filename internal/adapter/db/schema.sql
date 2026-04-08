@@ -61,19 +61,19 @@ CREATE TABLE IF NOT EXISTS team_relations (
     PRIMARY KEY (team_id, from_team_member_id, to_team_member_id)
 );
 
-CREATE TABLE IF NOT EXISTS tasks (
+CREATE TABLE IF NOT EXISTS runs (
     id            TEXT PRIMARY KEY,
     name          TEXT NOT NULL DEFAULT '',
     team_id       TEXT NOT NULL REFERENCES teams(id) ON DELETE RESTRICT,
     status        TEXT NOT NULL DEFAULT 'running',
     plan          TEXT NOT NULL DEFAULT '[]',
-    created_at    INTEGER NOT NULL,
+    started_at    INTEGER NOT NULL,
     stopped_at    INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS messages (
     id                    TEXT PRIMARY KEY,
-    task_id               TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    run_id                TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
     from_team_member_id   TEXT,
     to_team_member_id     TEXT NOT NULL,
     content               TEXT NOT NULL,
@@ -82,15 +82,15 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE TABLE IF NOT EXISTS notes (
     id              TEXT PRIMARY KEY,
-    task_id         TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    run_id          TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
     team_member_id  TEXT NOT NULL,
     content         TEXT NOT NULL,
     created_at      INTEGER NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS terminal_refs (
-    task_id        TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    run_id         TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
     team_member_id TEXT NOT NULL,
     refs           TEXT NOT NULL DEFAULT '{}',
-    PRIMARY KEY (task_id, team_member_id)
+    PRIMARY KEY (run_id, team_member_id)
 );

@@ -42,7 +42,7 @@ type MemberSkill struct {
 
 type Message struct {
 	ID               string
-	TaskID           string
+	RunID            string
 	FromTeamMemberID sql.NullString
 	ToTeamMemberID   string
 	Content          string
@@ -51,10 +51,20 @@ type Message struct {
 
 type Note struct {
 	ID           string
-	TaskID       string
+	RunID        string
 	TeamMemberID string
 	Content      string
 	CreatedAt    int64
+}
+
+type Run struct {
+	ID        string
+	Name      string
+	TeamID    string
+	Status    string
+	Plan      string
+	StartedAt int64
+	StoppedAt sql.NullInt64
 }
 
 type Skill struct {
@@ -63,16 +73,6 @@ type Skill struct {
 	Content   string
 	CreatedAt int64
 	UpdatedAt int64
-}
-
-type Task struct {
-	ID        string
-	Name      string
-	TeamID    string
-	Status    string
-	Plan      string
-	CreatedAt int64
-	StoppedAt sql.NullInt64
 }
 
 type Team struct {
@@ -97,7 +97,7 @@ type TeamRelation struct {
 }
 
 type TerminalRef struct {
-	TaskID       string
+	RunID        string
 	TeamMemberID string
 	Refs         string
 }

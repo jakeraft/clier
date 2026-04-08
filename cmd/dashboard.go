@@ -101,7 +101,7 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 	if err != nil {
 		return dashboardData{}, err
 	}
-	tasks, err := store.ListTasks(ctx)
+	runs, err := store.ListRuns(ctx)
 	if err != nil {
 		return dashboardData{}, err
 	}
@@ -111,7 +111,7 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 	claudeSettingsNames := nameMap(claudeSettingsList, func(s resource.ClaudeSettings) (string, string) { return s.ID, s.Name })
 	teamNames := nameMap(teams, func(t domain.Team) (string, string) { return t.ID, t.Name })
 
-	taskViews, err := convertTasks(ctx, store, tasks, teamNames)
+	runViews, err := convertRuns(ctx, store, runs, teamNames)
 	if err != nil {
 		return dashboardData{}, err
 	}
@@ -119,10 +119,10 @@ func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, 
 	return dashboardData{
 		Teams:          convertTeams(teams),
 		Members:        convertMembers(members, claudeMdNames, skillNames, claudeSettingsNames),
-		ClaudeMds:    convertClaudeMds(claudeMds),
+		ClaudeMds:      convertClaudeMds(claudeMds),
 		Skills:         convertSkills(skills),
 		ClaudeSettings: convertClaudeSettings(claudeSettingsList),
-		Tasks:          taskViews,
+		Runs:           runViews,
 	}, nil
 }
 
@@ -265,10 +265,10 @@ func convertClaudeSettings(items []resource.ClaudeSettings) []claudeSettingsView
 type dashboardData struct {
 	Teams          []teamView           `json:"teams"`
 	Members        []memberView         `json:"members"`
-	ClaudeMds    []claudeMdView     `json:"claudeMds"`
+	ClaudeMds      []claudeMdView       `json:"claudeMds"`
 	Skills         []skillView          `json:"skills"`
 	ClaudeSettings []claudeSettingsView `json:"claudeSettings"`
-	Tasks          []taskView           `json:"tasks"`
+	Runs           []runView            `json:"runs"`
 }
 
 type teamMemberView struct {
@@ -334,7 +334,7 @@ type claudeSettingsView struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-type taskView struct {
+type runView struct {
 	ID        string           `json:"id"`
 	Name      string           `json:"name"`
 	TeamID    string           `json:"teamId"`
@@ -343,7 +343,7 @@ type taskView struct {
 	Plan      []memberPlanView `json:"plan"`
 	Notes     []noteView       `json:"notes"`
 	Messages  []messageView    `json:"messages"`
-	CreatedAt time.Time        `json:"createdAt"`
+	StartedAt time.Time        `json:"startedAt"`
 	UpdatedAt time.Time        `json:"updatedAt"`
 }
 
@@ -379,26 +379,26 @@ type messageView struct {
 	CreatedAt        time.Time `json:"createdAt"`
 }
 
-func convertTasks(ctx context.Context, store *db.Store, tasks []domain.Task, teamNames map[string]string) ([]taskView, error) {
-	views := make([]taskView, 0, len(tasks))
-	for _, t := range tasks {
-		notes, err := store.ListNotesByTaskID(ctx, t.ID)
+func convertRuns(ctx context.Context, store *db.Store, runs []domain.Run, teamNames map[string]string) ([]runView, error) {
+	views := make([]runView, 0, len(runs))
+	for _, r := range runs {
+		notes, err := store.ListNotesByRunID(ctx, r.ID)
 		if err != nil {
 			return nil, err
 		}
-		msgs, err := store.ListMessagesByTaskID(ctx, t.ID)
+		msgs, err := store.ListMessagesByRunID(ctx, r.ID)
 		if err != nil {
 			return nil, err
 		}
 
 		// Build teamMemberID -> memberName map from plan
-		nameOf := make(map[string]string, len(t.Plan))
-		for _, mp := range t.Plan {
+		nameOf := make(map[string]string, len(r.Plan))
+		for _, mp := range r.Plan {
 			nameOf[mp.TeamMemberID] = mp.MemberName
 		}
 
-		planViews := make([]memberPlanView, 0, len(t.Plan))
-		for _, mp := range t.Plan {
+		planViews := make([]memberPlanView, 0, len(r.Plan))
+		for _, mp := range r.Plan {
 			files := make([]memberPlanFileEntry, 0, len(mp.Workspace.Files))
 			for _, f := range mp.Workspace.Files {
 				files = append(files, memberPlanFileEntry{Path: f.Path, Content: f.Content})
@@ -437,21 +437,21 @@ func convertTasks(ctx context.Context, store *db.Store, tasks []domain.Task, tea
 			})
 		}
 
-		updatedAt := t.CreatedAt
-		if t.StoppedAt != nil {
-			updatedAt = *t.StoppedAt
+		updatedAt := r.StartedAt
+		if r.StoppedAt != nil {
+			updatedAt = *r.StoppedAt
 		}
 
-		views = append(views, taskView{
-			ID:        t.ID,
-			Name:      t.Name,
-			TeamID:    t.TeamID,
-			TeamName:  teamNames[t.TeamID],
-			Status:    string(t.Status),
+		views = append(views, runView{
+			ID:        r.ID,
+			Name:      r.Name,
+			TeamID:    r.TeamID,
+			TeamName:  teamNames[r.TeamID],
+			Status:    string(r.Status),
 			Plan:      planViews,
 			Notes:     noteViews,
 			Messages:  msgViews,
-			CreatedAt: t.CreatedAt,
+			StartedAt: r.StartedAt,
 			UpdatedAt: updatedAt,
 		})
 	}

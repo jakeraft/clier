@@ -1,6 +1,6 @@
 -- name: CreateNote :execresult
-INSERT INTO notes (id, task_id, team_member_id, content, created_at)
+INSERT INTO notes (id, run_id, team_member_id, content, created_at)
 VALUES (?, ?, ?, ?, ?);
 
--- name: ListNotesByTaskID :many
-SELECT * FROM notes WHERE task_id = ? ORDER BY created_at;
+-- name: ListNotesByRunID :many
+SELECT * FROM notes WHERE run_id = ? ORDER BY created_at;

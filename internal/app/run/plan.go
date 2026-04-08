@@ -1,4 +1,4 @@
-package task
+package run
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 const (
 	PlaceholderBase        = "{{CLIER_BASE}}"
 	PlaceholderMemberspace = "{{CLIER_MEMBERSPACE}}"
-	PlaceholderTaskID      = "{{CLIER_TASK_ID}}"
+	PlaceholderRunID       = "{{CLIER_RUN_ID}}"
 	PlaceholderAuthClaude  = "{{CLIER_AUTH_CLAUDE}}"
 )
 
@@ -80,7 +80,7 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 
 // buildPlans constructs MemberPlans from a resolved team.
 // This is the build phase: resolved objects -> execution plan with placeholders.
-func buildPlans(resolved *domain.ResolvedTeam, taskID string, runtimes map[string]AgentRuntime) []domain.MemberPlan {
+func buildPlans(resolved *domain.ResolvedTeam, runID string, runtimes map[string]AgentRuntime) []domain.MemberPlan {
 	nameByID := make(map[string]string, len(resolved.Members))
 	for _, rm := range resolved.Members {
 		nameByID[rm.TeamMemberID] = rm.Name
@@ -88,7 +88,7 @@ func buildPlans(resolved *domain.ResolvedTeam, taskID string, runtimes map[strin
 
 	plans := make([]domain.MemberPlan, 0, len(resolved.Members))
 	for _, rm := range resolved.Members {
-		plan := buildMemberPlan(&rm, nameByID, resolved.Name, taskID, runtimes)
+		plan := buildMemberPlan(&rm, nameByID, resolved.Name, runID, runtimes)
 		plans = append(plans, plan)
 	}
 	return plans
@@ -96,8 +96,8 @@ func buildPlans(resolved *domain.ResolvedTeam, taskID string, runtimes map[strin
 
 // buildMemberPlan constructs a single MemberPlan from a resolved member.
 // This is the transparent facade: each building block and its destination is visible.
-func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, teamName, taskID string, runtimes map[string]AgentRuntime) domain.MemberPlan {
-	memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, PlaceholderTaskID, rm.TeamMemberID)
+func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, teamName, runID string, runtimes map[string]AgentRuntime) domain.MemberPlan {
+	memberspace := fmt.Sprintf("%s/%s/%s", PlaceholderBase, PlaceholderRunID, rm.TeamMemberID)
 
 	// Detect agent type from the first word of Command (e.g. "claude", "codex").
 	binary := strings.Fields(rm.Command)[0]
@@ -134,7 +134,7 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 
 	// === Assemble command ===
 	cmd := buildCommand(rt, rm.Command, PlaceholderMemberspace+"/project",
-		PlaceholderMemberspace, teamName, rm.Name, taskID, rm.TeamMemberID, PlaceholderAuthClaude)
+		PlaceholderMemberspace, teamName, rm.Name, runID, rm.TeamMemberID, PlaceholderAuthClaude)
 
 	launchPath := PlaceholderMemberspace + "/launch.sh"
 	files = append(files, domain.FileEntry{Path: launchPath, Content: cmd})

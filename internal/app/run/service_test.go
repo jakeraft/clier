@@ -1,4 +1,4 @@
-package task
+package run
 
 import (
 	"context"
@@ -10,20 +10,20 @@ import (
 )
 
 type stubStore struct {
-	task  *domain.Task
+	run   *domain.Run
 	team  *domain.Team
 	notes []*domain.Note
 	msgs  []*domain.Message
 }
 
-func (s *stubStore) CreateTask(_ context.Context, t *domain.Task) error { return nil }
-func (s *stubStore) GetTask(_ context.Context, id string) (domain.Task, error) {
-	if s.task != nil && s.task.ID == id {
-		return *s.task, nil
+func (s *stubStore) CreateRun(_ context.Context, r *domain.Run) error { return nil }
+func (s *stubStore) GetRun(_ context.Context, id string) (domain.Run, error) {
+	if s.run != nil && s.run.ID == id {
+		return *s.run, nil
 	}
-	return domain.Task{}, errors.New("task not found")
+	return domain.Run{}, errors.New("run not found")
 }
-func (s *stubStore) UpdateTaskStatus(_ context.Context, _ *domain.Task) error { return nil }
+func (s *stubStore) UpdateRunStatus(_ context.Context, _ *domain.Run) error { return nil }
 func (s *stubStore) GetTeam(_ context.Context, id string) (domain.Team, error) {
 	if s.team != nil && s.team.ID == id {
 		return *s.team, nil
@@ -69,30 +69,30 @@ func (w *stubWorkspace) Prepare(_ context.Context, _ []domain.MemberPlan) error 
 func (w *stubWorkspace) Cleanup(_ string) error                                 { return nil }
 
 func TestService_Note(t *testing.T) {
-	tk := &domain.Task{ID: "s-1", TeamID: "t-1", Status: domain.TaskRunning}
-	store := &stubStore{task: tk}
+	r := &domain.Run{ID: "s-1", TeamID: "t-1", Status: domain.RunRunning}
+	store := &stubStore{run: r}
 	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "", "", nil)
 
 	t.Run("success", func(t *testing.T) {
 		store.notes = nil
-		if err := svc.Note(context.Background(), "s-1", "member-1", "task done"); err != nil {
+		if err := svc.Note(context.Background(), "s-1", "member-1", "run done"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(store.notes) != 1 {
 			t.Fatalf("expected 1 note, got %d", len(store.notes))
 		}
-		if store.notes[0].Content != "task done" {
-			t.Errorf("Content = %q, want %q", store.notes[0].Content, "task done")
+		if store.notes[0].Content != "run done" {
+			t.Errorf("Content = %q, want %q", store.notes[0].Content, "run done")
 		}
 		if store.notes[0].TeamMemberID != "member-1" {
 			t.Errorf("TeamMemberID = %q, want %q", store.notes[0].TeamMemberID, "member-1")
 		}
 	})
 
-	t.Run("task not found", func(t *testing.T) {
+	t.Run("run not found", func(t *testing.T) {
 		err := svc.Note(context.Background(), "unknown", "member-1", "hello")
 		if err == nil {
-			t.Fatal("expected error for unknown task")
+			t.Fatal("expected error for unknown run")
 		}
 	})
 
@@ -105,10 +105,10 @@ func TestService_Note(t *testing.T) {
 }
 
 func TestService_Send(t *testing.T) {
-	tk := &domain.Task{
+	r := &domain.Run{
 		ID:     "s-1",
 		TeamID: "t-1",
-		Status: domain.TaskRunning,
+		Status: domain.RunRunning,
 		Plan: []domain.MemberPlan{
 			{TeamMemberID: "m-1", MemberName: "alice"},
 			{TeamMemberID: "m-2", MemberName: "bob"},
@@ -117,7 +117,7 @@ func TestService_Send(t *testing.T) {
 	team := &domain.Team{ID: "t-1"}
 
 	t.Run("agent message includes sender name", func(t *testing.T) {
-		store := &stubStore{task: tk, team: team}
+		store := &stubStore{run: r, team: team}
 		term := &stubTerminal{}
 		svc := New(store, term, &stubWorkspace{}, "", "", nil)
 
@@ -137,7 +137,7 @@ func TestService_Send(t *testing.T) {
 	})
 
 	t.Run("empty sender has no prefix", func(t *testing.T) {
-		store := &stubStore{task: tk, team: team}
+		store := &stubStore{run: r, team: team}
 		term := &stubTerminal{}
 		svc := New(store, term, &stubWorkspace{}, "", "", nil)
 
@@ -150,7 +150,7 @@ func TestService_Send(t *testing.T) {
 	})
 
 	t.Run("delivery failure prevents save", func(t *testing.T) {
-		store := &stubStore{task: tk, team: team}
+		store := &stubStore{run: r, team: team}
 		term := &failTerminal{}
 		svc := New(store, term, &stubWorkspace{}, "", "", nil)
 

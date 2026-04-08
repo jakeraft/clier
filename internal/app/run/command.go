@@ -1,4 +1,4 @@
-package task
+package run
 
 import (
 	"fmt"
@@ -11,10 +11,11 @@ func shellQuote(s string) string {
 }
 
 // systemEnvs returns clier infrastructure environment variables.
-func systemEnvs(rt AgentRuntime, memberspace, taskID, memberID string) []string {
+func systemEnvs(rt AgentRuntime, memberspace, runID, memberID string) []string {
 	return []string{
 		rt.ConfigDirEnv(memberspace),
-		"CLIER_TASK_ID=" + taskID,
+		"CLIER_AGENT=true",
+		"CLIER_RUN_ID=" + runID,
 		"CLIER_MEMBER_ID=" + memberID,
 	}
 }
@@ -32,9 +33,9 @@ func identityEnvs(teamName, memberName string) []string {
 }
 
 // buildEnv assembles the full set of environment variables for a member command.
-func buildEnv(rt AgentRuntime, memberspace, teamName, memberName, taskID, memberID, authPlaceholder string) []string {
+func buildEnv(rt AgentRuntime, memberspace, teamName, memberName, runID, memberID, authPlaceholder string) []string {
 	var env []string
-	env = append(env, systemEnvs(rt, memberspace, taskID, memberID)...)
+	env = append(env, systemEnvs(rt, memberspace, runID, memberID)...)
 	env = append(env, rt.AuthEnvs(authPlaceholder)...)
 	env = append(env, identityEnvs(teamName, memberName)...)
 	return env
@@ -62,8 +63,8 @@ func buildAgentCommand(command string, workDir string) string {
 }
 
 // buildCommand returns the complete shell command for launching an agent.
-func buildCommand(rt AgentRuntime, command, workDir, memberspace, teamName, memberName, taskID, memberID, authPlaceholder string) string {
+func buildCommand(rt AgentRuntime, command, workDir, memberspace, teamName, memberName, runID, memberID, authPlaceholder string) string {
 	cmd := buildAgentCommand(command, workDir)
-	env := buildEnv(rt, memberspace, teamName, memberName, taskID, memberID, authPlaceholder)
+	env := buildEnv(rt, memberspace, teamName, memberName, runID, memberID, authPlaceholder)
 	return buildEnvCommand(cmd, env)
 }

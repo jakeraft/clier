@@ -594,89 +594,89 @@ func (s *Store) DeleteClaudeSettings(ctx context.Context, id string) error {
 	return nil
 }
 
-// Task
+// Run
 
-func unmarshalTask(row generated.Task) (domain.Task, error) {
+func unmarshalRun(row generated.Run) (domain.Run, error) {
 	var plan []domain.MemberPlan
 	if err := json.Unmarshal([]byte(row.Plan), &plan); err != nil {
-		return domain.Task{}, fmt.Errorf("unmarshal task plan: %w", err)
+		return domain.Run{}, fmt.Errorf("unmarshal run plan: %w", err)
 	}
 	if plan == nil {
 		plan = []domain.MemberPlan{}
 	}
-	t := domain.Task{
+	r := domain.Run{
 		ID:        row.ID,
 		Name:      row.Name,
 		TeamID:    row.TeamID,
-		Status:    domain.TaskStatus(row.Status),
+		Status:    domain.RunStatus(row.Status),
 		Plan:      plan,
-		CreatedAt: time.Unix(row.CreatedAt, 0),
+		StartedAt: time.Unix(row.StartedAt, 0),
 	}
 	if row.StoppedAt.Valid {
 		ts := time.Unix(row.StoppedAt.Int64, 0)
-		t.StoppedAt = &ts
+		r.StoppedAt = &ts
 	}
-	return t, nil
+	return r, nil
 }
 
-func (s *Store) CreateTask(ctx context.Context, task *domain.Task) error {
-	planJSON, err := json.Marshal(task.Plan)
+func (s *Store) CreateRun(ctx context.Context, run *domain.Run) error {
+	planJSON, err := json.Marshal(run.Plan)
 	if err != nil {
-		return fmt.Errorf("marshal task plan: %w", err)
+		return fmt.Errorf("marshal run plan: %w", err)
 	}
-	params := generated.CreateTaskParams{
-		ID:        task.ID,
-		Name:      task.Name,
-		TeamID:    task.TeamID,
-		Status:    string(task.Status),
+	params := generated.CreateRunParams{
+		ID:        run.ID,
+		Name:      run.Name,
+		TeamID:    run.TeamID,
+		Status:    string(run.Status),
 		Plan:      string(planJSON),
-		CreatedAt: task.CreatedAt.Unix(),
+		StartedAt: run.StartedAt.Unix(),
 	}
-	if task.StoppedAt != nil {
-		params.StoppedAt = sql.NullInt64{Int64: task.StoppedAt.Unix(), Valid: true}
+	if run.StoppedAt != nil {
+		params.StoppedAt = sql.NullInt64{Int64: run.StoppedAt.Unix(), Valid: true}
 	}
-	_, err = s.queries.CreateTask(ctx, params)
+	_, err = s.queries.CreateRun(ctx, params)
 	return err
 }
 
-func (s *Store) GetTask(ctx context.Context, id string) (domain.Task, error) {
-	row, err := s.queries.GetTask(ctx, id)
+func (s *Store) GetRun(ctx context.Context, id string) (domain.Run, error) {
+	row, err := s.queries.GetRun(ctx, id)
 	if err != nil {
-		return domain.Task{}, err
+		return domain.Run{}, err
 	}
-	return unmarshalTask(row)
+	return unmarshalRun(row)
 }
 
-func (s *Store) ListTasks(ctx context.Context) ([]domain.Task, error) {
-	rows, err := s.queries.ListTasks(ctx)
+func (s *Store) ListRuns(ctx context.Context) ([]domain.Run, error) {
+	rows, err := s.queries.ListRuns(ctx)
 	if err != nil {
 		return nil, err
 	}
-	tasks := make([]domain.Task, 0, len(rows))
+	runs := make([]domain.Run, 0, len(rows))
 	for _, row := range rows {
-		t, err := unmarshalTask(row)
+		r, err := unmarshalRun(row)
 		if err != nil {
 			return nil, err
 		}
-		tasks = append(tasks, t)
+		runs = append(runs, r)
 	}
-	return tasks, nil
+	return runs, nil
 }
 
-func (s *Store) UpdateTaskStatus(ctx context.Context, task *domain.Task) error {
-	params := generated.UpdateTaskStatusParams{
-		Status: string(task.Status),
-		ID:     task.ID,
+func (s *Store) UpdateRunStatus(ctx context.Context, run *domain.Run) error {
+	params := generated.UpdateRunStatusParams{
+		Status: string(run.Status),
+		ID:     run.ID,
 	}
-	if task.StoppedAt != nil {
-		params.StoppedAt = sql.NullInt64{Int64: task.StoppedAt.Unix(), Valid: true}
+	if run.StoppedAt != nil {
+		params.StoppedAt = sql.NullInt64{Int64: run.StoppedAt.Unix(), Valid: true}
 	}
-	_, err := s.queries.UpdateTaskStatus(ctx, params)
+	_, err := s.queries.UpdateRunStatus(ctx, params)
 	return err
 }
 
-func (s *Store) DeleteTask(ctx context.Context, id string) error {
-	result, err := s.queries.DeleteTask(ctx, id)
+func (s *Store) DeleteRun(ctx context.Context, id string) error {
+	result, err := s.queries.DeleteRun(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -685,7 +685,7 @@ func (s *Store) DeleteTask(ctx context.Context, id string) error {
 		return err
 	}
 	if rows == 0 {
-		return fmt.Errorf("task not found: %s", id)
+		return fmt.Errorf("run not found: %s", id)
 	}
 	return nil
 }
@@ -695,7 +695,7 @@ func (s *Store) DeleteTask(ctx context.Context, id string) error {
 func (s *Store) CreateMessage(ctx context.Context, msg *domain.Message) error {
 	_, err := s.queries.CreateMessage(ctx, generated.CreateMessageParams{
 		ID:               msg.ID,
-		TaskID:           msg.TaskID,
+		RunID:            msg.RunID,
 		FromTeamMemberID: toNullString(msg.FromTeamMemberID),
 		ToTeamMemberID:   msg.ToTeamMemberID,
 		Content:          msg.Content,
@@ -704,8 +704,8 @@ func (s *Store) CreateMessage(ctx context.Context, msg *domain.Message) error {
 	return err
 }
 
-func (s *Store) ListMessagesByTaskID(ctx context.Context, taskID string) ([]domain.Message, error) {
-	rows, err := s.queries.ListMessagesByTaskID(ctx, taskID)
+func (s *Store) ListMessagesByRunID(ctx context.Context, runID string) ([]domain.Message, error) {
+	rows, err := s.queries.ListMessagesByRunID(ctx, runID)
 	if err != nil {
 		return nil, err
 	}
@@ -713,7 +713,7 @@ func (s *Store) ListMessagesByTaskID(ctx context.Context, taskID string) ([]doma
 	for _, row := range rows {
 		msgs = append(msgs, domain.Message{
 			ID:               row.ID,
-			TaskID:           row.TaskID,
+			RunID:            row.RunID,
 			FromTeamMemberID: row.FromTeamMemberID.String,
 			ToTeamMemberID:   row.ToTeamMemberID,
 			Content:          row.Content,
@@ -723,9 +723,9 @@ func (s *Store) ListMessagesByTaskID(ctx context.Context, taskID string) ([]doma
 	return msgs, nil
 }
 
-func (s *Store) ListMessagesByTaskAndMember(ctx context.Context, taskID, teamMemberID string) ([]domain.Message, error) {
-	rows, err := s.queries.ListMessagesByTaskAndMember(ctx, generated.ListMessagesByTaskAndMemberParams{
-		TaskID: taskID, FromTeamMemberID: toNullString(teamMemberID), ToTeamMemberID: teamMemberID,
+func (s *Store) ListMessagesByRunAndMember(ctx context.Context, runID, teamMemberID string) ([]domain.Message, error) {
+	rows, err := s.queries.ListMessagesByRunAndMember(ctx, generated.ListMessagesByRunAndMemberParams{
+		RunID: runID, FromTeamMemberID: toNullString(teamMemberID), ToTeamMemberID: teamMemberID,
 	})
 	if err != nil {
 		return nil, err
@@ -734,7 +734,7 @@ func (s *Store) ListMessagesByTaskAndMember(ctx context.Context, taskID, teamMem
 	for _, row := range rows {
 		msgs = append(msgs, domain.Message{
 			ID:               row.ID,
-			TaskID:           row.TaskID,
+			RunID:            row.RunID,
 			FromTeamMemberID: row.FromTeamMemberID.String,
 			ToTeamMemberID:   row.ToTeamMemberID,
 			Content:          row.Content,
@@ -756,7 +756,7 @@ func toNullString(s string) sql.NullString {
 func (s *Store) CreateNote(ctx context.Context, n *domain.Note) error {
 	_, err := s.queries.CreateNote(ctx, generated.CreateNoteParams{
 		ID:           n.ID,
-		TaskID:       n.TaskID,
+		RunID:        n.RunID,
 		TeamMemberID: n.TeamMemberID,
 		Content:      n.Content,
 		CreatedAt:    n.CreatedAt.Unix(),
@@ -764,8 +764,8 @@ func (s *Store) CreateNote(ctx context.Context, n *domain.Note) error {
 	return err
 }
 
-func (s *Store) ListNotesByTaskID(ctx context.Context, taskID string) ([]domain.Note, error) {
-	rows, err := s.queries.ListNotesByTaskID(ctx, taskID)
+func (s *Store) ListNotesByRunID(ctx context.Context, runID string) ([]domain.Note, error) {
+	rows, err := s.queries.ListNotesByRunID(ctx, runID)
 	if err != nil {
 		return nil, err
 	}
@@ -773,7 +773,7 @@ func (s *Store) ListNotesByTaskID(ctx context.Context, taskID string) ([]domain.
 	for _, row := range rows {
 		notes = append(notes, domain.Note{
 			ID:           row.ID,
-			TaskID:       row.TaskID,
+			RunID:        row.RunID,
 			TeamMemberID: row.TeamMemberID,
 			Content:      row.Content,
 			CreatedAt:    time.Unix(row.CreatedAt, 0),
@@ -784,20 +784,20 @@ func (s *Store) ListNotesByTaskID(ctx context.Context, taskID string) ([]domain.
 
 // TerminalRefs (infra state for terminal adapter)
 
-func (s *Store) SaveRefs(ctx context.Context, taskID, memberID string, refs map[string]string) error {
+func (s *Store) SaveRefs(ctx context.Context, runID, memberID string, refs map[string]string) error {
 	data, err := json.Marshal(refs)
 	if err != nil {
 		return fmt.Errorf("marshal refs: %w", err)
 	}
 	_, err = s.queries.SaveTerminalRefs(ctx, generated.SaveTerminalRefsParams{
-		TaskID: taskID, TeamMemberID: memberID, Refs: string(data),
+		RunID: runID, TeamMemberID: memberID, Refs: string(data),
 	})
 	return err
 }
 
-func (s *Store) GetRefs(ctx context.Context, taskID, memberID string) (map[string]string, error) {
+func (s *Store) GetRefs(ctx context.Context, runID, memberID string) (map[string]string, error) {
 	raw, err := s.queries.GetTerminalRefs(ctx, generated.GetTerminalRefsParams{
-		TaskID: taskID, TeamMemberID: memberID,
+		RunID: runID, TeamMemberID: memberID,
 	})
 	if err != nil {
 		return nil, err
@@ -809,8 +809,8 @@ func (s *Store) GetRefs(ctx context.Context, taskID, memberID string) (map[strin
 	return refs, nil
 }
 
-func (s *Store) GetTaskRefs(ctx context.Context, taskID string) (map[string]string, error) {
-	raw, err := s.queries.GetTaskTerminalRefs(ctx, taskID)
+func (s *Store) GetRunRefs(ctx context.Context, runID string) (map[string]string, error) {
+	raw, err := s.queries.GetRunTerminalRefs(ctx, runID)
 	if err != nil {
 		return nil, err
 	}
@@ -821,7 +821,7 @@ func (s *Store) GetTaskRefs(ctx context.Context, taskID string) (map[string]stri
 	return refs, nil
 }
 
-func (s *Store) DeleteRefs(ctx context.Context, taskID string) error {
-	_, err := s.queries.DeleteTerminalRefs(ctx, taskID)
+func (s *Store) DeleteRefs(ctx context.Context, runID string) error {
+	_, err := s.queries.DeleteTerminalRefs(ctx, runID)
 	return err
 }

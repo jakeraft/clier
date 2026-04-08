@@ -1,4 +1,4 @@
-package task
+package run
 
 import (
 	"strings"
@@ -35,7 +35,7 @@ func TestBuildEnv(t *testing.T) {
 	rt := &agentrt.ClaudeRuntime{}
 
 	t.Run("IncludesAllCategories", func(t *testing.T) {
-		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "reviewer", "task-1", "m1", PlaceholderAuthClaude)
+		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "reviewer", "run-1", "m1", PlaceholderAuthClaude)
 
 		envMap := make(map[string]string)
 		for _, e := range env {
@@ -45,7 +45,8 @@ func TestBuildEnv(t *testing.T) {
 
 		for k, want := range map[string]string{
 			"CLAUDE_CONFIG_DIR":       PlaceholderMemberspace + "/.claude",
-			"CLIER_TASK_ID":           "task-1",
+			"CLIER_AGENT":            "true",
+			"CLIER_RUN_ID":           "run-1",
 			"CLIER_MEMBER_ID":         "m1",
 			"CLAUDE_CODE_OAUTH_TOKEN": PlaceholderAuthClaude,
 			"GIT_AUTHOR_NAME":         "my-team/reviewer",
@@ -60,11 +61,11 @@ func TestBuildEnv(t *testing.T) {
 	})
 
 	t.Run("HasSystemAuthIdentity", func(t *testing.T) {
-		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "coder", "task-1", "m2", PlaceholderAuthClaude)
+		env := buildEnv(rt, PlaceholderMemberspace, "my-team", "coder", "run-1", "m2", PlaceholderAuthClaude)
 
-		// system(3) + auth(1) + identity(4) = 8
-		if len(env) != 8 {
-			t.Errorf("expected 8 env vars, got %d", len(env))
+		// system(4) + auth(1) + identity(4) = 9
+		if len(env) != 9 {
+			t.Errorf("expected 9 env vars, got %d", len(env))
 		}
 	})
 }
@@ -125,7 +126,7 @@ func TestBuildCommand(t *testing.T) {
 	t.Run("AllArgs_IncludesPlaceholders", func(t *testing.T) {
 		cmd := buildCommand(rt, "claude --dangerously-skip-permissions --verbose --model claude-sonnet-4-6",
 			PlaceholderMemberspace+"/project",
-			PlaceholderMemberspace, "my-team", "coder", "task-1", "m1", PlaceholderAuthClaude)
+			PlaceholderMemberspace, "my-team", "coder", "run-1", "m1", PlaceholderAuthClaude)
 
 		for _, want := range []string{
 			"claude",
@@ -133,7 +134,8 @@ func TestBuildCommand(t *testing.T) {
 			"--dangerously-skip-permissions",
 			"--verbose",
 			"export CLAUDE_CONFIG_DIR='" + PlaceholderMemberspace + "/.claude'",
-			"export CLIER_TASK_ID='task-1'",
+			"export CLIER_AGENT='true'",
+			"export CLIER_RUN_ID='run-1'",
 			"export CLIER_MEMBER_ID='m1'",
 			"export CLAUDE_CODE_OAUTH_TOKEN='" + PlaceholderAuthClaude + "'",
 			"export GIT_AUTHOR_NAME='my-team/coder'",

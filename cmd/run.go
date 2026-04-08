@@ -9,34 +9,34 @@ import (
 	agentrt "github.com/jakeraft/clier/internal/adapter/runtime"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/adapter/workspace"
-	"github.com/jakeraft/clier/internal/app/task"
+	"github.com/jakeraft/clier/internal/app/run"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	rootCmd.AddCommand(newTaskCmd())
+	rootCmd.AddCommand(newRunCmd())
 }
 
-func newTaskCmd() *cobra.Command {
+func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "task",
-		Short: "Manage tasks",
+		Use:   "run",
+		Short: "Manage runs",
 	}
-	cmd.AddCommand(newTaskStartCmd())
-	cmd.AddCommand(newTaskStopCmd())
-	cmd.AddCommand(newTaskListCmd())
-	cmd.AddCommand(newTaskTellCmd())
-	cmd.AddCommand(newTaskNoteCmd())
-	cmd.AddCommand(newTaskNotesCmd())
-	cmd.AddCommand(newTaskMessagesCmd())
-	cmd.AddCommand(newTaskAttachCmd())
+	cmd.AddCommand(newRunStartCmd())
+	cmd.AddCommand(newRunStopCmd())
+	cmd.AddCommand(newRunListCmd())
+	cmd.AddCommand(newRunTellCmd())
+	cmd.AddCommand(newRunNoteCmd())
+	cmd.AddCommand(newRunNotesCmd())
+	cmd.AddCommand(newRunMessagesCmd())
+	cmd.AddCommand(newRunAttachCmd())
 	return cmd
 }
 
-func newTaskStartCmd() *cobra.Command {
+func newRunStartCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "start <team-id>",
-		Short:       "Start a task",
+		Short:       "Start a run",
 		Args:        cobra.ExactArgs(1),
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -57,25 +57,25 @@ func newTaskStartCmd() *cobra.Command {
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
-			runtimes := map[string]task.AgentRuntime{
+			runtimes := map[string]run.AgentRuntime{
 				"claude": &agentrt.ClaudeRuntime{},
 			}
-			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
+			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
 
-			tk, err := svc.Start(cmd.Context(), t, cfg.Auth)
+			r, err := svc.Start(cmd.Context(), t, cfg.Auth)
 			if err != nil {
 				return err
 			}
-			return printJSON(tk)
+			return printJSON(r)
 		},
 	}
 	return cmd
 }
 
-func newTaskStopCmd() *cobra.Command {
+func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:         "stop <id>",
-		Short:       "Stop a task",
+		Short:       "Stop a run",
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -91,10 +91,10 @@ func newTaskStopCmd() *cobra.Command {
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
-			runtimes := map[string]task.AgentRuntime{
+			runtimes := map[string]run.AgentRuntime{
 				"claude": &agentrt.ClaudeRuntime{},
 			}
-			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
+			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
 
 			if err := svc.Stop(cmd.Context(), args[0]); err != nil {
 				return err
@@ -104,10 +104,10 @@ func newTaskStopCmd() *cobra.Command {
 	}
 }
 
-func newTaskListCmd() *cobra.Command {
+func newRunListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List all tasks",
+		Short: "List all runs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
 			if err != nil {
@@ -119,17 +119,17 @@ func newTaskListCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			tasks, err := store.ListTasks(cmd.Context())
+			runs, err := store.ListRuns(cmd.Context())
 			if err != nil {
 				return err
 			}
-			return printJSON(tasks)
+			return printJSON(runs)
 		},
 	}
 }
 
-func newTaskTellCmd() *cobra.Command {
-	var taskFlag, toMemberID string
+func newRunTellCmd() *cobra.Command {
+	var runFlag, toMemberID string
 
 	cmd := &cobra.Command{
 		Use:   "tell [content]",
@@ -137,9 +137,9 @@ func newTaskTellCmd() *cobra.Command {
 		Long: `Tell a teammate. Content can be provided as an argument or via stdin.
 
 Examples:
-  clier task tell --to <id> "simple message"
-  echo "message with special chars" | clier task tell --to <id>
-  clier task tell --to <id> <<'EOF'
+  clier run tell --to <id> "simple message"
+  echo "message with special chars" | clier run tell --to <id>
+  clier run tell --to <id> <<'EOF'
   message with ` + "`backticks`" + ` and --flags
   EOF`,
 		Args:        cobra.MaximumNArgs(1),
@@ -150,7 +150,7 @@ Examples:
 				return err
 			}
 
-			taskID, fromMemberID, err := resolveTaskContext(taskFlag)
+			runID, fromMemberID, err := resolveRunContext(runFlag)
 			if err != nil {
 				return err
 			}
@@ -167,12 +167,12 @@ Examples:
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
-			runtimes := map[string]task.AgentRuntime{
+			runtimes := map[string]run.AgentRuntime{
 				"claude": &agentrt.ClaudeRuntime{},
 			}
-			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
+			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
 
-			if err := svc.Send(cmd.Context(), taskID, fromMemberID, toMemberID, content); err != nil {
+			if err := svc.Send(cmd.Context(), runID, fromMemberID, toMemberID, content); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
@@ -182,14 +182,14 @@ Examples:
 			})
 		},
 	}
-	cmd.Flags().StringVar(&taskFlag, "task", "", "Task ID (defaults to CLIER_TASK_ID)")
+	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to CLIER_RUN_ID)")
 	cmd.Flags().StringVar(&toMemberID, "to", "", "Recipient member ID")
 	_ = cmd.MarkFlagRequired("to")
 	return cmd
 }
 
-func newTaskNoteCmd() *cobra.Command {
-	var taskFlag string
+func newRunNoteCmd() *cobra.Command {
+	var runFlag string
 
 	cmd := &cobra.Command{
 		Use:         "note [content]",
@@ -202,7 +202,7 @@ func newTaskNoteCmd() *cobra.Command {
 				return err
 			}
 
-			taskID, memberID, err := resolveTaskContext(taskFlag)
+			runID, memberID, err := resolveRunContext(runFlag)
 			if err != nil {
 				return err
 			}
@@ -219,29 +219,29 @@ func newTaskNoteCmd() *cobra.Command {
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
-			runtimes := map[string]task.AgentRuntime{
+			runtimes := map[string]run.AgentRuntime{
 				"claude": &agentrt.ClaudeRuntime{},
 			}
-			svc := task.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
+			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), cfg.Paths.HomeDir(), runtimes)
 
-			if err := svc.Note(cmd.Context(), taskID, memberID, content); err != nil {
+			if err := svc.Note(cmd.Context(), runID, memberID, content); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
 				"status": "posted",
 				"member": memberID,
-				"task":   taskID,
+				"run":    runID,
 			})
 		},
 	}
-	cmd.Flags().StringVar(&taskFlag, "task", "", "Task ID (defaults to CLIER_TASK_ID)")
+	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to CLIER_RUN_ID)")
 	return cmd
 }
 
-func newTaskNotesCmd() *cobra.Command {
+func newRunNotesCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "notes <task-id>",
-		Short: "List task notes",
+		Use:   "notes <run-id>",
+		Short: "List run notes",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
@@ -254,7 +254,7 @@ func newTaskNotesCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			notes, err := store.ListNotesByTaskID(cmd.Context(), args[0])
+			notes, err := store.ListNotesByRunID(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -263,10 +263,10 @@ func newTaskNotesCmd() *cobra.Command {
 	}
 }
 
-func newTaskMessagesCmd() *cobra.Command {
+func newRunMessagesCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "messages <task-id>",
-		Short: "List task messages",
+		Use:   "messages <run-id>",
+		Short: "List run messages",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
@@ -279,7 +279,7 @@ func newTaskMessagesCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			msgs, err := store.ListMessagesByTaskID(cmd.Context(), args[0])
+			msgs, err := store.ListMessagesByRunID(cmd.Context(), args[0])
 			if err != nil {
 				return err
 			}
@@ -288,12 +288,12 @@ func newTaskMessagesCmd() *cobra.Command {
 	}
 }
 
-func newTaskAttachCmd() *cobra.Command {
+func newRunAttachCmd() *cobra.Command {
 	var memberFlag string
 
 	cmd := &cobra.Command{
-		Use:   "attach <task-id>",
-		Short: "Attach to a running task's terminal",
+		Use:   "attach <run-id>",
+		Short: "Attach to a running run's terminal",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := newSettings()
@@ -335,16 +335,16 @@ func readContent(args []string) (string, error) {
 	return content, nil
 }
 
-// resolveTaskContext resolves task ID and member ID from env vars set by clier.
-// CLIER_TASK_ID identifies the task, CLIER_MEMBER_ID identifies the sender.
-func resolveTaskContext(taskFlag string) (taskID, memberID string, err error) {
-	taskID = taskFlag
-	if taskID == "" {
-		taskID = os.Getenv("CLIER_TASK_ID")
+// resolveRunContext resolves run ID and member ID from env vars set by clier.
+// CLIER_RUN_ID identifies the run, CLIER_MEMBER_ID identifies the sender.
+func resolveRunContext(runFlag string) (runID, memberID string, err error) {
+	runID = runFlag
+	if runID == "" {
+		runID = os.Getenv("CLIER_RUN_ID")
 	}
-	if taskID == "" {
-		return "", "", errors.New("--task flag or CLIER_TASK_ID must be set")
+	if runID == "" {
+		return "", "", errors.New("--run flag or CLIER_RUN_ID must be set")
 	}
 	memberID = os.Getenv("CLIER_MEMBER_ID")
-	return taskID, memberID, nil
+	return runID, memberID, nil
 }

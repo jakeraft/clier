@@ -7,66 +7,66 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func TestNewTask(t *testing.T) {
-	t.Run("valid task", func(t *testing.T) {
-		task, err := domain.NewTask("task-123", "my-team-task-123", "team-456")
+func TestNewRun(t *testing.T) {
+	t.Run("valid run", func(t *testing.T) {
+		run, err := domain.NewRun("run-123", "my-team-run-123", "team-456")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if task.ID != "task-123" {
-			t.Errorf("ID = %q, want %q", task.ID, "task-123")
+		if run.ID != "run-123" {
+			t.Errorf("ID = %q, want %q", run.ID, "run-123")
 		}
-		if task.Name != "my-team-task-123" {
-			t.Errorf("Name = %q, want %q", task.Name, "my-team-task-123")
+		if run.Name != "my-team-run-123" {
+			t.Errorf("Name = %q, want %q", run.Name, "my-team-run-123")
 		}
-		if task.TeamID != "team-456" {
-			t.Errorf("TeamID = %q, want %q", task.TeamID, "team-456")
+		if run.TeamID != "team-456" {
+			t.Errorf("TeamID = %q, want %q", run.TeamID, "team-456")
 		}
-		if task.Status != domain.TaskRunning {
-			t.Errorf("Status = %q, want %q", task.Status, domain.TaskRunning)
+		if run.Status != domain.RunRunning {
+			t.Errorf("Status = %q, want %q", run.Status, domain.RunRunning)
 		}
-		if task.StoppedAt != nil {
+		if run.StoppedAt != nil {
 			t.Error("StoppedAt should be nil")
 		}
 	})
 
 	t.Run("empty id", func(t *testing.T) {
-		_, err := domain.NewTask("", "name", "team-456")
+		_, err := domain.NewRun("", "name", "team-456")
 		if err == nil {
 			t.Fatal("expected error for empty ID")
 		}
 	})
 
 	t.Run("empty name", func(t *testing.T) {
-		_, err := domain.NewTask("task-123", "", "team-456")
+		_, err := domain.NewRun("run-123", "", "team-456")
 		if err == nil {
 			t.Fatal("expected error for empty name")
 		}
 	})
 
 	t.Run("empty team id", func(t *testing.T) {
-		_, err := domain.NewTask("task-123", "name", "")
+		_, err := domain.NewRun("run-123", "name", "")
 		if err == nil {
 			t.Fatal("expected error for empty team ID")
 		}
 	})
 
 	t.Run("stop", func(t *testing.T) {
-		task, _ := domain.NewTask("task-123", "my-team-task-123", "team-456")
-		task.Stop()
-		if task.Status != domain.TaskStopped {
-			t.Errorf("Status = %q, want %q", task.Status, domain.TaskStopped)
+		run, _ := domain.NewRun("run-123", "my-team-run-123", "team-456")
+		run.Stop()
+		if run.Status != domain.RunStopped {
+			t.Errorf("Status = %q, want %q", run.Status, domain.RunStopped)
 		}
-		if task.StoppedAt == nil {
+		if run.StoppedAt == nil {
 			t.Error("StoppedAt should not be nil after stop")
 		}
 	})
 }
 
-func TestTaskName(t *testing.T) {
+func TestRunName(t *testing.T) {
 	tests := []struct {
 		teamName string
-		taskID   string
+		runID    string
 		want     string
 	}{
 		{"my-team", "abcdefgh-1234", "my-team-abcdefgh"},
@@ -75,9 +75,9 @@ func TestTaskName(t *testing.T) {
 		{"a-very-long-team-name-that-exceeds", "id-12345", "a-very-long-team-nam-id-12345"},
 	}
 	for _, tt := range tests {
-		got := domain.TaskName(tt.teamName, tt.taskID)
+		got := domain.RunName(tt.teamName, tt.runID)
 		if got != tt.want {
-			t.Errorf("TaskName(%q, %q) = %q, want %q", tt.teamName, tt.taskID, got, tt.want)
+			t.Errorf("RunName(%q, %q) = %q, want %q", tt.teamName, tt.runID, got, tt.want)
 		}
 	}
 }
@@ -85,15 +85,15 @@ func TestTaskName(t *testing.T) {
 func TestMessage(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
 		t.Run("ValidInputs_GeneratesUUIDAndSetsFields", func(t *testing.T) {
-			m, err := domain.NewMessage("task-1", "from-1", "to-1", "hello")
+			m, err := domain.NewMessage("run-1", "from-1", "to-1", "hello")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if _, err := uuid.Parse(m.ID); err != nil {
 				t.Errorf("ID %q is not a valid UUID", m.ID)
 			}
-			if m.TaskID != "task-1" {
-				t.Errorf("TaskID = %q, want %q", m.TaskID, "task-1")
+			if m.RunID != "run-1" {
+				t.Errorf("RunID = %q, want %q", m.RunID, "run-1")
 			}
 			if m.FromTeamMemberID != "from-1" {
 				t.Errorf("FromTeamMemberID = %q, want %q", m.FromTeamMemberID, "from-1")
@@ -109,7 +109,7 @@ func TestMessage(t *testing.T) {
 			}
 		})
 
-		t.Run("EmptyTaskID_ReturnsError", func(t *testing.T) {
+		t.Run("EmptyRunID_ReturnsError", func(t *testing.T) {
 			_, err := domain.NewMessage("", "from-1", "to-1", "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
@@ -117,14 +117,14 @@ func TestMessage(t *testing.T) {
 		})
 
 		t.Run("EmptyToTeamMemberID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewMessage("task-1", "from-1", "  ", "hello")
+			_, err := domain.NewMessage("run-1", "from-1", "  ", "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
 		t.Run("EmptyFromTeamMemberID_Allowed", func(t *testing.T) {
-			m, err := domain.NewMessage("task-1", "", "to-1", "hello")
+			m, err := domain.NewMessage("run-1", "", "to-1", "hello")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -134,7 +134,7 @@ func TestMessage(t *testing.T) {
 		})
 
 		t.Run("EmptyContent_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewMessage("task-1", "from-1", "to-1", "  ")
+			_, err := domain.NewMessage("run-1", "from-1", "to-1", "  ")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -145,15 +145,15 @@ func TestMessage(t *testing.T) {
 func TestNote(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
 		t.Run("ValidInputs_GeneratesUUIDAndSetsFields", func(t *testing.T) {
-			n, err := domain.NewNote("task-1", "member-1", "work started")
+			n, err := domain.NewNote("run-1", "member-1", "work started")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if _, err := uuid.Parse(n.ID); err != nil {
 				t.Errorf("ID %q is not a valid UUID", n.ID)
 			}
-			if n.TaskID != "task-1" {
-				t.Errorf("TaskID = %q, want %q", n.TaskID, "task-1")
+			if n.RunID != "run-1" {
+				t.Errorf("RunID = %q, want %q", n.RunID, "run-1")
 			}
 			if n.TeamMemberID != "member-1" {
 				t.Errorf("TeamMemberID = %q, want %q", n.TeamMemberID, "member-1")
@@ -166,7 +166,7 @@ func TestNote(t *testing.T) {
 			}
 		})
 
-		t.Run("EmptyTaskID_ReturnsError", func(t *testing.T) {
+		t.Run("EmptyRunID_ReturnsError", func(t *testing.T) {
 			_, err := domain.NewNote("", "member-1", "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
@@ -174,14 +174,14 @@ func TestNote(t *testing.T) {
 		})
 
 		t.Run("EmptyTeamMemberID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewNote("task-1", "", "hello")
+			_, err := domain.NewNote("run-1", "", "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
 		t.Run("EmptyContent_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewNote("task-1", "member-1", "  ")
+			_, err := domain.NewNote("run-1", "member-1", "  ")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
