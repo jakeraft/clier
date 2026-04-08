@@ -5,7 +5,7 @@ Refs: jakeraft/clier#24
 ## Background
 
 clier를 client-server 아키텍처로 분리한다 (#24).
-서버가 모든 엔티티와 상태를 소유하고, CLI는 DB 없는 경량 HTTP 클라이언트가 된다.
+서버가 모든 엔티티와 상태를 소유하고, CLI는 DB 없는 경량 런타임 도구가 된다.
 이 과정에서 도메인 엔티티를 Workspace(스펙)와 Run(실행)으로 정비한다.
 
 ### 현재 문제
@@ -19,9 +19,9 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 
 ### 설계 원칙
 
-1. **서버 = 모든 상태의 source of truth**: Workspace 엔티티뿐 아니라 Task도 서버 소유. CLI에 로컬 DB 없음.
-2. **CLI = 경량 클라이언트**: HTTP 클라이언트 + tmux 관리 + workspace 파일 쓰기. 그게 전부.
-3. **Workspace = Run 동일 레이아웃**: `clier workspace` 결과물과 `clier task start` 실행 환경이 동일.
+1. **서버 = DB**: 모든 엔티티(Workspace + Task)를 서버가 소유. CLI에 로컬 DB 없음.
+2. **CLI = 경량 런타임 도구**: 서버를 DB로 사용하되, 로컬 dependency가 있는 런타임 환경 로직(tmux, workspace 파일, 프로세스 실행)을 담당.
+3. **로컬 파일 기반 실행**: workspace 파일을 로컬에 생성하고, run은 로컬 파일 기준으로 실행. 실행 계획은 `.run/plan.json`에 저장.
 4. **시스템 주입 투명화**: 숨겨진 머지 제거. Team Protocol도 workspace 생성 시 포함.
 
 ## Design
@@ -32,17 +32,19 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 ┌─────────────────────────────────────────────────────┐
 │                    clier-server                      │
 │                                                     │
+│  역할: 모든 엔티티의 DB + REST API + UI              │
+│                                                     │
 │  DB (PostgreSQL)                                    │
-│  ├─ Workspace: ClaudeMd, Skill, ClaudeSettings      │
-│  ├─ Workspace: Member, Team                         │
-│  └─ Run: Task                                       │
+│  ├─ Workspace (공유 가능): ClaudeMd, Skill,          │
+│  │   ClaudeSettings, Member, Team                   │
+│  └─ Run (개인 전용): Task                            │
 │                                                     │
 │  REST API                                           │
 │  ├─ /api/v1/orgs/:owner/claude-mds/...              │
 │  ├─ /api/v1/orgs/:owner/members/...                 │
 │  ├─ /api/v1/orgs/:owner/teams/...                   │
 │  ├─ /api/v1/tasks/...                               │
-│  └─ (+ fork, version, workspace resolve)            │
+│  └─ (+ fork, version)                               │
 │                                                     │
 │  SPA (UI)                                           │
 └────────────────────┬────────────────────────────────┘
@@ -50,11 +52,15 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 ┌────────────────────▼────────────────────────────────┐
 │                    clier CLI                         │
 │                                                     │
-│  HTTP Client (API 호출)                              │
-│  Workspace Writer (파일 생성)                        │
-│  Terminal Manager (tmux 세션 관리)                    │
+│  역할: 서버를 DB로 사용하는 런타임 도구               │
 │                                                     │
-│  로컬 DB 없음. 상태 없음.                             │
+│  HTTP Client — 서버 API 호출 (CRUD)                  │
+│  Workspace Writer — 로컬 파일 생성                   │
+│  Run Planner — .run/plan.json 생성                   │
+│  Terminal Manager — tmux 세션 관리                    │
+│                                                     │
+│  로컬 DB 없음. 로컬에 남는 것:                        │
+│  workspace 파일 + .run/plan.json                     │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -63,10 +69,10 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 | CLI가 하는 것 | CLI가 안 하는 것 |
 |---|---|
 | 서버 API 호출 (CRUD) | DB 저장/조회 |
-| workspace 파일 쓰기 | 엔티티 상태 관리 |
-| tmux 세션 생성/관리 | 비즈니스 로직 |
-| env vars export | 버전/fork 관리 |
-| command 실행 | UI 서빙 |
+| workspace 파일 생성 | 엔티티 상태 관리 |
+| `.run/plan.json` 생성 | 비즈니스 로직 |
+| tmux 세션 생성/관리 | 버전/fork 관리 |
+| env vars export + command 실행 | UI 서빙 |
 
 ### 엔티티 분류: 공유 가능 vs 개인 전용
 
@@ -243,13 +249,6 @@ Team (FORK - 복사해서 소유, 구조 수정 가능)
 
 Task는 서버가 소유하지만 **항상 개인 소유**이다.
 마켓플레이스에 공유되지 않으며, Visibility/Fork/Version이 없다.
-CLI는 Task를 API로 생성하고, 로컬에서 실행만 한다.
-
-```
-clier task create --team jake/dev-squad  →  POST /api/v1/tasks  →  서버가 Task 생성 + Plan 빌드
-clier task start --id xxx                →  GET /api/v1/tasks/:id  →  Plan 받아서 로컬 실행
-clier task stop --id xxx                 →  PATCH /api/v1/tasks/:id  →  상태 업데이트
-```
 
 #### Task (개인 전용 — 공유 가능 리소스 패턴과 다름)
 
@@ -314,13 +313,15 @@ env := map[string]string{
 
 ### Unified Workspace Layout
 
-`clier workspace`와 `clier task start`가 동일한 디렉토리 구조를 사용한다.
+`clier member workspace`와 `clier member run`이 동일한 디렉토리 구조를 사용한다.
 Team Protocol도 workspace 생성 시 포함된다. Run 시 파일 변경 없음.
 
 **Member 단독:**
 
 ```
-{memberspace}/
+jakeraft/tutorial/
+├── .run/
+│   └── plan.json                  ← 실행 계획 (run 시 생성)
 ├── .claude/
 │   ├── settings.json              ← ClaudeSettings
 │   └── skills/
@@ -333,29 +334,70 @@ Team Protocol도 workspace 생성 시 포함된다. Run 시 파일 변경 없음
 **Team (각 멤버별):**
 
 ```
-{memberspace}/
-├── CLAUDE.md                      ← Team Protocol (workspace 생성 시 포함)
-├── .claude/
-│   ├── settings.json              ← ClaudeSettings
-│   └── skills/
-│       └── {name}/SKILL.md        ← Skill
-└── project/                       ← cwd
-    ├── CLAUDE.md                  ← ClaudeMd
-    └── (git repo)
+jakeraft/dev-squad/
+├── .run/
+│   └── plan.json                  ← 실행 계획 (run 시 생성)
+├── leader/
+│   ├── CLAUDE.md                  ← Team Protocol (workspace 생성 시 포함)
+│   ├── .claude/
+│   │   ├── settings.json
+│   │   └── skills/...
+│   └── project/
+│       ├── CLAUDE.md              ← ClaudeMd
+│       └── (git repo)
+├── worker-a/
+│   ├── CLAUDE.md                  ← Team Protocol
+│   ├── .claude/...
+│   └── project/...
+└── worker-b/
+    └── ...
 ```
 
-Team Protocol은 부모 디렉토리 CLAUDE.md로 배치.
-Claude Code가 cwd에서 부모로 올라가며 자동 로드 (공식 문서 확인).
+Team Protocol은 각 멤버의 부모 디렉토리 CLAUDE.md로 배치.
+Claude Code가 cwd(`project/`)에서 부모로 올라가며 자동 로드 (공식 문서 확인).
+
+### CLI 명령어 구조
+
+```bash
+# Workspace: 서버에서 스펙 관리
+clier member create --name react-reviewer --command "claude" ...
+clier member list
+clier team create --name dev-squad ...
+clier team list
+
+# Workspace: 작업공간만 생성 (download only)
+clier member workspace jakeraft/tutorial
+clier team workspace jakeraft/dev-squad
+
+# Run: workspace 생성(멱등) + 실행
+clier member run jakeraft/tutorial
+clier team run jakeraft/dev-squad
+# 1. workspace 없으면 생성 (멱등)
+# 2. .run/plan.json 생성 (실행 계획)
+# 3. 서버에 Task 생성 (POST /api/tasks)
+# 4. 로컬 workspace 기반 실행 (tmux + export + command)
+# 5. 종료 시 서버 Task 상태 업데이트 (PATCH)
+
+# Task: 실행 추적/관리
+clier task list
+clier task stop --id xxx
+clier task logs --id xxx
+
+# Fork
+clier fork member jake/react-reviewer
+clier member update myname/react-reviewer ...
+```
 
 ### 시스템 주입 정리
 
-| 주입 | 도메인 | 시점 | 방식 |
-|---|---|---|---|
-| Team Protocol | Workspace | workspace 생성 시 | 부모 디렉토리 CLAUDE.md 파일 |
-| Env vars | Run | task 실행 시 | export (파일 변경 없음) |
-| ~~.claude.json~~ | ~~삭제~~ | - | - |
-| ~~CLAUDE.md 머지~~ | ~~삭제~~ | - | - |
-| ~~.claude.json 머지~~ | ~~삭제~~ | - | - |
+| 주입 | 시점 | 방식 |
+|---|---|---|
+| Team Protocol | workspace 생성 시 | 부모 디렉토리 CLAUDE.md 파일 |
+| `.run/plan.json` | run 시 | 로컬 파일 생성 |
+| Env vars | run 시 | export (workspace 파일 변경 없음) |
+| ~~.claude.json~~ | ~~삭제~~ | - |
+| ~~CLAUDE.md 머지~~ | ~~삭제~~ | - |
+| ~~.claude.json 머지~~ | ~~삭제~~ | - |
 
 ## 현재 대비 변경 요약
 
@@ -364,9 +406,11 @@ Claude Code가 cwd에서 부모로 올라가며 자동 로드 (공식 문서 확
 | 항목 | 현재 | 변경 |
 |---|---|---|
 | 상태 저장 | CLI 로컬 SQLite (모든 엔티티) | 서버 PostgreSQL (모든 엔티티) |
-| CLI 역할 | DB + 비즈니스 로직 + 터미널 + UI | HTTP 클라이언트 + tmux + 파일 쓰기 |
-| CLI 로컬 DB | SQLite (전체) | **없음** |
+| CLI 역할 | DB + 비즈니스 로직 + 터미널 + UI | 서버를 DB로 사용하는 런타임 도구 |
+| CLI 로컬 상태 | SQLite (전체) | workspace 파일 + `.run/plan.json` |
+| 실행 기준 | 서버에서 Plan fetch | 로컬 workspace 파일 기반 |
 | Team Protocol | Run 시 생성 | Workspace 생성 시 포함 |
+| CLI 명령어 | `task create` + `task start` | `member run` / `team run` |
 
 ### 엔티티 변경
 
@@ -387,15 +431,11 @@ Claude Code가 cwd에서 부모로 올라가며 자동 로드 (공식 문서 확
 | 파일 | 변경 |
 |---|---|
 | `internal/adapter/db/` | **전체 삭제** |
-| `internal/domain/resource/` | 서버 스키마 Go struct (API 파싱용, db 태그 제거) |
-| `internal/domain/member.go` | 서버 스키마 Go struct |
-| `internal/domain/team.go` | 서버 스키마 Go struct |
-| `internal/domain/task.go` | 서버 스키마 Go struct |
-| `internal/adapter/api/` | **신규** — HTTP 클라이언트 (서버 API 호출) |
-| `internal/app/task/plan.go` | 서버 API에서 Plan 수신 (로컬 빌드 → 서버 빌드) |
-| `internal/app/task/workspace_files.go` | 머지 로직 제거, 통합 레이아웃 |
-| `internal/app/task/command.go` | detectRuntime 기반 리팩토링 |
-| `internal/adapter/runtime/` | 단순화 |
+| `internal/domain/` | 서버 스키마 Go struct (API 파싱용) |
+| `internal/adapter/api/` | **신규** — HTTP 클라이언트 |
+| `internal/app/workspace/` | **신규** — workspace 파일 생성 |
+| `internal/app/run/` | **신규** — `.run/plan.json` 생성 + 실행 |
+| `internal/adapter/terminal/` | tmux 관리 (유지) |
 
 ### 서버 추가 필요 (clier-server, 별도 작업)
 
@@ -406,32 +446,7 @@ Claude Code가 cwd에서 부모로 올라가며 자동 로드 (공식 문서 확
 | `ClaudeSettings` 추가 | 빌딩블록 (동일 패턴) |
 | `Member` 추가 | 스펙 (FK로 빌딩블록 참조) |
 | `Team` 추가 | 스펙 (FK로 멤버 참조 + 관계 테이블) |
-| `Task` 추가 | 실행 (Plan 빌드 로직 서버로 이동) |
-| Plan 빌드 API | workspace resolve + plan 생성 |
-
-### 사용 흐름
-
-```bash
-# Workspace: 서버에서 스펙 관리
-clier member create --name react-reviewer --command "claude" ...
-clier member list
-
-# Workspace: 작업공간 생성
-clier workspace member jake/react-reviewer     # 서버 fetch → 파일 생성
-clier workspace team jake/dev-squad            # 멤버별 파일 + Protocol
-
-# Workspace: fork
-clier fork member jake/react-reviewer
-clier member update myname/react-reviewer ...
-
-# Run: 실행
-clier task create --member myname/react-reviewer   # POST /api/tasks
-clier task start --id xxx                          # GET plan → tmux + export + run
-clier task stop --id xxx                           # PATCH /api/tasks/:id
-
-# Run: 재실행
-clier task create --from task-abc123
-```
+| `Task` 추가 | 개인 전용 (UserID, 별도 스키마) |
 
 ## Scope
 
@@ -441,15 +456,15 @@ clier task create --from task-abc123
 - CLI에서 로컬 DB 완전 제거
 - Building Block 정비 (ClaudeJson 삭제, AgentDotMd → ClaudeMd)
 - Member 엔티티 리팩토링 (AgentType/Model/Args 삭제, Command 추가)
-- Task를 서버 소유로 전환
+- Task를 서버 소유 + 개인 전용으로 전환
 - HTTP 클라이언트 어댑터 추가
-- 통합 Workspace 레이아웃 (workspace = Run 환경)
+- 통합 Workspace 레이아웃 + `.run/plan.json`
 - Team Protocol을 workspace 생성 시 포함
+- CLI 명령어: `member run` / `team run` / `member workspace` / `team workspace`
 - 머지 로직 전부 제거
 
 ### Out of scope
 
 - UI (서버에서 구현)
 - 서버 엔티티/API 구현 (별도 작업)
-- workspace / fork CLI 커맨드 구현 (별도 작업)
 - 마켓플레이스 검색/필터링 (별도 작업)
