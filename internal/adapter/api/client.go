@@ -6,18 +6,21 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 // Client is the HTTP client for the clier-server API.
 type Client struct {
 	baseURL    string
+	token      string
 	httpClient *http.Client
 }
 
 // NewClient creates a new API client.
-func NewClient(baseURL string) *Client {
+func NewClient(baseURL, token string) *Client {
 	return &Client{
-		baseURL:    baseURL,
+		baseURL:    strings.TrimRight(baseURL, "/"),
+		token:      token,
 		httpClient: &http.Client{},
 	}
 }
@@ -36,6 +39,9 @@ func (c *Client) do(method, path string, body any, result any) error {
 		return fmt.Errorf("request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("do: %w", err)

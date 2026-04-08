@@ -23,7 +23,8 @@ func newAPIClient() *api.Client {
 	if serverURL == "" {
 		serverURL = "http://localhost:8080"
 	}
-	return api.NewClient(serverURL)
+	token := os.Getenv("CLIER_TOKEN")
+	return api.NewClient(serverURL, token)
 }
 
 func resolveOwner() string {
