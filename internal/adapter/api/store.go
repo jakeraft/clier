@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 // Store wraps the API Client to implement the RunStore and RefStore interfaces
@@ -58,98 +57,6 @@ func (s *Store) CreateMessage(_ context.Context, msg *domain.Message) error {
 func (s *Store) CreateNote(_ context.Context, n *domain.Note) error {
 	_, err := s.client.AddNote(n.RunID, n)
 	return err
-}
-
-func (s *Store) GetTeam(_ context.Context, id string) (domain.Team, error) {
-	resp, err := s.client.GetTeam(s.owner, id)
-	if err != nil {
-		return domain.Team{}, err
-	}
-	members := make([]domain.TeamMember, 0, len(resp.TeamMembers))
-	for _, tm := range resp.TeamMembers {
-		members = append(members, domain.TeamMember{
-			ID:       tm.ID,
-			MemberID: tm.MemberID,
-			Name:     tm.Name,
-		})
-	}
-	relations := make([]domain.Relation, 0, len(resp.Relations))
-	for _, r := range resp.Relations {
-		relations = append(relations, domain.Relation{From: r.From, To: r.To})
-	}
-	return domain.Team{
-		ID:               resp.ID,
-		Name:             resp.Name,
-		RootTeamMemberID: resp.RootTeamMemberID,
-		TeamMembers:      members,
-		Relations:        relations,
-		CreatedAt:        resp.CreatedAt,
-		UpdatedAt:        resp.UpdatedAt,
-	}, nil
-}
-
-func (s *Store) GetMember(_ context.Context, id string) (domain.Member, error) {
-	resp, err := s.client.GetMember(s.owner, id)
-	if err != nil {
-		return domain.Member{}, err
-	}
-	skillIDs := resp.SkillIDs
-	if skillIDs == nil {
-		skillIDs = []string{}
-	}
-	return domain.Member{
-		ID:               resp.ID,
-		Name:             resp.Name,
-		Command:          resp.Command,
-		ClaudeMdID:       resp.ClaudeMdID,
-		SkillIDs:         skillIDs,
-		ClaudeSettingsID: resp.ClaudeSettingsID,
-		GitRepoURL:       resp.GitRepoURL,
-		CreatedAt:        resp.CreatedAt,
-		UpdatedAt:        resp.UpdatedAt,
-	}, nil
-}
-
-func (s *Store) GetClaudeMd(_ context.Context, id string) (resource.ClaudeMd, error) {
-	resp, err := s.client.GetClaudeMd(s.owner, id)
-	if err != nil {
-		return resource.ClaudeMd{}, err
-	}
-	return resource.ClaudeMd{
-		ID:        resp.ID,
-		Name:      resp.Name,
-		Content:   resp.Content,
-		CreatedAt: resp.CreatedAt,
-		UpdatedAt: resp.UpdatedAt,
-	}, nil
-}
-
-func (s *Store) GetSkill(_ context.Context, id string) (resource.Skill, error) {
-	resp, err := s.client.GetSkill(s.owner, id)
-	if err != nil {
-		return resource.Skill{}, err
-	}
-	return resource.Skill{
-		ID:        resp.ID,
-		Name:      resp.Name,
-		Content:   resp.Content,
-		CreatedAt: resp.CreatedAt,
-		UpdatedAt: resp.UpdatedAt,
-	}, nil
-}
-
-func (s *Store) GetClaudeSettings(_ context.Context, id string) (resource.ClaudeSettings, error) {
-	resp, err := s.client.GetClaudeSettings(s.owner, id)
-	if err != nil {
-		return resource.ClaudeSettings{}, err
-	}
-	return resource.ClaudeSettings{
-		ID:        resp.ID,
-		Name:      resp.Name,
-		Content:   resp.Content,
-		CreatedAt: resp.CreatedAt,
-		UpdatedAt: resp.UpdatedAt,
-	}, nil
 }
 
 // --- RefStore interface (used by internal/adapter/terminal) ---

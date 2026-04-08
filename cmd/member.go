@@ -2,8 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/google/uuid"
+	"github.com/jakeraft/clier/internal/adapter/terminal"
+	apprun "github.com/jakeraft/clier/internal/app/run"
 	appws "github.com/jakeraft/clier/internal/app/workspace"
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -202,27 +208,80 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			client := newAPIClient()
 			owner := resolveOwner()
 
-			// 1. Workspace (idempotent)
-			writer := appws.NewWriter(client, owner)
 			base := dir
 			if base == "" {
 				base = "."
 			}
-			if err := writer.PrepareMember(base, memberID); err != nil {
-				return fmt.Errorf("prepare workspace: %w", err)
+			absBase, err := filepath.Abs(base)
+			if err != nil {
+				return fmt.Errorf("resolve base path: %w", err)
 			}
 
-			// TODO: 2. Create Run on server
-			// TODO: 3. Build RunPlan + save .clier/{RUN_ID}.json
-			// TODO: 4. Execute via tmux
-			// Single-member run requires server-side Run creation for a single member.
-			// For now, only workspace preparation is performed.
+			// 1. Workspace (idempotent) -- skip if project dir already exists
+			projectDir := filepath.Join(absBase, "project")
+			if _, err := os.Stat(projectDir); os.IsNotExist(err) {
+				writer := appws.NewWriter(client, owner)
+				if err := writer.PrepareMember(absBase, memberID); err != nil {
+					return fmt.Errorf("prepare workspace: %w", err)
+				}
+			}
+
+			// 2. Get member spec for command
+			member, err := client.GetMember(owner, memberID)
+			if err != nil {
+				return fmt.Errorf("get member: %w", err)
+			}
+
+			// 3. Create Run on server
+			runID := uuid.NewString()
+			runName := apprun.SessionName(member.Name, runID)
+			runResp, err := client.CreateRun(map[string]any{
+				"id":     runID,
+				"name":   runName,
+				"status": "running",
+			})
+			if err != nil {
+				return fmt.Errorf("create run: %w", err)
+			}
+			runID = runResp.ID
+
+			// 4. Build env vars + command
+			runPlanPath := filepath.Join(absBase, ".clier", runID+".json")
+			envVars := buildMemberEnv(runID, member.Name, runPlanPath, absBase)
+			projectPath := filepath.Join(absBase, "project")
+			fullCommand := buildFullCommand(envVars, member.Command, projectPath)
+
+			// 5. Build RunPlan
+			plan := &apprun.RunPlan{
+				Session: runName,
+				Members: []apprun.MemberTerminal{{
+					Name:    member.Name,
+					Window:  0,
+					Cwd:     projectPath,
+					Command: fullCommand,
+				}},
+			}
+
+			// 6. Save .clier/{RUN_ID}.json
+			if err := apprun.SavePlan(absBase, runID, plan); err != nil {
+				return fmt.Errorf("save plan: %w", err)
+			}
+
+			// 7. Launch tmux
+			term := terminal.NewTmuxTerminal(newStore())
+			domainPlans := []domain.MemberPlan{{
+				TeamMemberID: memberID,
+				MemberName:   member.Name,
+				Terminal:     domain.TerminalPlan{Command: fullCommand},
+				Workspace:    domain.WorkspacePlan{Memberspace: absBase},
+			}}
+			if err := term.Launch(runID, plan.Session, domainPlans); err != nil {
+				return fmt.Errorf("launch: %w", err)
+			}
 
 			return printJSON(map[string]string{
-				"status": "workspace prepared",
-				"member": memberID,
-				"dir":    base,
-				"note":   "full run execution requires team context; use 'clier run start' with a team",
+				"run_id":  runID,
+				"session": plan.Session,
 			})
 		},
 	}

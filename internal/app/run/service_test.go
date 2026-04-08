@@ -6,12 +6,10 @@ import (
 	"testing"
 
 	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
 type stubStore struct {
 	run   *domain.Run
-	team  *domain.Team
 	notes []*domain.Note
 	msgs  []*domain.Message
 }
@@ -24,12 +22,6 @@ func (s *stubStore) GetRun(_ context.Context, id string) (domain.Run, error) {
 	return domain.Run{}, errors.New("run not found")
 }
 func (s *stubStore) UpdateRunStatus(_ context.Context, _ *domain.Run) error { return nil }
-func (s *stubStore) GetTeam(_ context.Context, id string) (domain.Team, error) {
-	if s.team != nil && s.team.ID == id {
-		return *s.team, nil
-	}
-	return domain.Team{}, errors.New("team not found")
-}
 func (s *stubStore) CreateMessage(_ context.Context, msg *domain.Message) error {
 	s.msgs = append(s.msgs, msg)
 	return nil
@@ -37,18 +29,6 @@ func (s *stubStore) CreateMessage(_ context.Context, msg *domain.Message) error 
 func (s *stubStore) CreateNote(_ context.Context, n *domain.Note) error {
 	s.notes = append(s.notes, n)
 	return nil
-}
-func (s *stubStore) GetMember(_ context.Context, _ string) (domain.Member, error) {
-	return domain.Member{}, errors.New("not implemented")
-}
-func (s *stubStore) GetClaudeMd(_ context.Context, _ string) (resource.ClaudeMd, error) {
-	return resource.ClaudeMd{}, errors.New("not implemented")
-}
-func (s *stubStore) GetSkill(_ context.Context, _ string) (resource.Skill, error) {
-	return resource.Skill{}, errors.New("not implemented")
-}
-func (s *stubStore) GetClaudeSettings(_ context.Context, _ string) (resource.ClaudeSettings, error) {
-	return resource.ClaudeSettings{}, errors.New("not implemented")
 }
 
 type stubTerminal struct {
@@ -63,15 +43,10 @@ func (t *stubTerminal) Send(_, _, text string) error {
 }
 func (t *stubTerminal) Attach(_ string, _ *string) error { return nil }
 
-type stubWorkspace struct{}
-
-func (w *stubWorkspace) Prepare(_ context.Context, _ []domain.MemberPlan) error { return nil }
-func (w *stubWorkspace) Cleanup(_ string) error                                 { return nil }
-
 func TestService_Note(t *testing.T) {
 	r := &domain.Run{ID: "s-1", TeamID: "t-1", Status: domain.RunRunning}
 	store := &stubStore{run: r}
-	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "", nil)
+	svc := New(store, &stubTerminal{})
 
 	t.Run("success", func(t *testing.T) {
 		store.notes = nil
@@ -114,12 +89,11 @@ func TestService_Send(t *testing.T) {
 			{TeamMemberID: "m-2", MemberName: "bob"},
 		},
 	}
-	team := &domain.Team{ID: "t-1"}
 
 	t.Run("agent message includes sender name", func(t *testing.T) {
-		store := &stubStore{run: r, team: team}
+		store := &stubStore{run: r}
 		term := &stubTerminal{}
-		svc := New(store, term, &stubWorkspace{}, "", nil)
+		svc := New(store, term)
 
 		if err := svc.Send(context.Background(), "s-1", "m-1", "m-2", "hello"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -137,9 +111,9 @@ func TestService_Send(t *testing.T) {
 	})
 
 	t.Run("empty sender has no prefix", func(t *testing.T) {
-		store := &stubStore{run: r, team: team}
+		store := &stubStore{run: r}
 		term := &stubTerminal{}
-		svc := New(store, term, &stubWorkspace{}, "", nil)
+		svc := New(store, term)
 
 		if err := svc.Send(context.Background(), "s-1", "", "m-2", "do this"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -150,9 +124,9 @@ func TestService_Send(t *testing.T) {
 	})
 
 	t.Run("delivery failure prevents save", func(t *testing.T) {
-		store := &stubStore{run: r, team: team}
+		store := &stubStore{run: r}
 		term := &failTerminal{}
-		svc := New(store, term, &stubWorkspace{}, "", nil)
+		svc := New(store, term)
 
 		err := svc.Send(context.Background(), "s-1", "m-1", "bad-member", "hello")
 		if err == nil {

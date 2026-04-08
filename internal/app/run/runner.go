@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jakeraft/clier/internal/domain"
 )
@@ -54,7 +55,7 @@ func (r *Runner) Run(workspaceBase, runID, sessionName string, plans []domain.Me
 		Members: memberTerminals,
 	}
 
-	if err := savePlan(workspaceBase, runID, plan); err != nil {
+	if err := SavePlan(workspaceBase, runID, plan); err != nil {
 		return fmt.Errorf("save plan: %w", err)
 	}
 
@@ -65,8 +66,8 @@ func (r *Runner) Run(workspaceBase, runID, sessionName string, plans []domain.Me
 	return nil
 }
 
-// savePlan writes the RunPlan to {workspaceBase}/.clier/{runID}.json.
-func savePlan(workspaceBase, runID string, plan *RunPlan) error {
+// SavePlan writes the RunPlan to {workspaceBase}/.clier/{runID}.json.
+func SavePlan(workspaceBase, runID string, plan *RunPlan) error {
 	dir := filepath.Join(workspaceBase, ".clier")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("create plan dir: %w", err)
@@ -83,6 +84,11 @@ func savePlan(workspaceBase, runID string, plan *RunPlan) error {
 // LoadPlan reads a saved RunPlan from {workspaceBase}/.clier/{runID}.json.
 func LoadPlan(workspaceBase, runID string) (*RunPlan, error) {
 	path := filepath.Join(workspaceBase, ".clier", runID+".json")
+	return LoadPlanFromPath(path)
+}
+
+// LoadPlanFromPath reads a saved RunPlan from an absolute file path.
+func LoadPlanFromPath(path string) (*RunPlan, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read plan: %w", err)
@@ -92,4 +98,17 @@ func LoadPlan(workspaceBase, runID string) (*RunPlan, error) {
 		return nil, fmt.Errorf("unmarshal plan: %w", err)
 	}
 	return &plan, nil
+}
+
+// SessionName generates a tmux-safe session name from a name and run ID.
+func SessionName(name, runID string) string {
+	n := strings.NewReplacer(".", "-", ":", "-", " ", "-", "/", "-").Replace(name)
+	if len(n) > 20 {
+		n = n[:20]
+	}
+	short := runID
+	if len(short) > 8 {
+		short = short[:8]
+	}
+	return n + "-" + short
 }

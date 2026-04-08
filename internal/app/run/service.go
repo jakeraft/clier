@@ -6,13 +6,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
-// RunStore persists Run lifecycle state and provides read access
-// to team/member specs needed for plan building.
+// RunStore persists Run lifecycle state.
 type RunStore interface {
 	// Run CRUD
 	CreateRun(ctx context.Context, run *domain.Run) error
@@ -20,13 +17,6 @@ type RunStore interface {
 	UpdateRunStatus(ctx context.Context, run *domain.Run) error
 	CreateMessage(ctx context.Context, msg *domain.Message) error
 	CreateNote(ctx context.Context, n *domain.Note) error
-
-	// Team and member spec reads (used by plan building)
-	GetTeam(ctx context.Context, id string) (domain.Team, error)
-	GetMember(ctx context.Context, id string) (domain.Member, error)
-	GetClaudeMd(ctx context.Context, id string) (resource.ClaudeMd, error)
-	GetSkill(ctx context.Context, id string) (resource.Skill, error)
-	GetClaudeSettings(ctx context.Context, id string) (resource.ClaudeSettings, error)
 }
 
 // Terminal launches and terminates member processes.
@@ -37,74 +27,18 @@ type Terminal interface {
 	Attach(runID string, memberID *string) error
 }
 
-// Workspace prepares and cleans up member directories.
-type Workspace interface {
-	Prepare(ctx context.Context, members []domain.MemberPlan) error
-	Cleanup(runID string) error
-}
-
-// Service orchestrates run execution: build plan, prepare workspace,
-// launch terminals, deliver messages.
+// Service orchestrates run messaging and lifecycle.
 type Service struct {
-	store     RunStore
-	terminal  Terminal
-	workspace Workspace
-	base      string
-	runtimes  map[string]AgentRuntime
+	store    RunStore
+	terminal Terminal
 }
 
 // New creates a run Service.
-func New(store RunStore, term Terminal, ws Workspace, base string, runtimes map[string]AgentRuntime) *Service {
-	return &Service{store: store, terminal: term, workspace: ws, base: base, runtimes: runtimes}
+func New(store RunStore, term Terminal) *Service {
+	return &Service{store: store, terminal: term}
 }
 
-// Start resolves the team, builds the execution plan,
-// prepares the workspace, and launches terminals for each member.
-func (s *Service) Start(ctx context.Context, team domain.Team) (*domain.Run, error) {
-	// Resolve: ID references -> loaded domain objects
-	resolved, err := s.resolveTeam(ctx, team)
-	if err != nil {
-		return nil, fmt.Errorf("resolve team: %w", err)
-	}
-
-	runID := uuid.NewString()
-	runName := domain.RunName(team.Name, runID)
-
-	// Build: resolved objects -> execution plan with concrete paths
-	members := buildPlans(resolved, s.base, runID, s.runtimes)
-
-	r, err := domain.NewRun(runID, runName, team.ID)
-	if err != nil {
-		return nil, fmt.Errorf("new run: %w", err)
-	}
-	r.Plan = members
-
-	success := false
-	defer func() {
-		if !success {
-			_ = s.workspace.Cleanup(runID)
-		}
-	}()
-
-	// Start: prepare workspace + launch terminals
-	if err := s.workspace.Prepare(ctx, members); err != nil {
-		return nil, fmt.Errorf("prepare workspace: %w", err)
-	}
-
-	if err := s.store.CreateRun(ctx, r); err != nil {
-		return nil, fmt.Errorf("save run: %w", err)
-	}
-
-	if err := s.terminal.Launch(runID, runName, members); err != nil {
-		return nil, fmt.Errorf("launch terminal: %w", err)
-	}
-
-	success = true
-	return r, nil
-}
-
-// Stop terminates a running execution, updates status, and cleans up workspace.
-// Workspace cleanup is best-effort — status is updated even if cleanup fails.
+// Stop terminates a running execution and updates status.
 func (s *Service) Stop(ctx context.Context, runID string) error {
 	r, err := s.store.GetRun(ctx, runID)
 	if err != nil {
@@ -112,7 +46,7 @@ func (s *Service) Stop(ctx context.Context, runID string) error {
 	}
 
 	if err := s.terminal.Terminate(runID); err != nil {
-		return fmt.Errorf("terminate terminal: %w", err)
+		log.Printf("terminate terminal %s: %v", runID, err)
 	}
 
 	r.Stop()
@@ -122,10 +56,6 @@ func (s *Service) Stop(ctx context.Context, runID string) error {
 
 	// Allow OS to release file handles from terminated processes.
 	time.Sleep(2 * time.Second)
-
-	if err := s.workspace.Cleanup(runID); err != nil {
-		log.Printf("cleanup workspace %s: %v", runID, err)
-	}
 
 	return nil
 }
@@ -179,4 +109,3 @@ func (s *Service) Note(ctx context.Context, runID, teamMemberID, content string)
 	}
 	return nil
 }
-

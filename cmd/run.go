@@ -6,9 +6,7 @@ import (
 	"os"
 	"strings"
 
-	agentrt "github.com/jakeraft/clier/internal/adapter/runtime"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
-	"github.com/jakeraft/clier/internal/adapter/workspace"
 	"github.com/jakeraft/clier/internal/app/run"
 	"github.com/spf13/cobra"
 )
@@ -22,7 +20,6 @@ func newRunCmd() *cobra.Command {
 		Use:   "run",
 		Short: "Manage runs",
 	}
-	cmd.AddCommand(newRunStartCmd())
 	cmd.AddCommand(newRunStopCmd())
 	cmd.AddCommand(newRunListCmd())
 	cmd.AddCommand(newRunTellCmd())
@@ -33,41 +30,6 @@ func newRunCmd() *cobra.Command {
 	return cmd
 }
 
-func newRunStartCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:         "start <team-id>",
-		Short:       "Start a run",
-		Args:        cobra.ExactArgs(1),
-		Annotations: map[string]string{mutates: "true"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store := newStore()
-
-			t, err := store.GetTeam(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-
-			term := terminal.NewTmuxTerminal(store)
-			ws := workspace.New(cfg.Paths.Workspaces())
-			runtimes := map[string]run.AgentRuntime{
-				"claude": &agentrt.ClaudeRuntime{},
-			}
-			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), runtimes)
-
-			r, err := svc.Start(cmd.Context(), t)
-			if err != nil {
-				return err
-			}
-			return printJSON(r)
-		},
-	}
-	return cmd
-}
-
 func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:         "stop <id>",
@@ -75,18 +37,9 @@ func newRunStopCmd() *cobra.Command {
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
 			store := newStore()
-
 			term := terminal.NewTmuxTerminal(store)
-			ws := workspace.New(cfg.Paths.Workspaces())
-			runtimes := map[string]run.AgentRuntime{
-				"claude": &agentrt.ClaudeRuntime{},
-			}
-			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), runtimes)
+			svc := run.New(store, term)
 
 			if err := svc.Stop(cmd.Context(), args[0]); err != nil {
 				return err
@@ -139,18 +92,9 @@ Examples:
 				return err
 			}
 
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
 			store := newStore()
-
 			term := terminal.NewTmuxTerminal(store)
-			ws := workspace.New(cfg.Paths.Workspaces())
-			runtimes := map[string]run.AgentRuntime{
-				"claude": &agentrt.ClaudeRuntime{},
-			}
-			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), runtimes)
+			svc := run.New(store, term)
 
 			if err := svc.Send(cmd.Context(), runID, fromMemberID, toMemberID, content); err != nil {
 				return err
@@ -187,18 +131,9 @@ func newRunNoteCmd() *cobra.Command {
 				return err
 			}
 
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
 			store := newStore()
-
 			term := terminal.NewTmuxTerminal(store)
-			ws := workspace.New(cfg.Paths.Workspaces())
-			runtimes := map[string]run.AgentRuntime{
-				"claude": &agentrt.ClaudeRuntime{},
-			}
-			svc := run.New(store, term, ws, cfg.Paths.Workspaces(), runtimes)
+			svc := run.New(store, term)
 
 			if err := svc.Note(cmd.Context(), runID, memberID, content); err != nil {
 				return err
