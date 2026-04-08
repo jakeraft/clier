@@ -14,13 +14,6 @@ func TestPaths(t *testing.T) {
 		}
 	})
 
-	t.Run("DB", func(t *testing.T) {
-		want := "/Users/test/.clier/clier.db"
-		if p.DB() != want {
-			t.Errorf("DB() = %q, want %q", p.DB(), want)
-		}
-	})
-
 	t.Run("Workspaces", func(t *testing.T) {
 		want := "/Users/test/.clier/workspaces"
 		if p.Workspaces() != want {
@@ -50,8 +43,8 @@ func TestNew(t *testing.T) {
 		if err != nil {
 			t.Fatalf("New() error: %v", err)
 		}
-		if !strings.HasSuffix(s.Paths.DB(), dotDir+"/clier.db") {
-			t.Errorf("DB() = %q, should contain %q", s.Paths.DB(), dotDir)
+		if !strings.HasSuffix(s.Paths.Base(), dotDir) {
+			t.Errorf("Base() = %q, should end with %q", s.Paths.Base(), dotDir)
 		}
 	})
 
@@ -64,4 +57,3 @@ func TestNew(t *testing.T) {
 		}
 	})
 }
-

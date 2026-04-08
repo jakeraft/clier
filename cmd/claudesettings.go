@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/jakeraft/clier/internal/domain/resource"
 	"github.com/spf13/cobra"
 )
 
@@ -29,24 +28,17 @@ func newClaudeSettingsCreateCmd() *cobra.Command {
 		Short:       "Create a Claude settings.json file",
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			s, err := resource.NewClaudeSettings(name, content)
+			resp, err := client.CreateClaudeSettings(owner, map[string]string{
+				"name":    name,
+				"content": content,
+			})
 			if err != nil {
 				return err
 			}
-			if err := store.CreateClaudeSettings(cmd.Context(), s); err != nil {
-				return err
-			}
-			return printJSON(s)
+			return printJSON(resp)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Settings name (human identifier)")
@@ -61,17 +53,10 @@ func newClaudeSettingsListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all Claude settings.json files",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			items, err := store.ListClaudeSettings(cmd.Context())
+			items, err := client.ListClaudeSettings(owner)
 			if err != nil {
 				return err
 			}
@@ -89,37 +74,22 @@ func newClaudeSettingsUpdateCmd() *cobra.Command {
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			s, err := store.GetClaudeSettings(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-
-			var namePtr *string
+			body := map[string]string{}
 			if cmd.Flags().Changed("name") {
-				namePtr = &name
+				body["name"] = name
 			}
-			var contentPtr *string
 			if cmd.Flags().Changed("content") {
-				contentPtr = &content
+				body["content"] = content
 			}
 
-			if err := s.Update(namePtr, contentPtr); err != nil {
+			resp, err := client.UpdateClaudeSettings(owner, args[0], body)
+			if err != nil {
 				return err
 			}
-			if err := store.UpdateClaudeSettings(cmd.Context(), &s); err != nil {
-				return err
-			}
-			return printJSON(s)
+			return printJSON(resp)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New settings name")
@@ -134,17 +104,10 @@ func newClaudeSettingsDeleteCmd() *cobra.Command {
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			if err := store.DeleteClaudeSettings(cmd.Context(), args[0]); err != nil {
+			if err := client.DeleteClaudeSettings(owner, args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jakeraft/clier/internal/adapter/db"
+	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/settings"
 	"github.com/spf13/cobra"
 )
@@ -17,8 +17,25 @@ func newSettings() (*settings.Settings, error) {
 	return settings.New()
 }
 
-func newStore(cfg *settings.Settings) (*db.Store, error) {
-	return db.NewStore(cfg.Paths.DB())
+func newAPIClient() *api.Client {
+	serverURL := os.Getenv("CLIER_SERVER_URL")
+	if serverURL == "" {
+		serverURL = "http://localhost:8080"
+	}
+	token := os.Getenv("CLIER_TOKEN")
+	return api.NewClient(serverURL, token)
+}
+
+func resolveOwner() string {
+	owner := os.Getenv("CLIER_OWNER")
+	if owner == "" {
+		owner = "default"
+	}
+	return owner
+}
+
+func newStore() *api.Store {
+	return api.NewStore(newAPIClient(), resolveOwner())
 }
 
 var rootCmd = &cobra.Command{
@@ -44,13 +61,8 @@ New to clier? Run "clier tutorial" for a step-by-step guide.`,
 			fmt.Fprintf(os.Stderr, "warning: dashboard not updated: %v\n", err)
 			return nil
 		}
-		store, err := newStore(cfg)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: dashboard not updated: %v\n", err)
-			return nil
-		}
-		defer store.Close()
-		if _, err := generateDashboard(cmd.Context(), store, cfg.Paths.Dashboard()); err != nil {
+		client := newAPIClient()
+		if _, err := generateDashboard(cmd.Context(), client, resolveOwner(), cfg.Paths.Dashboard()); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: dashboard not updated: %v\n", err)
 		}
 		return nil

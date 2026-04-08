@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -30,24 +29,31 @@ func newMemberCreateCmd() *cobra.Command {
 		Short:       "Create a member",
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			m, err := domain.NewMember(name, command, claudeMd, skills, claudeSettings, repo)
+			body := map[string]any{
+				"name":    name,
+				"command": command,
+			}
+			if claudeMd != "" {
+				body["claude_md_id"] = claudeMd
+			}
+			if skills != nil {
+				body["skill_ids"] = skills
+			}
+			if claudeSettings != "" {
+				body["claude_settings_id"] = claudeSettings
+			}
+			if repo != "" {
+				body["git_repo_url"] = repo
+			}
+
+			resp, err := client.CreateMember(owner, body)
 			if err != nil {
 				return err
 			}
-			if err := store.CreateMember(cmd.Context(), m); err != nil {
-				return err
-			}
-			return printJSON(m)
+			return printJSON(resp)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Member name")
@@ -66,17 +72,10 @@ func newMemberListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all members",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			members, err := store.ListMembers(cmd.Context())
+			members, err := client.ListMembers(owner)
 			if err != nil {
 				return err
 			}
@@ -95,53 +94,34 @@ func newMemberUpdateCmd() *cobra.Command {
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			m, err := store.GetMember(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-
-			var namePtr *string
+			body := map[string]any{}
 			if cmd.Flags().Changed("name") {
-				namePtr = &name
+				body["name"] = name
 			}
-			var commandPtr *string
 			if cmd.Flags().Changed("command") {
-				commandPtr = &command
+				body["command"] = command
 			}
-			var claudeMdPtr *string
 			if cmd.Flags().Changed("claude-md") {
-				claudeMdPtr = &claudeMd
+				body["claude_md_id"] = claudeMd
 			}
-			var skillsPtr *[]string
 			if cmd.Flags().Changed("skills") {
-				skillsPtr = &skills
+				body["skill_ids"] = skills
 			}
-			var claudeSettingsPtr *string
 			if cmd.Flags().Changed("claude-settings") {
-				claudeSettingsPtr = &claudeSettings
+				body["claude_settings_id"] = claudeSettings
 			}
-			var repoPtr *string
 			if cmd.Flags().Changed("repo") {
-				repoPtr = &repo
+				body["git_repo_url"] = repo
 			}
 
-			if err := m.Update(namePtr, commandPtr, claudeMdPtr, skillsPtr, claudeSettingsPtr, repoPtr); err != nil {
+			resp, err := client.UpdateMember(owner, args[0], body)
+			if err != nil {
 				return err
 			}
-			if err := store.UpdateMember(cmd.Context(), &m); err != nil {
-				return err
-			}
-			return printJSON(m)
+			return printJSON(resp)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New member name")
@@ -160,17 +140,10 @@ func newMemberDeleteCmd() *cobra.Command {
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			if err := store.DeleteMember(cmd.Context(), args[0]); err != nil {
+			if err := client.DeleteMember(owner, args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

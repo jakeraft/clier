@@ -7,18 +7,8 @@ linters:
     - unparam
     - misspell
     - nilerr
-    - sqlclosecheck
     - perfsprint
     - modernize
-  settings:
-    errcheck:
-      exclude-functions:
-        - (*github.com/jakeraft/clier/internal/adapter/db.Store).Close
-        - (*database/sql.DB).Close
-        - (*database/sql.Tx).Rollback
-  exclusions:
-    paths:
-      - internal/adapter/db/generated
 
 issues:
   max-same-issues: 0

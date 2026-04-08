@@ -44,11 +44,7 @@ func newRunStartCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			store := newStore()
 
 			t, err := store.GetTeam(cmd.Context(), args[0])
 			if err != nil {
@@ -83,11 +79,7 @@ func newRunStopCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			store := newStore()
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
@@ -109,17 +101,9 @@ func newRunListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all runs",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
 
-			runs, err := store.ListRuns(cmd.Context())
+			runs, err := client.ListRuns()
 			if err != nil {
 				return err
 			}
@@ -159,11 +143,7 @@ Examples:
 			if err != nil {
 				return err
 			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			store := newStore()
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
@@ -211,11 +191,7 @@ func newRunNoteCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			store := newStore()
 
 			term := terminal.NewTmuxTerminal(store)
 			ws := workspace.New(cfg.Paths.Workspaces())
@@ -244,17 +220,9 @@ func newRunNotesCmd() *cobra.Command {
 		Short: "List run notes",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
 
-			notes, err := store.ListNotesByRunID(cmd.Context(), args[0])
+			notes, err := client.ListNotes(args[0])
 			if err != nil {
 				return err
 			}
@@ -269,17 +237,9 @@ func newRunMessagesCmd() *cobra.Command {
 		Short: "List run messages",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
 
-			msgs, err := store.ListMessagesByRunID(cmd.Context(), args[0])
+			msgs, err := client.ListMessages(args[0])
 			if err != nil {
 				return err
 			}
@@ -296,15 +256,7 @@ func newRunAttachCmd() *cobra.Command {
 		Short: "Attach to a running run's terminal",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			store := newStore()
 
 			term := terminal.NewTmuxTerminal(store)
 

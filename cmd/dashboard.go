@@ -10,9 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jakeraft/clier/internal/adapter/db"
-	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/domain/resource"
+	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/ui"
 	"github.com/spf13/cobra"
 )
@@ -30,13 +28,10 @@ func newDashboardCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			outPath, err := generateDashboard(cmd.Context(), store, cfg.Paths.Dashboard())
+			outPath, err := generateDashboard(cmd.Context(), client, owner, cfg.Paths.Dashboard())
 			if err != nil {
 				return err
 			}
@@ -50,8 +45,9 @@ func newDashboardCmd() *cobra.Command {
 const jsonPlaceholder = "/* JSON_DATA */"
 
 // generateDashboard collects all entities, injects them as JSON into index.html, and writes the result.
-func generateDashboard(ctx context.Context, store *db.Store, outPath string) (string, error) {
-	data, err := collectDashboardData(ctx, store)
+func generateDashboard(ctx context.Context, client *api.Client, owner, outPath string) (string, error) {
+	_ = ctx // kept for interface compatibility
+	data, err := collectDashboardData(client, owner)
 	if err != nil {
 		return "", fmt.Errorf("collect data: %w", err)
 	}
@@ -80,38 +76,38 @@ func generateDashboard(ctx context.Context, store *db.Store, outPath string) (st
 	return outPath, nil
 }
 
-func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, error) {
-	teams, err := store.ListTeams(ctx)
+func collectDashboardData(client *api.Client, owner string) (dashboardData, error) {
+	teams, err := client.ListTeams(owner)
 	if err != nil {
 		return dashboardData{}, err
 	}
-	members, err := store.ListMembers(ctx)
+	members, err := client.ListMembers(owner)
 	if err != nil {
 		return dashboardData{}, err
 	}
-	claudeMds, err := store.ListClaudeMds(ctx)
+	claudeMds, err := client.ListClaudeMds(owner)
 	if err != nil {
 		return dashboardData{}, err
 	}
-	skills, err := store.ListSkills(ctx)
+	skills, err := client.ListSkills(owner)
 	if err != nil {
 		return dashboardData{}, err
 	}
-	claudeSettingsList, err := store.ListClaudeSettings(ctx)
+	claudeSettingsList, err := client.ListClaudeSettings(owner)
 	if err != nil {
 		return dashboardData{}, err
 	}
-	runs, err := store.ListRuns(ctx)
+	runs, err := client.ListRuns()
 	if err != nil {
 		return dashboardData{}, err
 	}
 
-	claudeMdNames := nameMap(claudeMds, func(c resource.ClaudeMd) (string, string) { return c.ID, c.Name })
-	skillNames := nameMap(skills, func(s resource.Skill) (string, string) { return s.ID, s.Name })
-	claudeSettingsNames := nameMap(claudeSettingsList, func(s resource.ClaudeSettings) (string, string) { return s.ID, s.Name })
-	teamNames := nameMap(teams, func(t domain.Team) (string, string) { return t.ID, t.Name })
+	claudeMdNames := nameMap(claudeMds, func(c api.ClaudeMdResponse) (string, string) { return c.ID, c.Name })
+	skillNames := nameMap(skills, func(s api.SkillResponse) (string, string) { return s.ID, s.Name })
+	claudeSettingsNames := nameMap(claudeSettingsList, func(s api.ClaudeSettingsResponse) (string, string) { return s.ID, s.Name })
+	teamNames := nameMap(teams, func(t api.TeamResponse) (string, string) { return t.ID, t.Name })
 
-	runViews, err := convertRuns(ctx, store, runs, teamNames)
+	runViews, err := convertRuns(client, runs, teamNames)
 	if err != nil {
 		return dashboardData{}, err
 	}
@@ -135,9 +131,9 @@ func nameMap[T any](items []T, fn func(T) (string, string)) map[string]string {
 	return m
 }
 
-// --- domain -> view conversions ---
+// --- API response -> view conversions ---
 
-func convertTeams(teams []domain.Team) []teamView {
+func convertTeams(teams []api.TeamResponse) []teamView {
 	views := make([]teamView, 0, len(teams))
 	for _, t := range teams {
 		names := make([]string, 0, len(t.TeamMembers))
@@ -183,7 +179,7 @@ func convertTeams(teams []domain.Team) []teamView {
 	return views
 }
 
-func convertMembers(members []domain.Member, claudeMdNames, skillNames, claudeSettingsNames map[string]string) []memberView {
+func convertMembers(members []api.MemberResponse, claudeMdNames, skillNames, claudeSettingsNames map[string]string) []memberView {
 	views := make([]memberView, 0, len(members))
 	for _, m := range members {
 		skNames := make([]string, 0, len(m.SkillIDs))
@@ -218,7 +214,7 @@ func convertMembers(members []domain.Member, claudeMdNames, skillNames, claudeSe
 	return views
 }
 
-func convertClaudeMds(items []resource.ClaudeMd) []claudeMdView {
+func convertClaudeMds(items []api.ClaudeMdResponse) []claudeMdView {
 	views := make([]claudeMdView, 0, len(items))
 	for _, c := range items {
 		views = append(views, claudeMdView{
@@ -232,7 +228,7 @@ func convertClaudeMds(items []resource.ClaudeMd) []claudeMdView {
 	return views
 }
 
-func convertSkills(items []resource.Skill) []skillView {
+func convertSkills(items []api.SkillResponse) []skillView {
 	views := make([]skillView, 0, len(items))
 	for _, s := range items {
 		views = append(views, skillView{
@@ -246,7 +242,7 @@ func convertSkills(items []resource.Skill) []skillView {
 	return views
 }
 
-func convertClaudeSettings(items []resource.ClaudeSettings) []claudeSettingsView {
+func convertClaudeSettings(items []api.ClaudeSettingsResponse) []claudeSettingsView {
 	views := make([]claudeSettingsView, 0, len(items))
 	for _, s := range items {
 		views = append(views, claudeSettingsView{
@@ -379,14 +375,14 @@ type messageView struct {
 	CreatedAt        time.Time `json:"createdAt"`
 }
 
-func convertRuns(ctx context.Context, store *db.Store, runs []domain.Run, teamNames map[string]string) ([]runView, error) {
+func convertRuns(client *api.Client, runs []api.RunResponse, teamNames map[string]string) ([]runView, error) {
 	views := make([]runView, 0, len(runs))
 	for _, r := range runs {
-		notes, err := store.ListNotesByRunID(ctx, r.ID)
+		notes, err := client.ListNotes(r.ID)
 		if err != nil {
 			return nil, err
 		}
-		msgs, err := store.ListMessagesByRunID(ctx, r.ID)
+		msgs, err := client.ListMessages(r.ID)
 		if err != nil {
 			return nil, err
 		}

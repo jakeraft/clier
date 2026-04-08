@@ -5,72 +5,105 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/jakeraft/clier/internal/adapter/db"
 	agentrt "github.com/jakeraft/clier/internal/adapter/runtime"
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/jakeraft/clier/internal/domain/resource"
 )
 
-func setupTestStore(t *testing.T) *db.Store {
-	t.Helper()
-	store, err := db.NewStore(":memory:")
-	if err != nil {
-		t.Fatalf("NewStore: %v", err)
-	}
-	t.Cleanup(func() { store.Close() })
-	return store
+type fullStubStore struct {
+	stubStore
+	members        map[string]domain.Member
+	claudeMds      map[string]resource.ClaudeMd
+	skills         map[string]resource.Skill
+	claudeSettings map[string]resource.ClaudeSettings
+	teams          map[string]domain.Team
 }
 
-func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (domain.Team, string, string) {
+func newFullStubStore() *fullStubStore {
+	return &fullStubStore{
+		members:        make(map[string]domain.Member),
+		claudeMds:      make(map[string]resource.ClaudeMd),
+		skills:         make(map[string]resource.Skill),
+		claudeSettings: make(map[string]resource.ClaudeSettings),
+		teams:          make(map[string]domain.Team),
+	}
+}
+
+func (s *fullStubStore) GetMember(_ context.Context, id string) (domain.Member, error) {
+	m, ok := s.members[id]
+	if !ok {
+		return domain.Member{}, errNotFound("member", id)
+	}
+	return m, nil
+}
+
+func (s *fullStubStore) GetClaudeMd(_ context.Context, id string) (resource.ClaudeMd, error) {
+	cm, ok := s.claudeMds[id]
+	if !ok {
+		return resource.ClaudeMd{}, errNotFound("claude_md", id)
+	}
+	return cm, nil
+}
+
+func (s *fullStubStore) GetSkill(_ context.Context, id string) (resource.Skill, error) {
+	sk, ok := s.skills[id]
+	if !ok {
+		return resource.Skill{}, errNotFound("skill", id)
+	}
+	return sk, nil
+}
+
+func (s *fullStubStore) GetClaudeSettings(_ context.Context, id string) (resource.ClaudeSettings, error) {
+	cs, ok := s.claudeSettings[id]
+	if !ok {
+		return resource.ClaudeSettings{}, errNotFound("claude_settings", id)
+	}
+	return cs, nil
+}
+
+func (s *fullStubStore) GetTeam(_ context.Context, id string) (domain.Team, error) {
+	t, ok := s.teams[id]
+	if !ok {
+		return domain.Team{}, errNotFound("team", id)
+	}
+	return t, nil
+}
+
+func errNotFound(entity, id string) error {
+	return domain.ErrNotFound{Entity: entity, ID: id}
+}
+
+func createMinimalTeam(t *testing.T, store *fullStubStore) (domain.Team, string, string) {
 	t.Helper()
 
 	claudeMd, _ := resource.NewClaudeMd("test-md", "do things")
-	if err := store.CreateClaudeMd(ctx, claudeMd); err != nil {
-		t.Fatalf("CreateClaudeMd: %v", err)
-	}
+	store.claudeMds[claudeMd.ID] = *claudeMd
 
 	claudeSettings, _ := resource.NewClaudeSettings("test-settings", `{"key":"val"}`)
-	if err := store.CreateClaudeSettings(ctx, claudeSettings); err != nil {
-		t.Fatalf("CreateClaudeSettings: %v", err)
-	}
+	store.claudeSettings[claudeSettings.ID] = *claudeSettings
 
 	root, _ := domain.NewMember("alice", "claude --dangerously-skip-permissions --model claude-sonnet-4-6",
 		claudeMd.ID, nil, claudeSettings.ID, "https://example.com/repo.git")
-	if err := store.CreateMember(ctx, root); err != nil {
-		t.Fatalf("CreateMember root: %v", err)
-	}
+	store.members[root.ID] = *root
 
 	worker, _ := domain.NewMember("bob", "claude --dangerously-skip-permissions --model claude-sonnet-4-6",
 		claudeMd.ID, nil, claudeSettings.ID, "")
-	if err := store.CreateMember(ctx, worker); err != nil {
-		t.Fatalf("CreateMember worker: %v", err)
-	}
+	store.members[worker.ID] = *worker
 
 	team, _ := domain.NewTeam("test-team", root.ID, "alice")
-	if err := store.CreateTeam(ctx, team); err != nil {
-		t.Fatalf("CreateTeam: %v", err)
-	}
-
 	workerTM := domain.TeamMember{ID: uuid.NewString(), MemberID: worker.ID, Name: "bob"}
-	if err := store.AddTeamMember(ctx, team.ID, workerTM); err != nil {
-		t.Fatalf("AddTeamMember: %v", err)
-	}
+	team.TeamMembers = append(team.TeamMembers, workerTM)
 	rel := domain.Relation{From: team.RootTeamMemberID, To: workerTM.ID}
-	if err := store.AddTeamRelation(ctx, team.ID, rel); err != nil {
-		t.Fatalf("AddTeamRelation: %v", err)
-	}
+	team.Relations = append(team.Relations, rel)
+	store.teams[team.ID] = *team
 
-	got, err := store.GetTeam(ctx, team.ID)
-	if err != nil {
-		t.Fatalf("GetTeam: %v", err)
-	}
-	return got, team.RootTeamMemberID, workerTM.ID
+	return *team, team.RootTeamMemberID, workerTM.ID
 }
 
 func TestResolveTeam(t *testing.T) {
 	ctx := context.Background()
-	store := setupTestStore(t)
-	team, rootTMID, workerTMID := createMinimalTeam(t, ctx, store)
+	store := newFullStubStore()
+	team, rootTMID, workerTMID := createMinimalTeam(t, store)
 
 	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "/tmp/base", nil)
 
@@ -119,8 +152,8 @@ func TestResolveTeam(t *testing.T) {
 
 func TestBuildPlans(t *testing.T) {
 	ctx := context.Background()
-	store := setupTestStore(t)
-	team, rootTMID, workerTMID := createMinimalTeam(t, ctx, store)
+	store := newFullStubStore()
+	team, rootTMID, workerTMID := createMinimalTeam(t, store)
 
 	runtimes := map[string]AgentRuntime{"claude": &agentrt.ClaudeRuntime{}}
 	svc := New(store, &stubTerminal{}, &stubWorkspace{}, "/tmp/base", runtimes)

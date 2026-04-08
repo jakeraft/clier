@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/jakeraft/clier/internal/domain/resource"
 	"github.com/spf13/cobra"
 )
 
@@ -29,24 +28,17 @@ func newSkillCreateCmd() *cobra.Command {
 		Short:       "Create a skill",
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			s, err := resource.NewSkill(name, content)
+			resp, err := client.CreateSkill(owner, map[string]string{
+				"name":    name,
+				"content": content,
+			})
 			if err != nil {
 				return err
 			}
-			if err := store.CreateSkill(cmd.Context(), s); err != nil {
-				return err
-			}
-			return printJSON(s)
+			return printJSON(resp)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Skill name (lowercase with hyphens, e.g. code-review)")
@@ -61,17 +53,10 @@ func newSkillListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all skills",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			items, err := store.ListSkills(cmd.Context())
+			items, err := client.ListSkills(owner)
 			if err != nil {
 				return err
 			}
@@ -89,37 +74,22 @@ func newSkillUpdateCmd() *cobra.Command {
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			s, err := store.GetSkill(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-
-			var namePtr *string
+			body := map[string]string{}
 			if cmd.Flags().Changed("name") {
-				namePtr = &name
+				body["name"] = name
 			}
-			var contentPtr *string
 			if cmd.Flags().Changed("content") {
-				contentPtr = &content
+				body["content"] = content
 			}
 
-			if err := s.Update(namePtr, contentPtr); err != nil {
+			resp, err := client.UpdateSkill(owner, args[0], body)
+			if err != nil {
 				return err
 			}
-			if err := store.UpdateSkill(cmd.Context(), &s); err != nil {
-				return err
-			}
-			return printJSON(s)
+			return printJSON(resp)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New skill name")
@@ -134,17 +104,10 @@ func newSkillDeleteCmd() *cobra.Command {
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			if err := store.DeleteSkill(cmd.Context(), args[0]); err != nil {
+			if err := client.DeleteSkill(owner, args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

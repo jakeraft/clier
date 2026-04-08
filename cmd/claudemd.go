@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"github.com/jakeraft/clier/internal/domain/resource"
 	"github.com/spf13/cobra"
 )
 
@@ -29,24 +28,17 @@ func newClaudeMdCreateCmd() *cobra.Command {
 		Short:       "Create a claude md file",
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			c, err := resource.NewClaudeMd(name, content)
+			resp, err := client.CreateClaudeMd(owner, map[string]string{
+				"name":    name,
+				"content": content,
+			})
 			if err != nil {
 				return err
 			}
-			if err := store.CreateClaudeMd(cmd.Context(), c); err != nil {
-				return err
-			}
-			return printJSON(c)
+			return printJSON(resp)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Claude md name (human identifier)")
@@ -61,17 +53,10 @@ func newClaudeMdListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all claude md files",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			items, err := store.ListClaudeMds(cmd.Context())
+			items, err := client.ListClaudeMds(owner)
 			if err != nil {
 				return err
 			}
@@ -89,37 +74,22 @@ func newClaudeMdUpdateCmd() *cobra.Command {
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			c, err := store.GetClaudeMd(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-
-			var namePtr *string
+			body := map[string]string{}
 			if cmd.Flags().Changed("name") {
-				namePtr = &name
+				body["name"] = name
 			}
-			var contentPtr *string
 			if cmd.Flags().Changed("content") {
-				contentPtr = &content
+				body["content"] = content
 			}
 
-			if err := c.Update(namePtr, contentPtr); err != nil {
+			resp, err := client.UpdateClaudeMd(owner, args[0], body)
+			if err != nil {
 				return err
 			}
-			if err := store.UpdateClaudeMd(cmd.Context(), &c); err != nil {
-				return err
-			}
-			return printJSON(c)
+			return printJSON(resp)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New claude md name")
@@ -134,17 +104,10 @@ func newClaudeMdDeleteCmd() *cobra.Command {
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			if err := store.DeleteClaudeMd(cmd.Context(), args[0]); err != nil {
+			if err := client.DeleteClaudeMd(owner, args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

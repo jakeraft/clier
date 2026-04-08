@@ -33,10 +33,6 @@ func (p *Paths) Base() string {
 	return p.base
 }
 
-func (p *Paths) DB() string {
-	return filepath.Join(p.base, "clier.db")
-}
-
 func (p *Paths) Workspaces() string {
 	return filepath.Join(p.base, "workspaces")
 }

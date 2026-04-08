@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,10 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jakeraft/clier/internal/adapter/db"
-	"github.com/jakeraft/clier/internal/app/team"
-	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/domain/resource"
+	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/spf13/cobra"
 )
 
@@ -113,17 +109,8 @@ func newImportCmd() *cobra.Command {
 				return fmt.Errorf("parse JSON: %w", err)
 			}
 
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
-
-			ctx := cmd.Context()
+			client := newAPIClient()
+			owner := resolveOwner()
 
 			// If the JSON has a "files" array, treat it as an index manifest.
 			if _, ok := raw["files"]; ok {
@@ -141,7 +128,7 @@ func newImportCmd() *cobra.Command {
 					if err != nil {
 						return fmt.Errorf("read %s: %w", fileSrc, err)
 					}
-					if err := importEnvelope(ctx, store, fileData); err != nil {
+					if err := importEnvelope(client, owner, fileData); err != nil {
 						return fmt.Errorf("import %s: %w", f, err)
 					}
 				}
@@ -149,13 +136,13 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Otherwise treat it as a single envelope.
-			return importEnvelope(ctx, store, data)
+			return importEnvelope(client, owner, data)
 		},
 	}
 }
 
-// importEnvelope imports a single JSON envelope into the store.
-func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
+// importEnvelope imports a single JSON envelope via the API.
+func importEnvelope(client *api.Client, owner string, data []byte) error {
 	var envelope Envelope
 	if err := json.Unmarshal(data, &envelope); err != nil {
 		return fmt.Errorf("parse envelope: %w", err)
@@ -163,116 +150,41 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 
 	switch envelope.Type {
 	case "claude_md":
-		var c resource.ClaudeMd
-		if err := json.Unmarshal(envelope.Data, &c); err != nil {
-			return fmt.Errorf("unmarshal claude_md: %w", err)
-		}
-		setTimestamps(&c.CreatedAt, &c.UpdatedAt)
-		if existing, err := store.GetClaudeMd(ctx, c.ID); err == nil {
-			if err := existing.Update(&c.Name, &c.Content); err != nil {
-				return err
-			}
-			if err := store.UpdateClaudeMd(ctx, &existing); err != nil {
-				return err
-			}
-			return printJSON(existing)
-		}
-		if err := store.CreateClaudeMd(ctx, &c); err != nil {
-			return err
-		}
-		return printJSON(c)
-
-	case "skill":
-		var sk resource.Skill
-		if err := json.Unmarshal(envelope.Data, &sk); err != nil {
-			return fmt.Errorf("unmarshal skill: %w", err)
-		}
-		setTimestamps(&sk.CreatedAt, &sk.UpdatedAt)
-		if existing, err := store.GetSkill(ctx, sk.ID); err == nil {
-			if err := existing.Update(&sk.Name, &sk.Content); err != nil {
-				return err
-			}
-			if err := store.UpdateSkill(ctx, &existing); err != nil {
-				return err
-			}
-			return printJSON(existing)
-		}
-		if err := store.CreateSkill(ctx, &sk); err != nil {
-			return err
-		}
-		return printJSON(sk)
-
-	case "claude_settings":
-		var st resource.ClaudeSettings
-		if err := json.Unmarshal(envelope.Data, &st); err != nil {
-			return fmt.Errorf("unmarshal claude_settings: %w", err)
-		}
-		setTimestamps(&st.CreatedAt, &st.UpdatedAt)
-		if existing, err := store.GetClaudeSettings(ctx, st.ID); err == nil {
-			if err := existing.Update(&st.Name, &st.Content); err != nil {
-				return err
-			}
-			if err := store.UpdateClaudeSettings(ctx, &existing); err != nil {
-				return err
-			}
-			return printJSON(existing)
-		}
-		if err := store.CreateClaudeSettings(ctx, &st); err != nil {
-			return err
-		}
-		return printJSON(st)
-
-	case "member":
-		var m domain.Member
-		if err := json.Unmarshal(envelope.Data, &m); err != nil {
-			return fmt.Errorf("unmarshal member: %w", err)
-		}
-		setTimestamps(&m.CreatedAt, &m.UpdatedAt)
-		if existing, err := store.GetMember(ctx, m.ID); err == nil {
-			if err := existing.Update(&m.Name, &m.Command, &m.ClaudeMdID, &m.SkillIDs,
-				&m.ClaudeSettingsID, &m.GitRepoURL); err != nil {
-				return err
-			}
-			if err := store.UpdateMember(ctx, &existing); err != nil {
-				return err
-			}
-			return printJSON(existing)
-		}
-		if err := store.CreateMember(ctx, &m); err != nil {
-			return err
-		}
-		return printJSON(m)
-
-	case "team":
-		var t domain.Team
-		if err := json.Unmarshal(envelope.Data, &t); err != nil {
-			return fmt.Errorf("unmarshal team: %w", err)
-		}
-		setTimestamps(&t.CreatedAt, &t.UpdatedAt)
-
-		svc := team.New(store)
-		if err := svc.ImportTeam(ctx, &t); err != nil {
-			return err
-		}
-
-		updated, err := store.GetTeam(ctx, t.ID)
+		resp, err := client.CreateClaudeMd(owner, json.RawMessage(envelope.Data))
 		if err != nil {
 			return err
 		}
-		return printJSON(updated)
+		return printJSON(resp)
+
+	case "skill":
+		resp, err := client.CreateSkill(owner, json.RawMessage(envelope.Data))
+		if err != nil {
+			return err
+		}
+		return printJSON(resp)
+
+	case "claude_settings":
+		resp, err := client.CreateClaudeSettings(owner, json.RawMessage(envelope.Data))
+		if err != nil {
+			return err
+		}
+		return printJSON(resp)
+
+	case "member":
+		resp, err := client.CreateMember(owner, json.RawMessage(envelope.Data))
+		if err != nil {
+			return err
+		}
+		return printJSON(resp)
+
+	case "team":
+		resp, err := client.ImportTeam(owner, json.RawMessage(envelope.Data))
+		if err != nil {
+			return err
+		}
+		return printJSON(resp)
 
 	default:
 		return fmt.Errorf("unknown envelope type: %q", envelope.Type)
-	}
-}
-
-// setTimestamps ensures CreatedAt/UpdatedAt are non-zero.
-func setTimestamps(created, updated *time.Time) {
-	now := time.Now()
-	if created.IsZero() {
-		*created = now
-	}
-	if updated.IsZero() {
-		*updated = now
 	}
 }

@@ -1,11 +1,10 @@
 package cmd
 
 import (
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -29,18 +28,8 @@ func newExportCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := args[0]
-
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
-
-			ctx := cmd.Context()
+			client := newAPIClient()
+			owner := resolveOwner()
 
 			// Try each entity type until found.
 			type probe struct {
@@ -48,17 +37,18 @@ func newExportCmd() *cobra.Command {
 				fetch    func() (any, error)
 			}
 			probes := []probe{
-				{"team", func() (any, error) { t, e := store.GetTeam(ctx, id); return t, e }},
-				{"member", func() (any, error) { m, e := store.GetMember(ctx, id); return m, e }},
-				{"claude_md", func() (any, error) { cm, e := store.GetClaudeMd(ctx, id); return cm, e }},
-				{"skill", func() (any, error) { sk, e := store.GetSkill(ctx, id); return sk, e }},
-				{"claude_settings", func() (any, error) { st, e := store.GetClaudeSettings(ctx, id); return st, e }},
+				{"team", func() (any, error) { return client.GetTeam(owner, id) }},
+				{"member", func() (any, error) { return client.GetMember(owner, id) }},
+				{"claude_md", func() (any, error) { return client.GetClaudeMd(owner, id) }},
+				{"skill", func() (any, error) { return client.GetSkill(owner, id) }},
+				{"claude_settings", func() (any, error) { return client.GetClaudeSettings(owner, id) }},
 			}
 
 			for _, p := range probes {
 				entity, err := p.fetch()
 				if err != nil {
-					if errors.Is(err, sql.ErrNoRows) {
+					// API returns 404 for not found; try next type.
+					if strings.Contains(err.Error(), "api error 404") {
 						continue
 					}
 					return fmt.Errorf("fetch %s: %w", p.typeName, err)
