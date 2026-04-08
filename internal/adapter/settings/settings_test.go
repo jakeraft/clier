@@ -21,13 +21,6 @@ func TestPaths(t *testing.T) {
 		}
 	})
 
-	t.Run("Dashboard", func(t *testing.T) {
-		want := "/Users/test/.clier/dashboard.html"
-		if p.Dashboard() != want {
-			t.Errorf("Dashboard() = %q, want %q", p.Dashboard(), want)
-		}
-	})
-
 	t.Run("ExpandTilde", func(t *testing.T) {
 		got := p.ExpandTilde("~/Documents/file.txt")
 		want := "/Users/test/Documents/file.txt"

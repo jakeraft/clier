@@ -34,7 +34,7 @@ func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:         "stop <id>",
 		Short:       "Stop a run",
-		Annotations: map[string]string{mutates: "true"},
+
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store := newStore()
@@ -80,7 +80,7 @@ Examples:
   message with ` + "`backticks`" + ` and --flags
   EOF`,
 		Args:        cobra.MaximumNArgs(1),
-		Annotations: map[string]string{mutates: "true"},
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := readContent(args)
 			if err != nil {
@@ -119,7 +119,7 @@ func newRunNoteCmd() *cobra.Command {
 		Use:         "note [content]",
 		Short:       "Post a progress note",
 		Args:        cobra.MaximumNArgs(1),
-		Annotations: map[string]string{mutates: "true"},
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := readContent(args)
 			if err != nil {
@@ -157,11 +157,11 @@ func newRunNotesCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 
-			notes, err := client.ListNotes(args[0])
+			resp, err := client.GetRun(args[0])
 			if err != nil {
 				return err
 			}
-			return printJSON(notes)
+			return printJSON(resp.Notes)
 		},
 	}
 }
@@ -174,11 +174,11 @@ func newRunMessagesCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 
-			msgs, err := client.ListMessages(args[0])
+			resp, err := client.GetRun(args[0])
 			if err != nil {
 				return err
 			}
-			return printJSON(msgs)
+			return printJSON(resp.Messages)
 		},
 	}
 }

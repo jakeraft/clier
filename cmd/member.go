@@ -38,7 +38,7 @@ func newMemberCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "create",
 		Short:       "Create a member",
-		Annotations: map[string]string{mutates: "true"},
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := resolveOwner()
@@ -102,7 +102,7 @@ func newMemberUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "update <id>",
 		Short:       "Update a member",
-		Annotations: map[string]string{mutates: "true"},
+
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -148,7 +148,7 @@ func newMemberDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:         "delete <id>",
 		Short:       "Delete a member",
-		Annotations: map[string]string{mutates: "true"},
+
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -202,7 +202,7 @@ func newMemberRunCmd() *cobra.Command {
 		Long: `Create workspace (idempotent) and run a single member.
 This prepares the workspace files and launches the agent in a tmux session.`,
 		Args:        cobra.ExactArgs(1),
-		Annotations: map[string]string{mutates: "true"},
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			memberID := args[0]
 			client := newAPIClient()

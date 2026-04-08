@@ -39,7 +39,7 @@ func newTeamCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "create",
 		Short:       "Create a team",
-		Annotations: map[string]string{mutates: "true"},
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := resolveOwner()
@@ -84,7 +84,7 @@ func newTeamUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "update <id>",
 		Short:       "Update a team",
-		Annotations: map[string]string{mutates: "true"},
+
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -114,7 +114,7 @@ func newTeamDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:         "delete <id>",
 		Short:       "Delete a team",
-		Annotations: map[string]string{mutates: "true"},
+
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -133,52 +133,8 @@ func newTeamMemberCmd() *cobra.Command {
 		Use:   "member",
 		Short: "Manage team members",
 	}
-	cmd.AddCommand(newTeamMemberAddCmd())
-	cmd.AddCommand(newTeamMemberRemoveCmd())
 	cmd.AddCommand(newTeamMemberListCmd())
 	return cmd
-}
-
-func newTeamMemberAddCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:         "add <team-id> <member-id>",
-		Short:       "Add a member to a team",
-		Annotations: map[string]string{mutates: "true"},
-		Args:        cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			teamID, memberID := args[0], args[1]
-			client := newAPIClient()
-			owner := resolveOwner()
-
-			resp, err := client.AddTeamMember(owner, teamID, map[string]string{
-				"member_id": memberID,
-			})
-			if err != nil {
-				return err
-			}
-			return printJSON(resp)
-		},
-	}
-}
-
-func newTeamMemberRemoveCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:         "remove <team-id> <team-member-id>",
-		Short:       "Remove a team member from a team",
-		Annotations: map[string]string{mutates: "true"},
-		Args:        cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			teamID, teamMemberID := args[0], args[1]
-			client := newAPIClient()
-			owner := resolveOwner()
-
-			resp, err := client.RemoveTeamMember(owner, teamID, teamMemberID)
-			if err != nil {
-				return err
-			}
-			return printJSON(resp)
-		},
-	}
 }
 
 func newTeamMemberListCmd() *cobra.Command {
@@ -204,69 +160,7 @@ func newTeamRelationCmd() *cobra.Command {
 		Use:   "relation",
 		Short: "Manage team relations",
 	}
-	cmd.AddCommand(newTeamRelationAddCmd())
-	cmd.AddCommand(newTeamRelationRemoveCmd())
 	cmd.AddCommand(newTeamRelationListCmd())
-	return cmd
-}
-
-func newTeamRelationAddCmd() *cobra.Command {
-	var from, to string
-
-	cmd := &cobra.Command{
-		Use:         "add <team-id>",
-		Short:       "Add a relation to a team",
-		Annotations: map[string]string{mutates: "true"},
-		Args:        cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			teamID := args[0]
-			client := newAPIClient()
-			owner := resolveOwner()
-
-			resp, err := client.AddTeamRelation(owner, teamID, map[string]string{
-				"from": from,
-				"to":   to,
-			})
-			if err != nil {
-				return err
-			}
-			return printJSON(resp)
-		},
-	}
-	cmd.Flags().StringVar(&from, "from", "", "From member ID")
-	cmd.Flags().StringVar(&to, "to", "", "To member ID")
-	_ = cmd.MarkFlagRequired("from")
-	_ = cmd.MarkFlagRequired("to")
-	return cmd
-}
-
-func newTeamRelationRemoveCmd() *cobra.Command {
-	var from, to string
-
-	cmd := &cobra.Command{
-		Use:         "remove <team-id>",
-		Short:       "Remove a relation from a team",
-		Annotations: map[string]string{mutates: "true"},
-		Args:        cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			teamID := args[0]
-			client := newAPIClient()
-			owner := resolveOwner()
-
-			resp, err := client.RemoveTeamRelation(owner, teamID, map[string]string{
-				"from": from,
-				"to":   to,
-			})
-			if err != nil {
-				return err
-			}
-			return printJSON(resp)
-		},
-	}
-	cmd.Flags().StringVar(&from, "from", "", "From member ID")
-	cmd.Flags().StringVar(&to, "to", "", "To member ID")
-	_ = cmd.MarkFlagRequired("from")
-	_ = cmd.MarkFlagRequired("to")
 	return cmd
 }
 
@@ -328,7 +222,7 @@ func newTeamRunCmd() *cobra.Command {
 		Long: `Create workspaces (idempotent) for all team members and start a run.
 Each member gets its own tmux window within a single session.`,
 		Args:        cobra.ExactArgs(1),
-		Annotations: map[string]string{mutates: "true"},
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			teamID := args[0]
 			client := newAPIClient()
@@ -355,7 +249,7 @@ Each member gets its own tmux window within a single session.`,
 				memberBase := filepath.Join(absBase, tm.Name)
 				projectDir := filepath.Join(memberBase, "project")
 				if _, statErr := os.Stat(projectDir); os.IsNotExist(statErr) {
-					if err := writer.PrepareMember(memberBase, tm.MemberID); err != nil {
+					if err := writer.PrepareMember(memberBase, tm.Member.Name); err != nil {
 						return fmt.Errorf("prepare member %s: %w", tm.Name, err)
 					}
 				}
@@ -382,7 +276,7 @@ Each member gets its own tmux window within a single session.`,
 
 			for i, tm := range team.TeamMembers {
 				// Get member spec for command
-				member, err := client.GetMember(owner, tm.MemberID)
+				member, err := client.GetMember(tm.Member.Owner, tm.Member.Name)
 				if err != nil {
 					return fmt.Errorf("get member %s: %w", tm.Name, err)
 				}
@@ -401,7 +295,7 @@ Each member gets its own tmux window within a single session.`,
 				})
 
 				domainPlans = append(domainPlans, domain.MemberPlan{
-					TeamMemberID: tm.ID,
+					TeamMemberID: fmt.Sprintf("%d", tm.ID),
 					MemberName:   tm.Name,
 					Terminal:     domain.TerminalPlan{Command: fullCommand},
 					Workspace:    domain.WorkspacePlan{Memberspace: memberBase},

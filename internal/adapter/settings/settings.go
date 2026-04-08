@@ -37,10 +37,6 @@ func (p *Paths) Workspaces() string {
 	return filepath.Join(p.base, "workspaces")
 }
 
-func (p *Paths) Dashboard() string {
-	return filepath.Join(p.base, "dashboard.html")
-}
-
 // ExpandTilde replaces ~/ prefixes with the parent of the base directory (OS home).
 func (p *Paths) ExpandTilde(s string) string {
 	return strings.ReplaceAll(s, "~/", filepath.Dir(p.base)+"/")

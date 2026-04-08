@@ -6,17 +6,8 @@ import (
 	"strings"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
-	"github.com/jakeraft/clier/internal/adapter/settings"
 	"github.com/spf13/cobra"
 )
-
-// mutates is the annotation key that marks commands which modify data.
-// PersistentPostRunE checks this to decide whether to regenerate the dashboard.
-const mutates = "mutates"
-
-func newSettings() (*settings.Settings, error) {
-	return settings.New()
-}
 
 func newAPIClient() *api.Client {
 	serverURL := os.Getenv("CLIER_SERVER_URL")
@@ -47,26 +38,11 @@ var rootCmd = &cobra.Command{
 Building blocks (prompt, settings, repo) define agent capabilities.
 Combine them into a member, assemble members into a team with
 leader-worker relations, then start a run to launch the agents.
-Monitor progress through messages and notes, or open the dashboard.
+Monitor progress through messages and notes.
 
 New to clier? Run "clier tutorial" for a step-by-step guide.`,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
-	},
-	PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-		if cmd.Annotations[mutates] == "" {
-			return nil
-		}
-		cfg, err := newSettings()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: dashboard not updated: %v\n", err)
-			return nil
-		}
-		client := newAPIClient()
-		if _, err := generateDashboard(cmd.Context(), client, resolveOwner(), cfg.Paths.Dashboard()); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: dashboard not updated: %v\n", err)
-		}
-		return nil
 	},
 }
 

@@ -26,7 +26,7 @@ func newSkillCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "create",
 		Short:       "Create a skill",
-		Annotations: map[string]string{mutates: "true"},
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := resolveOwner()
@@ -71,7 +71,7 @@ func newSkillUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:         "update <id>",
 		Short:       "Update a skill",
-		Annotations: map[string]string{mutates: "true"},
+
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -101,7 +101,7 @@ func newSkillDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:         "delete <id>",
 		Short:       "Delete a skill",
-		Annotations: map[string]string{mutates: "true"},
+
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
