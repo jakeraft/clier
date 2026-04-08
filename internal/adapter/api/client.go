@@ -12,15 +12,13 @@ import (
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
-	token      string
 }
 
 // NewClient creates a new API client.
-func NewClient(baseURL, token string) *Client {
+func NewClient(baseURL string) *Client {
 	return &Client{
 		baseURL:    baseURL,
 		httpClient: &http.Client{},
-		token:      token,
 	}
 }
 
@@ -38,9 +36,6 @@ func (c *Client) do(method, path string, body any, result any) error {
 		return fmt.Errorf("request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if c.token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
-	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("do: %w", err)
