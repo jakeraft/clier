@@ -479,11 +479,24 @@ clier member update myname/react-reviewer ...
 | Team Protocol | workspace 생성 시 | 부모 디렉토리 CLAUDE.md 파일 | 파일 직접 확인 |
 | RunPlan | run 시 | `.clier/{RUN_ID}.json` (tmux 구조, command, env 전부 포함) | `.clier/` 디렉토리 확인 |
 | `CLIER_RUN_PLAN` | run 시 | env var (RunPlan 파일 경로) | RunPlan의 command에 포함 |
-| `CLIER_MEMBER_ID` | run 시 | env var (자신의 멤버 ID) | RunPlan의 command에 포함 |
+| `CLIER_MEMBER_ID` | run 시 | env var (자신의 멤버 이름) | RunPlan의 command에 포함 |
+| `CLIER_AGENT` | run 시 | env var (`true` — agent 모드 활성화) | RunPlan의 command에 포함 |
+| `CLAUDE_CONFIG_DIR` | run 시 | env var (workspace 격리) | RunPlan의 command에 포함 |
+| ~~CLAUDE_CODE_OAUTH_TOKEN~~ | ~~삭제~~ | 사용자가 workspace에서 직접 인증 | - |
+| ~~{{CLIER_AUTH_CLAUDE}}~~ | ~~삭제~~ | auth 주입 제거 | - |
+| ~~{{CLIER_*}} placeholder 전체~~ | ~~삭제~~ | RunPlan이 concrete values 직접 저장 | - |
 | ~~.claude.json~~ | ~~삭제~~ | - | - |
 | ~~CLAUDE.md 머지~~ | ~~삭제~~ | - | - |
 | ~~.claude.json 머지~~ | ~~삭제~~ | - | - |
-| ~~별도 env var 목록~~ | ~~삭제~~ | RunPlan.command에 전부 포함 | - |
+
+`CLAUDE_CONFIG_DIR` 유지 이유: Claude Code의 settings 스코프는 User(`~/.claude/`)와 Project를
+합산(merge)한다. 사용자의 global 설정이 workspace에 섞이는 것을 방지하려면 `CLAUDE_CONFIG_DIR`로
+완전 격리해야 한다. 이것은 auth가 아닌 **scoping** 목적이다.
+
+사용자 인증 흐름: workspace 생성 후 최초 1회 `claude` 실행 → 인증 완료 → 이후 `clier member run` 시 자동 사용.
+
+`{{CLIER_*}}` Placeholder 시스템 전체 삭제: RunPlan이 로컬 파일로 저장되므로 민감 정보 보호 불필요.
+모든 값이 RunPlan 생성 시점에 확정(concrete). 2-phase 빌드(build with placeholders → expand) 제거.
 
 ## 현재 대비 변경 요약
 
@@ -518,7 +531,11 @@ clier member update myname/react-reviewer ...
 | `Run.Plan` | 삭제 (`.clier/{RUN_ID}.json`으로 이동) |
 | `Run.Messages` | 유지 (Run 하위 필드) |
 | `Run.Notes` | 유지 (Run 하위 필드) |
-| `CLIER_TASK_ID` env | → `CLIER_RUN_ID` |
+| `CLIER_TASK_ID` env | 삭제 (RunPlan 파일명에서 run_id 추출) |
+| `CLIER_AGENT` env | 신규 (agent 모드 명시적 활성화) |
+| `CLAUDE_CODE_OAUTH_TOKEN` 주입 | 삭제 (사용자가 workspace에서 직접 인증) |
+| `{{CLIER_*}}` placeholder 전체 | 삭제 (RunPlan이 concrete values 저장, 2-phase 빌드 제거) |
+| `expandPlaceholders()` | 삭제 |
 
 ### CLI 파일 변경 (예상)
 
@@ -560,7 +577,11 @@ clier member update myname/react-reviewer ...
 - CLI 명령어: `member run` / `team run` / `member workspace` / `team workspace`
 - CLI 명령어: `run list` / `run stop` / `run logs` / `run attach` / `run tell` / `run note`
 - 머지 로직 전부 제거
-- `CLIER_TASK_ID` → `CLIER_RUN_ID`
+- `CLIER_TASK_ID` 삭제 (RunPlan 파일명에서 추출)
+- `CLIER_AGENT` env var 추가 (agent 모드 명시)
+- `CLAUDE_CODE_OAUTH_TOKEN` 주입 삭제 (사용자 직접 인증)
+- `{{CLIER_*}}` placeholder 시스템 전체 삭제
+- `expandPlaceholders()` 삭제
 
 ### Out of scope
 
@@ -581,3 +602,7 @@ clier member update myname/react-reviewer ...
 | `RefStore` 인터페이스 | terminal_refs 삭제에 따라 불필요 |
 | `workspace_files.go`의 머지 로직 | CLAUDE.md 머지, .claude.json deep merge 제거 |
 | `MemberPlan` (Task 하위) | `.clier/{RUN_ID}.json`으로 이동 |
+| `{{CLIER_*}}` placeholder 상수 | RunPlan이 concrete values 직접 저장 |
+| `expandPlaceholders()` | 2-phase 빌드 제거 |
+| `CLAUDE_CODE_OAUTH_TOKEN` 주입 로직 | 사용자가 workspace에서 직접 인증 |
+| `PlaceholderAuthClaude` | auth 주입 제거 |
