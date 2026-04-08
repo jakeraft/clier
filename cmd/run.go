@@ -36,6 +36,7 @@ func newRunListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all runs",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			_ = requireLogin()
 			client := newAPIClient()
 			runs, err := client.ListRuns()
 			if err != nil {
@@ -52,6 +53,7 @@ func newRunViewCmd() *cobra.Command {
 		Short: "View a run (includes notes and messages)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			_ = requireLogin()
 			runID, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
 				return fmt.Errorf("invalid run id %q: %w", args[0], err)
