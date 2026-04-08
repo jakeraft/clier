@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FileText, BookOpen } from "lucide-react";
 import { api } from "@/api";
-import type { AgentDotMdView, SkillView } from "@/api";
+import type { ClaudeMdView, SkillView } from "@/api";
 import { typography, typographyIcon } from "@/lib/typography";
 import { cn } from "@/lib/utilities";
 import { gap } from "@/lib/layout";
@@ -9,9 +9,9 @@ import { EntityListPage } from "@/components/entity-list-page";
 import type { EntityTableColumn } from "@/components/entity-table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-type Tab = "agent-dot-md" | "skill";
+type Tab = "claude-md" | "skill";
 
-const agentDotMdColumns: EntityTableColumn<AgentDotMdView>[] = [
+const claudeMdColumns: EntityTableColumn<ClaudeMdView>[] = [
   { header: "Content", cell: (c) => c.content, flex: 2 },
 ];
 
@@ -20,7 +20,7 @@ const skillColumns: EntityTableColumn<SkillView>[] = [
 ];
 
 export function Prompts() {
-  const [tab, setTab] = useState<Tab>("agent-dot-md");
+  const [tab, setTab] = useState<Tab>("claude-md");
 
   return (
     <>
@@ -31,7 +31,7 @@ export function Prompts() {
         onValueChange={(v) => { if (v) setTab(v as Tab); }}
       >
         <ToggleGroupItem
-          value="agent-dot-md"
+          value="claude-md"
           className={cn(
             gap[1],
             typography[3],
@@ -54,13 +54,13 @@ export function Prompts() {
         </ToggleGroupItem>
       </ToggleGroup>
 
-      {tab === "agent-dot-md" && (
-        <EntityListPage<AgentDotMdView>
-          entityType="agent-dot-md"
-          apiList={api.agentDotMds.list}
-          columns={agentDotMdColumns}
+      {tab === "claude-md" && (
+        <EntityListPage<ClaudeMdView>
+          entityType="claude-md"
+          apiList={api.claudeMds.list}
+          columns={claudeMdColumns}
           empty={{ title: "No CLAUDE.md files yet", description: "CLAUDE.md project instructions for team members" }}
-          routeBase="/prompts/agent-dot-mds"
+          routeBase="/prompts/claude-mds"
         />
       )}
       {tab === "skill" && (

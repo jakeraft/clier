@@ -16,14 +16,14 @@ import (
 // RefStore persists terminal refs across CLI invocations.
 // The refs map is opaque — each adapter stores its own keys.
 type RefStore interface {
-	SaveRefs(ctx context.Context, taskID, memberID string, refs map[string]string) error
-	GetRefs(ctx context.Context, taskID, memberID string) (map[string]string, error)
-	GetTaskRefs(ctx context.Context, taskID string) (map[string]string, error)
-	DeleteRefs(ctx context.Context, taskID string) error
+	SaveRefs(ctx context.Context, runID, memberID string, refs map[string]string) error
+	GetRefs(ctx context.Context, runID, memberID string) (map[string]string, error)
+	GetRunRefs(ctx context.Context, runID string) (map[string]string, error)
+	DeleteRefs(ctx context.Context, runID string) error
 }
 
 // TmuxTerminal manages agent terminals using tmux.
-// One tmux session per clier task, one window per member.
+// One tmux session per clier run, one window per member.
 type TmuxTerminal struct {
 	refs     RefStore
 	runFn    func(args ...string) (string, error)
@@ -39,12 +39,12 @@ func NewTmuxTerminal(refs RefStore) *TmuxTerminal {
 	return t
 }
 
-func (t *TmuxTerminal) Launch(taskID, taskName string, members []domain.MemberPlan) error {
+func (t *TmuxTerminal) Launch(runID, runName string, members []domain.MemberPlan) error {
 	if len(members) == 0 {
 		return errors.New("no members to launch")
 	}
 
-	sess := taskName
+	sess := runName
 
 	// Create tmux session (first window is created automatically).
 	if _, err := t.runFn("new-session", "-d", "-s", sess); err != nil {
@@ -55,15 +55,15 @@ func (t *TmuxTerminal) Launch(taskID, taskName string, members []domain.MemberPl
 	defer func() {
 		if !success {
 			_, _ = t.runFn("kill-session", "-t", sess)
-			_, _ = t.runFn("set-environment", "-g", "-u", taskEnvKey(sess))
-			_ = t.deleteRefs(taskID)
+			_, _ = t.runFn("set-environment", "-g", "-u", runEnvKey(sess))
+			_ = t.deleteRefs(runID)
 		}
 	}()
 
-	// Store full task ID in tmux server env so the session-closed hook
+	// Store full run ID in tmux server env so the session-closed hook
 	// can look it up by session name.
-	if _, err := t.runFn("set-environment", "-g", taskEnvKey(sess), taskID); err != nil {
-		return fmt.Errorf("set task env: %w", err)
+	if _, err := t.runFn("set-environment", "-g", runEnvKey(sess), runID); err != nil {
+		return fmt.Errorf("set run env: %w", err)
 	}
 
 	// Force base-index 0 on this session so window indices are predictable,
@@ -83,7 +83,7 @@ func (t *TmuxTerminal) Launch(taskID, taskName string, members []domain.MemberPl
 			return err
 		}
 
-		if err := t.saveRefs(taskID, m.TeamMemberID, sess, win); err != nil {
+		if err := t.saveRefs(runID, m.TeamMemberID, sess, win); err != nil {
 			return fmt.Errorf("save refs: %w", err)
 		}
 	}
@@ -99,7 +99,7 @@ func (t *TmuxTerminal) Launch(taskID, taskName string, members []domain.MemberPl
 	}
 
 	// Register global session-closed hook for reverse sync (idempotent).
-	// A single hook handles all clier tasks: looks up the full task ID
+	// A single hook handles all clier runs: looks up the full run ID
 	// from a tmux server env var keyed by session name, and calls stop.
 	if err := t.ensureSessionClosedHook(); err != nil {
 		return fmt.Errorf("set session-closed hook: %w", err)
@@ -109,35 +109,35 @@ func (t *TmuxTerminal) Launch(taskID, taskName string, members []domain.MemberPl
 	return nil
 }
 
-func (t *TmuxTerminal) Send(taskID, memberID, text string) error {
-	refs, err := t.getRefs(taskID, memberID)
+func (t *TmuxTerminal) Send(runID, memberID, text string) error {
+	refs, err := t.getRefs(runID, memberID)
 	if err != nil {
 		return fmt.Errorf("get refs for %s: %w", memberID, err)
 	}
 	return t.sendKeys(refs["session"], refs["window"], text)
 }
 
-func (t *TmuxTerminal) Terminate(taskID string) error {
-	refs, err := t.getTaskRefs(taskID)
+func (t *TmuxTerminal) Terminate(runID string) error {
+	refs, err := t.getRunRefs(runID)
 	if err == nil {
 		sess := refs["session"]
 		// Gracefully exit each agent before killing the session.
 		t.exitAllWindows(sess)
 		_, _ = t.runFn("kill-session", "-t", sess)
-		_, _ = t.runFn("set-environment", "-g", "-u", taskEnvKey(sess))
+		_, _ = t.runFn("set-environment", "-g", "-u", runEnvKey(sess))
 	}
-	return t.deleteRefs(taskID)
+	return t.deleteRefs(runID)
 }
 
-func (t *TmuxTerminal) Attach(taskID string, memberID *string) error {
-	refs, err := t.getTaskRefs(taskID)
+func (t *TmuxTerminal) Attach(runID string, memberID *string) error {
+	refs, err := t.getRunRefs(runID)
 	if err != nil {
-		return fmt.Errorf("get task refs: %w", err)
+		return fmt.Errorf("get run refs: %w", err)
 	}
 	sess := refs["session"]
 
 	if memberID != nil {
-		memberRefs, err := t.getRefs(taskID, *memberID)
+		memberRefs, err := t.getRefs(runID, *memberID)
 		if err != nil {
 			return fmt.Errorf("get member refs: %w", err)
 		}
@@ -177,30 +177,30 @@ func (t *TmuxTerminal) setupMemberWindow(sess, win string, m domain.MemberPlan) 
 
 // persistence — delegated to RefStore
 
-func (t *TmuxTerminal) saveRefs(taskID, memberID, sess, win string) error {
-	return t.refs.SaveRefs(context.Background(), taskID, memberID, map[string]string{
+func (t *TmuxTerminal) saveRefs(runID, memberID, sess, win string) error {
+	return t.refs.SaveRefs(context.Background(), runID, memberID, map[string]string{
 		"session": sess,
 		"window":  win,
 	})
 }
 
-func (t *TmuxTerminal) getRefs(taskID, memberID string) (map[string]string, error) {
-	return t.refs.GetRefs(context.Background(), taskID, memberID)
+func (t *TmuxTerminal) getRefs(runID, memberID string) (map[string]string, error) {
+	return t.refs.GetRefs(context.Background(), runID, memberID)
 }
 
-func (t *TmuxTerminal) getTaskRefs(taskID string) (map[string]string, error) {
-	return t.refs.GetTaskRefs(context.Background(), taskID)
+func (t *TmuxTerminal) getRunRefs(runID string) (map[string]string, error) {
+	return t.refs.GetRunRefs(context.Background(), runID)
 }
 
-func (t *TmuxTerminal) deleteRefs(taskID string) error {
-	return t.refs.DeleteRefs(context.Background(), taskID)
+func (t *TmuxTerminal) deleteRefs(runID string) error {
+	return t.refs.DeleteRefs(context.Background(), runID)
 }
 
 // ensureSessionClosedHook registers a global tmux hook (idempotent) that
-// handles cleanup for any clier task. It looks up the full task ID from
-// a tmux server env var keyed by session name, then calls "clier task stop".
+// handles cleanup for any clier run. It looks up the full run ID from
+// a tmux server env var keyed by session name, then calls "clier run stop".
 func (t *TmuxTerminal) ensureSessionClosedHook() error {
-	hookCmd := `run-shell 'ID=$(tmux show-environment -g CLIER_TASK_#{hook_session_name} 2>/dev/null | cut -d= -f2); [ -n "$ID" ] && clier task stop "$ID" && tmux set-environment -g -u CLIER_TASK_#{hook_session_name}'`
+	hookCmd := `run-shell 'ID=$(tmux show-environment -g CLIER_RUN_#{hook_session_name} 2>/dev/null | cut -d= -f2); [ -n "$ID" ] && clier run stop "$ID" && tmux set-environment -g -u CLIER_RUN_#{hook_session_name}'`
 	_, err := t.runFn("set-hook", "-g", "session-closed", hookCmd)
 	return err
 }
@@ -208,7 +208,7 @@ func (t *TmuxTerminal) ensureSessionClosedHook() error {
 // waitReady polls the pane title until Claude Code's TUI marker appears.
 // Claude Code sets the pane title via OSC escape sequences:
 // - Braille characters (U+2800-U+28FF) while working/starting
-// - Done markers (✳✻✽✶✢) when idle
+// - Done markers when idle
 func (t *TmuxTerminal) waitReady(sess, win string, timeout time.Duration) error {
 	target := sess + ":" + win
 	deadline := time.Now().Add(timeout)
@@ -259,6 +259,6 @@ func (t *TmuxTerminal) defaultRun(args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
-func taskEnvKey(sess string) string {
-	return "CLIER_TASK_" + sess
+func runEnvKey(sess string) string {
+	return "CLIER_RUN_" + sess
 }

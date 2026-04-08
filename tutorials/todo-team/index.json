@@ -1,10 +1,9 @@
 {
   "files": [
     "settings-default.json",
-    "claude-json-default.json",
-    "agent-dot-md-tech-lead.json",
-    "agent-dot-md-coder.json",
-    "agent-dot-md-reviewer.json",
+    "claude-md-tech-lead.json",
+    "claude-md-coder.json",
+    "claude-md-reviewer.json",
     "skill-report-writing.json",
     "member-tech-lead.json",
     "member-coder.json",

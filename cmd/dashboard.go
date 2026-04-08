@@ -10,9 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jakeraft/clier/internal/adapter/db"
-	"github.com/jakeraft/clier/internal/domain"
-	"github.com/jakeraft/clier/internal/domain/resource"
+	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/ui"
 	"github.com/spf13/cobra"
 )
@@ -30,13 +28,10 @@ func newDashboardCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			outPath, err := generateDashboard(cmd.Context(), store, cfg.Paths.Dashboard())
+			outPath, err := generateDashboard(cmd.Context(), client, owner, cfg.Paths.Dashboard())
 			if err != nil {
 				return err
 			}
@@ -50,8 +45,9 @@ func newDashboardCmd() *cobra.Command {
 const jsonPlaceholder = "/* JSON_DATA */"
 
 // generateDashboard collects all entities, injects them as JSON into index.html, and writes the result.
-func generateDashboard(ctx context.Context, store *db.Store, outPath string) (string, error) {
-	data, err := collectDashboardData(ctx, store)
+func generateDashboard(ctx context.Context, client *api.Client, owner, outPath string) (string, error) {
+	_ = ctx // kept for interface compatibility
+	data, err := collectDashboardData(client, owner)
 	if err != nil {
 		return "", fmt.Errorf("collect data: %w", err)
 	}
@@ -80,55 +76,49 @@ func generateDashboard(ctx context.Context, store *db.Store, outPath string) (st
 	return outPath, nil
 }
 
-func collectDashboardData(ctx context.Context, store *db.Store) (dashboardData, error) {
-	teams, err := store.ListTeams(ctx)
+func collectDashboardData(client *api.Client, owner string) (dashboardData, error) {
+	teams, err := client.ListTeams(owner)
 	if err != nil {
 		return dashboardData{}, err
 	}
-	members, err := store.ListMembers(ctx)
+	members, err := client.ListMembers(owner)
 	if err != nil {
 		return dashboardData{}, err
 	}
-	agentDotMds, err := store.ListAgentDotMds(ctx)
+	claudeMds, err := client.ListClaudeMds(owner)
 	if err != nil {
 		return dashboardData{}, err
 	}
-	skills, err := store.ListSkills(ctx)
+	skills, err := client.ListSkills(owner)
 	if err != nil {
 		return dashboardData{}, err
 	}
-	claudeSettingsList, err := store.ListClaudeSettings(ctx)
+	claudeSettingsList, err := client.ListClaudeSettings(owner)
 	if err != nil {
 		return dashboardData{}, err
 	}
-	claudeJsons, err := store.ListClaudeJsons(ctx)
-	if err != nil {
-		return dashboardData{}, err
-	}
-	tasks, err := store.ListTasks(ctx)
+	runs, err := client.ListRuns()
 	if err != nil {
 		return dashboardData{}, err
 	}
 
-	agentDotMdNames := nameMap(agentDotMds, func(c resource.AgentDotMd) (string, string) { return c.ID, c.Name })
-	skillNames := nameMap(skills, func(s resource.Skill) (string, string) { return s.ID, s.Name })
-	claudeSettingsNames := nameMap(claudeSettingsList, func(s resource.ClaudeSettings) (string, string) { return s.ID, s.Name })
-	claudeJsonNames := nameMap(claudeJsons, func(c resource.ClaudeJson) (string, string) { return c.ID, c.Name })
-	teamNames := nameMap(teams, func(t domain.Team) (string, string) { return t.ID, t.Name })
+	claudeMdNames := nameMap(claudeMds, func(c api.ClaudeMdResponse) (string, string) { return c.ID, c.Name })
+	skillNames := nameMap(skills, func(s api.SkillResponse) (string, string) { return s.ID, s.Name })
+	claudeSettingsNames := nameMap(claudeSettingsList, func(s api.ClaudeSettingsResponse) (string, string) { return s.ID, s.Name })
+	teamNames := nameMap(teams, func(t api.TeamResponse) (string, string) { return t.ID, t.Name })
 
-	taskViews, err := convertTasks(ctx, store, tasks, teamNames)
+	runViews, err := convertRuns(client, runs, teamNames)
 	if err != nil {
 		return dashboardData{}, err
 	}
 
 	return dashboardData{
 		Teams:          convertTeams(teams),
-		Members:        convertMembers(members, agentDotMdNames, skillNames, claudeSettingsNames, claudeJsonNames),
-		AgentDotMds:    convertAgentDotMds(agentDotMds),
+		Members:        convertMembers(members, claudeMdNames, skillNames, claudeSettingsNames),
+		ClaudeMds:      convertClaudeMds(claudeMds),
 		Skills:         convertSkills(skills),
 		ClaudeSettings: convertClaudeSettings(claudeSettingsList),
-		ClaudeJsons:    convertClaudeJsons(claudeJsons),
-		Tasks:          taskViews,
+		Runs:           runViews,
 	}, nil
 }
 
@@ -141,9 +131,9 @@ func nameMap[T any](items []T, fn func(T) (string, string)) map[string]string {
 	return m
 }
 
-// --- domain -> view conversions ---
+// --- API response -> view conversions ---
 
-func convertTeams(teams []domain.Team) []teamView {
+func convertTeams(teams []api.TeamResponse) []teamView {
 	views := make([]teamView, 0, len(teams))
 	for _, t := range teams {
 		names := make([]string, 0, len(t.TeamMembers))
@@ -189,7 +179,7 @@ func convertTeams(teams []domain.Team) []teamView {
 	return views
 }
 
-func convertMembers(members []domain.Member, agentDotMdNames, skillNames, claudeSettingsNames, claudeJsonNames map[string]string) []memberView {
+func convertMembers(members []api.MemberResponse, claudeMdNames, skillNames, claudeSettingsNames map[string]string) []memberView {
 	views := make([]memberView, 0, len(members))
 	for _, m := range members {
 		skNames := make([]string, 0, len(m.SkillIDs))
@@ -198,32 +188,25 @@ func convertMembers(members []domain.Member, agentDotMdNames, skillNames, claude
 		}
 
 		mv := memberView{
-			ID:        m.ID,
-			Name:      m.Name,
-			AgentType: m.AgentType,
-			Model:     m.Model,
-			Args:      m.Args,
-			SkillIDs:  m.SkillIDs,
+			ID:         m.ID,
+			Name:       m.Name,
+			Command:    m.Command,
+			SkillIDs:   m.SkillIDs,
 			SkillNames: skNames,
 			GitRepoURL: m.GitRepoURL,
 			CreatedAt:  m.CreatedAt,
 			UpdatedAt:  m.UpdatedAt,
 		}
 
-		if m.AgentDotMdID != "" {
-			mv.AgentDotMdID = &m.AgentDotMdID
-			name := agentDotMdNames[m.AgentDotMdID]
-			mv.AgentDotMdName = &name
+		if m.ClaudeMdID != "" {
+			mv.ClaudeMdID = &m.ClaudeMdID
+			name := claudeMdNames[m.ClaudeMdID]
+			mv.ClaudeMdName = &name
 		}
 		if m.ClaudeSettingsID != "" {
 			mv.ClaudeSettingsID = &m.ClaudeSettingsID
 			name := claudeSettingsNames[m.ClaudeSettingsID]
 			mv.ClaudeSettingsName = &name
-		}
-		if m.ClaudeJsonID != "" {
-			mv.ClaudeJsonID = &m.ClaudeJsonID
-			name := claudeJsonNames[m.ClaudeJsonID]
-			mv.ClaudeJsonName = &name
 		}
 
 		views = append(views, mv)
@@ -231,10 +214,10 @@ func convertMembers(members []domain.Member, agentDotMdNames, skillNames, claude
 	return views
 }
 
-func convertAgentDotMds(items []resource.AgentDotMd) []agentDotMdView {
-	views := make([]agentDotMdView, 0, len(items))
+func convertClaudeMds(items []api.ClaudeMdResponse) []claudeMdView {
+	views := make([]claudeMdView, 0, len(items))
 	for _, c := range items {
-		views = append(views, agentDotMdView{
+		views = append(views, claudeMdView{
 			ID:        c.ID,
 			Name:      c.Name,
 			Content:   c.Content,
@@ -245,7 +228,7 @@ func convertAgentDotMds(items []resource.AgentDotMd) []agentDotMdView {
 	return views
 }
 
-func convertSkills(items []resource.Skill) []skillView {
+func convertSkills(items []api.SkillResponse) []skillView {
 	views := make([]skillView, 0, len(items))
 	for _, s := range items {
 		views = append(views, skillView{
@@ -259,7 +242,7 @@ func convertSkills(items []resource.Skill) []skillView {
 	return views
 }
 
-func convertClaudeSettings(items []resource.ClaudeSettings) []claudeSettingsView {
+func convertClaudeSettings(items []api.ClaudeSettingsResponse) []claudeSettingsView {
 	views := make([]claudeSettingsView, 0, len(items))
 	for _, s := range items {
 		views = append(views, claudeSettingsView{
@@ -273,30 +256,15 @@ func convertClaudeSettings(items []resource.ClaudeSettings) []claudeSettingsView
 	return views
 }
 
-func convertClaudeJsons(items []resource.ClaudeJson) []claudeJsonView {
-	views := make([]claudeJsonView, 0, len(items))
-	for _, c := range items {
-		views = append(views, claudeJsonView{
-			ID:        c.ID,
-			Name:      c.Name,
-			Content:   c.Content,
-			CreatedAt: c.CreatedAt,
-			UpdatedAt: c.UpdatedAt,
-		})
-	}
-	return views
-}
-
 // --- view types (JSON serialization for the frontend) ---
 
 type dashboardData struct {
 	Teams          []teamView           `json:"teams"`
 	Members        []memberView         `json:"members"`
-	AgentDotMds    []agentDotMdView     `json:"agentDotMds"`
+	ClaudeMds      []claudeMdView       `json:"claudeMds"`
 	Skills         []skillView          `json:"skills"`
 	ClaudeSettings []claudeSettingsView `json:"claudeSettings"`
-	ClaudeJsons    []claudeJsonView     `json:"claudeJsons"`
-	Tasks          []taskView           `json:"tasks"`
+	Runs           []runView            `json:"runs"`
 }
 
 type teamMemberView struct {
@@ -326,23 +294,19 @@ type relationView struct {
 type memberView struct {
 	ID                 string    `json:"id"`
 	Name               string    `json:"name"`
-	AgentType          string    `json:"agentType"`
-	Model              string    `json:"model"`
-	Args               []string  `json:"args"`
-	AgentDotMdID       *string   `json:"agentDotMdId"`
+	Command            string    `json:"command"`
+	ClaudeMdID         *string   `json:"claudeMdId"`
 	SkillIDs           []string  `json:"skillIds"`
 	ClaudeSettingsID   *string   `json:"claudeSettingsId"`
-	ClaudeJsonID       *string   `json:"claudeJsonId"`
 	GitRepoURL         string    `json:"gitRepoUrl"`
-	AgentDotMdName     *string   `json:"agentDotMdName"`
+	ClaudeMdName       *string   `json:"claudeMdName"`
 	SkillNames         []string  `json:"skillNames"`
 	ClaudeSettingsName *string   `json:"claudeSettingsName"`
-	ClaudeJsonName     *string   `json:"claudeJsonName"`
 	CreatedAt          time.Time `json:"createdAt"`
 	UpdatedAt          time.Time `json:"updatedAt"`
 }
 
-type agentDotMdView struct {
+type claudeMdView struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	Content   string    `json:"content"`
@@ -366,45 +330,21 @@ type claudeSettingsView struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-type claudeJsonView struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Content   string    `json:"content"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-}
-
-type taskView struct {
-	ID        string           `json:"id"`
-	Name      string           `json:"name"`
-	TeamID    string           `json:"teamId"`
-	TeamName  string           `json:"teamName"`
-	Status    string           `json:"status"`
-	Plan      []memberPlanView `json:"plan"`
-	Notes     []noteView       `json:"notes"`
-	Messages  []messageView    `json:"messages"`
-	CreatedAt time.Time        `json:"createdAt"`
-	UpdatedAt time.Time        `json:"updatedAt"`
-}
-
-type memberPlanView struct {
-	TeamMemberID string                `json:"teamMemberId"`
-	MemberName   string                `json:"memberName"`
-	Memberspace  string                `json:"memberspace"`
-	Command      string                `json:"command"`
-	GitRepoURL   string                `json:"gitRepoUrl"`
-	Files        []memberPlanFileEntry `json:"files"`
-}
-
-type memberPlanFileEntry struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
+type runView struct {
+	ID        string        `json:"id"`
+	Name      string        `json:"name"`
+	TeamID    string        `json:"teamId"`
+	TeamName  string        `json:"teamName"`
+	Status    string        `json:"status"`
+	Notes     []noteView    `json:"notes"`
+	Messages  []messageView `json:"messages"`
+	StartedAt time.Time     `json:"startedAt"`
+	UpdatedAt time.Time     `json:"updatedAt"`
 }
 
 type noteView struct {
 	ID           string    `json:"id"`
 	TeamMemberID string    `json:"teamMemberId"`
-	MemberName   string    `json:"memberName"`
 	Content      string    `json:"content"`
 	CreatedAt    time.Time `json:"createdAt"`
 }
@@ -412,45 +352,21 @@ type noteView struct {
 type messageView struct {
 	ID               string    `json:"id"`
 	FromTeamMemberID string    `json:"fromTeamMemberId"`
-	FromMemberName   string    `json:"fromMemberName"`
 	ToTeamMemberID   string    `json:"toTeamMemberId"`
-	ToMemberName     string    `json:"toMemberName"`
 	Content          string    `json:"content"`
 	CreatedAt        time.Time `json:"createdAt"`
 }
 
-func convertTasks(ctx context.Context, store *db.Store, tasks []domain.Task, teamNames map[string]string) ([]taskView, error) {
-	views := make([]taskView, 0, len(tasks))
-	for _, t := range tasks {
-		notes, err := store.ListNotesByTaskID(ctx, t.ID)
+func convertRuns(client *api.Client, runs []api.RunResponse, teamNames map[string]string) ([]runView, error) {
+	views := make([]runView, 0, len(runs))
+	for _, r := range runs {
+		notes, err := client.ListNotes(r.ID)
 		if err != nil {
 			return nil, err
 		}
-		msgs, err := store.ListMessagesByTaskID(ctx, t.ID)
+		msgs, err := client.ListMessages(r.ID)
 		if err != nil {
 			return nil, err
-		}
-
-		// Build teamMemberID -> memberName map from plan
-		nameOf := make(map[string]string, len(t.Plan))
-		for _, mp := range t.Plan {
-			nameOf[mp.TeamMemberID] = mp.MemberName
-		}
-
-		planViews := make([]memberPlanView, 0, len(t.Plan))
-		for _, mp := range t.Plan {
-			files := make([]memberPlanFileEntry, 0, len(mp.Workspace.Files))
-			for _, f := range mp.Workspace.Files {
-				files = append(files, memberPlanFileEntry{Path: f.Path, Content: f.Content})
-			}
-			planViews = append(planViews, memberPlanView{
-				TeamMemberID: mp.TeamMemberID,
-				MemberName:   mp.MemberName,
-				Memberspace:  mp.Workspace.Memberspace,
-				Command:      mp.Terminal.Command,
-				GitRepoURL:   mp.Workspace.GitRepoURL,
-				Files:        files,
-			})
 		}
 
 		noteViews := make([]noteView, 0, len(notes))
@@ -458,7 +374,6 @@ func convertTasks(ctx context.Context, store *db.Store, tasks []domain.Task, tea
 			noteViews = append(noteViews, noteView{
 				ID:           n.ID,
 				TeamMemberID: n.TeamMemberID,
-				MemberName:   nameOf[n.TeamMemberID],
 				Content:      n.Content,
 				CreatedAt:    n.CreatedAt,
 			})
@@ -469,29 +384,26 @@ func convertTasks(ctx context.Context, store *db.Store, tasks []domain.Task, tea
 			msgViews = append(msgViews, messageView{
 				ID:               m.ID,
 				FromTeamMemberID: m.FromTeamMemberID,
-				FromMemberName:   nameOf[m.FromTeamMemberID],
 				ToTeamMemberID:   m.ToTeamMemberID,
-				ToMemberName:     nameOf[m.ToTeamMemberID],
 				Content:          m.Content,
 				CreatedAt:        m.CreatedAt,
 			})
 		}
 
-		updatedAt := t.CreatedAt
-		if t.StoppedAt != nil {
-			updatedAt = *t.StoppedAt
+		updatedAt := r.StartedAt
+		if r.StoppedAt != nil {
+			updatedAt = *r.StoppedAt
 		}
 
-		views = append(views, taskView{
-			ID:        t.ID,
-			Name:      t.Name,
-			TeamID:    t.TeamID,
-			TeamName:  teamNames[t.TeamID],
-			Status:    string(t.Status),
-			Plan:      planViews,
+		views = append(views, runView{
+			ID:        r.ID,
+			Name:      r.Name,
+			TeamID:    r.TeamID,
+			TeamName:  teamNames[r.TeamID],
+			Status:    string(r.Status),
 			Notes:     noteViews,
 			Messages:  msgViews,
-			CreatedAt: t.CreatedAt,
+			StartedAt: r.StartedAt,
 			UpdatedAt: updatedAt,
 		})
 	}

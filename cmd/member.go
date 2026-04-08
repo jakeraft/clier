@@ -1,6 +1,14 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/google/uuid"
+	"github.com/jakeraft/clier/internal/adapter/terminal"
+	apprun "github.com/jakeraft/clier/internal/app/run"
+	appws "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -18,49 +26,55 @@ func newMemberCmd() *cobra.Command {
 	cmd.AddCommand(newMemberListCmd())
 	cmd.AddCommand(newMemberUpdateCmd())
 	cmd.AddCommand(newMemberDeleteCmd())
+	cmd.AddCommand(newMemberWorkspaceCmd())
+	cmd.AddCommand(newMemberRunCmd())
 	return cmd
 }
 
 func newMemberCreateCmd() *cobra.Command {
-	var name, agentType, model, agentDotMd, claudeSettings, claudeJson, repo string
-	var cliArgs, skills []string
+	var name, command, claudeMd, claudeSettings, repo string
+	var skills []string
 
 	cmd := &cobra.Command{
 		Use:         "create",
 		Short:       "Create a member",
 		Annotations: map[string]string{mutates: "true"},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			m, err := domain.NewMember(name, agentType, model, cliArgs, agentDotMd, skills, claudeSettings, claudeJson, repo)
+			body := map[string]any{
+				"name":    name,
+				"command": command,
+			}
+			if claudeMd != "" {
+				body["claude_md_id"] = claudeMd
+			}
+			if skills != nil {
+				body["skill_ids"] = skills
+			}
+			if claudeSettings != "" {
+				body["claude_settings_id"] = claudeSettings
+			}
+			if repo != "" {
+				body["git_repo_url"] = repo
+			}
+
+			resp, err := client.CreateMember(owner, body)
 			if err != nil {
 				return err
 			}
-			if err := store.CreateMember(cmd.Context(), m); err != nil {
-				return err
-			}
-			return printJSON(m)
+			return printJSON(resp)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Member name")
-	cmd.Flags().StringVar(&agentType, "agent-type", "claude", "Agent type (e.g. claude)")
-	cmd.Flags().StringVar(&model, "model", "", "Model identifier")
-	cmd.Flags().StringSliceVar(&cliArgs, "args", nil, "CLI arguments (comma-separated)")
-	cmd.Flags().StringVar(&agentDotMd, "agent-dot-md", "", "Agent dot md resource ID")
+	cmd.Flags().StringVar(&command, "command", "", "Command (binary + CLI flags, e.g. \"claude --dangerously-skip-permissions\")")
+	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "Claude md resource ID")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "Skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "Claude settings resource ID")
-	cmd.Flags().StringVar(&claudeJson, "claude-json", "", "ClaudeJson resource ID")
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repo URL")
 	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("model")
+	_ = cmd.MarkFlagRequired("command")
 	return cmd
 }
 
@@ -69,17 +83,10 @@ func newMemberListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List all members",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			members, err := store.ListMembers(cmd.Context())
+			members, err := client.ListMembers(owner)
 			if err != nil {
 				return err
 			}
@@ -89,8 +96,8 @@ func newMemberListCmd() *cobra.Command {
 }
 
 func newMemberUpdateCmd() *cobra.Command {
-	var name, agentType, model, agentDotMd, claudeSettings, claudeJson, repo string
-	var cliArgs, skills []string
+	var name, command, claudeMd, claudeSettings, repo string
+	var skills []string
 
 	cmd := &cobra.Command{
 		Use:         "update <id>",
@@ -98,75 +105,41 @@ func newMemberUpdateCmd() *cobra.Command {
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			m, err := store.GetMember(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-
-			var namePtr *string
+			body := map[string]any{}
 			if cmd.Flags().Changed("name") {
-				namePtr = &name
+				body["name"] = name
 			}
-			var agentTypePtr *string
-			if cmd.Flags().Changed("agent-type") {
-				agentTypePtr = &agentType
+			if cmd.Flags().Changed("command") {
+				body["command"] = command
 			}
-			var modelPtr *string
-			if cmd.Flags().Changed("model") {
-				modelPtr = &model
+			if cmd.Flags().Changed("claude-md") {
+				body["claude_md_id"] = claudeMd
 			}
-			var argsPtr *[]string
-			if cmd.Flags().Changed("args") {
-				argsPtr = &cliArgs
-			}
-			var agentDotMdPtr *string
-			if cmd.Flags().Changed("agent-dot-md") {
-				agentDotMdPtr = &agentDotMd
-			}
-			var skillsPtr *[]string
 			if cmd.Flags().Changed("skills") {
-				skillsPtr = &skills
+				body["skill_ids"] = skills
 			}
-			var claudeSettingsPtr *string
 			if cmd.Flags().Changed("claude-settings") {
-				claudeSettingsPtr = &claudeSettings
+				body["claude_settings_id"] = claudeSettings
 			}
-			var claudeJsonPtr *string
-			if cmd.Flags().Changed("claude-json") {
-				claudeJsonPtr = &claudeJson
-			}
-			var repoPtr *string
 			if cmd.Flags().Changed("repo") {
-				repoPtr = &repo
+				body["git_repo_url"] = repo
 			}
 
-			if err := m.Update(namePtr, agentTypePtr, modelPtr, argsPtr, agentDotMdPtr, skillsPtr, claudeSettingsPtr, claudeJsonPtr, repoPtr); err != nil {
+			resp, err := client.UpdateMember(owner, args[0], body)
+			if err != nil {
 				return err
 			}
-			if err := store.UpdateMember(cmd.Context(), &m); err != nil {
-				return err
-			}
-			return printJSON(m)
+			return printJSON(resp)
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New member name")
-	cmd.Flags().StringVar(&agentType, "agent-type", "", "New agent type")
-	cmd.Flags().StringVar(&model, "model", "", "New model identifier")
-	cmd.Flags().StringSliceVar(&cliArgs, "args", nil, "New CLI arguments (comma-separated)")
-	cmd.Flags().StringVar(&agentDotMd, "agent-dot-md", "", "New agent dot md resource ID")
+	cmd.Flags().StringVar(&command, "command", "", "New command (binary + CLI flags)")
+	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "New claude md resource ID")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "New Claude settings resource ID")
-	cmd.Flags().StringVar(&claudeJson, "claude-json", "", "New ClaudeJson resource ID")
 	cmd.Flags().StringVar(&repo, "repo", "", "New git repo URL")
 	return cmd
 }
@@ -178,20 +151,140 @@ func newMemberDeleteCmd() *cobra.Command {
 		Annotations: map[string]string{mutates: "true"},
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := newSettings()
-			if err != nil {
-				return err
-			}
-			store, err := newStore(cfg)
-			if err != nil {
-				return err
-			}
-			defer store.Close()
+			client := newAPIClient()
+			owner := resolveOwner()
 
-			if err := store.DeleteMember(cmd.Context(), args[0]); err != nil {
+			if err := client.DeleteMember(owner, args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})
 		},
 	}
+}
+
+func newMemberWorkspaceCmd() *cobra.Command {
+	var dir string
+
+	cmd := &cobra.Command{
+		Use:   "workspace <member-id>",
+		Short: "Create workspace for a member",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newAPIClient()
+			owner := resolveOwner()
+			writer := appws.NewWriter(client, owner)
+
+			base := dir
+			if base == "" {
+				base = "."
+			}
+
+			if err := writer.PrepareMember(base, args[0]); err != nil {
+				return err
+			}
+			return printJSON(map[string]string{
+				"status": "prepared",
+				"member": args[0],
+				"dir":    base,
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", "", "Base directory for workspace (default: current directory)")
+	return cmd
+}
+
+func newMemberRunCmd() *cobra.Command {
+	var dir string
+
+	cmd := &cobra.Command{
+		Use:   "run <member-id>",
+		Short: "Create workspace and run a single member",
+		Long: `Create workspace (idempotent) and run a single member.
+This prepares the workspace files and launches the agent in a tmux session.`,
+		Args:        cobra.ExactArgs(1),
+		Annotations: map[string]string{mutates: "true"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			memberID := args[0]
+			client := newAPIClient()
+			owner := resolveOwner()
+
+			base := dir
+			if base == "" {
+				base = "."
+			}
+			absBase, err := filepath.Abs(base)
+			if err != nil {
+				return fmt.Errorf("resolve base path: %w", err)
+			}
+
+			// 1. Workspace (idempotent) -- skip if project dir already exists
+			projectDir := filepath.Join(absBase, "project")
+			if _, err := os.Stat(projectDir); os.IsNotExist(err) {
+				writer := appws.NewWriter(client, owner)
+				if err := writer.PrepareMember(absBase, memberID); err != nil {
+					return fmt.Errorf("prepare workspace: %w", err)
+				}
+			}
+
+			// 2. Get member spec for command
+			member, err := client.GetMember(owner, memberID)
+			if err != nil {
+				return fmt.Errorf("get member: %w", err)
+			}
+
+			// 3. Create Run on server
+			runID := uuid.NewString()
+			runName := apprun.SessionName(member.Name, runID)
+			runResp, err := client.CreateRun(map[string]any{
+				"id":     runID,
+				"name":   runName,
+				"status": "running",
+			})
+			if err != nil {
+				return fmt.Errorf("create run: %w", err)
+			}
+			runID = runResp.ID
+
+			// 4. Build env vars + command
+			runPlanPath := filepath.Join(absBase, ".clier", runID+".json")
+			envVars := buildMemberEnv(runID, member.Name, runPlanPath, absBase)
+			projectPath := filepath.Join(absBase, "project")
+			fullCommand := buildFullCommand(envVars, member.Command, projectPath)
+
+			// 5. Build RunPlan
+			plan := &apprun.RunPlan{
+				Session: runName,
+				Members: []apprun.MemberTerminal{{
+					Name:    member.Name,
+					Window:  0,
+					Cwd:     projectPath,
+					Command: fullCommand,
+				}},
+			}
+
+			// 6. Save .clier/{RUN_ID}.json
+			if err := apprun.SavePlan(absBase, runID, plan); err != nil {
+				return fmt.Errorf("save plan: %w", err)
+			}
+
+			// 7. Launch tmux
+			term := terminal.NewTmuxTerminal(newStore())
+			domainPlans := []domain.MemberPlan{{
+				TeamMemberID: memberID,
+				MemberName:   member.Name,
+				Terminal:     domain.TerminalPlan{Command: fullCommand},
+				Workspace:    domain.WorkspacePlan{Memberspace: absBase},
+			}}
+			if err := term.Launch(runID, plan.Session, domainPlans); err != nil {
+				return fmt.Errorf("launch: %w", err)
+			}
+
+			return printJSON(map[string]string{
+				"run_id":  runID,
+				"session": plan.Session,
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", "", "Base directory for workspace (default: current directory)")
+	return cmd
 }

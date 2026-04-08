@@ -3,8 +3,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
-	"github.com/jakeraft/clier/internal/adapter/db"
+	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/settings"
 	"github.com/spf13/cobra"
 )
@@ -17,8 +18,24 @@ func newSettings() (*settings.Settings, error) {
 	return settings.New()
 }
 
-func newStore(cfg *settings.Settings) (*db.Store, error) {
-	return db.NewStore(cfg.Paths.DB())
+func newAPIClient() *api.Client {
+	serverURL := os.Getenv("CLIER_SERVER_URL")
+	if serverURL == "" {
+		serverURL = "http://localhost:8080"
+	}
+	return api.NewClient(serverURL)
+}
+
+func resolveOwner() string {
+	owner := os.Getenv("CLIER_OWNER")
+	if owner == "" {
+		owner = "default"
+	}
+	return owner
+}
+
+func newStore() *api.Store {
+	return api.NewStore(newAPIClient(), resolveOwner())
 }
 
 var rootCmd = &cobra.Command{
@@ -28,7 +45,7 @@ var rootCmd = &cobra.Command{
 
 Building blocks (prompt, settings, repo) define agent capabilities.
 Combine them into a member, assemble members into a team with
-leader-worker relations, then start a task to launch the agents.
+leader-worker relations, then start a run to launch the agents.
 Monitor progress through messages and notes, or open the dashboard.
 
 New to clier? Run "clier tutorial" for a step-by-step guide.`,
@@ -44,13 +61,8 @@ New to clier? Run "clier tutorial" for a step-by-step guide.`,
 			fmt.Fprintf(os.Stderr, "warning: dashboard not updated: %v\n", err)
 			return nil
 		}
-		store, err := newStore(cfg)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: dashboard not updated: %v\n", err)
-			return nil
-		}
-		defer store.Close()
-		if _, err := generateDashboard(cmd.Context(), store, cfg.Paths.Dashboard()); err != nil {
+		client := newAPIClient()
+		if _, err := generateDashboard(cmd.Context(), client, resolveOwner(), cfg.Paths.Dashboard()); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: dashboard not updated: %v\n", err)
 		}
 		return nil
@@ -58,7 +70,7 @@ New to clier? Run "clier tutorial" for a step-by-step guide.`,
 }
 
 func Execute() {
-	if os.Getenv("CLIER_MEMBER_ID") != "" {
+	if os.Getenv("CLIER_AGENT") == "true" {
 		filterAgentCommands()
 	} else {
 		filterUserCommands()
@@ -69,12 +81,12 @@ func Execute() {
 	}
 }
 
-// filterUserCommands removes agent-only subcommands from "task" in user context.
+// filterUserCommands removes agent-only subcommands from "run" in user context.
 func filterUserCommands() {
-	// Coupled to: newTaskNoteCmd
+	// Coupled to: newRunNoteCmd
 	hidden := map[string]bool{"note": true}
 	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == "task" {
+		if cmd.Name() == "run" {
 			var keep []*cobra.Command
 			for _, sub := range cmd.Commands() {
 				if !hidden[sub.Name()] {
@@ -89,10 +101,20 @@ func filterUserCommands() {
 	}
 }
 
-// filterAgentCommands removes all commands except "task" when running as an agent,
-// and within "task" keeps only agent-facing subcommands (tell, update).
+// parseOwnerName splits "owner/name" into owner and name.
+// If no slash is present, resolveOwner() is used as owner.
+func parseOwnerName(s string) (owner, name string) {
+	parts := strings.SplitN(s, "/", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return resolveOwner(), s
+}
+
+// filterAgentCommands removes all commands except "run" when running as an agent,
+// and within "run" keeps only agent-facing subcommands (tell, note).
 func filterAgentCommands() {
-	allowed := map[string]bool{"task": true}
+	allowed := map[string]bool{"run": true}
 	var keep []*cobra.Command
 	for _, cmd := range rootCmd.Commands() {
 		if allowed[cmd.Name()] {
@@ -104,10 +126,10 @@ func filterAgentCommands() {
 		rootCmd.AddCommand(cmd)
 	}
 
-	// Coupled to: newTaskTellCmd, newTaskNoteCmd
+	// Coupled to: newRunTellCmd, newRunNoteCmd
 	agentSubs := map[string]bool{"tell": true, "note": true}
 	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == "task" {
+		if cmd.Name() == "run" {
 			var subs []*cobra.Command
 			for _, sub := range cmd.Commands() {
 				if agentSubs[sub.Name()] {

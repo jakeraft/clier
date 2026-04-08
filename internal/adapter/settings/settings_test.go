@@ -14,13 +14,6 @@ func TestPaths(t *testing.T) {
 		}
 	})
 
-	t.Run("DB", func(t *testing.T) {
-		want := "/Users/test/.clier/clier.db"
-		if p.DB() != want {
-			t.Errorf("DB() = %q, want %q", p.DB(), want)
-		}
-	})
-
 	t.Run("Workspaces", func(t *testing.T) {
 		want := "/Users/test/.clier/workspaces"
 		if p.Workspaces() != want {
@@ -50,8 +43,8 @@ func TestNew(t *testing.T) {
 		if err != nil {
 			t.Fatalf("New() error: %v", err)
 		}
-		if !strings.HasSuffix(s.Paths.DB(), dotDir+"/clier.db") {
-			t.Errorf("DB() = %q, should contain %q", s.Paths.DB(), dotDir)
+		if !strings.HasSuffix(s.Paths.Base(), dotDir) {
+			t.Errorf("Base() = %q, should end with %q", s.Paths.Base(), dotDir)
 		}
 	})
 
@@ -61,22 +54,6 @@ func TestNew(t *testing.T) {
 		s2, _ := New()
 		if s1.Paths.Base() != s2.Paths.Base() {
 			t.Errorf("New() should be stable regardless of HOME: got %q vs %q", s1.Paths.Base(), s2.Paths.Base())
-		}
-	})
-}
-
-func TestAuth(t *testing.T) {
-	auth := &Auth{}
-
-	t.Run("ReadToken", func(t *testing.T) {
-		// This test relies on either keychain or ~/.claude/.credentials.json existing.
-		// If neither is available, the test is skipped.
-		token, err := auth.ReadToken()
-		if err != nil {
-			t.Skipf("skipping: no claude credentials available: %v", err)
-		}
-		if token == "" {
-			t.Error("ReadToken() returned empty token")
 		}
 	})
 }

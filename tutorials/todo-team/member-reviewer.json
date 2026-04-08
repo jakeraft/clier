@@ -3,14 +3,10 @@
   "data": {
     "id": "c3030303-0003-4000-8000-000000000003",
     "name": "reviewer",
-    "model": "claude-sonnet-4-6",
-    "args": ["--dangerously-skip-permissions"],
-    "agent_type": "claude",
-    "agent_dot_md_id": "a1010101-0003-4000-8000-000000000003",
+    "command": "claude --dangerously-skip-permissions",
+    "claude_md_id": "a1010101-0003-4000-8000-000000000003",
     "skill_ids": [],
     "claude_settings_id": "e5050505-0001-4000-8000-000000000001",
-    "claude_json_id": "e5050505-0002-4000-8000-000000000002",
-    "env_ids": [],
     "git_repo_url": "https://github.com/jakeraft/clier_todo.git"
   }
 }

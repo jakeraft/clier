@@ -25,46 +25,41 @@ Follow the steps below to try it out.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Step 1. Import the todo-team resources
-
-  clier import tutorials/todo-team
-
-  This loads all building blocks (agent-dot-mds, skills, settings,
-  members, and the team) into the local database.
-
-Step 2. Check what was imported
+Step 1. Check the pre-loaded todo-team
 
   clier team list
   clier member list
 
-Step 3. Start a task
+  The "jakeraft/todo-team" is already available on the server.
 
-  clier task start <team-id>
+Step 2. Run the team
 
-  This clones the git repo for each member, sets up workspaces,
-  and launches all agents in tmux. Copy the task ID from the output.
+  clier team run jakeraft/todo-team
 
-Step 4. Give the team a job
+  This creates workspaces for each member, generates the
+  execution plan (.clier/{RUN_ID}.json), and launches all
+  agents in tmux. Copy the run ID from the output.
 
-  clier task tell --task <task-id> --to <root-member-id> \
+Step 3. Give the team a job
+
+  clier run tell --run <run-id> --to <root-member-id> \
     "Add a list --done flag to filter completed todos."
 
   The tech-lead plans the work, the coder implements it on a branch,
   creates a PR, and the reviewer iterates on it until approved.
   The tech-lead writes a final report on the PR.
 
-Step 5. Watch them work
+Step 4. Watch them work
 
-  clier task attach <task-id>        Watch agents in real time
-  clier task notes <task-id>         Check progress notes
-  clier task messages <task-id>      Check messages between agents
-  clier dashboard                    Open the dashboard
+  clier run attach <run-id>        Watch agents in real time
+  clier run notes <run-id>         Check progress notes
+  clier run messages <run-id>      Check messages between agents
 
-Step 6. When done, stop the task
+Step 5. When done, stop the run
 
-  clier task stop <task-id>
+  clier run stop <run-id>
 
-Step 7. See the result
+Step 6. See the result
 
   gh pr list -R jakeraft/clier_todo
   gh pr view <number> -R jakeraft/clier_todo --web
