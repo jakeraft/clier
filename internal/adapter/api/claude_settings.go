@@ -45,3 +45,8 @@ func (c *Client) UpdateClaudeSettings(owner, name string, body any) (*ClaudeSett
 func (c *Client) DeleteClaudeSettings(owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/claude-settings/%s", owner, name))
 }
+
+func (c *Client) ForkClaudeSettings(owner, name string) (*ClaudeSettingsResponse, error) {
+	var r ClaudeSettingsResponse
+	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/claude-settings/%s/fork", owner, name), nil, &r)
+}

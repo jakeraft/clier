@@ -62,3 +62,8 @@ func (c *Client) UpdateTeam(owner, name string, body any) (*TeamResponse, error)
 func (c *Client) DeleteTeam(owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/teams/%s", owner, name))
 }
+
+func (c *Client) ForkTeam(owner, name string) (*TeamResponse, error) {
+	var r TeamResponse
+	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/teams/%s/fork", owner, name), nil, &r)
+}

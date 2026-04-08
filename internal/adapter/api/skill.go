@@ -45,3 +45,8 @@ func (c *Client) UpdateSkill(owner, name string, body any) (*SkillResponse, erro
 func (c *Client) DeleteSkill(owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/skills/%s", owner, name))
 }
+
+func (c *Client) ForkSkill(owner, name string) (*SkillResponse, error) {
+	var r SkillResponse
+	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/skills/%s/fork", owner, name), nil, &r)
+}

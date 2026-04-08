@@ -52,3 +52,8 @@ func (c *Client) UpdateMember(owner, name string, body any) (*MemberResponse, er
 func (c *Client) DeleteMember(owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/members/%s", owner, name))
 }
+
+func (c *Client) ForkMember(owner, name string) (*MemberResponse, error) {
+	var r MemberResponse
+	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/members/%s/fork", owner, name), nil, &r)
+}

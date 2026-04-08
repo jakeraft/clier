@@ -45,3 +45,8 @@ func (c *Client) UpdateClaudeMd(owner, name string, body any) (*ClaudeMdResponse
 func (c *Client) DeleteClaudeMd(owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/claude-mds/%s", owner, name))
 }
+
+func (c *Client) ForkClaudeMd(owner, name string) (*ClaudeMdResponse, error) {
+	var r ClaudeMdResponse
+	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/claude-mds/%s/fork", owner, name), nil, &r)
+}
