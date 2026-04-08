@@ -16,12 +16,13 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 - `ClaudeJson` 빌딩블록이 존재하나, `.claude.json`은 프로젝트 레벨이 없어 사실상 불필요
 - `AgentType` 필드가 존재하나, `command`에서 바이너리를 감지하면 불필요
 - 시스템이 사용자 콘텐츠에 몰래 머지(CLAUDE.md 앞에 protocol 삽입, .claude.json deep merge)
+- MemberPlan에 tmux 세션/윈도우 구조가 보이지 않음
 
 ### 설계 원칙
 
 1. **서버 = DB**: 모든 엔티티(Workspace + Task)를 서버가 소유. CLI에 로컬 DB 없음.
 2. **CLI = 경량 런타임 도구**: 서버를 DB로 사용하되, 로컬 dependency가 있는 런타임 환경 로직(tmux, workspace 파일, 프로세스 실행)을 담당.
-3. **로컬 파일 기반 실행**: workspace 파일을 로컬에 생성하고, run은 로컬 파일 기준으로 실행. 실행 계획은 `.run/plan.json`에 저장.
+3. **로컬 파일 기반 실행**: workspace 파일을 로컬에 생성하고, run은 로컬 파일 기준으로 실행. 실행 계획은 `.clier/{TASK_ID}_run.json`에 저장.
 4. **시스템 주입 투명화**: 숨겨진 머지 제거. Team Protocol도 workspace 생성 시 포함.
 
 ## Design
@@ -37,7 +38,7 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 │  DB (PostgreSQL)                                    │
 │  ├─ Workspace (공유 가능): ClaudeMd, Skill,          │
 │  │   ClaudeSettings, Member, Team                   │
-│  └─ Run (개인 전용): Task                            │
+│  └─ Run (개인 전용): Task (+ Messages, Notes)        │
 │                                                     │
 │  REST API                                           │
 │  ├─ /api/v1/orgs/:owner/claude-mds/...              │
@@ -56,11 +57,11 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 │                                                     │
 │  HTTP Client — 서버 API 호출 (CRUD)                  │
 │  Workspace Writer — 로컬 파일 생성                   │
-│  Run Planner — .run/plan.json 생성                   │
+│  Run Planner — .clier/{TASK_ID}_run.json 생성        │
 │  Terminal Manager — tmux 세션 관리                    │
 │                                                     │
 │  로컬 DB 없음. 로컬에 남는 것:                        │
-│  workspace 파일 + .run/plan.json                     │
+│  workspace 파일 + .clier/{TASK_ID}_run.json          │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -70,7 +71,7 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 |---|---|
 | 서버 API 호출 (CRUD) | DB 저장/조회 |
 | workspace 파일 생성 | 엔티티 상태 관리 |
-| `.run/plan.json` 생성 | 비즈니스 로직 |
+| `.clier/{TASK_ID}_run.json` 생성 | 비즈니스 로직 |
 | tmux 세션 생성/관리 | 버전/fork 관리 |
 | env vars export + command 실행 | UI 서빙 |
 
@@ -247,10 +248,11 @@ Team (FORK - 복사해서 소유, 구조 수정 가능)
 
 ### Run Domain — 서버 소유, 개인 전용, CLI가 실행
 
+#### Task (서버, 개인 전용 — 실행 기록)
+
 Task는 서버가 소유하지만 **항상 개인 소유**이다.
 마켓플레이스에 공유되지 않으며, Visibility/Fork/Version이 없다.
-
-#### Task (개인 전용 — 공유 가능 리소스 패턴과 다름)
+Task는 실행 기록(상태, 메시지, 노트)만 담당. 실행 계획(Plan)은 `.clier/{TASK_ID}_run.json`에 저장.
 
 ```go
 type Task struct {
@@ -259,69 +261,107 @@ type Task struct {
     Name      string      `json:"name"`
     TeamID    *int64      `json:"team_id,omitempty"`
     MemberID  *int64      `json:"member_id,omitempty"`
-    Bindings  []MemberBinding `json:"bindings"`
     Status    TaskStatus  `json:"status"`     // "running" | "stopped"
-    Plan      []MemberPlan `json:"plan"`
+    Messages  []Message   `json:"messages"`   // 에이전트 간 통신 기록
+    Notes     []Note      `json:"notes"`      // 진행 상황 기록
     CreatedAt time.Time   `json:"created_at"`
     StoppedAt *time.Time  `json:"stopped_at,omitempty"`
+    // Plan 없음 — .clier/{TASK_ID}_run.json에 저장
+    // Bindings 없음 — workspace 생성 시 결정
     // Visibility 없음, Fork 없음, Version 없음
 }
-```
 
-#### MemberBinding
+// Message — 에이전트 간 통신 기록 (Task 하위)
+type Message struct {
+    ID               string    `json:"id"`
+    TaskID           string    `json:"task_id"`
+    FromTeamMemberID string    `json:"from_team_member_id"`
+    ToTeamMemberID   string    `json:"to_team_member_id"`
+    Content          string    `json:"content"`
+    CreatedAt        time.Time `json:"created_at"`
+}
 
-```go
-type MemberBinding struct {
-    TeamMemberID int64  `json:"team_member_id"`
-    GitRepoURL   string `json:"git_repo_url"`
+// Note — 에이전트 진행 상황 기록 (Task 하위)
+type Note struct {
+    ID           string    `json:"id"`
+    TaskID       string    `json:"task_id"`
+    TeamMemberID string    `json:"team_member_id"`
+    Content      string    `json:"content"`
+    CreatedAt    time.Time `json:"created_at"`
 }
 ```
 
-#### MemberPlan
+#### `.clier/{TASK_ID}_run.json` — 실행 계획 (로컬 파일)
 
-```go
-type MemberPlan struct {
-    TeamMemberID int64             `json:"team_member_id"`
-    MemberName   string            `json:"member_name"`
-    Env          map[string]string `json:"env"`
-    Terminal     TerminalPlan      `json:"terminal"`
-    Workspace    WorkspacePlan     `json:"workspace"`
+run 시 CLI가 로컬에 생성하는 실행 계획. 사용자가 열어보면 tmux 세션 구조, 각 멤버에 전송되는 command, env vars가 전부 보인다.
+
+**Member 단독 실행 예시:**
+
+```json
+{
+  "task_id": "abc123",
+  "member": "jakeraft/tutorial",
+  "created_at": "2026-04-08T15:30:00Z",
+  "terminal": {
+    "session": "tutorial-abc12345",
+    "members": [
+      {
+        "team_member_id": 42,
+        "name": "tutorial",
+        "window": 0,
+        "cwd": "/path/to/jakeraft/tutorial/project",
+        "command": "export CLAUDE_CONFIG_DIR='/path/.claude' && export CLIER_TASK_ID='abc123' && export CLIER_MEMBER_ID='42' && export CLAUDE_CODE_OAUTH_TOKEN='...' && export GIT_AUTHOR_NAME='tutorial' && export GIT_AUTHOR_EMAIL='noreply@clier.com' && export GIT_COMMITTER_NAME='tutorial' && export GIT_COMMITTER_EMAIL='noreply@clier.com' && cd '/path/to/project' && claude '--dangerously-skip-permissions' --model 'opus-4'"
+      }
+    ]
+  }
 }
 ```
 
-#### 환경변수 (Env)
+**Team 실행 예시:**
 
-Run 시 유일한 시스템 주입. 파일 변경 없이 export만.
-
-```go
-env := map[string]string{
-    "CLIER_TASK_ID":   taskID,
-    "CLIER_TEAM_ID":   teamID,
-    "CLIER_MEMBER_ID": memberID,
-
-    // 에이전트 런타임 (command에서 감지)
-    // Claude: CLAUDE_CONFIG_DIR, CLAUDE_CODE_OAUTH_TOKEN
-    // Codex: OPENAI_API_KEY
-
-    // Git Identity
-    "GIT_AUTHOR_NAME":      teamName + "/" + memberName,
-    "GIT_AUTHOR_EMAIL":     "noreply@clier.com",
-    "GIT_COMMITTER_NAME":   teamName + "/" + memberName,
-    "GIT_COMMITTER_EMAIL":  "noreply@clier.com",
+```json
+{
+  "task_id": "def456",
+  "team": "jakeraft/dev-squad",
+  "created_at": "2026-04-08T15:30:00Z",
+  "terminal": {
+    "session": "dev-squad-def45678",
+    "members": [
+      {
+        "team_member_id": 1,
+        "name": "leader",
+        "window": 0,
+        "cwd": "/path/to/jakeraft/dev-squad/leader/project",
+        "command": "export CLIER_TASK_ID='def456' && export CLIER_TEAM_ID='10' && export CLIER_MEMBER_ID='1' && export CLAUDE_CONFIG_DIR='/path/leader/.claude' && export CLAUDE_CODE_OAUTH_TOKEN='...' && export GIT_AUTHOR_NAME='dev-squad/leader' && export GIT_AUTHOR_EMAIL='noreply@clier.com' && export GIT_COMMITTER_NAME='dev-squad/leader' && export GIT_COMMITTER_EMAIL='noreply@clier.com' && cd '/path/leader/project' && claude --model 'opus-4'"
+      },
+      {
+        "team_member_id": 2,
+        "name": "worker-a",
+        "window": 1,
+        "cwd": "/path/to/jakeraft/dev-squad/worker-a/project",
+        "command": "export CLIER_TASK_ID='def456' && export CLIER_TEAM_ID='10' && export CLIER_MEMBER_ID='2' && export CLAUDE_CONFIG_DIR='/path/worker-a/.claude' && export CLAUDE_CODE_OAUTH_TOKEN='...' && export GIT_AUTHOR_NAME='dev-squad/worker-a' && export GIT_AUTHOR_EMAIL='noreply@clier.com' && export GIT_COMMITTER_NAME='dev-squad/worker-a' && export GIT_COMMITTER_EMAIL='noreply@clier.com' && cd '/path/worker-a/project' && codex --full-auto"
+      }
+    ]
+  }
 }
 ```
+
+사용자가 `.clier/` 디렉토리를 열면:
+- 매 실행마다 `{TASK_ID}_run.json` 파일 생성
+- tmux 세션명, 윈도우 번호, 각 멤버에 전송되는 전체 command 확인 가능
+- 실행 이력이 파일로 남음
 
 ### Unified Workspace Layout
 
 `clier member workspace`와 `clier member run`이 동일한 디렉토리 구조를 사용한다.
-Team Protocol도 workspace 생성 시 포함된다. Run 시 파일 변경 없음.
+Team Protocol도 workspace 생성 시 포함된다. Run 시 `.clier/{TASK_ID}_run.json`만 추가.
 
 **Member 단독:**
 
 ```
 jakeraft/tutorial/
-├── .run/
-│   └── plan.json                  ← 실행 계획 (run 시 생성)
+├── .clier/
+│   └── abc123_run.json            ← 실행 계획 (run 시 생성)
 ├── .claude/
 │   ├── settings.json              ← ClaudeSettings
 │   └── skills/
@@ -331,12 +371,12 @@ jakeraft/tutorial/
     └── (git repo)
 ```
 
-**Team (각 멤버별):**
+**Team:**
 
 ```
 jakeraft/dev-squad/
-├── .run/
-│   └── plan.json                  ← 실행 계획 (run 시 생성)
+├── .clier/
+│   └── def456_run.json            ← 실행 계획 (run 시 생성)
 ├── leader/
 │   ├── CLAUDE.md                  ← Team Protocol (workspace 생성 시 포함)
 │   ├── .claude/
@@ -373,15 +413,21 @@ clier team workspace jakeraft/dev-squad
 clier member run jakeraft/tutorial
 clier team run jakeraft/dev-squad
 # 1. workspace 없으면 생성 (멱등)
-# 2. .run/plan.json 생성 (실행 계획)
-# 3. 서버에 Task 생성 (POST /api/tasks)
-# 4. 로컬 workspace 기반 실행 (tmux + export + command)
+# 2. 서버에 Task 생성 (POST /api/tasks → task ID 발급)
+# 3. .clier/{TASK_ID}_run.json 생성 (tmux 구조, command, env vars 포함)
+# 4. tmux 세션 생성 + 각 window에 command send-keys
 # 5. 종료 시 서버 Task 상태 업데이트 (PATCH)
 
-# Task: 실행 추적/관리
+# Task: 실행 추적/관리 (서버 API)
 clier task list
 clier task stop --id xxx
 clier task logs --id xxx
+clier task tell --to member-name <<'EOF'    # message 전송
+  message content
+EOF
+clier task note <<'EOF'                     # note 기록
+  progress note
+EOF
 
 # Fork
 clier fork member jake/react-reviewer
@@ -390,14 +436,13 @@ clier member update myname/react-reviewer ...
 
 ### 시스템 주입 정리
 
-| 주입 | 시점 | 방식 |
-|---|---|---|
-| Team Protocol | workspace 생성 시 | 부모 디렉토리 CLAUDE.md 파일 |
-| `.run/plan.json` | run 시 | 로컬 파일 생성 |
-| Env vars | run 시 | export (workspace 파일 변경 없음) |
-| ~~.claude.json~~ | ~~삭제~~ | - |
-| ~~CLAUDE.md 머지~~ | ~~삭제~~ | - |
-| ~~.claude.json 머지~~ | ~~삭제~~ | - |
+| 주입 | 시점 | 방식 | 확인 방법 |
+|---|---|---|---|
+| Team Protocol | workspace 생성 시 | 부모 디렉토리 CLAUDE.md 파일 | 파일 직접 확인 |
+| Env vars + command | run 시 | `.clier/{TASK_ID}_run.json`에 기록 후 tmux send-keys | `.clier/` 디렉토리 확인 |
+| ~~.claude.json~~ | ~~삭제~~ | - | - |
+| ~~CLAUDE.md 머지~~ | ~~삭제~~ | - | - |
+| ~~.claude.json 머지~~ | ~~삭제~~ | - | - |
 
 ## 현재 대비 변경 요약
 
@@ -407,9 +452,10 @@ clier member update myname/react-reviewer ...
 |---|---|---|
 | 상태 저장 | CLI 로컬 SQLite (모든 엔티티) | 서버 PostgreSQL (모든 엔티티) |
 | CLI 역할 | DB + 비즈니스 로직 + 터미널 + UI | 서버를 DB로 사용하는 런타임 도구 |
-| CLI 로컬 상태 | SQLite (전체) | workspace 파일 + `.run/plan.json` |
-| 실행 기준 | 서버에서 Plan fetch | 로컬 workspace 파일 기반 |
-| Team Protocol | Run 시 생성 | Workspace 생성 시 포함 |
+| CLI 로컬 파일 | SQLite DB | workspace 파일 + `.clier/{TASK_ID}_run.json` |
+| 실행 계획 | MemberPlan (Task 하위, env/tmux 안 보임) | `.clier/{TASK_ID}_run.json` (tmux 세션, command, env 전부 보임) |
+| 실행 기록 | Task에 Plan + Messages + Notes 혼재 | Task = 기록만 (Messages, Notes), Plan = 로컬 파일 |
+| Team Protocol | Run 시 CLAUDE.md에 머지 | Workspace 생성 시 별도 파일 |
 | CLI 명령어 | `task create` + `task start` | `member run` / `team run` |
 
 ### 엔티티 변경
@@ -422,9 +468,11 @@ clier member update myname/react-reviewer ...
 | `Member.Model` | 삭제 (`ClaudeSettings` → `settings.json`의 `"model"`) |
 | `Member.Args` | 삭제 (`Command`에 통합) |
 | `Member.Command` | 신규 (바이너리 + CLI flags) |
+| `Task.Plan` | 삭제 (`.clier/{TASK_ID}_run.json`으로 이동) |
+| `Task.Bindings` | 삭제 (workspace 생성 시 결정) |
 | `Task.MemberID` | 신규 (Member 단독 실행 지원) |
-| `Task.Bindings` | 신규 (런타임 override) |
-| `MemberPlan.Env` | 신규 (환경변수 명시) |
+| `Task.Messages` | 유지 (Task 하위 필드) |
+| `Task.Notes` | 유지 (Task 하위 필드) |
 
 ### CLI 파일 변경 (예상)
 
@@ -434,7 +482,7 @@ clier member update myname/react-reviewer ...
 | `internal/domain/` | 서버 스키마 Go struct (API 파싱용) |
 | `internal/adapter/api/` | **신규** — HTTP 클라이언트 |
 | `internal/app/workspace/` | **신규** — workspace 파일 생성 |
-| `internal/app/run/` | **신규** — `.run/plan.json` 생성 + 실행 |
+| `internal/app/run/` | **신규** — `.clier/{TASK_ID}_run.json` 생성 + tmux 실행 |
 | `internal/adapter/terminal/` | tmux 관리 (유지) |
 
 ### 서버 추가 필요 (clier-server, 별도 작업)
@@ -446,7 +494,7 @@ clier member update myname/react-reviewer ...
 | `ClaudeSettings` 추가 | 빌딩블록 (동일 패턴) |
 | `Member` 추가 | 스펙 (FK로 빌딩블록 참조) |
 | `Team` 추가 | 스펙 (FK로 멤버 참조 + 관계 테이블) |
-| `Task` 추가 | 개인 전용 (UserID, 별도 스키마) |
+| `Task` 추가 | 개인 전용 (UserID, Messages/Notes 하위 필드) |
 
 ## Scope
 
@@ -456,9 +504,10 @@ clier member update myname/react-reviewer ...
 - CLI에서 로컬 DB 완전 제거
 - Building Block 정비 (ClaudeJson 삭제, AgentDotMd → ClaudeMd)
 - Member 엔티티 리팩토링 (AgentType/Model/Args 삭제, Command 추가)
-- Task를 서버 소유 + 개인 전용으로 전환
+- Task를 서버 소유 + 개인 전용 + 실행 기록 전용으로 전환
+- `.clier/{TASK_ID}_run.json` 실행 계획 파일
 - HTTP 클라이언트 어댑터 추가
-- 통합 Workspace 레이아웃 + `.run/plan.json`
+- 통합 Workspace 레이아웃
 - Team Protocol을 workspace 생성 시 포함
 - CLI 명령어: `member run` / `team run` / `member workspace` / `team workspace`
 - 머지 로직 전부 제거
@@ -468,3 +517,17 @@ clier member update myname/react-reviewer ...
 - UI (서버에서 구현)
 - 서버 엔티티/API 구현 (별도 작업)
 - 마켓플레이스 검색/필터링 (별도 작업)
+- SQLite → 서버 마이그레이션 경로 (별도 작업)
+- Dashboard 커맨드 전환 (서버 UI로 대체 예정)
+- Import/Export 커맨드 재설계 (서버 API 기반으로 별도 작업)
+
+### 삭제 대상 (기존 코드)
+
+| 대상 | 이유 |
+|---|---|
+| `internal/adapter/db/` 전체 | 로컬 DB 제거 |
+| `internal/domain/resource/claudejson.go` | ClaudeJson 삭제 |
+| `terminal_refs` 테이블 | `.clier/{TASK_ID}_run.json`이 tmux 세션/윈도우 정보를 로컬에 저장하므로 대체됨 |
+| `RefStore` 인터페이스 | terminal_refs 삭제에 따라 불필요 |
+| `workspace_files.go`의 머지 로직 | CLAUDE.md 머지, .claude.json deep merge 제거 |
+| `MemberPlan.Plan` (Task 하위) | `.clier/{TASK_ID}_run.json`으로 이동 |
