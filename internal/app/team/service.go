@@ -10,8 +10,8 @@ import (
 // Store defines the operations needed by the team service.
 type Store interface {
 	// Read
-	GetTeam(ctx context.Context, id string) (domain.Team, error)
-	GetMember(ctx context.Context, id string) (domain.Member, error)
+	GetTeam(ctx context.Context, id int64) (domain.Team, error)
+	GetMember(ctx context.Context, id int64) (domain.Member, error)
 
 	// Write (used by Import)
 	CreateClaudeMd(ctx context.Context, cm *resource.ClaudeMd) error
@@ -24,8 +24,8 @@ type Store interface {
 	UpdateClaudeSettings(ctx context.Context, st *resource.ClaudeSettings) error
 	UpdateMember(ctx context.Context, m *domain.Member) error
 	UpdateTeam(ctx context.Context, t *domain.Team) error
-	AddTeamMember(ctx context.Context, teamID string, tm domain.TeamMember) error
-	AddTeamRelation(ctx context.Context, teamID string, r domain.Relation) error
+	AddTeamMember(ctx context.Context, teamID int64, tm domain.TeamMember) error
+	AddTeamRelation(ctx context.Context, teamID int64, r domain.Relation) error
 	ReplaceTeamComposition(ctx context.Context, t *domain.Team) error
 }
 

@@ -9,7 +9,7 @@ import (
 
 // BuildProtocol generates the team protocol CLAUDE.md content.
 // Written to {memberDir}/CLAUDE.md (parent of project/).
-func BuildProtocol(teamName, memberName string, relations domain.MemberRelations, nameByID map[string]string) string {
+func BuildProtocol(teamName, memberName string, relations domain.MemberRelations, nameByID map[int64]string) string {
 	var b strings.Builder
 
 	// Header
@@ -51,17 +51,18 @@ func BuildProtocol(teamName, memberName string, relations domain.MemberRelations
 }
 
 // writeTellCommands writes ready-to-use tell commands for each related member.
-func writeTellCommands(b *strings.Builder, rel domain.MemberRelations, nameByID map[string]string) {
-	all := make([]string, 0, len(rel.Leaders)+len(rel.Workers))
+func writeTellCommands(b *strings.Builder, rel domain.MemberRelations, nameByID map[int64]string) {
+	all := make([]int64, 0, len(rel.Leaders)+len(rel.Workers))
 	all = append(all, rel.Leaders...)
 	all = append(all, rel.Workers...)
 	for _, id := range all {
-		fmt.Fprintf(b, "Tell %s:\n```bash\nclier run tell --to %s <<'EOF'\n<message>\nEOF\n```\n", nameByID[id], id)
+		name := nameByID[id]
+		fmt.Fprintf(b, "Tell %s:\n```bash\nclier run tell --to %s <<'EOF'\n<message>\nEOF\n```\n", name, name)
 	}
 }
 
 // writeRelNames formats a relation line like "- Leaders: alice, bob".
-func writeRelNames(b *strings.Builder, label string, ids []string, nameByID map[string]string) {
+func writeRelNames(b *strings.Builder, label string, ids []int64, nameByID map[int64]string) {
 	if len(ids) == 0 {
 		return
 	}

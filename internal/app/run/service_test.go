@@ -43,8 +43,10 @@ func (t *stubTerminal) Send(_, _, text string) error {
 }
 func (t *stubTerminal) Attach(_ string, _ *string) error { return nil }
 
+func int64Ptr(v int64) *int64 { return &v }
+
 func TestService_Note(t *testing.T) {
-	r := &domain.Run{ID: "s-1", TeamID: "t-1", Status: domain.RunRunning}
+	r := &domain.Run{ID: "s-1", TeamID: int64Ptr(1), Status: domain.RunRunning}
 	store := &stubStore{run: r}
 	svc := New(store, &stubTerminal{})
 
@@ -82,7 +84,7 @@ func TestService_Note(t *testing.T) {
 func TestService_Send(t *testing.T) {
 	r := &domain.Run{
 		ID:     "s-1",
-		TeamID: "t-1",
+		TeamID: int64Ptr(1),
 		Status: domain.RunRunning,
 	}
 

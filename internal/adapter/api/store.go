@@ -22,8 +22,25 @@ func NewStore(client *Client, owner string) *Store {
 // --- RunStore interface (used by internal/app/run) ---
 
 func (s *Store) CreateRun(_ context.Context, r *domain.Run) error {
-	_, err := s.client.CreateRun(r)
-	return err
+	body := map[string]any{
+		"name": r.Name,
+	}
+	if r.TeamID != nil {
+		body["team_id"] = *r.TeamID
+	}
+	if r.MemberID != nil {
+		body["member_id"] = *r.MemberID
+	}
+	resp, err := s.client.CreateRun(body)
+	if err != nil {
+		return err
+	}
+	// Update the domain run with server-assigned values.
+	r.ID = resp.ID
+	r.UserID = resp.UserID
+	r.Status = domain.RunStatus(resp.Status)
+	r.StartedAt = resp.StartedAt
+	return nil
 }
 
 func (s *Store) GetRun(_ context.Context, id string) (domain.Run, error) {
@@ -33,9 +50,11 @@ func (s *Store) GetRun(_ context.Context, id string) (domain.Run, error) {
 	}
 	return domain.Run{
 		ID:        resp.ID,
+		UserID:    resp.UserID,
 		Name:      resp.Name,
 		TeamID:    resp.TeamID,
-		Status:    resp.Status,
+		MemberID:  resp.MemberID,
+		Status:    domain.RunStatus(resp.Status),
 		StartedAt: resp.StartedAt,
 		StoppedAt: resp.StoppedAt,
 	}, nil
@@ -43,8 +62,7 @@ func (s *Store) GetRun(_ context.Context, id string) (domain.Run, error) {
 
 func (s *Store) UpdateRunStatus(_ context.Context, r *domain.Run) error {
 	return s.client.UpdateRunStatus(r.ID, map[string]any{
-		"status":     string(r.Status),
-		"stopped_at": r.StoppedAt,
+		"status": string(r.Status),
 	})
 }
 

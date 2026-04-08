@@ -22,25 +22,29 @@ func NewWriter(client *api.Client, owner string) *Writer {
 	return &Writer{client: client, owner: owner}
 }
 
-// PrepareMember creates a workspace for a single member.
+// PrepareMember creates a workspace for a single member (by name).
 // Layout:
 //
 //	{base}/project/CLAUDE.md              <- ClaudeMd
 //	{base}/project/.claude/settings.json  <- ClaudeSettings
 //	{base}/project/.claude/skills/{name}/SKILL.md <- Skills
-func (w *Writer) PrepareMember(base, memberID string) error {
-	member, err := w.client.GetMember(w.owner, memberID)
+func (w *Writer) PrepareMember(base, memberName string) error {
+	member, err := w.client.GetMember(w.owner, memberName)
 	if err != nil {
-		return fmt.Errorf("get member %s: %w", memberID, err)
+		return fmt.Errorf("get member %s: %w", memberName, err)
 	}
+	return w.prepareMemberFromResponse(base, member)
+}
 
+// prepareMemberFromResponse creates workspace files from a MemberResponse.
+func (w *Writer) prepareMemberFromResponse(base string, member *api.MemberResponse) error {
 	projectDir := filepath.Join(base, "project")
 
 	// Write ClaudeMd if referenced
-	if member.ClaudeMdID != "" {
-		claudeMd, err := w.client.GetClaudeMd(w.owner, member.ClaudeMdID)
+	if member.ClaudeMd != nil {
+		claudeMd, err := w.client.GetClaudeMd(member.ClaudeMd.Owner, member.ClaudeMd.Name)
 		if err != nil {
-			return fmt.Errorf("get claude md %s: %w", member.ClaudeMdID, err)
+			return fmt.Errorf("get claude md %s/%s: %w", member.ClaudeMd.Owner, member.ClaudeMd.Name, err)
 		}
 		if err := writeFile(filepath.Join(projectDir, "CLAUDE.md"), claudeMd.Content); err != nil {
 			return fmt.Errorf("write CLAUDE.md: %w", err)
@@ -48,10 +52,10 @@ func (w *Writer) PrepareMember(base, memberID string) error {
 	}
 
 	// Write ClaudeSettings if referenced
-	if member.ClaudeSettingsID != "" {
-		cs, err := w.client.GetClaudeSettings(w.owner, member.ClaudeSettingsID)
+	if member.ClaudeSettings != nil {
+		cs, err := w.client.GetClaudeSettings(member.ClaudeSettings.Owner, member.ClaudeSettings.Name)
 		if err != nil {
-			return fmt.Errorf("get claude settings %s: %w", member.ClaudeSettingsID, err)
+			return fmt.Errorf("get claude settings %s/%s: %w", member.ClaudeSettings.Owner, member.ClaudeSettings.Name, err)
 		}
 		if err := writeFile(filepath.Join(projectDir, ".claude", "settings.json"), cs.Content); err != nil {
 			return fmt.Errorf("write settings.json: %w", err)
@@ -59,10 +63,10 @@ func (w *Writer) PrepareMember(base, memberID string) error {
 	}
 
 	// Write Skills
-	for _, skillID := range member.SkillIDs {
-		skill, err := w.client.GetSkill(w.owner, skillID)
+	for _, skillRef := range member.Skills {
+		skill, err := w.client.GetSkill(skillRef.Owner, skillRef.Name)
 		if err != nil {
-			return fmt.Errorf("get skill %s: %w", skillID, err)
+			return fmt.Errorf("get skill %s/%s: %w", skillRef.Owner, skillRef.Name, err)
 		}
 		skillPath := filepath.Join(projectDir, ".claude", "skills", skill.Name, "SKILL.md")
 		if err := writeFile(skillPath, skill.Content); err != nil {
@@ -70,48 +74,48 @@ func (w *Writer) PrepareMember(base, memberID string) error {
 		}
 	}
 
-	// Git clone if GitRepoURL is set
-	// TODO: git clone into projectDir when member.GitRepoURL is non-empty.
-	// For now, workspace preparation only writes config files.
-
 	return nil
 }
 
 // PrepareTeam creates workspaces for all team members.
 // Each member gets a subdirectory named after the team member name.
 // It also writes a team protocol CLAUDE.md to each member's parent directory.
-func (w *Writer) PrepareTeam(base, teamID string) error {
-	team, err := w.client.GetTeam(w.owner, teamID)
+func (w *Writer) PrepareTeam(base, teamName string) error {
+	team, err := w.client.GetTeam(w.owner, teamName)
 	if err != nil {
-		return fmt.Errorf("get team %s: %w", teamID, err)
+		return fmt.Errorf("get team %s: %w", teamName, err)
 	}
 
-	// Build name lookup for protocol generation.
-	nameByID := make(map[string]string, len(team.TeamMembers))
+	// Build name lookup for protocol generation (ID -> name).
+	nameByID := make(map[int64]string, len(team.TeamMembers))
 	for _, tm := range team.TeamMembers {
 		nameByID[tm.ID] = tm.Name
 	}
 
 	// Build relations from team.Relations.
-	relMap := make(map[string]domain.MemberRelations, len(team.TeamMembers))
+	relMap := make(map[int64]domain.MemberRelations, len(team.TeamMembers))
 	for _, tm := range team.TeamMembers {
-		relMap[tm.ID] = domain.MemberRelations{Leaders: []string{}, Workers: []string{}}
+		relMap[tm.ID] = domain.MemberRelations{Leaders: []int64{}, Workers: []int64{}}
 	}
 	for _, r := range team.Relations {
-		from := relMap[r.From]
-		from.Workers = append(from.Workers, r.To)
-		relMap[r.From] = from
+		from := relMap[r.FromTeamMemberID]
+		from.Workers = append(from.Workers, r.ToTeamMemberID)
+		relMap[r.FromTeamMemberID] = from
 
-		to := relMap[r.To]
-		to.Leaders = append(to.Leaders, r.From)
-		relMap[r.To] = to
+		to := relMap[r.ToTeamMemberID]
+		to.Leaders = append(to.Leaders, r.FromTeamMemberID)
+		relMap[r.ToTeamMemberID] = to
 	}
 
 	for _, tm := range team.TeamMembers {
 		memberBase := filepath.Join(base, tm.Name)
 
-		// Prepare member workspace files.
-		if err := w.PrepareMember(memberBase, tm.MemberID); err != nil {
+		// Fetch member and prepare workspace using ResourceRef.
+		member, err := w.client.GetMember(tm.Member.Owner, tm.Member.Name)
+		if err != nil {
+			return fmt.Errorf("get member %s: %w", tm.Name, err)
+		}
+		if err := w.prepareMemberFromResponse(memberBase, member); err != nil {
 			return fmt.Errorf("prepare member %s: %w", tm.Name, err)
 		}
 
