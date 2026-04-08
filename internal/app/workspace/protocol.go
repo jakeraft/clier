@@ -1,4 +1,4 @@
-package run
+package workspace
 
 import (
 	"fmt"
@@ -7,12 +7,9 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-// buildClierPrompt generates the team protocol that clier injects at plan build time.
-// It gives the agent full context about its role, team structure, and communication
-// protocol — no runtime discovery needed.
-// memberName identifies this agent; relations are resolved from the team;
-// nameByID maps TeamMember IDs to display names.
-func buildClierPrompt(teamName, memberName string, relations domain.MemberRelations, nameByID map[string]string) string {
+// BuildProtocol generates the team protocol CLAUDE.md content.
+// Written to {memberDir}/CLAUDE.md (parent of project/).
+func BuildProtocol(teamName, memberName string, relations domain.MemberRelations, nameByID map[string]string) string {
 	var b strings.Builder
 
 	// Header

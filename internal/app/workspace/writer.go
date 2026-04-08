@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 // Writer fetches member/team definitions from the server and writes
@@ -78,16 +79,47 @@ func (w *Writer) PrepareMember(base, memberID string) error {
 
 // PrepareTeam creates workspaces for all team members.
 // Each member gets a subdirectory named after the team member name.
+// It also writes a team protocol CLAUDE.md to each member's parent directory.
 func (w *Writer) PrepareTeam(base, teamID string) error {
 	team, err := w.client.GetTeam(w.owner, teamID)
 	if err != nil {
 		return fmt.Errorf("get team %s: %w", teamID, err)
 	}
 
+	// Build name lookup for protocol generation.
+	nameByID := make(map[string]string, len(team.TeamMembers))
+	for _, tm := range team.TeamMembers {
+		nameByID[tm.ID] = tm.Name
+	}
+
+	// Build relations from team.Relations.
+	relMap := make(map[string]domain.MemberRelations, len(team.TeamMembers))
+	for _, tm := range team.TeamMembers {
+		relMap[tm.ID] = domain.MemberRelations{Leaders: []string{}, Workers: []string{}}
+	}
+	for _, r := range team.Relations {
+		from := relMap[r.From]
+		from.Workers = append(from.Workers, r.To)
+		relMap[r.From] = from
+
+		to := relMap[r.To]
+		to.Leaders = append(to.Leaders, r.From)
+		relMap[r.To] = to
+	}
+
 	for _, tm := range team.TeamMembers {
 		memberBase := filepath.Join(base, tm.Name)
+
+		// Prepare member workspace files.
 		if err := w.PrepareMember(memberBase, tm.MemberID); err != nil {
 			return fmt.Errorf("prepare member %s: %w", tm.Name, err)
+		}
+
+		// Write team protocol to parent CLAUDE.md.
+		protocol := BuildProtocol(team.Name, tm.Name, relMap[tm.ID], nameByID)
+		protocolPath := filepath.Join(memberBase, "CLAUDE.md")
+		if err := writeFile(protocolPath, protocol); err != nil {
+			return fmt.Errorf("write protocol for %s: %w", tm.Name, err)
 		}
 	}
 
