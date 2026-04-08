@@ -25,22 +25,29 @@ Follow the steps below to try it out.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Step 1. Check the pre-loaded todo-team
+Step 1. Log in
 
-  clier team list
-  clier member list
+  clier auth login
+
+  Authenticate with GitHub via device flow.
+
+Step 2. Explore the pre-loaded todo-team
+
+  clier explore teams
+  clier team view jakeraft/todo-team
 
   The "jakeraft/todo-team" is already available on the server.
 
-Step 2. Run the team
+Step 3. Fork and run the team
 
-  clier team run jakeraft/todo-team
+  clier team fork jakeraft/todo-team
+  clier team run todo-team
 
-  This creates workspaces for each member, generates the
-  execution plan (.clier/{RUN_ID}.json), and launches all
-  agents in tmux. Copy the run ID from the output.
+  This forks the team to your namespace, creates workspaces
+  for each member, and launches all agents in tmux.
+  Copy the run ID from the output.
 
-Step 3. Give the team a job
+Step 4. Give the team a job
 
   clier run tell --run <run-id> --to <root-member-id> \
     "Add a list --done flag to filter completed todos."
@@ -49,17 +56,16 @@ Step 3. Give the team a job
   creates a PR, and the reviewer iterates on it until approved.
   The tech-lead writes a final report on the PR.
 
-Step 4. Watch them work
+Step 5. Watch them work
 
   clier run attach <run-id>        Watch agents in real time
-  clier run notes <run-id>         Check progress notes
-  clier run messages <run-id>      Check messages between agents
+  clier run view <run-id>          Check progress notes and messages
 
-Step 5. When done, stop the run
+Step 6. When done, stop the run
 
   clier run stop <run-id>
 
-Step 6. See the result
+Step 7. See the result
 
   gh pr list -R jakeraft/clier_todo
   gh pr view <number> -R jakeraft/clier_todo --web
