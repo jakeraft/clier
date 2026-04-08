@@ -38,7 +38,8 @@ func newRunStopCmd() *cobra.Command {
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store := newStore()
-			term := terminal.NewTmuxTerminal(store)
+			refs := terminal.NewLocalRefStore("")
+			term := terminal.NewTmuxTerminal(refs)
 			svc := run.New(store, term)
 
 			if err := svc.Stop(cmd.Context(), args[0]); err != nil {
@@ -93,7 +94,8 @@ Examples:
 			}
 
 			store := newStore()
-			term := terminal.NewTmuxTerminal(store)
+			refs := terminal.NewLocalRefStore("")
+			term := terminal.NewTmuxTerminal(refs)
 			svc := run.New(store, term)
 
 			if err := svc.Send(cmd.Context(), runID, fromMemberID, toMemberID, content); err != nil {
@@ -132,7 +134,8 @@ func newRunNoteCmd() *cobra.Command {
 			}
 
 			store := newStore()
-			term := terminal.NewTmuxTerminal(store)
+			refs := terminal.NewLocalRefStore("")
+			term := terminal.NewTmuxTerminal(refs)
 			svc := run.New(store, term)
 
 			if err := svc.Note(cmd.Context(), runID, memberID, content); err != nil {
@@ -191,9 +194,8 @@ func newRunAttachCmd() *cobra.Command {
 		Short: "Attach to a running run's terminal",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			store := newStore()
-
-			term := terminal.NewTmuxTerminal(store)
+			refs := terminal.NewLocalRefStore("")
+			term := terminal.NewTmuxTerminal(refs)
 
 			var memberID *string
 			if memberFlag != "" {

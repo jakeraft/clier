@@ -69,8 +69,8 @@ func newSkillUpdateCmd() *cobra.Command {
 	var name, content string
 
 	cmd := &cobra.Command{
-		Use:         "update <id>",
-		Short:       "Update a skill",
+		Use:         "update <name>",
+		Short:       "Update a skill by name",
 
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -99,8 +99,8 @@ func newSkillUpdateCmd() *cobra.Command {
 
 func newSkillDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:         "delete <id>",
-		Short:       "Delete a skill",
+		Use:         "delete <name>",
+		Short:       "Delete a skill by name",
 
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -100,8 +100,8 @@ func newMemberUpdateCmd() *cobra.Command {
 	var skills []string
 
 	cmd := &cobra.Command{
-		Use:         "update <id>",
-		Short:       "Update a member",
+		Use:         "update <name>",
+		Short:       "Update a member by name",
 
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -146,8 +146,8 @@ func newMemberUpdateCmd() *cobra.Command {
 
 func newMemberDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:         "delete <id>",
-		Short:       "Delete a member",
+		Use:         "delete <name>",
+		Short:       "Delete a member by name",
 
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -166,7 +166,7 @@ func newMemberWorkspaceCmd() *cobra.Command {
 	var dir string
 
 	cmd := &cobra.Command{
-		Use:   "workspace <member-id>",
+		Use:   "workspace <member-name>",
 		Short: "Create workspace for a member",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -197,7 +197,7 @@ func newMemberRunCmd() *cobra.Command {
 	var dir string
 
 	cmd := &cobra.Command{
-		Use:   "run <member-id>",
+		Use:   "run <member-name>",
 		Short: "Create workspace and run a single member",
 		Long: `Create workspace (idempotent) and run a single member.
 This prepares the workspace files and launches the agent in a tmux session.`,
@@ -236,9 +236,8 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			runID := uuid.NewString()
 			runName := apprun.SessionName(member.Name, runID)
 			runResp, err := client.CreateRun(map[string]any{
-				"id":     runID,
-				"name":   runName,
-				"status": "running",
+				"name":      runName,
+				"member_id": member.ID,
 			})
 			if err != nil {
 				return fmt.Errorf("create run: %w", err)
@@ -268,7 +267,7 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			}
 
 			// 7. Launch tmux
-			term := terminal.NewTmuxTerminal(newStore())
+			term := terminal.NewTmuxTerminal(terminal.NewLocalRefStore(""))
 			domainPlans := []domain.MemberPlan{{
 				TeamMemberID: memberID,
 				MemberName:   member.Name,

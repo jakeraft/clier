@@ -70,25 +70,3 @@ func (c *Client) AddNote(runID string, body any) (*NoteResponse, error) {
 	var r NoteResponse
 	return &r, c.post(fmt.Sprintf("/api/v1/runs/%s/notes", runID), body, &r)
 }
-
-// SaveTerminalRefs persists terminal refs for a run member.
-func (c *Client) SaveTerminalRefs(runID, memberID string, refs map[string]string) error {
-	return c.put(fmt.Sprintf("/api/v1/runs/%s/terminal-refs/%s", runID, memberID), refs, nil)
-}
-
-// GetTerminalRefs retrieves terminal refs for a specific member.
-func (c *Client) GetTerminalRefs(runID, memberID string) (map[string]string, error) {
-	var r map[string]string
-	return r, c.get(fmt.Sprintf("/api/v1/runs/%s/terminal-refs/%s", runID, memberID), &r)
-}
-
-// GetRunTerminalRefs retrieves terminal refs for the entire run.
-func (c *Client) GetRunTerminalRefs(runID string) (map[string]string, error) {
-	var r map[string]string
-	return r, c.get(fmt.Sprintf("/api/v1/runs/%s/terminal-refs", runID), &r)
-}
-
-// DeleteTerminalRefs deletes all terminal refs for a run.
-func (c *Client) DeleteTerminalRefs(runID string) error {
-	return c.delete(fmt.Sprintf("/api/v1/runs/%s/terminal-refs", runID))
-}

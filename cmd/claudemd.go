@@ -69,8 +69,8 @@ func newClaudeMdUpdateCmd() *cobra.Command {
 	var name, content string
 
 	cmd := &cobra.Command{
-		Use:         "update <id>",
-		Short:       "Update a claude md file",
+		Use:         "update <name>",
+		Short:       "Update a claude md file by name",
 
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -99,8 +99,8 @@ func newClaudeMdUpdateCmd() *cobra.Command {
 
 func newClaudeMdDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:         "delete <id>",
-		Short:       "Delete a claude md file",
+		Use:         "delete <name>",
+		Short:       "Delete a claude md file by name",
 
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

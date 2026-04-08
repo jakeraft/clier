@@ -82,8 +82,8 @@ func newTeamUpdateCmd() *cobra.Command {
 	var name, rootMemberID string
 
 	cmd := &cobra.Command{
-		Use:         "update <id>",
-		Short:       "Update a team",
+		Use:         "update <name>",
+		Short:       "Update a team by name",
 
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -112,8 +112,8 @@ func newTeamUpdateCmd() *cobra.Command {
 
 func newTeamDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:         "delete <id>",
-		Short:       "Delete a team",
+		Use:         "delete <name>",
+		Short:       "Delete a team by name",
 
 		Args:        cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -139,7 +139,7 @@ func newTeamMemberCmd() *cobra.Command {
 
 func newTeamMemberListCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "list <team-id>",
+		Use:   "list <team-name>",
 		Short: "List members of a team",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -166,7 +166,7 @@ func newTeamRelationCmd() *cobra.Command {
 
 func newTeamRelationListCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "list <team-id>",
+		Use:   "list <team-name>",
 		Short: "List relations of a team",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -186,7 +186,7 @@ func newTeamWorkspaceCmd() *cobra.Command {
 	var dir string
 
 	cmd := &cobra.Command{
-		Use:   "workspace <team-id>",
+		Use:   "workspace <team-name>",
 		Short: "Create workspaces for all team members",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -217,7 +217,7 @@ func newTeamRunCmd() *cobra.Command {
 	var dir string
 
 	cmd := &cobra.Command{
-		Use:   "run <team-id>",
+		Use:   "run <team-name>",
 		Short: "Create workspaces and run the team",
 		Long: `Create workspaces (idempotent) for all team members and start a run.
 Each member gets its own tmux window within a single session.`,
@@ -259,10 +259,8 @@ Each member gets its own tmux window within a single session.`,
 			runID := uuid.NewString()
 			runName := apprun.SessionName(team.Name, runID)
 			runResp, err := client.CreateRun(map[string]any{
-				"id":      runID,
 				"name":    runName,
-				"team_id": teamID,
-				"status":  "running",
+				"team_id": team.ID,
 			})
 			if err != nil {
 				return fmt.Errorf("create run: %w", err)
@@ -313,7 +311,7 @@ Each member gets its own tmux window within a single session.`,
 			}
 
 			// 6. Launch tmux
-			term := terminal.NewTmuxTerminal(newStore())
+			term := terminal.NewTmuxTerminal(terminal.NewLocalRefStore(""))
 			if err := term.Launch(runID, plan.Session, domainPlans); err != nil {
 				return fmt.Errorf("launch: %w", err)
 			}
