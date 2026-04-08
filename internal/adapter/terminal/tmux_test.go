@@ -80,8 +80,8 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	tm := &TmuxTerminal{refs: store, runFn: runner.run, sleep: func(time.Duration) {}}
 
 	members := []domain.MemberPlan{
-		{TeamMemberID: "m-1", MemberName: "leader", Terminal: domain.TerminalPlan{Command: "echo hello"}},
-		{TeamMemberID: "m-2", MemberName: "worker", Terminal: domain.TerminalPlan{}},
+		{TeamMemberID: 1, MemberName: "leader", Terminal: domain.TerminalPlan{Command: "echo hello"}},
+		{TeamMemberID: 2, MemberName: "worker", Terminal: domain.TerminalPlan{}},
 	}
 
 	if err := tm.Launch("s-1", "my-team", members); err != nil {
@@ -113,10 +113,10 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	if !hasCall(runner.calls, "send-keys") {
 		t.Error("expected send-keys call for member command")
 	}
-	// Verify refs saved
-	refs, err := store.GetRefs(context.Background(), "s-1", "m-1")
+	// Verify refs saved (member ID stored as formatted int64 string "1")
+	refs, err := store.GetRefs(context.Background(), "s-1", "1")
 	if err != nil {
-		t.Fatalf("GetRefs m-1: %v", err)
+		t.Fatalf("GetRefs 1: %v", err)
 	}
 	if refs["session"] != "my-team" {
 		t.Errorf("session ref = %q, want my-team", refs["session"])

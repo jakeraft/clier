@@ -7,7 +7,7 @@ import (
 
 // RunResponse is the server's JSON representation of a Run.
 type RunResponse struct {
-	ID        string            `json:"id"`
+	ID        int64             `json:"id"`
 	UserID    int64             `json:"user_id"`
 	Name      string            `json:"name"`
 	TeamID    *int64            `json:"team_id,omitempty"`
@@ -23,8 +23,8 @@ type RunResponse struct {
 type MessageResponse struct {
 	ID               string    `json:"id"`
 	RunID            string    `json:"run_id"`
-	FromTeamMemberID string    `json:"from_team_member_id"`
-	ToTeamMemberID   string    `json:"to_team_member_id"`
+	FromTeamMemberID int64     `json:"from_team_member_id"`
+	ToTeamMemberID   int64     `json:"to_team_member_id"`
 	Content          string    `json:"content"`
 	CreatedAt        time.Time `json:"created_at"`
 }
@@ -33,7 +33,7 @@ type MessageResponse struct {
 type NoteResponse struct {
 	ID           string    `json:"id"`
 	RunID        string    `json:"run_id"`
-	TeamMemberID string    `json:"team_member_id"`
+	TeamMemberID int64     `json:"team_member_id"`
 	Content      string    `json:"content"`
 	CreatedAt    time.Time `json:"created_at"`
 }

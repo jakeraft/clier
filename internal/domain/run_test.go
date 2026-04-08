@@ -109,7 +109,7 @@ func TestRunName(t *testing.T) {
 func TestMessage(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
 		t.Run("ValidInputs_SetsFields", func(t *testing.T) {
-			m, err := domain.NewMessage("run-1", "from-1", "to-1", "hello")
+			m, err := domain.NewMessage("run-1", 10, 20, "hello")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -117,11 +117,11 @@ func TestMessage(t *testing.T) {
 			if m.RunID != "run-1" {
 				t.Errorf("RunID = %q, want %q", m.RunID, "run-1")
 			}
-			if m.FromTeamMemberID != "from-1" {
-				t.Errorf("FromTeamMemberID = %q, want %q", m.FromTeamMemberID, "from-1")
+			if m.FromTeamMemberID != 10 {
+				t.Errorf("FromTeamMemberID = %d, want %d", m.FromTeamMemberID, 10)
 			}
-			if m.ToTeamMemberID != "to-1" {
-				t.Errorf("ToTeamMemberID = %q, want %q", m.ToTeamMemberID, "to-1")
+			if m.ToTeamMemberID != 20 {
+				t.Errorf("ToTeamMemberID = %d, want %d", m.ToTeamMemberID, 20)
 			}
 			if m.Content != "hello" {
 				t.Errorf("Content = %q, want %q", m.Content, "hello")
@@ -132,31 +132,31 @@ func TestMessage(t *testing.T) {
 		})
 
 		t.Run("EmptyRunID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewMessage("", "from-1", "to-1", "hello")
+			_, err := domain.NewMessage("", 10, 20, "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
-		t.Run("EmptyToTeamMemberID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewMessage("run-1", "from-1", "  ", "hello")
+		t.Run("ZeroToTeamMemberID_ReturnsError", func(t *testing.T) {
+			_, err := domain.NewMessage("run-1", 10, 0, "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
-		t.Run("EmptyFromTeamMemberID_Allowed", func(t *testing.T) {
-			m, err := domain.NewMessage("run-1", "", "to-1", "hello")
+		t.Run("ZeroFromTeamMemberID_Allowed", func(t *testing.T) {
+			m, err := domain.NewMessage("run-1", 0, 20, "hello")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if m.FromTeamMemberID != "" {
-				t.Errorf("FromTeamMemberID = %q, want empty", m.FromTeamMemberID)
+			if m.FromTeamMemberID != 0 {
+				t.Errorf("FromTeamMemberID = %d, want 0", m.FromTeamMemberID)
 			}
 		})
 
 		t.Run("EmptyContent_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewMessage("run-1", "from-1", "to-1", "  ")
+			_, err := domain.NewMessage("run-1", 10, 20, "  ")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
@@ -167,7 +167,7 @@ func TestMessage(t *testing.T) {
 func TestNote(t *testing.T) {
 	t.Run("New", func(t *testing.T) {
 		t.Run("ValidInputs_SetsFields", func(t *testing.T) {
-			n, err := domain.NewNote("run-1", "member-1", "work started")
+			n, err := domain.NewNote("run-1", 42, "work started")
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -175,8 +175,8 @@ func TestNote(t *testing.T) {
 			if n.RunID != "run-1" {
 				t.Errorf("RunID = %q, want %q", n.RunID, "run-1")
 			}
-			if n.TeamMemberID != "member-1" {
-				t.Errorf("TeamMemberID = %q, want %q", n.TeamMemberID, "member-1")
+			if n.TeamMemberID != 42 {
+				t.Errorf("TeamMemberID = %d, want %d", n.TeamMemberID, 42)
 			}
 			if n.Content != "work started" {
 				t.Errorf("Content = %q, want %q", n.Content, "work started")
@@ -187,21 +187,21 @@ func TestNote(t *testing.T) {
 		})
 
 		t.Run("EmptyRunID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewNote("", "member-1", "hello")
+			_, err := domain.NewNote("", 42, "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
-		t.Run("EmptyTeamMemberID_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewNote("run-1", "", "hello")
+		t.Run("ZeroTeamMemberID_ReturnsError", func(t *testing.T) {
+			_, err := domain.NewNote("run-1", 0, "hello")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}
 		})
 
 		t.Run("EmptyContent_ReturnsError", func(t *testing.T) {
-			_, err := domain.NewNote("run-1", "member-1", "  ")
+			_, err := domain.NewNote("run-1", 42, "  ")
 			if err == nil {
 				t.Fatal("expected error, got nil")
 			}

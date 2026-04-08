@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/jakeraft/clier/internal/adapter/terminal"
@@ -67,7 +69,8 @@ func newRunListCmd() *cobra.Command {
 }
 
 func newRunTellCmd() *cobra.Command {
-	var runFlag, toMemberID string
+	var runFlag string
+	var toMemberID int64
 
 	cmd := &cobra.Command{
 		Use:   "tell [content]",
@@ -101,7 +104,7 @@ Examples:
 			if err := svc.Send(cmd.Context(), runID, fromMemberID, toMemberID, content); err != nil {
 				return err
 			}
-			return printJSON(map[string]string{
+			return printJSON(map[string]any{
 				"status": "delivered",
 				"from":   fromMemberID,
 				"to":     toMemberID,
@@ -109,7 +112,7 @@ Examples:
 		},
 	}
 	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to CLIER_RUN_ID)")
-	cmd.Flags().StringVar(&toMemberID, "to", "", "Recipient member ID")
+	cmd.Flags().Int64Var(&toMemberID, "to", 0, "Recipient member ID")
 	_ = cmd.MarkFlagRequired("to")
 	return cmd
 }
@@ -141,7 +144,7 @@ func newRunNoteCmd() *cobra.Command {
 			if err := svc.Note(cmd.Context(), runID, memberID, content); err != nil {
 				return err
 			}
-			return printJSON(map[string]string{
+			return printJSON(map[string]any{
 				"status": "posted",
 				"member": memberID,
 				"run":    runID,
@@ -225,15 +228,20 @@ func readContent(args []string) (string, error) {
 }
 
 // resolveRunContext resolves run ID and member ID from env vars set by clier.
-// CLIER_RUN_ID identifies the run, CLIER_MEMBER_ID identifies the sender.
-func resolveRunContext(runFlag string) (runID, memberID string, err error) {
+// CLIER_RUN_ID identifies the run, CLIER_MEMBER_ID identifies the sender (int64).
+func resolveRunContext(runFlag string) (runID string, memberID int64, err error) {
 	runID = runFlag
 	if runID == "" {
 		runID = os.Getenv("CLIER_RUN_ID")
 	}
 	if runID == "" {
-		return "", "", errors.New("--run flag or CLIER_RUN_ID must be set")
+		return "", 0, errors.New("--run flag or CLIER_RUN_ID must be set")
 	}
-	memberID = os.Getenv("CLIER_MEMBER_ID")
+	if raw := os.Getenv("CLIER_MEMBER_ID"); raw != "" {
+		memberID, err = strconv.ParseInt(raw, 10, 64)
+		if err != nil {
+			return "", 0, fmt.Errorf("CLIER_MEMBER_ID is not a valid int64: %w", err)
+		}
+	}
 	return runID, memberID, nil
 }

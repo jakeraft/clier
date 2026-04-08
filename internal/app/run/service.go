@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/jakeraft/clier/internal/domain"
@@ -62,18 +63,17 @@ func (s *Service) Stop(ctx context.Context, runID string) error {
 
 // Send delivers a message to the recipient's terminal, then persists it.
 // Delivery happens first so that a bad recipient fails before anything is saved.
-func (s *Service) Send(ctx context.Context, runID, fromTeamMemberID, toTeamMemberID, content string) error {
+func (s *Service) Send(ctx context.Context, runID string, fromTeamMemberID, toTeamMemberID int64, content string) error {
 	if _, err := s.store.GetRun(ctx, runID); err != nil {
 		return fmt.Errorf("get run: %w", err)
 	}
 
 	text := content
-	if fromTeamMemberID != "" {
-		senderName := fromTeamMemberID
-		text = fmt.Sprintf("[Message from %s] %s", senderName, content)
+	if fromTeamMemberID != 0 {
+		text = fmt.Sprintf("[Message from %s] %s", strconv.FormatInt(fromTeamMemberID, 10), content)
 	}
 
-	if err := s.terminal.Send(runID, toTeamMemberID, text); err != nil {
+	if err := s.terminal.Send(runID, strconv.FormatInt(toTeamMemberID, 10), text); err != nil {
 		return fmt.Errorf("deliver message: %w", err)
 	}
 
@@ -88,7 +88,7 @@ func (s *Service) Send(ctx context.Context, runID, fromTeamMemberID, toTeamMembe
 }
 
 // Note persists a progress entry posted by a team member.
-func (s *Service) Note(ctx context.Context, runID, teamMemberID, content string) error {
+func (s *Service) Note(ctx context.Context, runID string, teamMemberID int64, content string) error {
 	if _, err := s.store.GetRun(ctx, runID); err != nil {
 		return fmt.Errorf("get run: %w", err)
 	}

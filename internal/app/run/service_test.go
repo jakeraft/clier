@@ -52,7 +52,7 @@ func TestService_Note(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		store.notes = nil
-		if err := svc.Note(context.Background(), "s-1", "member-1", "run done"); err != nil {
+		if err := svc.Note(context.Background(), "s-1", 7, "run done"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(store.notes) != 1 {
@@ -61,20 +61,20 @@ func TestService_Note(t *testing.T) {
 		if store.notes[0].Content != "run done" {
 			t.Errorf("Content = %q, want %q", store.notes[0].Content, "run done")
 		}
-		if store.notes[0].TeamMemberID != "member-1" {
-			t.Errorf("TeamMemberID = %q, want %q", store.notes[0].TeamMemberID, "member-1")
+		if store.notes[0].TeamMemberID != 7 {
+			t.Errorf("TeamMemberID = %d, want %d", store.notes[0].TeamMemberID, 7)
 		}
 	})
 
 	t.Run("run not found", func(t *testing.T) {
-		err := svc.Note(context.Background(), "unknown", "member-1", "hello")
+		err := svc.Note(context.Background(), "unknown", 7, "hello")
 		if err == nil {
 			t.Fatal("expected error for unknown run")
 		}
 	})
 
 	t.Run("empty content", func(t *testing.T) {
-		err := svc.Note(context.Background(), "s-1", "member-1", "  ")
+		err := svc.Note(context.Background(), "s-1", 7, "  ")
 		if err == nil {
 			t.Fatal("expected error for empty content")
 		}
@@ -93,13 +93,13 @@ func TestService_Send(t *testing.T) {
 		term := &stubTerminal{}
 		svc := New(store, term)
 
-		if err := svc.Send(context.Background(), "s-1", "m-1", "m-2", "hello"); err != nil {
+		if err := svc.Send(context.Background(), "s-1", 1, 2, "hello"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(term.sent) != 1 {
 			t.Fatalf("expected 1 sent, got %d", len(term.sent))
 		}
-		want := "[Message from m-1] hello"
+		want := "[Message from 1] hello"
 		if term.sent[0] != want {
 			t.Errorf("sent = %q, want %q", term.sent[0], want)
 		}
@@ -108,12 +108,12 @@ func TestService_Send(t *testing.T) {
 		}
 	})
 
-	t.Run("empty sender has no prefix", func(t *testing.T) {
+	t.Run("zero sender has no prefix", func(t *testing.T) {
 		store := &stubStore{run: r}
 		term := &stubTerminal{}
 		svc := New(store, term)
 
-		if err := svc.Send(context.Background(), "s-1", "", "m-2", "do this"); err != nil {
+		if err := svc.Send(context.Background(), "s-1", 0, 2, "do this"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if term.sent[0] != "do this" {
@@ -126,7 +126,7 @@ func TestService_Send(t *testing.T) {
 		term := &failTerminal{}
 		svc := New(store, term)
 
-		err := svc.Send(context.Background(), "s-1", "m-1", "bad-member", "hello")
+		err := svc.Send(context.Background(), "s-1", 1, 99, "hello")
 		if err == nil {
 			t.Fatal("expected error for failed delivery")
 		}

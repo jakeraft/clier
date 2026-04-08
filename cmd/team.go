@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
-	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	appws "github.com/jakeraft/clier/internal/app/workspace"
@@ -256,16 +256,14 @@ Each member gets its own tmux window within a single session.`,
 			}
 
 			// 3. Create Run on server
-			runID := uuid.NewString()
-			runName := apprun.SessionName(team.Name, runID)
 			runResp, err := client.CreateRun(map[string]any{
-				"name":    runName,
 				"team_id": team.ID,
 			})
 			if err != nil {
 				return fmt.Errorf("create run: %w", err)
 			}
-			runID = runResp.ID
+			runID := strconv.FormatInt(runResp.ID, 10)
+			runName := apprun.SessionName(team.Name, runID)
 
 			// 4. Build RunPlan + domain plans
 			runPlanPath := filepath.Join(absBase, ".clier", runID+".json")
@@ -282,7 +280,7 @@ Each member gets its own tmux window within a single session.`,
 				memberBase := filepath.Join(absBase, tm.Name)
 				projectPath := filepath.Join(memberBase, "project")
 
-				envVars := buildMemberEnv(runID, tm.Name, runPlanPath, memberBase)
+				envVars := buildMemberEnv(runID, tm.ID, tm.Name, runPlanPath, memberBase)
 				fullCommand := buildFullCommand(envVars, member.Command, projectPath)
 
 				memberTerminals = append(memberTerminals, apprun.MemberTerminal{
@@ -293,7 +291,7 @@ Each member gets its own tmux window within a single session.`,
 				})
 
 				domainPlans = append(domainPlans, domain.MemberPlan{
-					TeamMemberID: fmt.Sprintf("%d", tm.ID),
+					TeamMemberID: tm.ID,
 					MemberName:   tm.Name,
 					Terminal:     domain.TerminalPlan{Command: fullCommand},
 					Workspace:    domain.WorkspacePlan{Memberspace: memberBase},

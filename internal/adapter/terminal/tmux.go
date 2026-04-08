@@ -83,7 +83,7 @@ func (t *TmuxTerminal) Launch(runID, runName string, members []domain.MemberPlan
 			return err
 		}
 
-		if err := t.saveRefs(runID, m.TeamMemberID, sess, win); err != nil {
+		if err := t.saveRefs(runID, strconv.FormatInt(m.TeamMemberID, 10), sess, win); err != nil {
 			return fmt.Errorf("save refs: %w", err)
 		}
 	}

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/jakeraft/clier/internal/domain"
 )
@@ -36,7 +37,7 @@ func (s *Store) CreateRun(_ context.Context, r *domain.Run) error {
 		return err
 	}
 	// Update the domain run with server-assigned values.
-	r.ID = resp.ID
+	r.ID = strconv.FormatInt(resp.ID, 10)
 	r.UserID = resp.UserID
 	r.Status = domain.RunStatus(resp.Status)
 	r.StartedAt = resp.StartedAt
@@ -49,7 +50,7 @@ func (s *Store) GetRun(_ context.Context, id string) (domain.Run, error) {
 		return domain.Run{}, err
 	}
 	return domain.Run{
-		ID:        resp.ID,
+		ID:        strconv.FormatInt(resp.ID, 10),
 		UserID:    resp.UserID,
 		Name:      resp.Name,
 		TeamID:    resp.TeamID,

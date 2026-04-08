@@ -66,21 +66,21 @@ func (r *Run) Stop() {
 }
 
 // Message represents an inter-member message within a run.
-// FromTeamMemberID is nullable — empty when the sender is not a team member.
+// FromTeamMemberID is zero when the sender is not a team member.
 type Message struct {
 	ID               string    `json:"id"`
 	RunID            string    `json:"run_id"`
-	FromTeamMemberID string    `json:"from_team_member_id"`
-	ToTeamMemberID   string    `json:"to_team_member_id"`
+	FromTeamMemberID int64     `json:"from_team_member_id"`
+	ToTeamMemberID   int64     `json:"to_team_member_id"`
 	Content          string    `json:"content"`
 	CreatedAt        time.Time `json:"created_at"`
 }
 
-func NewMessage(runID, fromTeamMemberID, toTeamMemberID, content string) (*Message, error) {
+func NewMessage(runID string, fromTeamMemberID, toTeamMemberID int64, content string) (*Message, error) {
 	if strings.TrimSpace(runID) == "" {
 		return nil, errors.New("message run id must not be empty")
 	}
-	if strings.TrimSpace(toTeamMemberID) == "" {
+	if toTeamMemberID == 0 {
 		return nil, errors.New("message recipient must not be empty")
 	}
 	content = strings.TrimSpace(content)
@@ -101,16 +101,16 @@ func NewMessage(runID, fromTeamMemberID, toTeamMemberID, content string) (*Messa
 type Note struct {
 	ID           string    `json:"id"`
 	RunID        string    `json:"run_id"`
-	TeamMemberID string    `json:"team_member_id"`
+	TeamMemberID int64     `json:"team_member_id"`
 	Content      string    `json:"content"`
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-func NewNote(runID, teamMemberID, content string) (*Note, error) {
+func NewNote(runID string, teamMemberID int64, content string) (*Note, error) {
 	if strings.TrimSpace(runID) == "" {
 		return nil, errors.New("note run id must not be empty")
 	}
-	if strings.TrimSpace(teamMemberID) == "" {
+	if teamMemberID == 0 {
 		return nil, errors.New("note team member id must not be empty")
 	}
 	content = strings.TrimSpace(content)
@@ -131,7 +131,7 @@ func NewNote(runID, teamMemberID, content string) (*Note, error) {
 // Relations are NOT stored — they are in Team.Relations and baked into the prompt.
 // All paths in MemberPlan are absolute and concrete, built at Start() time.
 type MemberPlan struct {
-	TeamMemberID string        `json:"team_member_id"`
+	TeamMemberID int64         `json:"team_member_id"`
 	MemberName   string        `json:"member_name"`
 	Terminal     TerminalPlan  `json:"terminal"`
 	Workspace    WorkspacePlan `json:"workspace"`

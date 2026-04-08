@@ -4,15 +4,17 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
 // buildMemberEnv returns the environment variables for a member agent.
-func buildMemberEnv(runID, memberName, runPlanPath, memberspace string) map[string]string {
+// teamMemberID is the int64 ID used by the server; memberName is used for git identity.
+func buildMemberEnv(runID string, teamMemberID int64, memberName, runPlanPath, memberspace string) map[string]string {
 	return map[string]string{
 		"CLIER_RUN_PLAN":      runPlanPath,
 		"CLIER_RUN_ID":        runID,
-		"CLIER_MEMBER_ID":     memberName,
+		"CLIER_MEMBER_ID":     strconv.FormatInt(teamMemberID, 10),
 		"CLIER_AGENT":         "true",
 		"CLAUDE_CONFIG_DIR":   filepath.Join(memberspace, ".claude"),
 		"GIT_AUTHOR_NAME":     memberName,

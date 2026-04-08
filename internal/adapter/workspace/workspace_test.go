@@ -18,7 +18,7 @@ func TestWorkspace(t *testing.T) {
 			memberspace := filepath.Join(baseDir, "plan-1", "m1")
 			members := []domain.MemberPlan{
 				{
-					TeamMemberID: "m1",
+					TeamMemberID: 1,
 					MemberName:   "alice",
 					Workspace: domain.WorkspacePlan{
 						Memberspace: memberspace,

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
-	"github.com/google/uuid"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	appws "github.com/jakeraft/clier/internal/app/workspace"
@@ -233,20 +233,18 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			}
 
 			// 3. Create Run on server
-			runID := uuid.NewString()
-			runName := apprun.SessionName(member.Name, runID)
 			runResp, err := client.CreateRun(map[string]any{
-				"name":      runName,
 				"member_id": member.ID,
 			})
 			if err != nil {
 				return fmt.Errorf("create run: %w", err)
 			}
-			runID = runResp.ID
+			runID := strconv.FormatInt(runResp.ID, 10)
+			runName := apprun.SessionName(member.Name, runID)
 
 			// 4. Build env vars + command
 			runPlanPath := filepath.Join(absBase, ".clier", runID+".json")
-			envVars := buildMemberEnv(runID, member.Name, runPlanPath, absBase)
+			envVars := buildMemberEnv(runID, member.ID, member.Name, runPlanPath, absBase)
 			projectPath := filepath.Join(absBase, "project")
 			fullCommand := buildFullCommand(envVars, member.Command, projectPath)
 
@@ -269,7 +267,7 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			// 7. Launch tmux
 			term := terminal.NewTmuxTerminal(terminal.NewLocalRefStore(""))
 			domainPlans := []domain.MemberPlan{{
-				TeamMemberID: memberID,
+				TeamMemberID: member.ID,
 				MemberName:   member.Name,
 				Terminal:     domain.TerminalPlan{Command: fullCommand},
 				Workspace:    domain.WorkspacePlan{Memberspace: absBase},
