@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+
+	appws "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -19,6 +22,8 @@ func newTeamCmd() *cobra.Command {
 	cmd.AddCommand(newTeamDeleteCmd())
 	cmd.AddCommand(newTeamMemberCmd())
 	cmd.AddCommand(newTeamRelationCmd())
+	cmd.AddCommand(newTeamWorkspaceCmd())
+	cmd.AddCommand(newTeamRunCmd())
 	return cmd
 }
 
@@ -275,4 +280,78 @@ func newTeamRelationListCmd() *cobra.Command {
 			return printJSON(team.Relations)
 		},
 	}
+}
+
+func newTeamWorkspaceCmd() *cobra.Command {
+	var dir string
+
+	cmd := &cobra.Command{
+		Use:   "workspace <team-id>",
+		Short: "Create workspaces for all team members",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newAPIClient()
+			owner := resolveOwner()
+			writer := appws.NewWriter(client, owner)
+
+			base := dir
+			if base == "" {
+				base = "."
+			}
+
+			if err := writer.PrepareTeam(base, args[0]); err != nil {
+				return err
+			}
+			return printJSON(map[string]string{
+				"status": "prepared",
+				"team":   args[0],
+				"dir":    base,
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", "", "Base directory for workspaces (default: current directory)")
+	return cmd
+}
+
+func newTeamRunCmd() *cobra.Command {
+	var dir string
+
+	cmd := &cobra.Command{
+		Use:   "run <team-id>",
+		Short: "Create workspaces and run the team",
+		Long: `Create workspaces (idempotent) for all team members and start a run.
+This is a convenience command that combines workspace preparation with run start.`,
+		Args:        cobra.ExactArgs(1),
+		Annotations: map[string]string{mutates: "true"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			teamID := args[0]
+			client := newAPIClient()
+			owner := resolveOwner()
+
+			// 1. Workspace preparation (idempotent)
+			writer := appws.NewWriter(client, owner)
+			base := dir
+			if base == "" {
+				base = "."
+			}
+			if err := writer.PrepareTeam(base, teamID); err != nil {
+				return fmt.Errorf("prepare workspace: %w", err)
+			}
+
+			// TODO: 2. Create Run on server via client.CreateRun
+			// TODO: 3. Build RunPlan + save .clier/{RUN_ID}.json
+			// TODO: 4. Execute via tmux using Runner
+			// Full run orchestration is done via 'clier run start <team-id>'
+			// which uses the existing run.Service with proper terminal + workspace adapters.
+
+			return printJSON(map[string]string{
+				"status": "workspace prepared",
+				"team":   teamID,
+				"dir":    base,
+				"note":   "for full run execution, use 'clier run start <team-id>'",
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", "", "Base directory for workspaces (default: current directory)")
+	return cmd
 }

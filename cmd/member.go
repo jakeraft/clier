@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+
+	appws "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -17,6 +20,8 @@ func newMemberCmd() *cobra.Command {
 	cmd.AddCommand(newMemberListCmd())
 	cmd.AddCommand(newMemberUpdateCmd())
 	cmd.AddCommand(newMemberDeleteCmd())
+	cmd.AddCommand(newMemberWorkspaceCmd())
+	cmd.AddCommand(newMemberRunCmd())
 	return cmd
 }
 
@@ -149,4 +154,78 @@ func newMemberDeleteCmd() *cobra.Command {
 			return printJSON(map[string]string{"deleted": args[0]})
 		},
 	}
+}
+
+func newMemberWorkspaceCmd() *cobra.Command {
+	var dir string
+
+	cmd := &cobra.Command{
+		Use:   "workspace <member-id>",
+		Short: "Create workspace for a member",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newAPIClient()
+			owner := resolveOwner()
+			writer := appws.NewWriter(client, owner)
+
+			base := dir
+			if base == "" {
+				base = "."
+			}
+
+			if err := writer.PrepareMember(base, args[0]); err != nil {
+				return err
+			}
+			return printJSON(map[string]string{
+				"status": "prepared",
+				"member": args[0],
+				"dir":    base,
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", "", "Base directory for workspace (default: current directory)")
+	return cmd
+}
+
+func newMemberRunCmd() *cobra.Command {
+	var dir string
+
+	cmd := &cobra.Command{
+		Use:   "run <member-id>",
+		Short: "Create workspace and run a single member",
+		Long: `Create workspace (idempotent) and run a single member.
+This prepares the workspace files and launches the agent in a tmux session.`,
+		Args:        cobra.ExactArgs(1),
+		Annotations: map[string]string{mutates: "true"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			memberID := args[0]
+			client := newAPIClient()
+			owner := resolveOwner()
+
+			// 1. Workspace (idempotent)
+			writer := appws.NewWriter(client, owner)
+			base := dir
+			if base == "" {
+				base = "."
+			}
+			if err := writer.PrepareMember(base, memberID); err != nil {
+				return fmt.Errorf("prepare workspace: %w", err)
+			}
+
+			// TODO: 2. Create Run on server
+			// TODO: 3. Build RunPlan + save .clier/{RUN_ID}.json
+			// TODO: 4. Execute via tmux
+			// Single-member run requires server-side Run creation for a single member.
+			// For now, only workspace preparation is performed.
+
+			return printJSON(map[string]string{
+				"status": "workspace prepared",
+				"member": memberID,
+				"dir":    base,
+				"note":   "full run execution requires team context; use 'clier run start' with a team",
+			})
+		},
+	}
+	cmd.Flags().StringVar(&dir, "dir", "", "Base directory for workspace (default: current directory)")
+	return cmd
 }

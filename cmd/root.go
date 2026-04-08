@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/settings"
@@ -99,6 +100,16 @@ func filterUserCommands() {
 			}
 		}
 	}
+}
+
+// parseOwnerName splits "owner/name" into owner and name.
+// If no slash is present, resolveOwner() is used as owner.
+func parseOwnerName(s string) (owner, name string) {
+	parts := strings.SplitN(s, "/", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return resolveOwner(), s
 }
 
 // filterAgentCommands removes all commands except "run" when running as an agent,
