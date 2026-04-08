@@ -264,7 +264,7 @@ type Run struct {
     Status    RunStatus   `json:"status"`     // "running" | "stopped"
     Messages  []Message   `json:"messages"`   // 에이전트 간 통신 기록
     Notes     []Note      `json:"notes"`      // 진행 상황 기록
-    CreatedAt time.Time   `json:"created_at"`
+    StartedAt time.Time   `json:"started_at"`
     StoppedAt *time.Time  `json:"stopped_at,omitempty"`
     // Visibility 없음, Fork 없음, Version 없음
 }
