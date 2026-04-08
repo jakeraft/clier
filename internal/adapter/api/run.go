@@ -3,18 +3,20 @@ package api
 import (
 	"fmt"
 	"time"
-
-	"github.com/jakeraft/clier/internal/domain"
 )
 
 // RunResponse is the server's JSON representation of a Run.
 type RunResponse struct {
-	ID        string           `json:"id"`
-	Name      string           `json:"name"`
-	TeamID    string           `json:"team_id"`
-	Status    domain.RunStatus `json:"status"`
-	StartedAt time.Time        `json:"started_at"`
-	StoppedAt *time.Time       `json:"stopped_at"`
+	ID        string            `json:"id"`
+	UserID    int64             `json:"user_id"`
+	Name      string            `json:"name"`
+	TeamID    *int64            `json:"team_id,omitempty"`
+	MemberID  *int64            `json:"member_id,omitempty"`
+	Status    string            `json:"status"`
+	Messages  []MessageResponse `json:"messages"`
+	Notes     []NoteResponse    `json:"notes"`
+	StartedAt time.Time         `json:"started_at"`
+	StoppedAt *time.Time        `json:"stopped_at,omitempty"`
 }
 
 // MessageResponse is the server's JSON representation of a Message.
@@ -52,7 +54,7 @@ func (c *Client) ListRuns() ([]RunResponse, error) {
 }
 
 func (c *Client) UpdateRunStatus(id string, body any) error {
-	return c.patch(fmt.Sprintf("/api/v1/runs/%s/status", id), body, nil)
+	return c.patch(fmt.Sprintf("/api/v1/runs/%s", id), body, nil)
 }
 
 func (c *Client) DeleteRun(id string) error {
@@ -64,28 +66,14 @@ func (c *Client) AddMessage(runID string, body any) (*MessageResponse, error) {
 	return &r, c.post(fmt.Sprintf("/api/v1/runs/%s/messages", runID), body, &r)
 }
 
-func (c *Client) ListMessages(runID string) ([]MessageResponse, error) {
-	var r []MessageResponse
-	return r, c.get(fmt.Sprintf("/api/v1/runs/%s/messages", runID), &r)
-}
-
 func (c *Client) AddNote(runID string, body any) (*NoteResponse, error) {
 	var r NoteResponse
 	return &r, c.post(fmt.Sprintf("/api/v1/runs/%s/notes", runID), body, &r)
 }
 
-func (c *Client) ListNotes(runID string) ([]NoteResponse, error) {
-	var r []NoteResponse
-	return r, c.get(fmt.Sprintf("/api/v1/runs/%s/notes", runID), &r)
-}
-
 // SaveTerminalRefs persists terminal refs for a run member.
 func (c *Client) SaveTerminalRefs(runID, memberID string, refs map[string]string) error {
-	body := map[string]any{
-		"team_member_id": memberID,
-		"refs":           refs,
-	}
-	return c.put(fmt.Sprintf("/api/v1/runs/%s/terminal-refs/%s", runID, memberID), body, nil)
+	return c.put(fmt.Sprintf("/api/v1/runs/%s/terminal-refs/%s", runID, memberID), refs, nil)
 }
 
 // GetTerminalRefs retrieves terminal refs for a specific member.
