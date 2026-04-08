@@ -27,7 +27,6 @@ type TaskStore interface {
 	GetClaudeMd(ctx context.Context, id string) (resource.ClaudeMd, error)
 	GetSkill(ctx context.Context, id string) (resource.Skill, error)
 	GetClaudeSettings(ctx context.Context, id string) (resource.ClaudeSettings, error)
-	GetClaudeJson(ctx context.Context, id string) (resource.ClaudeJson, error)
 }
 
 // Terminal launches and terminates member processes.

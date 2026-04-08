@@ -281,7 +281,6 @@ func (s *Store) CreateMember(ctx context.Context, m *domain.Member) error {
 		Args:             string(argsJSON),
 		ClaudeMdID:     sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
 		ClaudeSettingsID: sql.NullString{String: m.ClaudeSettingsID, Valid: m.ClaudeSettingsID != ""},
-		ClaudeJsonID:     sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
 		GitRepoUrl:       m.GitRepoURL,
 		CreatedAt:        m.CreatedAt.Unix(),
 		UpdatedAt:        m.UpdatedAt.Unix(),
@@ -326,7 +325,6 @@ func (s *Store) GetMember(ctx context.Context, id string) (domain.Member, error)
 		ClaudeMdID:     row.ClaudeMdID.String,
 		SkillIDs:         skillIDs,
 		ClaudeSettingsID: row.ClaudeSettingsID.String,
-		ClaudeJsonID:     row.ClaudeJsonID.String,
 		GitRepoURL:       row.GitRepoUrl,
 		CreatedAt:        time.Unix(row.CreatedAt, 0),
 		UpdatedAt:        time.Unix(row.UpdatedAt, 0),
@@ -369,7 +367,6 @@ func (s *Store) UpdateMember(ctx context.Context, m *domain.Member) error {
 		Args:             string(argsJSON),
 		ClaudeMdID:     sql.NullString{String: m.ClaudeMdID, Valid: m.ClaudeMdID != ""},
 		ClaudeSettingsID: sql.NullString{String: m.ClaudeSettingsID, Valid: m.ClaudeSettingsID != ""},
-		ClaudeJsonID:     sql.NullString{String: m.ClaudeJsonID, Valid: m.ClaudeJsonID != ""},
 		GitRepoUrl:       m.GitRepoURL,
 		UpdatedAt:        m.UpdatedAt.Unix(),
 		ID:               m.ID,
@@ -616,77 +613,6 @@ func (s *Store) DeleteClaudeSettings(ctx context.Context, id string) error {
 	}
 	if rows == 0 {
 		return fmt.Errorf("claude settings not found: %s", id)
-	}
-	return nil
-}
-
-// ClaudeJson
-
-func (s *Store) CreateClaudeJson(ctx context.Context, c *resource.ClaudeJson) error {
-	_, err := s.queries.CreateClaudeJson(ctx, generated.CreateClaudeJsonParams{
-		ID:        c.ID,
-		Name:      c.Name,
-		Content:   c.Content,
-		CreatedAt: c.CreatedAt.Unix(),
-		UpdatedAt: c.UpdatedAt.Unix(),
-	})
-	return err
-}
-
-func (s *Store) GetClaudeJson(ctx context.Context, id string) (resource.ClaudeJson, error) {
-	row, err := s.queries.GetClaudeJson(ctx, id)
-	if err != nil {
-		return resource.ClaudeJson{}, err
-	}
-	return resource.ClaudeJson{
-		ID:        row.ID,
-		Name:      row.Name,
-		Content:   row.Content,
-		CreatedAt: time.Unix(row.CreatedAt, 0),
-		UpdatedAt: time.Unix(row.UpdatedAt, 0),
-	}, nil
-}
-
-func (s *Store) ListClaudeJsons(ctx context.Context) ([]resource.ClaudeJson, error) {
-	rows, err := s.queries.ListClaudeJsons(ctx)
-	if err != nil {
-		return nil, err
-	}
-	items := make([]resource.ClaudeJson, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, resource.ClaudeJson{
-			ID:        row.ID,
-			Name:      row.Name,
-			Content:   row.Content,
-			CreatedAt: time.Unix(row.CreatedAt, 0),
-			UpdatedAt: time.Unix(row.UpdatedAt, 0),
-		})
-	}
-	return items, nil
-}
-
-func (s *Store) UpdateClaudeJson(ctx context.Context, c *resource.ClaudeJson) error {
-	_, err := s.queries.UpdateClaudeJson(ctx, generated.UpdateClaudeJsonParams{
-		Name:      c.Name,
-		Content:   c.Content,
-		UpdatedAt: c.UpdatedAt.Unix(),
-		ID:        c.ID,
-	})
-	return err
-}
-
-// DeleteClaudeJson deletes a claude json. RESTRICT: fails if referenced by a member.
-func (s *Store) DeleteClaudeJson(ctx context.Context, id string) error {
-	result, err := s.queries.DeleteClaudeJson(ctx, id)
-	if err != nil {
-		return err
-	}
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return fmt.Errorf("claude json not found: %s", id)
 	}
 	return nil
 }

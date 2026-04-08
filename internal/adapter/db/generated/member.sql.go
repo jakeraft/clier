@@ -24,8 +24,8 @@ func (q *Queries) AddMemberSkill(ctx context.Context, arg AddMemberSkillParams) 
 }
 
 const createMember = `-- name: CreateMember :execresult
-INSERT INTO members (id, name, agent_type, model, args, claude_md_id, claude_settings_id, claude_json_id, git_repo_url, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO members (id, name, agent_type, model, args, claude_md_id, claude_settings_id, git_repo_url, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateMemberParams struct {
@@ -36,7 +36,6 @@ type CreateMemberParams struct {
 	Args             string
 	ClaudeMdID     sql.NullString
 	ClaudeSettingsID sql.NullString
-	ClaudeJsonID     sql.NullString
 	GitRepoUrl       string
 	CreatedAt        int64
 	UpdatedAt        int64
@@ -51,7 +50,6 @@ func (q *Queries) CreateMember(ctx context.Context, arg CreateMemberParams) (sql
 		arg.Args,
 		arg.ClaudeMdID,
 		arg.ClaudeSettingsID,
-		arg.ClaudeJsonID,
 		arg.GitRepoUrl,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -75,7 +73,7 @@ func (q *Queries) DeleteMemberSkills(ctx context.Context, memberID string) (sql.
 }
 
 const getMember = `-- name: GetMember :one
-SELECT id, name, agent_type, model, args, claude_md_id, claude_settings_id, claude_json_id, git_repo_url, created_at, updated_at FROM members WHERE id = ?
+SELECT id, name, agent_type, model, args, claude_md_id, claude_settings_id, git_repo_url, created_at, updated_at FROM members WHERE id = ?
 `
 
 func (q *Queries) GetMember(ctx context.Context, id string) (Member, error) {
@@ -89,7 +87,6 @@ func (q *Queries) GetMember(ctx context.Context, id string) (Member, error) {
 		&i.Args,
 		&i.ClaudeMdID,
 		&i.ClaudeSettingsID,
-		&i.ClaudeJsonID,
 		&i.GitRepoUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -125,7 +122,7 @@ func (q *Queries) ListMemberSkillIDs(ctx context.Context, memberID string) ([]st
 }
 
 const listMembers = `-- name: ListMembers :many
-SELECT id, name, agent_type, model, args, claude_md_id, claude_settings_id, claude_json_id, git_repo_url, created_at, updated_at FROM members ORDER BY created_at
+SELECT id, name, agent_type, model, args, claude_md_id, claude_settings_id, git_repo_url, created_at, updated_at FROM members ORDER BY created_at
 `
 
 func (q *Queries) ListMembers(ctx context.Context) ([]Member, error) {
@@ -145,7 +142,6 @@ func (q *Queries) ListMembers(ctx context.Context) ([]Member, error) {
 			&i.Args,
 			&i.ClaudeMdID,
 			&i.ClaudeSettingsID,
-			&i.ClaudeJsonID,
 			&i.GitRepoUrl,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -177,7 +173,7 @@ func (q *Queries) RemoveMemberSkill(ctx context.Context, arg RemoveMemberSkillPa
 }
 
 const updateMember = `-- name: UpdateMember :execresult
-UPDATE members SET name = ?, agent_type = ?, model = ?, args = ?, claude_md_id = ?, claude_settings_id = ?, claude_json_id = ?, git_repo_url = ?, updated_at = ? WHERE id = ?
+UPDATE members SET name = ?, agent_type = ?, model = ?, args = ?, claude_md_id = ?, claude_settings_id = ?, git_repo_url = ?, updated_at = ? WHERE id = ?
 `
 
 type UpdateMemberParams struct {
@@ -187,7 +183,6 @@ type UpdateMemberParams struct {
 	Args             string
 	ClaudeMdID     sql.NullString
 	ClaudeSettingsID sql.NullString
-	ClaudeJsonID     sql.NullString
 	GitRepoUrl       string
 	UpdatedAt        int64
 	ID               string
@@ -201,7 +196,6 @@ func (q *Queries) UpdateMember(ctx context.Context, arg UpdateMemberParams) (sql
 		arg.Args,
 		arg.ClaudeMdID,
 		arg.ClaudeSettingsID,
-		arg.ClaudeJsonID,
 		arg.GitRepoUrl,
 		arg.UpdatedAt,
 		arg.ID,

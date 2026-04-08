@@ -53,7 +53,6 @@ func newExportCmd() *cobra.Command {
 				{"claude_md", func() (any, error) { cm, e := store.GetClaudeMd(ctx, id); return cm, e }},
 				{"skill", func() (any, error) { sk, e := store.GetSkill(ctx, id); return sk, e }},
 				{"claude_settings", func() (any, error) { st, e := store.GetClaudeSettings(ctx, id); return st, e }},
-				{"claude_json", func() (any, error) { cj, e := store.GetClaudeJson(ctx, id); return cj, e }},
 			}
 
 			for _, p := range probes {

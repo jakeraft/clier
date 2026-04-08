@@ -1,7 +1,6 @@
 {
   "files": [
     "settings-default.json",
-    "claude-json-default.json",
     "claude-md-tech-lead.json",
     "claude-md-coder.json",
     "claude-md-reviewer.json",

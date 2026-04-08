@@ -18,7 +18,6 @@ type Member struct {
 	ClaudeMdID       string    `json:"claude_md_id"`        // empty string = not set (nullable FK)
 	SkillIDs         []string  `json:"skill_ids"`
 	ClaudeSettingsID string    `json:"claude_settings_id"`  // empty string = not set (nullable FK)
-	ClaudeJsonID     string    `json:"claude_json_id"`      // empty string = not set (nullable FK)
 	GitRepoURL       string    `json:"git_repo_url"`        // empty string = no repo
 	CreatedAt        time.Time `json:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at"`
@@ -26,7 +25,7 @@ type Member struct {
 
 func NewMember(name, agentType, model string, args []string,
 	claudeMdID string, skillIDs []string,
-	claudeSettingsID, claudeJsonID string,
+	claudeSettingsID string,
 	gitRepoURL string) (*Member, error) {
 
 	name = strings.TrimSpace(name)
@@ -58,7 +57,6 @@ func NewMember(name, agentType, model string, args []string,
 		ClaudeMdID:       claudeMdID,
 		SkillIDs:         skillIDs,
 		ClaudeSettingsID: claudeSettingsID,
-		ClaudeJsonID:     claudeJsonID,
 		GitRepoURL:       gitRepoURL,
 		CreatedAt:        now,
 		UpdatedAt:        now,
@@ -67,7 +65,7 @@ func NewMember(name, agentType, model string, args []string,
 
 func (m *Member) Update(name, agentType, model *string, args *[]string,
 	claudeMdID *string, skillIDs *[]string,
-	claudeSettingsID, claudeJsonID *string,
+	claudeSettingsID *string,
 	gitRepoURL *string) error {
 
 	if name != nil {
@@ -102,9 +100,6 @@ func (m *Member) Update(name, agentType, model *string, args *[]string,
 	if claudeSettingsID != nil {
 		m.ClaudeSettingsID = *claudeSettingsID
 	}
-	if claudeJsonID != nil {
-		m.ClaudeJsonID = *claudeJsonID
-	}
 	if gitRepoURL != nil {
 		m.GitRepoURL = *gitRepoURL
 	}
@@ -123,7 +118,6 @@ type ResolvedMember struct {
 	ClaudeMd       *resource.ClaudeMd
 	Skills         []resource.Skill
 	ClaudeSettings *resource.ClaudeSettings
-	ClaudeJson     *resource.ClaudeJson
 	GitRepoURL     string
 	Relations      MemberRelations
 }

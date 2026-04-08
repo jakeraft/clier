@@ -17,13 +17,11 @@ type Store interface {
 	CreateClaudeMd(ctx context.Context, cm *resource.ClaudeMd) error
 	CreateSkill(ctx context.Context, sk *resource.Skill) error
 	CreateClaudeSettings(ctx context.Context, st *resource.ClaudeSettings) error
-	CreateClaudeJson(ctx context.Context, cj *resource.ClaudeJson) error
 	CreateMember(ctx context.Context, m *domain.Member) error
 	CreateTeam(ctx context.Context, t *domain.Team) error
 	UpdateClaudeMd(ctx context.Context, cm *resource.ClaudeMd) error
 	UpdateSkill(ctx context.Context, sk *resource.Skill) error
 	UpdateClaudeSettings(ctx context.Context, st *resource.ClaudeSettings) error
-	UpdateClaudeJson(ctx context.Context, cj *resource.ClaudeJson) error
 	UpdateMember(ctx context.Context, m *domain.Member) error
 	UpdateTeam(ctx context.Context, t *domain.Team) error
 	AddTeamMember(ctx context.Context, teamID string, tm domain.TeamMember) error

@@ -63,15 +63,6 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		claudeSettings = &cs
 	}
 
-	var claudeJson *resource.ClaudeJson
-	if member.ClaudeJsonID != "" {
-		cj, err := s.store.GetClaudeJson(ctx, member.ClaudeJsonID)
-		if err != nil {
-			return nil, fmt.Errorf("get claude json for %s: %w", tm.Name, err)
-		}
-		claudeJson = &cj
-	}
-
 	relations := team.MemberRelations(tm.ID)
 
 	return &domain.ResolvedMember{
@@ -83,7 +74,6 @@ func (s *Service) resolveMember(ctx context.Context, team *domain.Team, tm domai
 		ClaudeMd:       claudeMd,
 		Skills:         skills,
 		ClaudeSettings: claudeSettings,
-		ClaudeJson:     claudeJson,
 		GitRepoURL:     member.GitRepoURL,
 		Relations:      relations,
 	}, nil
@@ -130,16 +120,12 @@ func buildMemberPlan(rm *domain.ResolvedMember, nameByID map[string]string, team
 
 	// === project config (e.g. .claude.json) ===
 	systemProjectConfig := rt.SystemConfig(PlaceholderMemberspace) // runtime-provided system config
-	var userProjectConfig string                                   // user building block
-	if rm.ClaudeJson != nil {
-		userProjectConfig = rm.ClaudeJson.Content
-	}
 
 	// === Skills ===
 	userSkills := rm.Skills // user building block (no system injection)
 
 	// === Assemble workspace files ===
-	files := buildWorkspaceFiles(rt, PlaceholderMemberspace, systemClaudeMd, userClaudeMd, userClaudeSettings, systemProjectConfig, userProjectConfig, userSkills)
+	files := buildWorkspaceFiles(rt, PlaceholderMemberspace, systemClaudeMd, userClaudeMd, userClaudeSettings, systemProjectConfig, userSkills)
 
 	// === Command: user building blocks ===
 	model := rm.Model

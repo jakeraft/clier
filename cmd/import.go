@@ -222,26 +222,6 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		}
 		return printJSON(st)
 
-	case "claude_json":
-		var cj resource.ClaudeJson
-		if err := json.Unmarshal(envelope.Data, &cj); err != nil {
-			return fmt.Errorf("unmarshal claude_json: %w", err)
-		}
-		setTimestamps(&cj.CreatedAt, &cj.UpdatedAt)
-		if existing, err := store.GetClaudeJson(ctx, cj.ID); err == nil {
-			if err := existing.Update(&cj.Name, &cj.Content); err != nil {
-				return err
-			}
-			if err := store.UpdateClaudeJson(ctx, &existing); err != nil {
-				return err
-			}
-			return printJSON(existing)
-		}
-		if err := store.CreateClaudeJson(ctx, &cj); err != nil {
-			return err
-		}
-		return printJSON(cj)
-
 	case "member":
 		var m domain.Member
 		if err := json.Unmarshal(envelope.Data, &m); err != nil {
@@ -250,7 +230,7 @@ func importEnvelope(ctx context.Context, store *db.Store, data []byte) error {
 		setTimestamps(&m.CreatedAt, &m.UpdatedAt)
 		if existing, err := store.GetMember(ctx, m.ID); err == nil {
 			if err := existing.Update(&m.Name, &m.AgentType, &m.Model, &m.Args, &m.ClaudeMdID, &m.SkillIDs,
-				&m.ClaudeSettingsID, &m.ClaudeJsonID, &m.GitRepoURL); err != nil {
+				&m.ClaudeSettingsID, &m.GitRepoURL); err != nil {
 				return err
 			}
 			if err := store.UpdateMember(ctx, &existing); err != nil {

@@ -50,9 +50,6 @@ func (s *stubStore) GetSkill(_ context.Context, _ string) (resource.Skill, error
 func (s *stubStore) GetClaudeSettings(_ context.Context, _ string) (resource.ClaudeSettings, error) {
 	return resource.ClaudeSettings{}, errors.New("not implemented")
 }
-func (s *stubStore) GetClaudeJson(_ context.Context, _ string) (resource.ClaudeJson, error) {
-	return resource.ClaudeJson{}, errors.New("not implemented")
-}
 
 type stubTerminal struct {
 	sent []string

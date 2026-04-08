@@ -16,14 +16,6 @@ type ClaudeMd struct {
 	UpdatedAt int64
 }
 
-type ClaudeJson struct {
-	ID        string
-	Name      string
-	Content   string
-	CreatedAt int64
-	UpdatedAt int64
-}
-
 type ClaudeSetting struct {
 	ID        string
 	Name      string
@@ -40,7 +32,6 @@ type Member struct {
 	Args             string
 	ClaudeMdID     sql.NullString
 	ClaudeSettingsID sql.NullString
-	ClaudeJsonID     sql.NullString
 	GitRepoUrl       string
 	CreatedAt        int64
 	UpdatedAt        int64

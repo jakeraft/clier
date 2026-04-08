@@ -22,7 +22,7 @@ func newMemberCmd() *cobra.Command {
 }
 
 func newMemberCreateCmd() *cobra.Command {
-	var name, agentType, model, claudeMd, claudeSettings, claudeJson, repo string
+	var name, agentType, model, claudeMd, claudeSettings, repo string
 	var cliArgs, skills []string
 
 	cmd := &cobra.Command{
@@ -40,7 +40,7 @@ func newMemberCreateCmd() *cobra.Command {
 			}
 			defer store.Close()
 
-			m, err := domain.NewMember(name, agentType, model, cliArgs, claudeMd, skills, claudeSettings, claudeJson, repo)
+			m, err := domain.NewMember(name, agentType, model, cliArgs, claudeMd, skills, claudeSettings, repo)
 			if err != nil {
 				return err
 			}
@@ -57,7 +57,6 @@ func newMemberCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "Claude md resource ID")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "Skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "Claude settings resource ID")
-	cmd.Flags().StringVar(&claudeJson, "claude-json", "", "ClaudeJson resource ID")
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repo URL")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("model")
@@ -89,7 +88,7 @@ func newMemberListCmd() *cobra.Command {
 }
 
 func newMemberUpdateCmd() *cobra.Command {
-	var name, agentType, model, claudeMd, claudeSettings, claudeJson, repo string
+	var name, agentType, model, claudeMd, claudeSettings, repo string
 	var cliArgs, skills []string
 
 	cmd := &cobra.Command{
@@ -141,16 +140,12 @@ func newMemberUpdateCmd() *cobra.Command {
 			if cmd.Flags().Changed("claude-settings") {
 				claudeSettingsPtr = &claudeSettings
 			}
-			var claudeJsonPtr *string
-			if cmd.Flags().Changed("claude-json") {
-				claudeJsonPtr = &claudeJson
-			}
 			var repoPtr *string
 			if cmd.Flags().Changed("repo") {
 				repoPtr = &repo
 			}
 
-			if err := m.Update(namePtr, agentTypePtr, modelPtr, argsPtr, claudeMdPtr, skillsPtr, claudeSettingsPtr, claudeJsonPtr, repoPtr); err != nil {
+			if err := m.Update(namePtr, agentTypePtr, modelPtr, argsPtr, claudeMdPtr, skillsPtr, claudeSettingsPtr, repoPtr); err != nil {
 				return err
 			}
 			if err := store.UpdateMember(cmd.Context(), &m); err != nil {
@@ -166,7 +161,6 @@ func newMemberUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "New agent dot md resource ID")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill IDs (comma-separated)")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "New Claude settings resource ID")
-	cmd.Flags().StringVar(&claudeJson, "claude-json", "", "New ClaudeJson resource ID")
 	cmd.Flags().StringVar(&repo, "repo", "", "New git repo URL")
 	return cmd
 }

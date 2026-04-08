@@ -9,7 +9,6 @@
     "claude_md_id": "a1010101-0001-4000-8000-000000000001",
     "skill_ids": ["f6060606-0001-4000-8000-000000000001"],
     "claude_settings_id": "e5050505-0001-4000-8000-000000000001",
-    "claude_json_id": "e5050505-0002-4000-8000-000000000002",
     "env_ids": [],
     "git_repo_url": "https://github.com/jakeraft/clier_todo.git"
   }

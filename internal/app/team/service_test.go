@@ -34,21 +34,16 @@ func createMinimalTeam(t *testing.T, ctx context.Context, store *db.Store) (stri
 		t.Fatalf("CreateClaudeSettings: %v", err)
 	}
 
-	claudeJson, _ := resource.NewClaudeJson("test-cj", `{"hasCompletedOnboarding":true}`)
-	if err := store.CreateClaudeJson(ctx, claudeJson); err != nil {
-		t.Fatalf("CreateClaudeJson: %v", err)
-	}
-
 	root, _ := domain.NewMember("alice", "claude", "claude-sonnet-4-6",
 		[]string{"--dangerously-skip-permissions"},
-		claudeMd.ID, nil, settings.ID, claudeJson.ID, "https://example.com/repo.git")
+		claudeMd.ID, nil, settings.ID, "https://example.com/repo.git")
 	if err := store.CreateMember(ctx, root); err != nil {
 		t.Fatalf("CreateMember root: %v", err)
 	}
 
 	worker, _ := domain.NewMember("bob", "claude", "claude-sonnet-4-6",
 		[]string{"--dangerously-skip-permissions"},
-		claudeMd.ID, nil, settings.ID, claudeJson.ID, "")
+		claudeMd.ID, nil, settings.ID, "")
 	if err := store.CreateMember(ctx, worker); err != nil {
 		t.Fatalf("CreateMember worker: %v", err)
 	}

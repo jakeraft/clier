@@ -4,7 +4,7 @@ import "testing"
 
 func TestNewMember(t *testing.T) {
 	m, err := NewMember("coder", "claude", "claude-sonnet-4-6", []string{"--dangerously-skip-permissions"},
-		"claude-md-1", []string{"skill-1"}, "settings-1", "claude-json-1",
+		"claude-md-1", []string{"skill-1"}, "settings-1",
 		"https://github.com/example/repo.git")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -30,30 +30,27 @@ func TestNewMember(t *testing.T) {
 	if m.ClaudeSettingsID != "settings-1" {
 		t.Errorf("claude_settings_id = %q, want %q", m.ClaudeSettingsID, "settings-1")
 	}
-	if m.ClaudeJsonID != "claude-json-1" {
-		t.Errorf("claude_json_id = %q, want %q", m.ClaudeJsonID, "claude-json-1")
-	}
 	if m.GitRepoURL != "https://github.com/example/repo.git" {
 		t.Errorf("git_repo_url = %q, want %q", m.GitRepoURL, "https://github.com/example/repo.git")
 	}
 }
 
 func TestNewMember_EmptyName(t *testing.T) {
-	_, err := NewMember("", "claude", "model", nil, "", nil, "", "", "")
+	_, err := NewMember("", "claude", "model", nil, "", nil, "", "")
 	if err == nil {
 		t.Error("expected error for empty name")
 	}
 }
 
 func TestNewMember_EmptyModel(t *testing.T) {
-	_, err := NewMember("name", "claude", "", nil, "", nil, "", "", "")
+	_, err := NewMember("name", "claude", "", nil, "", nil, "", "")
 	if err == nil {
 		t.Error("expected error for empty model")
 	}
 }
 
 func TestNewMember_DefaultAgentType(t *testing.T) {
-	m, err := NewMember("coder", "", "claude-sonnet-4-6", nil, "", nil, "", "", "")
+	m, err := NewMember("coder", "", "claude-sonnet-4-6", nil, "", nil, "", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -63,7 +60,7 @@ func TestNewMember_DefaultAgentType(t *testing.T) {
 }
 
 func TestMember_NilSlicesDefault(t *testing.T) {
-	m, err := NewMember("coder", "claude", "claude-sonnet-4-6", nil, "", nil, "", "", "")
+	m, err := NewMember("coder", "claude", "claude-sonnet-4-6", nil, "", nil, "", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -76,7 +73,7 @@ func TestMember_NilSlicesDefault(t *testing.T) {
 }
 
 func TestMember_Update(t *testing.T) {
-	m, _ := NewMember("old", "claude", "old-model", nil, "", nil, "", "", "")
+	m, _ := NewMember("old", "claude", "old-model", nil, "", nil, "", "")
 	newName := "new"
 	newAgentType := "codex"
 	newModel := "new-model"
@@ -84,9 +81,8 @@ func TestMember_Update(t *testing.T) {
 	newMdID := "md-1"
 	newSkills := []string{"s-1", "s-2"}
 	newSettings := "set-1"
-	newCJ := "cj-1"
 	newRepo := "https://github.com/example/new.git"
-	if err := m.Update(&newName, &newAgentType, &newModel, &newArgs, &newMdID, &newSkills, &newSettings, &newCJ, &newRepo); err != nil {
+	if err := m.Update(&newName, &newAgentType, &newModel, &newArgs, &newMdID, &newSkills, &newSettings, &newRepo); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if m.Name != "new" {
@@ -109,9 +105,6 @@ func TestMember_Update(t *testing.T) {
 	}
 	if m.ClaudeSettingsID != "set-1" {
 		t.Errorf("claude_settings_id = %q", m.ClaudeSettingsID)
-	}
-	if m.ClaudeJsonID != "cj-1" {
-		t.Errorf("claude_json_id = %q", m.ClaudeJsonID)
 	}
 	if m.GitRepoURL != "https://github.com/example/new.git" {
 		t.Errorf("git_repo_url = %q", m.GitRepoURL)

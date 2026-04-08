@@ -78,14 +78,6 @@ export function MemberDetail() {
                 <EmptyEntityBadge entity="claude-settings" />
               ),
             },
-            {
-              label: ".claude.json",
-              children: member.claudeJsonId ? (
-                <EntityBadge to={`/claude/claude-jsons/${member.claudeJsonId}`}>{member.claudeJsonName || EMPTY_DATA}</EntityBadge>
-              ) : (
-                <EmptyEntityBadge entity="claude-json" />
-              ),
-            },
           ]}
         />
       </Section>

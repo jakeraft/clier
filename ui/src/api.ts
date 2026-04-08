@@ -6,7 +6,6 @@ import type {
   ClaudeMdView,
   SkillView,
   ClaudeSettingsView,
-  ClaudeJsonView,
   TaskView,
   NoteView,
   MessageView,
@@ -30,7 +29,6 @@ export type {
   ClaudeMdView,
   SkillView,
   ClaudeSettingsView,
-  ClaudeJsonView,
   MemberView,
   MemberPlanView,
   TeamView,
@@ -58,13 +56,6 @@ export const api = {
     list: (): Promise<ClaudeSettingsView[]> => Promise.resolve(getData().claudeSettings),
     get: (id: string): Promise<ClaudeSettingsView> => {
       const item = findById(getData().claudeSettings, id);
-      return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
-    },
-  },
-  claudeJsons: {
-    list: (): Promise<ClaudeJsonView[]> => Promise.resolve(getData().claudeJsons),
-    get: (id: string): Promise<ClaudeJsonView> => {
-      const item = findById(getData().claudeJsons, id);
       return item ? Promise.resolve(item) : Promise.reject(new Error("Not found"));
     },
   },

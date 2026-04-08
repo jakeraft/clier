@@ -4,7 +4,6 @@ export interface DashboardData {
   claudeMds: ClaudeMdView[];
   skills: SkillView[];
   claudeSettings: ClaudeSettingsView[];
-  claudeJsons: ClaudeJsonView[];
   tasks: TaskView[];
 }
 
@@ -81,12 +80,10 @@ export interface MemberView {
   claudeMdId: string | null;
   skillIds: string[];
   claudeSettingsId: string | null;
-  claudeJsonId: string | null;
   gitRepoUrl: string;
   claudeMdName: string | null;
   skillNames: string[];
   claudeSettingsName: string | null;
-  claudeJsonName: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -115,10 +112,3 @@ export interface ClaudeSettingsView {
   updatedAt: string;
 }
 
-export interface ClaudeJsonView {
-  id: string;
-  name: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-}

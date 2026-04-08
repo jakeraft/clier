@@ -7,7 +7,6 @@ import { NotFound } from "@/pages/not-found";
 import { ClaudeMdDetail } from "@/pages/claude-md-detail";
 import { SkillDetail } from "@/pages/skill-detail";
 import { ClaudeSettingsDetail } from "@/pages/claude-settings-detail";
-import { ClaudeJsonDetail } from "@/pages/claude-json-detail";
 import { Prompts } from "@/pages/prompts";
 import { ClaudeConfig } from "@/pages/claude-config";
 import { Teams } from "@/pages/teams";
@@ -38,7 +37,6 @@ export default function App() {
               <Route path="/prompts/skills/:id" element={<Keyed Component={SkillDetail} />} />
               <Route path="/claude" element={<ClaudeConfig />} />
               <Route path="/claude/claude-settings/:id" element={<Keyed Component={ClaudeSettingsDetail} />} />
-              <Route path="/claude/claude-jsons/:id" element={<Keyed Component={ClaudeJsonDetail} />} />
               <Route path="/members" element={<Members />} />
               <Route path="/members/:id" element={<Keyed Component={MemberDetail} />} />
               <Route path="/teams" element={<Teams />} />
