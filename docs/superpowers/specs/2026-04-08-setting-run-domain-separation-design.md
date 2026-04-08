@@ -58,8 +58,7 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 │                                                     │
 │  HTTP Client — 서버 API 호출 (CRUD)                  │
 │  Workspace Writer — 로컬 파일 생성                   │
-│  Run Planner — .clier/{RUN_ID}.json 생성             │
-│  Terminal Manager — tmux 세션 관리                    │
+│  Runner — RunPlan 생성 + tmux 실행                   │
 │                                                     │
 │  로컬 DB 없음. 로컬에 남는 것:                        │
 │  workspace 파일 + .clier/{RUN_ID}.json               │
@@ -72,8 +71,8 @@ clier를 client-server 아키텍처로 분리한다 (#24).
 |---|---|
 | 서버 API 호출 (CRUD) | DB 저장/조회 |
 | workspace 파일 생성 | 엔티티 상태 관리 |
-| `.clier/{RUN_ID}.json` 생성 | 비즈니스 로직 |
-| tmux 세션 생성/관리 | 버전/fork 관리 |
+| RunPlan 생성 + tmux 실행 | 비즈니스 로직 |
+| | 버전/fork 관리 |
 | env vars export + command 실행 | UI 서빙 |
 
 ### 엔티티 분류: 공유 가능 vs 개인 전용
@@ -546,8 +545,7 @@ clier member update myname/react-reviewer ...
 | `internal/domain/task.go` | → `run.go` 리네임, Task → Run |
 | `internal/adapter/api/` | **신규** — HTTP 클라이언트 |
 | `internal/app/workspace/` | **신규** — workspace 파일 생성 |
-| `internal/app/run/` | **신규** — `.clier/{RUN_ID}.json` 생성 + tmux 실행 |
-| `internal/adapter/terminal/` | tmux 관리 (유지, Task → Run 리네임) |
+| `internal/app/run/` | **신규** — Runner (RunPlan 생성 + tmux 실행, 기존 terminal/ 통합) |
 | `cmd/task*.go` | → `cmd/run*.go` 리네임 |
 
 ### 서버 추가 필요 (clier-server, 별도 작업)
