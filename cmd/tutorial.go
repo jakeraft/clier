@@ -65,6 +65,9 @@ Step 5. Watch them work from the current workspace
   clier run attach <run-id>        Watch agents in real time
   clier run view <run-id>          Check progress notes and messages
 
+  Note: run attach is intended for a normal user terminal.
+  It is not supported when clier is running inside an agent.
+
 Step 6. When done, stop the run from the current workspace
 
   clier run stop <run-id>
