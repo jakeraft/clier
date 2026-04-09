@@ -36,6 +36,7 @@ clier
 
 # local project config
 CLAUDE.md
+.claude/
 mise.toml
 
 # internal planning docs
