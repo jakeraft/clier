@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	appws "github.com/jakeraft/clier/internal/app/workspace"
+	appclone "github.com/jakeraft/clier/internal/app/clone"
 )
 
 type cloneTarget struct {
@@ -59,20 +59,20 @@ func defaultCloneBase(base string, target cloneTarget) string {
 	}
 }
 
-func shouldReuseCloneRoot(target cloneTarget, cloneRoot string, meta *appws.CloneMetadata) bool {
+func shouldReuseCloneRoot(target cloneTarget, cloneRoot string, meta *appclone.CloneMetadata) bool {
 	if meta == nil || cloneRoot == "" {
 		return false
 	}
 	return meta.Kind == target.Kind && meta.Owner == target.Owner && meta.Name == target.Name
 }
 
-func requireCurrentCloneRootKind(expectedKind, action string) (string, *appws.CloneMetadata, error) {
+func requireCurrentCloneRootKind(expectedKind, action string) (string, *appclone.CloneMetadata, error) {
 	base, err := resolveWorkspaceBase()
 	if err != nil {
 		return "", nil, err
 	}
 
-	metaPath := filepath.Join(base, ".clier", appws.CloneMetadataFile)
+	metaPath := filepath.Join(base, ".clier", appclone.CloneMetadataFile)
 	if _, err := os.Stat(metaPath); err != nil {
 		if os.IsNotExist(err) {
 			return "", nil, fmt.Errorf("%s must be run from the clone root that owns .clier/clone.json", action)
@@ -80,7 +80,7 @@ func requireCurrentCloneRootKind(expectedKind, action string) (string, *appws.Cl
 		return "", nil, fmt.Errorf("stat clone metadata: %w", err)
 	}
 
-	meta, err := appws.LoadCloneMetadata(base)
+	meta, err := appclone.LoadCloneMetadata(base)
 	if err != nil {
 		return "", nil, err
 	}
@@ -91,7 +91,7 @@ func requireCurrentCloneRootKind(expectedKind, action string) (string, *appws.Cl
 	return base, meta, nil
 }
 
-func requireCurrentCloneRoot(target cloneTarget, action string) (string, *appws.CloneMetadata, error) {
+func requireCurrentCloneRoot(target cloneTarget, action string) (string, *appclone.CloneMetadata, error) {
 	base, meta, err := requireCurrentCloneRootKind(target.Kind, action)
 	if err != nil {
 		return "", nil, err

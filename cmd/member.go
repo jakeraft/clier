@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
+	appclone "github.com/jakeraft/clier/internal/app/clone"
 	apprun "github.com/jakeraft/clier/internal/app/run"
-	appws "github.com/jakeraft/clier/internal/app/workspace"
-	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +18,7 @@ func newMemberCmd() *cobra.Command {
 		Use:     "member",
 		Short:   "Manage members",
 		GroupID: rootGroupServer,
-		Long: `Manage member resources stored on clier-server.
+		Long: `Manage member resources and member clones.
 
 Server-backed subcommands:
   list, view, create, edit, delete, fork
@@ -27,8 +26,9 @@ Server-backed subcommands:
 Local runtime subcommands:
   clone, run
 
-Use the local runtime subcommands after selecting a member to
-materialize files into the current directory and launch a local run.
+Use ` + "`member clone`" + ` to materialize a local clone under
+` + "`./<owner>/<name>`" + `. Use ` + "`member run`" + ` from that clone root
+to launch a local tmux-based run.
 
 ` + "`member clone`" + ` is one-way: it writes a local runnable worktree,
 but does not sync local file edits back to clier-server. Update server
@@ -278,7 +278,7 @@ func newMemberCloneCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner, name := parseOwnerName(args[0])
-			writer := appws.NewWriter(client, owner)
+			writer := appclone.NewWriter(client, owner)
 			base, err := resolveCloneCreateBase(cloneTarget{
 				Kind:  resourceKindMember,
 				Owner: owner,
@@ -295,7 +295,7 @@ func newMemberCloneCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := appws.SaveCloneMetadata(base, meta); err != nil {
+			if err := appclone.SaveCloneMetadata(base, meta); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
@@ -335,12 +335,12 @@ resources, remove the clone and create it again.`,
 				return fmt.Errorf("get member: %w", err)
 			}
 			repoPath := absBase
-			prepared, err := appws.IsPreparedRoot(member.GitRepoURL, repoPath)
+			prepared, err := appclone.IsPreparedRoot(member.GitRepoURL, repoPath)
 			if err != nil {
 				return err
 			}
 			if !prepared {
-				writer := appws.NewWriter(client, meta.Owner)
+				writer := appclone.NewWriter(client, meta.Owner)
 				if err := writer.PrepareMember(absBase, meta.Name); err != nil {
 					return fmt.Errorf("prepare clone: %w", err)
 				}
@@ -348,7 +348,7 @@ resources, remove the clone and create it again.`,
 				if err != nil {
 					return err
 				}
-				if err := appws.SaveCloneMetadata(absBase, meta); err != nil {
+				if err := appclone.SaveCloneMetadata(absBase, meta); err != nil {
 					return err
 				}
 			}
@@ -361,14 +361,16 @@ resources, remove the clone and create it again.`,
 
 			envVars := buildMemberEnv(runID, member.ID, nil, member.Name)
 			fullCommand := buildFullCommand(envVars, member.Command, repoPath)
-			domainPlans := []domain.MemberPlan{{
+			terminalPlans := []apprun.MemberTerminal{{
 				TeamMemberID: member.ID,
-				MemberName:   member.Name,
-				Terminal:     domain.TerminalPlan{Command: fullCommand},
-				Workspace:    domain.WorkspacePlan{Memberspace: absBase},
+				Name:         member.Name,
+				Window:       0,
+				Memberspace:  absBase,
+				Cwd:          repoPath,
+				Command:      fullCommand,
 			}}
 			runner := apprun.NewRunner(newTerminal())
-			plan, err := runner.Run(absBase, runID, runName, domainPlans)
+			plan, err := runner.Run(absBase, runID, runName, terminalPlans)
 			if err != nil {
 				return err
 			}

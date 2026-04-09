@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"testing"
 
+	appclone "github.com/jakeraft/clier/internal/app/clone"
 	apprun "github.com/jakeraft/clier/internal/app/run"
-	appws "github.com/jakeraft/clier/internal/app/workspace"
 )
 
 func TestResolveRunPlanPath_SearchesCurrentWorkspaceAncestors(t *testing.T) {
@@ -17,7 +17,7 @@ func TestResolveRunPlanPath_SearchesCurrentWorkspaceAncestors(t *testing.T) {
 	if err := apprun.SavePlan(base, runID, plan); err != nil {
 		t.Fatalf("SavePlan: %v", err)
 	}
-	if err := appws.SaveCloneMetadata(base, &appws.CloneMetadata{
+	if err := appclone.SaveCloneMetadata(base, &appclone.CloneMetadata{
 		Kind:  resourceKindMember,
 		Owner: "jakeraft",
 		Name:  "tech-lead",

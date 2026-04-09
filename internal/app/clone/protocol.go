@@ -1,4 +1,4 @@
-package workspace
+package clone
 
 import (
 	"fmt"
@@ -94,13 +94,12 @@ func BuildWorkLogProtocol() string {
 	var b strings.Builder
 
 	b.WriteString("# Work Log Protocol\n\n")
-	b.WriteString("Work logs are operational records, not chat replies.\n")
-	b.WriteString("If you are asked to write, record, post, or leave a note, run `clier run note`.\n")
-	b.WriteString("Use notes to record starts, completions, blockers, and hand-off context.\n")
-	b.WriteString("Keep each note brief and factual. Include status, blockers, and next steps when relevant.\n\n")
-	b.WriteString("Use the command below:\n\n")
+	b.WriteString("Use `clier run note` to record work log entries.\n")
+	b.WriteString("Record a note when you start work, complete work, hit a blocker, or hand off context.\n")
+	b.WriteString("If someone asks you to write, record, post, or leave a note, use `clier run note`.\n")
+	b.WriteString("Keep each note brief and factual.\n")
+	b.WriteString("When a note mentions concrete work, include direct references such as file paths, command names, resource names, or URLs whenever they would help someone continue from the note later.\n\n")
 	b.WriteString("```bash\nclier run note <<'EOF'\n<content>\nEOF\n```\n")
-	b.WriteString("- Example: if someone asks you to leave a note, record a short status update with `clier run note`.\n")
 
 	return b.String()
 }
@@ -125,14 +124,12 @@ func BuildProtocol(teamName, memberName string, relations domain.MemberRelations
 
 	// Communication
 	b.WriteString("\n## Communication\n\n")
-	b.WriteString("Team communication is operational, not conversational.\n")
-	b.WriteString("When you need to contact another team member, run `clier run tell`.\n")
-	b.WriteString("Do not use SendMessage, Agent, or any other built-in tool for team coordination.\n\n")
-	b.WriteString("Use the numeric team member IDs shown below in the `--to` field.\n\n")
-	b.WriteString("Use heredoc form to avoid shell escaping issues:\n\n")
+	b.WriteString("Use `clier run tell` to message another team member.\n")
+	b.WriteString("Use the numeric team member IDs below in `--to`.\n")
+	b.WriteString("Do not use built-in messaging tools for team coordination.\n\n")
 	writeTellCommands(&b, relations, membersByID)
-	b.WriteString("- Replies arrive directly in your terminal input. Do not poll for them.\n")
-	b.WriteString("- Keep each message substantive and action-oriented. Avoid short fragments such as \"ok\" or \"hi\".\n")
+	b.WriteString("- Replies arrive directly in your terminal input.\n")
+	b.WriteString("- Keep each message substantive and action-oriented.\n")
 
 	// Rules
 	b.WriteString("\n## Operating Rules\n\n")

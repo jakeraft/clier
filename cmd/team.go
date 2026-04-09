@@ -5,9 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
+	appclone "github.com/jakeraft/clier/internal/app/clone"
 	apprun "github.com/jakeraft/clier/internal/app/run"
-	appws "github.com/jakeraft/clier/internal/app/workspace"
-	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +19,7 @@ func newTeamCmd() *cobra.Command {
 		Use:     "team",
 		Short:   "Manage teams",
 		GroupID: rootGroupServer,
-		Long: `Manage team resources stored on clier-server.
+		Long: `Manage team resources and team clones.
 
 Server-backed subcommands:
   list, view, create, edit, delete, fork
@@ -28,9 +27,9 @@ Server-backed subcommands:
 Local runtime subcommands:
   clone, run
 
-Use the local runtime subcommands after selecting a team to
-materialize member directories into the current directory and
-launch a local tmux-based run.
+Use ` + "`team clone`" + ` to materialize a local team clone under
+` + "`./<owner>/<name>`" + `. Use ` + "`team run`" + ` from that clone root
+to launch a tmux session with one window per team member.
 
 ` + "`team clone`" + ` is one-way: it writes local member worktrees and
 team protocol files, but does not sync local file edits back to
@@ -249,7 +248,7 @@ func newTeamCloneCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner, name := parseOwnerName(args[0])
-			writer := appws.NewWriter(client, owner)
+			writer := appclone.NewWriter(client, owner)
 			teamBase, err := resolveCloneCreateBase(cloneTarget{
 				Kind:  resourceKindTeam,
 				Owner: owner,
@@ -266,7 +265,7 @@ func newTeamCloneCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := appws.SaveCloneMetadata(teamBase, meta); err != nil {
+			if err := appclone.SaveCloneMetadata(teamBase, meta); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
@@ -312,7 +311,7 @@ resources, remove the clone and create it again.`,
 				return err
 			}
 
-			writer := appws.NewWriter(client, owner)
+			writer := appclone.NewWriter(client, owner)
 			needsPrepare := false
 			memberResponses := make(map[string]*api.MemberResponse, len(team.TeamMembers))
 			for _, tm := range team.TeamMembers {
@@ -322,7 +321,7 @@ resources, remove the clone and create it again.`,
 				}
 				memberResponses[tm.Name] = member
 				memberBase := filepath.Join(teamBase, tm.Name)
-				prepared, err := appws.IsPreparedRoot(member.GitRepoURL, memberBase)
+				prepared, err := appclone.IsPreparedRoot(member.GitRepoURL, memberBase)
 				if err != nil {
 					return err
 				}
@@ -338,7 +337,7 @@ resources, remove the clone and create it again.`,
 				if err != nil {
 					return err
 				}
-				if err := appws.SaveCloneMetadata(teamBase, meta); err != nil {
+				if err := appclone.SaveCloneMetadata(teamBase, meta); err != nil {
 					return err
 				}
 			}
@@ -349,9 +348,9 @@ resources, remove the clone and create it again.`,
 			}
 			runName := apprun.SessionName(team.Name, runID)
 
-			var domainPlans []domain.MemberPlan
+			var terminalPlans []apprun.MemberTerminal
 
-			for _, tm := range team.TeamMembers {
+			for i, tm := range team.TeamMembers {
 				member := memberResponses[tm.Name]
 				memberBase := filepath.Join(teamBase, tm.Name)
 				repoPath := memberBase
@@ -359,16 +358,18 @@ resources, remove the clone and create it again.`,
 				envVars := buildMemberEnv(runID, tm.ID, &team.ID, tm.Name)
 				fullCommand := buildFullCommand(envVars, member.Command, repoPath)
 
-				domainPlans = append(domainPlans, domain.MemberPlan{
+				terminalPlans = append(terminalPlans, apprun.MemberTerminal{
 					TeamMemberID: tm.ID,
-					MemberName:   tm.Name,
-					Terminal:     domain.TerminalPlan{Command: fullCommand},
-					Workspace:    domain.WorkspacePlan{Memberspace: memberBase},
+					Name:         tm.Name,
+					Window:       i,
+					Memberspace:  memberBase,
+					Cwd:          repoPath,
+					Command:      fullCommand,
 				})
 			}
 
 			runner := apprun.NewRunner(newTerminal())
-			plan, err := runner.Run(teamBase, runID, runName, domainPlans)
+			plan, err := runner.Run(teamBase, runID, runName, terminalPlans)
 			if err != nil {
 				return err
 			}

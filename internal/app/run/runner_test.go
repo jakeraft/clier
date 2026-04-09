@@ -4,15 +4,13 @@ import (
 	"errors"
 	"os"
 	"testing"
-
-	"github.com/jakeraft/clier/internal/domain"
 )
 
 type stubLauncher struct {
 	err error
 }
 
-func (l *stubLauncher) Launch(_ *RunPlan, _ []domain.MemberPlan) error {
+func (l *stubLauncher) Launch(_ *RunPlan) error {
 	return l.err
 }
 
@@ -22,9 +20,9 @@ func TestRunnerRun_RemovesRunFileWhenLaunchFails(t *testing.T) {
 	base := t.TempDir()
 	runner := NewRunner(&stubLauncher{err: errors.New("launch failed")})
 
-	_, err := runner.Run(base, "run-123", "alpha", []domain.MemberPlan{{
+	_, err := runner.Run(base, "run-123", "alpha", []MemberTerminal{{
 		TeamMemberID: 1,
-		MemberName:   "leader",
+		Name:         "leader",
 	}})
 	if err == nil {
 		t.Fatal("expected launch failure")

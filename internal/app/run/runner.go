@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/jakeraft/clier/internal/domain"
 )
 
 const (
@@ -55,7 +53,7 @@ type RecordedNote struct {
 
 // Launcher starts a run from a persisted RunPlan.
 type Launcher interface {
-	Launch(plan *RunPlan, members []domain.MemberPlan) error
+	Launch(plan *RunPlan) error
 }
 
 // Runner handles RunPlan creation and execution.
@@ -70,14 +68,14 @@ func NewRunner(launcher Launcher) *Runner {
 
 // Run creates a RunPlan from the given member plans, saves it to
 // {workspaceBase}/.clier/{runID}.json, and launches via tmux.
-func (r *Runner) Run(workspaceBase, runID, sessionName string, plans []domain.MemberPlan) (*RunPlan, error) {
+func (r *Runner) Run(workspaceBase, runID, sessionName string, plans []MemberTerminal) (*RunPlan, error) {
 	plan := NewPlan(runID, sessionName, plans)
 
 	if err := SavePlan(workspaceBase, runID, plan); err != nil {
 		return nil, fmt.Errorf("save plan: %w", err)
 	}
 
-	if err := r.launcher.Launch(plan, plans); err != nil {
+	if err := r.launcher.Launch(plan); err != nil {
 		_ = os.Remove(PlanPath(workspaceBase, runID))
 		return nil, fmt.Errorf("launch: %w", err)
 	}
@@ -85,24 +83,10 @@ func (r *Runner) Run(workspaceBase, runID, sessionName string, plans []domain.Me
 	return plan, nil
 }
 
-// NewPlan builds a persisted RunPlan from concrete member execution plans.
-func NewPlan(runID, sessionName string, plans []domain.MemberPlan) *RunPlan {
+// NewPlan builds a persisted RunPlan from concrete terminal launch specs.
+func NewPlan(runID, sessionName string, plans []MemberTerminal) *RunPlan {
 	memberTerminals := make([]MemberTerminal, len(plans))
-	for i, p := range plans {
-		cwd := p.Workspace.Memberspace
-		if p.Workspace.RepoDir != "" {
-			cwd = filepath.Join(p.Workspace.Memberspace, p.Workspace.RepoDir)
-		}
-		memberTerminals[i] = MemberTerminal{
-			TeamMemberID: p.TeamMemberID,
-			Name:         p.MemberName,
-			Window:       i,
-			Memberspace:  p.Workspace.Memberspace,
-			Cwd:          cwd,
-			Command:      p.Terminal.Command,
-		}
-	}
-
+	copy(memberTerminals, plans)
 	return &RunPlan{
 		RunID:     runID,
 		Session:   sessionName,

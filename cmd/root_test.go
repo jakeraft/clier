@@ -30,10 +30,10 @@ func TestApplyAgentHelp_ScopesStandaloneAgentDescriptions(t *testing.T) {
 	if strings.Contains(root.Long, "`clier run tell`") {
 		t.Fatalf("standalone agent help should not mention tell:\n%s", root.Long)
 	}
-	if !strings.Contains(root.Long, "`clier run note`") {
+	if !strings.Contains(root.Long, "Use `clier run note` to record a work log entry.") {
 		t.Fatalf("standalone agent help should mention note:\n%s", root.Long)
 	}
-	if !strings.Contains(run.Long, "Use `note` to record a work log entry") {
+	if !strings.Contains(run.Long, "Use `note` to record a work log entry.") {
 		t.Fatalf("run long should describe note in standalone scope:\n%s", run.Long)
 	}
 	if strings.Contains(run.Long, "Use `tell` to send a message") {
@@ -59,16 +59,16 @@ func TestApplyAgentHelp_ScopesTeamAgentDescriptions(t *testing.T) {
 
 	applyAgentHelp(root, true)
 
-	if !strings.Contains(root.Long, "`clier run tell`") {
+	if !strings.Contains(root.Long, "Use `clier run tell` to message another team member.") {
 		t.Fatalf("team agent help should mention tell:\n%s", root.Long)
 	}
-	if !strings.Contains(root.Long, "`clier run note`") {
+	if !strings.Contains(root.Long, "Use `clier run note` to record a work log entry.") {
 		t.Fatalf("team agent help should mention note:\n%s", root.Long)
 	}
-	if !strings.Contains(run.Long, "Use `tell` to send a message") {
+	if !strings.Contains(run.Long, "Use `tell` to message another team member.") {
 		t.Fatalf("run long should describe tell in team scope:\n%s", run.Long)
 	}
-	if !strings.Contains(run.Long, "Use `note` to record a work log entry") {
+	if !strings.Contains(run.Long, "Use `note` to record a work log entry.") {
 		t.Fatalf("run long should describe note in team scope:\n%s", run.Long)
 	}
 }

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
-	appws "github.com/jakeraft/clier/internal/app/workspace"
+	appclone "github.com/jakeraft/clier/internal/app/clone"
 )
 
 const (
@@ -19,15 +19,15 @@ const (
 	resourceKindSkill          = "skill"
 )
 
-func resolveCloneFromCWD(expectedKind string) (string, *appws.CloneMetadata, error) {
+func resolveCloneFromCWD(expectedKind string) (string, *appclone.CloneMetadata, error) {
 	base, err := resolveWorkspaceBase()
 	if err != nil {
 		return "", nil, err
 	}
 	for dir := base; ; dir = filepath.Dir(dir) {
-		metaPath := filepath.Join(dir, ".clier", appws.CloneMetadataFile)
+		metaPath := filepath.Join(dir, ".clier", appclone.CloneMetadataFile)
 		if _, err := os.Stat(metaPath); err == nil {
-			meta, err := appws.LoadCloneMetadata(dir)
+			meta, err := appclone.LoadCloneMetadata(dir)
 			if err != nil {
 				return "", nil, err
 			}
@@ -45,17 +45,17 @@ func resolveCloneFromCWD(expectedKind string) (string, *appws.CloneMetadata, err
 }
 
 func cloneMetadataExists(base string) bool {
-	_, err := os.Stat(filepath.Join(base, ".clier", appws.CloneMetadataFile))
+	_, err := os.Stat(filepath.Join(base, ".clier", appclone.CloneMetadataFile))
 	return err == nil
 }
 
-func buildMemberCloneMetadata(client *api.Client, owner, name string) (*appws.CloneMetadata, error) {
+func buildMemberCloneMetadata(client *api.Client, owner, name string) (*appclone.CloneMetadata, error) {
 	member, err := client.GetMember(owner, name)
 	if err != nil {
 		return nil, fmt.Errorf("get member %s/%s: %w", owner, name, err)
 	}
 
-	meta := &appws.CloneMetadata{
+	meta := &appclone.CloneMetadata{
 		Kind:          resourceKindMember,
 		Owner:         member.OwnerLogin,
 		Name:          member.Name,
@@ -73,13 +73,13 @@ func buildMemberCloneMetadata(client *api.Client, owner, name string) (*appws.Cl
 	return meta, nil
 }
 
-func buildTeamCloneMetadata(client *api.Client, owner, name string) (*appws.CloneMetadata, error) {
+func buildTeamCloneMetadata(client *api.Client, owner, name string) (*appclone.CloneMetadata, error) {
 	team, err := client.GetTeam(owner, name)
 	if err != nil {
 		return nil, fmt.Errorf("get team %s/%s: %w", owner, name, err)
 	}
 
-	meta := &appws.CloneMetadata{
+	meta := &appclone.CloneMetadata{
 		Kind:          resourceKindTeam,
 		Owner:         team.OwnerLogin,
 		Name:          team.Name,
@@ -93,7 +93,7 @@ func buildTeamCloneMetadata(client *api.Client, owner, name string) (*appws.Clon
 		if err != nil {
 			return nil, fmt.Errorf("get member %s/%s: %w", tm.Member.Owner, tm.Member.Name, err)
 		}
-		meta.Resources = append(meta.Resources, appws.CloneResourceMetadata{
+		meta.Resources = append(meta.Resources, appclone.CloneResourceMetadata{
 			Kind:          resourceKindMember,
 			Owner:         member.OwnerLogin,
 			Name:          member.Name,
@@ -112,15 +112,15 @@ func buildTeamCloneMetadata(client *api.Client, owner, name string) (*appws.Clon
 	return meta, nil
 }
 
-func memberMaterializedResources(client *api.Client, memberDir string, member *api.MemberResponse) ([]appws.CloneResourceMetadata, error) {
-	var resources []appws.CloneResourceMetadata
+func memberMaterializedResources(client *api.Client, memberDir string, member *api.MemberResponse) ([]appclone.CloneResourceMetadata, error) {
+	var resources []appclone.CloneResourceMetadata
 
 	if member.ClaudeMd != nil {
 		claudeMd, err := client.GetClaudeMd(member.ClaudeMd.Owner, member.ClaudeMd.Name)
 		if err != nil {
 			return nil, fmt.Errorf("get claude md %s/%s: %w", member.ClaudeMd.Owner, member.ClaudeMd.Name, err)
 		}
-		resources = append(resources, appws.CloneResourceMetadata{
+		resources = append(resources, appclone.CloneResourceMetadata{
 			Kind:          resourceKindClaudeMd,
 			Owner:         claudeMd.OwnerLogin,
 			Name:          claudeMd.Name,
@@ -134,7 +134,7 @@ func memberMaterializedResources(client *api.Client, memberDir string, member *a
 		if err != nil {
 			return nil, fmt.Errorf("get claude settings %s/%s: %w", member.ClaudeSettings.Owner, member.ClaudeSettings.Name, err)
 		}
-		resources = append(resources, appws.CloneResourceMetadata{
+		resources = append(resources, appclone.CloneResourceMetadata{
 			Kind:          resourceKindClaudeSettings,
 			Owner:         settings.OwnerLogin,
 			Name:          settings.Name,
@@ -148,7 +148,7 @@ func memberMaterializedResources(client *api.Client, memberDir string, member *a
 		if err != nil {
 			return nil, fmt.Errorf("get skill %s/%s: %w", skillRef.Owner, skillRef.Name, err)
 		}
-		resources = append(resources, appws.CloneResourceMetadata{
+		resources = append(resources, appclone.CloneResourceMetadata{
 			Kind:          resourceKindSkill,
 			Owner:         skill.OwnerLogin,
 			Name:          skill.Name,
@@ -160,7 +160,7 @@ func memberMaterializedResources(client *api.Client, memberDir string, member *a
 	return resources, nil
 }
 
-func sortCloneResources(resources []appws.CloneResourceMetadata) {
+func sortCloneResources(resources []appclone.CloneResourceMetadata) {
 	sort.Slice(resources, func(i, j int) bool {
 		left := cloneMetadataResourceKey(resources[i].Kind, resources[i].Owner, resources[i].Name, resources[i].LocalPath)
 		right := cloneMetadataResourceKey(resources[j].Kind, resources[j].Owner, resources[j].Name, resources[j].LocalPath)

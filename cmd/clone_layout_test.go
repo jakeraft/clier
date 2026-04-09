@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	appws "github.com/jakeraft/clier/internal/app/workspace"
+	appclone "github.com/jakeraft/clier/internal/app/clone"
 )
 
 func TestDefaultCloneBase(t *testing.T) {
@@ -37,7 +37,7 @@ func TestShouldReuseCloneRoot(t *testing.T) {
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	}
-	meta := &appws.CloneMetadata{
+	meta := &appclone.CloneMetadata{
 		Kind:  resourceKindMember,
 		Owner: "jakeraft",
 		Name:  "reviewer",
@@ -46,7 +46,7 @@ func TestShouldReuseCloneRoot(t *testing.T) {
 	if !shouldReuseCloneRoot(target, "/tmp/clier/jakeraft/reviewer", meta) {
 		t.Fatalf("expected matching clone root to be reused")
 	}
-	if shouldReuseCloneRoot(target, "/tmp/clier/jakeraft/reviewer", &appws.CloneMetadata{
+	if shouldReuseCloneRoot(target, "/tmp/clier/jakeraft/reviewer", &appclone.CloneMetadata{
 		Kind:  resourceKindMember,
 		Owner: "other",
 		Name:  "reviewer",
@@ -80,7 +80,7 @@ func TestResolveCloneCreateBase_FailsWhenTargetAlreadyExists(t *testing.T) {
 
 func TestResolveCloneCreateBase_FailsInsideExistingClone(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "jakeraft", "reviewer")
-	if err := appws.SaveCloneMetadata(base, &appws.CloneMetadata{
+	if err := appclone.SaveCloneMetadata(base, &appclone.CloneMetadata{
 		Kind:  resourceKindMember,
 		Owner: "jakeraft",
 		Name:  "reviewer",
@@ -106,7 +106,7 @@ func TestResolveCloneCreateBase_FailsInsideExistingClone(t *testing.T) {
 
 func TestRequireCurrentCloneRoot_RequiresDirectCloneOwner(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "jakeraft", "reviewer")
-	if err := appws.SaveCloneMetadata(base, &appws.CloneMetadata{
+	if err := appclone.SaveCloneMetadata(base, &appclone.CloneMetadata{
 		Kind:  resourceKindMember,
 		Owner: "jakeraft",
 		Name:  "reviewer",
@@ -136,7 +136,7 @@ func TestRequireCurrentCloneRoot_RequiresDirectCloneOwner(t *testing.T) {
 
 func TestRequireCurrentCloneRoot_LoadsCurrentCloneMetadata(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "jakeraft", "reviewer")
-	if err := appws.SaveCloneMetadata(base, &appws.CloneMetadata{
+	if err := appclone.SaveCloneMetadata(base, &appclone.CloneMetadata{
 		Kind:  resourceKindMember,
 		Owner: "jakeraft",
 		Name:  "reviewer",

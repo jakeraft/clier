@@ -7,7 +7,6 @@ import (
 	"time"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
-	"github.com/jakeraft/clier/internal/domain"
 )
 
 // fakeRunner captures tmux commands for verification.
@@ -43,13 +42,13 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	}}
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
-	members := []domain.MemberPlan{
-		{TeamMemberID: 1, MemberName: "leader", Terminal: domain.TerminalPlan{Command: "echo hello"}, Workspace: domain.WorkspacePlan{Memberspace: "/tmp/leader"}},
-		{TeamMemberID: 2, MemberName: "worker", Terminal: domain.TerminalPlan{}, Workspace: domain.WorkspacePlan{Memberspace: "/tmp/worker"}},
+	members := []apprun.MemberTerminal{
+		{TeamMemberID: 1, Name: "leader", Window: 0, Memberspace: "/tmp/leader", Cwd: "/tmp/leader", Command: "echo hello"},
+		{TeamMemberID: 2, Name: "worker", Window: 1, Memberspace: "/tmp/worker", Cwd: "/tmp/worker"},
 	}
 	plan := apprun.NewPlan("s-1", "my-team", members)
 
-	if err := tm.Launch(plan, members); err != nil {
+	if err := tm.Launch(plan); err != nil {
 		t.Fatalf("Launch: %v", err)
 	}
 

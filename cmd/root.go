@@ -99,26 +99,26 @@ var rootCmd = &cobra.Command{
 	Short: "Orchestrate AI coding agent teams in isolated local clones",
 	Long: `Orchestrate AI coding agent teams in isolated local clones.
 
-clier has two command families:
+clier has two user-facing surfaces:
 
-1. Server-backed resource commands
+1. Resource commands
    These talk to clier-server and manage shared resources such as
    members, teams, skills, claude-md files, auth, and discovery.
 
-2. Local runtime commands
-   These work inside the current clone root and manage local materialized
-   files, tmux sessions, run plans, run state, and clone metadata. ` + "`member clone`" + `,
-   ` + "`member run`" + `, ` + "`team clone`" + `, ` + "`team run`" + `, and ` + "`run ...`" + `
-   are local runtime commands.
+2. Clone and run commands
+   These materialize local clones and operate local tmux-based runs.
+   ` + "`member clone`" + `, ` + "`member run`" + `, ` + "`team clone`" + `, ` + "`team run`" + `,
+   and ` + "`run ...`" + ` are all local commands.
 
 A clone root is the directory that directly owns ` + "`.clier/clone.json`" + `.
-Use ` + "`member run`" + ` and ` + "`team run`" + ` from that clone root. Use ` + "`run ...`" + `
-from anywhere inside the clone.
+Use ` + "`member run`" + ` and ` + "`team run`" + ` from that clone root.
+Use ` + "`run ...`" + ` from anywhere inside that clone.
 
-Local clones are one-way materializations from clier-server resources.
-To change server state, use explicit resource commands such as ` + "`member edit`" + `,
-` + "`team edit`" + `, ` + "`claudemd edit`" + `, ` + "`claudesettings edit`" + `,
-and ` + "`skill edit`" + `. To refresh a clone, remove it and clone again.
+Clones are one-way materializations from clier-server resources.
+Local file edits do not sync back to the server. To change server state,
+use explicit resource commands such as ` + "`member edit`" + `, ` + "`team edit`" + `,
+` + "`claudemd edit`" + `, ` + "`claudesettings edit`" + `, and ` + "`skill edit`" + `.
+To refresh a clone, remove it and clone again.
 
 New to clier? Run "clier tutorial" for a step-by-step guide.`,
 	CompletionOptions: cobra.CompletionOptions{
@@ -220,50 +220,24 @@ func filterAgentCommands(root *cobra.Command, teamScoped bool) {
 }
 
 func applyAgentHelp(root *cobra.Command, teamScoped bool) {
-	root.Short = "Agent-scoped clier commands for the current local run"
+	root.Short = "Commands for this run"
 	if teamScoped {
-		root.Long = `Agent-scoped clier commands for the current local team run.
-
-Available commands:
-- ` + "`clier run tell`" + `
-- ` + "`clier run note`" + `
-
-These commands work inside the current team run only. They may be run from
-anywhere inside the current clone and find the owning ` + "`.clier/`" + `
-directory by walking parent directories. They do not manage server
-resources, local clones, or tmux lifecycle.`
+		root.Long = `Use ` + "`clier run tell`" + ` to message another team member.
+Use ` + "`clier run note`" + ` to record a work log entry.`
 	} else {
-		root.Long = `Agent-scoped clier commands for the current local member run.
-
-Available commands:
-- ` + "`clier run note`" + `
-
-This command works inside the current member run only. It may be run from
-anywhere inside the current clone and finds the owning ` + "`.clier/`" + `
-directory by walking parent directories. It does not manage server
-resources, local clones, team coordination, or tmux lifecycle.`
+		root.Long = `Use ` + "`clier run note`" + ` to record a work log entry.`
 	}
 
 	for _, cmd := range root.Commands() {
 		if cmd.Name() != "run" {
 			continue
 		}
-		cmd.Short = "Agent-facing commands for the current local run"
+		cmd.Short = "Commands for this run"
 		if teamScoped {
-			cmd.Long = `Agent-facing commands for the current local team run.
-
-Use ` + "`tell`" + ` to send a message to another member in the run.
-Use ` + "`note`" + ` to record a work log entry in the current run.
-
-These commands may be run from anywhere inside the current clone. They do
-not manage clones, resources, or run lifecycle.`
+			cmd.Long = `Use ` + "`tell`" + ` to message another team member.
+Use ` + "`note`" + ` to record a work log entry.`
 		} else {
-			cmd.Long = `Agent-facing commands for the current local member run.
-
-Use ` + "`note`" + ` to record a work log entry in the current run.
-
-This command set may be used from anywhere inside the current clone. It
-does not manage clones, resources, team communication, or run lifecycle.`
+			cmd.Long = `Use ` + "`note`" + ` to record a work log entry.`
 		}
 	}
 }

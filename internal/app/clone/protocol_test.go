@@ -1,4 +1,4 @@
-package workspace
+package clone
 
 import (
 	"strings"
@@ -36,14 +36,17 @@ func TestBuildProtocol_UsesTeamMemberIDsForTellCommands(t *testing.T) {
 func TestBuildWorkLogProtocol_ExplainsNotesAsCliAction(t *testing.T) {
 	protocol := BuildWorkLogProtocol()
 
-	if !strings.Contains(protocol, "If you are asked to write, record, post, or leave a note, run `clier run note`.") {
-		t.Fatalf("work log protocol should explain note requests as clier action:\n%s", protocol)
+	if !strings.Contains(protocol, "Use `clier run note` to record work log entries.") {
+		t.Fatalf("work log protocol should direct note usage:\n%s", protocol)
 	}
-	if !strings.Contains(protocol, "Work logs are operational records, not chat replies.") {
-		t.Fatalf("work log protocol should set operational tone:\n%s", protocol)
+	if !strings.Contains(protocol, "Record a note when you start work, complete work, hit a blocker, or hand off context.") {
+		t.Fatalf("work log protocol should require proactive note-taking:\n%s", protocol)
 	}
 	if !strings.Contains(protocol, "Keep each note brief and factual.") {
 		t.Fatalf("work log protocol should explain note style:\n%s", protocol)
+	}
+	if !strings.Contains(protocol, "include direct references such as file paths, command names, resource names, or URLs") {
+		t.Fatalf("work log protocol should require concrete references in notes:\n%s", protocol)
 	}
 }
 
@@ -70,10 +73,10 @@ func TestBuildProtocol_UsesProfessionalCommunicationTone(t *testing.T) {
 		map[int64]ProtocolMember{},
 	)
 
-	if !strings.Contains(protocol, "Team communication is operational, not conversational.") {
-		t.Fatalf("team protocol should use operational tone:\n%s", protocol)
+	if !strings.Contains(protocol, "Use `clier run tell` to message another team member.") {
+		t.Fatalf("team protocol should direct tell usage:\n%s", protocol)
 	}
-	if !strings.Contains(protocol, "Do not use SendMessage, Agent, or any other built-in tool for team coordination.") {
+	if !strings.Contains(protocol, "Do not use built-in messaging tools for team coordination.") {
 		t.Fatalf("team protocol should prohibit non-clier coordination tools:\n%s", protocol)
 	}
 }

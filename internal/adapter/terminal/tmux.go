@@ -10,7 +10,6 @@ import (
 	"time"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
-	"github.com/jakeraft/clier/internal/domain"
 )
 
 // TmuxTerminal manages agent terminals using tmux.
@@ -29,8 +28,8 @@ func NewTmuxTerminal() *TmuxTerminal {
 	return t
 }
 
-func (t *TmuxTerminal) Launch(plan *apprun.RunPlan, members []domain.MemberPlan) error {
-	if len(members) == 0 {
+func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
+	if len(plan.Members) == 0 {
 		return errors.New("no members to launch")
 	}
 
@@ -52,7 +51,7 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan, members []domain.MemberPlan)
 	// regardless of user's global tmux config.
 	_, _ = t.runFn("set-option", "-t", sess, "base-index", "0")
 
-	for i, m := range members {
+	for i, m := range plan.Members {
 		win := strconv.Itoa(i)
 
 		if i > 0 {
@@ -67,12 +66,12 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan, members []domain.MemberPlan)
 	}
 
 	// Wait for all members to be ready before returning.
-	for i, m := range members {
-		if m.Terminal.Command == "" {
+	for i, m := range plan.Members {
+		if m.Command == "" {
 			continue
 		}
 		if err := t.waitReady(sess, strconv.Itoa(i), 60*time.Second); err != nil {
-			return fmt.Errorf("wait ready %s: %w", m.MemberName, err)
+			return fmt.Errorf("wait ready %s: %w", m.Name, err)
 		}
 	}
 
@@ -126,12 +125,12 @@ func (t *TmuxTerminal) exitAllWindows(sess string) {
 	}
 }
 
-func (t *TmuxTerminal) setupMemberWindow(sess, win string, m domain.MemberPlan) error {
-	if _, err := t.runFn("rename-window", "-t", sess+":"+win, m.MemberName); err != nil {
+func (t *TmuxTerminal) setupMemberWindow(sess, win string, m apprun.MemberTerminal) error {
+	if _, err := t.runFn("rename-window", "-t", sess+":"+win, m.Name); err != nil {
 		return fmt.Errorf("rename window: %w", err)
 	}
-	if m.Terminal.Command != "" {
-		if err := t.sendKeys(sess, win, m.Terminal.Command); err != nil {
+	if m.Command != "" {
+		if err := t.sendKeys(sess, win, m.Command); err != nil {
 			return fmt.Errorf("send command: %w", err)
 		}
 	}
