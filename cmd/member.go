@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/jakeraft/clier/internal/adapter/terminal"
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	appws "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/domain"
@@ -287,34 +286,20 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			runIDStr := strconv.FormatInt(runID, 10)
 			runName := apprun.SessionName(member.Name, runIDStr)
 
-			runPlanPath := filepath.Join(absBase, ".clier", runIDStr+".json")
+			runPlanPath := apprun.PlanPath(absBase, runIDStr)
 			envVars := buildMemberEnv(runID, member.ID, member.Name, runPlanPath, absBase)
 			projectPath := filepath.Join(absBase, "project")
 			fullCommand := buildFullCommand(envVars, member.Command, projectPath)
-
-			plan := &apprun.RunPlan{
-				Session: runName,
-				Members: []apprun.MemberTerminal{{
-					Name:    member.Name,
-					Window:  0,
-					Cwd:     projectPath,
-					Command: fullCommand,
-				}},
-			}
-
-			if err := apprun.SavePlan(absBase, runIDStr, plan); err != nil {
-				return fmt.Errorf("save plan: %w", err)
-			}
-
-			term := terminal.NewTmuxTerminal(newRefStore())
 			domainPlans := []domain.MemberPlan{{
 				TeamMemberID: member.ID,
 				MemberName:   member.Name,
 				Terminal:     domain.TerminalPlan{Command: fullCommand},
 				Workspace:    domain.WorkspacePlan{Memberspace: absBase},
 			}}
-			if err := term.Launch(runIDStr, plan.Session, domainPlans); err != nil {
-				return fmt.Errorf("launch: %w", err)
+			runner := apprun.NewRunner(newTerminal())
+			plan, err := runner.Run(absBase, runIDStr, runName, domainPlans)
+			if err != nil {
+				return err
 			}
 
 			return printJSON(map[string]any{

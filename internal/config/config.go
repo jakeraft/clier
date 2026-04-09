@@ -16,7 +16,6 @@ const DefaultServerURL = "http://localhost:8080"
 type File struct {
 	ServerURL       string `json:"server_url,omitempty"`
 	CredentialsPath string `json:"credentials_path,omitempty"`
-	RefsPath        string `json:"refs_path,omitempty"`
 }
 
 func defaultBaseDir() (string, error) {
@@ -46,7 +45,6 @@ func Resolve(cfg *File) (*File, error) {
 	out := &File{
 		ServerURL:       DefaultServerURL,
 		CredentialsPath: filepath.Join(base, "credentials.json"),
-		RefsPath:        filepath.Join(base, "refs"),
 	}
 	if cfg == nil {
 		return out, nil
@@ -57,9 +55,6 @@ func Resolve(cfg *File) (*File, error) {
 	}
 	if cfg.CredentialsPath != "" {
 		out.CredentialsPath = expandTilde(base, cfg.CredentialsPath)
-	}
-	if cfg.RefsPath != "" {
-		out.RefsPath = expandTilde(base, cfg.RefsPath)
 	}
 
 	return out, nil

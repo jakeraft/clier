@@ -22,7 +22,6 @@ type RunStore interface {
 
 // Terminal launches and terminates member processes.
 type Terminal interface {
-	Launch(runID, runName string, members []domain.MemberPlan) error
 	Terminate(runID string) error
 	Send(runID, teamMemberID, text string) error
 	Attach(runID string, memberID *string) error

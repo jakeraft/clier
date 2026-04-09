@@ -14,7 +14,6 @@ func TestLoadAndSave(t *testing.T) {
 	want := &File{
 		ServerURL:       "https://api.example.com",
 		CredentialsPath: "/tmp/creds.json",
-		RefsPath:        "/tmp/refs",
 	}
 	if err := Save(path, want); err != nil {
 		t.Fatalf("Save() error = %v", err)
@@ -30,9 +29,6 @@ func TestLoadAndSave(t *testing.T) {
 	}
 	if got.CredentialsPath != want.CredentialsPath {
 		t.Fatalf("CredentialsPath = %q, want %q", got.CredentialsPath, want.CredentialsPath)
-	}
-	if got.RefsPath != want.RefsPath {
-		t.Fatalf("RefsPath = %q, want %q", got.RefsPath, want.RefsPath)
 	}
 }
 
@@ -69,16 +65,12 @@ func TestResolveDefaults(t *testing.T) {
 	if !strings.HasSuffix(got.CredentialsPath, filepath.Join(dotDir, "credentials.json")) {
 		t.Fatalf("CredentialsPath = %q", got.CredentialsPath)
 	}
-	if !strings.HasSuffix(got.RefsPath, filepath.Join(dotDir, "refs")) {
-		t.Fatalf("RefsPath = %q", got.RefsPath)
-	}
 }
 
 func TestResolveOverrides(t *testing.T) {
 	got, err := Resolve(&File{
 		ServerURL:       "https://api.example.com/",
 		CredentialsPath: "~/creds.json",
-		RefsPath:        "/tmp/refs",
 	})
 	if err != nil {
 		t.Fatalf("Resolve() error: %v", err)
@@ -88,8 +80,5 @@ func TestResolveOverrides(t *testing.T) {
 	}
 	if !strings.Contains(got.CredentialsPath, "creds.json") {
 		t.Fatalf("CredentialsPath = %q", got.CredentialsPath)
-	}
-	if got.RefsPath != "/tmp/refs" {
-		t.Fatalf("RefsPath = %q, want %q", got.RefsPath, "/tmp/refs")
 	}
 }

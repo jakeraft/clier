@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/app/run"
 	"github.com/spf13/cobra"
 )
@@ -80,7 +79,7 @@ func newRunStopCmd() *cobra.Command {
 			}
 
 			store := newStore()
-			term := terminal.NewTmuxTerminal(newRefStore())
+			term := newTerminal()
 			svc := run.New(store, term)
 
 			if err := svc.Stop(cmd.Context(), runID); err != nil {
@@ -99,7 +98,7 @@ func newRunAttachCmd() *cobra.Command {
 		Short: "Attach to a running run's terminal",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			term := terminal.NewTmuxTerminal(newRefStore())
+			term := newTerminal()
 
 			var memberID *string
 			if memberFlag != "" {
@@ -142,7 +141,7 @@ Examples:
 			toMemberID := &toMemberIDRaw
 
 			store := newStore()
-			term := terminal.NewTmuxTerminal(newRefStore())
+			term := newTerminal()
 			svc := run.New(store, term)
 
 			if err := svc.Send(cmd.Context(), runID, fromMemberID, toMemberID, content); err != nil {
@@ -180,7 +179,7 @@ func newRunNoteCmd() *cobra.Command {
 			}
 
 			store := newStore()
-			term := terminal.NewTmuxTerminal(newRefStore())
+			term := newTerminal()
 			svc := run.New(store, term)
 
 			if err := svc.Note(cmd.Context(), runID, memberID, content); err != nil {

@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/jakeraft/clier/internal/adapter/terminal"
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	appws "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/domain"
@@ -245,11 +244,10 @@ Each member gets its own tmux window within a single session.`,
 			runIDStr := strconv.FormatInt(runID, 10)
 			runName := apprun.SessionName(team.Name, runIDStr)
 
-			runPlanPath := filepath.Join(absBase, ".clier", runIDStr+".json")
-			var memberTerminals []apprun.MemberTerminal
+			runPlanPath := apprun.PlanPath(absBase, runIDStr)
 			var domainPlans []domain.MemberPlan
 
-			for i, tm := range team.TeamMembers {
+			for _, tm := range team.TeamMembers {
 				member, err := client.GetMember(tm.Member.Owner, tm.Member.Name)
 				if err != nil {
 					return fmt.Errorf("get member %s: %w", tm.Name, err)
@@ -261,13 +259,6 @@ Each member gets its own tmux window within a single session.`,
 				envVars := buildMemberEnv(runID, tm.ID, tm.Name, runPlanPath, memberBase)
 				fullCommand := buildFullCommand(envVars, member.Command, projectPath)
 
-				memberTerminals = append(memberTerminals, apprun.MemberTerminal{
-					Name:    tm.Name,
-					Window:  i,
-					Cwd:     projectPath,
-					Command: fullCommand,
-				})
-
 				domainPlans = append(domainPlans, domain.MemberPlan{
 					TeamMemberID: tm.ID,
 					MemberName:   tm.Name,
@@ -276,18 +267,10 @@ Each member gets its own tmux window within a single session.`,
 				})
 			}
 
-			plan := &apprun.RunPlan{
-				Session: runName,
-				Members: memberTerminals,
-			}
-
-			if err := apprun.SavePlan(absBase, runIDStr, plan); err != nil {
-				return fmt.Errorf("save plan: %w", err)
-			}
-
-			term := terminal.NewTmuxTerminal(newRefStore())
-			if err := term.Launch(runIDStr, plan.Session, domainPlans); err != nil {
-				return fmt.Errorf("launch: %w", err)
+			runner := apprun.NewRunner(newTerminal())
+			plan, err := runner.Run(absBase, runIDStr, runName, domainPlans)
+			if err != nil {
+				return err
 			}
 
 			return printJSON(map[string]any{

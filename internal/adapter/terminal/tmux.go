@@ -1,7 +1,6 @@
 package terminal
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -10,41 +9,32 @@ import (
 	"strings"
 	"time"
 
+	apprun "github.com/jakeraft/clier/internal/app/run"
 	"github.com/jakeraft/clier/internal/domain"
 )
-
-// RefStore persists terminal refs across CLI invocations.
-// The refs map is opaque — each adapter stores its own keys.
-type RefStore interface {
-	SaveRefs(ctx context.Context, runID, memberID string, refs map[string]string) error
-	GetRefs(ctx context.Context, runID, memberID string) (map[string]string, error)
-	GetRunRefs(ctx context.Context, runID string) (map[string]string, error)
-	DeleteRefs(ctx context.Context, runID string) error
-}
 
 // TmuxTerminal manages agent terminals using tmux.
 // One tmux session per clier run, one window per member.
 type TmuxTerminal struct {
-	refs     RefStore
 	runFn    func(args ...string) (string, error)
 	attachFn func(sess string) error
 	sleep    func(d time.Duration)
 }
 
-func NewTmuxTerminal(refs RefStore) *TmuxTerminal {
-	t := &TmuxTerminal{refs: refs}
+func NewTmuxTerminal() *TmuxTerminal {
+	t := &TmuxTerminal{}
 	t.runFn = t.defaultRun
 	t.attachFn = t.defaultAttach
 	t.sleep = time.Sleep
 	return t
 }
 
-func (t *TmuxTerminal) Launch(runID, runName string, members []domain.MemberPlan) error {
+func (t *TmuxTerminal) Launch(runID, planPath string, plan *apprun.RunPlan, members []domain.MemberPlan) error {
 	if len(members) == 0 {
 		return errors.New("no members to launch")
 	}
 
-	sess := runName
+	sess := plan.Session
 
 	// Create tmux session (first window is created automatically).
 	if _, err := t.runFn("new-session", "-d", "-s", sess); err != nil {
@@ -55,15 +45,14 @@ func (t *TmuxTerminal) Launch(runID, runName string, members []domain.MemberPlan
 	defer func() {
 		if !success {
 			_, _ = t.runFn("kill-session", "-t", sess)
-			_, _ = t.runFn("set-environment", "-g", "-u", runEnvKey(sess))
-			_ = t.deleteRefs(runID)
+			_ = t.unregisterRun(runID, sess)
 		}
 	}()
 
-	// Store full run ID in tmux server env so the session-closed hook
-	// can look it up by session name.
-	if _, err := t.runFn("set-environment", "-g", runEnvKey(sess), runID); err != nil {
-		return fmt.Errorf("set run env: %w", err)
+	// tmux keeps an index to the persisted run plan. The plan file remains
+	// the canonical runtime state; tmux env only makes it discoverable by run ID.
+	if err := t.registerRun(runID, sess, planPath); err != nil {
+		return fmt.Errorf("register run: %w", err)
 	}
 
 	// Force base-index 0 on this session so window indices are predictable,
@@ -81,10 +70,6 @@ func (t *TmuxTerminal) Launch(runID, runName string, members []domain.MemberPlan
 
 		if err := t.setupMemberWindow(sess, win, m); err != nil {
 			return err
-		}
-
-		if err := t.saveRefs(runID, strconv.FormatInt(m.TeamMemberID, 10), sess, win); err != nil {
-			return fmt.Errorf("save refs: %w", err)
 		}
 	}
 
@@ -110,38 +95,53 @@ func (t *TmuxTerminal) Launch(runID, runName string, members []domain.MemberPlan
 }
 
 func (t *TmuxTerminal) Send(runID, memberID, text string) error {
-	refs, err := t.getRefs(runID, memberID)
+	plan, err := t.loadPlan(runID)
 	if err != nil {
-		return fmt.Errorf("get refs for %s: %w", memberID, err)
+		return fmt.Errorf("load plan: %w", err)
 	}
-	return t.sendKeys(refs["session"], refs["window"], text)
+	teamMemberID, err := apprun.ParseTeamMemberID(memberID)
+	if err != nil {
+		return err
+	}
+	member, ok := plan.FindMember(teamMemberID)
+	if !ok {
+		return fmt.Errorf("member %s not found in run plan", memberID)
+	}
+	return t.sendKeys(plan.Session, strconv.Itoa(member.Window), text)
 }
 
 func (t *TmuxTerminal) Terminate(runID string) error {
-	refs, err := t.getRunRefs(runID)
+	plan, err := t.loadPlan(runID)
 	if err == nil {
-		sess := refs["session"]
+		sess := plan.Session
 		// Gracefully exit each agent before killing the session.
 		t.exitAllWindows(sess)
 		_, _ = t.runFn("kill-session", "-t", sess)
-		_, _ = t.runFn("set-environment", "-g", "-u", runEnvKey(sess))
+		_ = t.unregisterRun(runID, sess)
+		return nil
 	}
-	return t.deleteRefs(runID)
+
+	// If the plan index is already gone, termination is still idempotent.
+	return nil
 }
 
 func (t *TmuxTerminal) Attach(runID string, memberID *string) error {
-	refs, err := t.getRunRefs(runID)
+	plan, err := t.loadPlan(runID)
 	if err != nil {
-		return fmt.Errorf("get run refs: %w", err)
+		return fmt.Errorf("load plan: %w", err)
 	}
-	sess := refs["session"]
+	sess := plan.Session
 
 	if memberID != nil {
-		memberRefs, err := t.getRefs(runID, *memberID)
+		teamMemberID, err := apprun.ParseTeamMemberID(*memberID)
 		if err != nil {
-			return fmt.Errorf("get member refs: %w", err)
+			return err
 		}
-		if _, err := t.runFn("select-window", "-t", sess+":"+memberRefs["window"]); err != nil {
+		member, ok := plan.FindMember(teamMemberID)
+		if !ok {
+			return fmt.Errorf("member %s not found in run plan", *memberID)
+		}
+		if _, err := t.runFn("select-window", "-t", sess+":"+strconv.Itoa(member.Window)); err != nil {
 			return fmt.Errorf("select window: %w", err)
 		}
 	}
@@ -175,32 +175,55 @@ func (t *TmuxTerminal) setupMemberWindow(sess, win string, m domain.MemberPlan) 
 	return nil
 }
 
-// persistence — delegated to RefStore
-
-func (t *TmuxTerminal) saveRefs(runID, memberID, sess, win string) error {
-	return t.refs.SaveRefs(context.Background(), runID, memberID, map[string]string{
-		"session": sess,
-		"window":  win,
-	})
+func (t *TmuxTerminal) registerRun(runID, sess, planPath string) error {
+	if _, err := t.runFn("set-environment", "-g", runEnvKey(sess), runID); err != nil {
+		return err
+	}
+	if _, err := t.runFn("set-environment", "-g", runPlanEnvKey(runID), planPath); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (t *TmuxTerminal) getRefs(runID, memberID string) (map[string]string, error) {
-	return t.refs.GetRefs(context.Background(), runID, memberID)
+func (t *TmuxTerminal) unregisterRun(runID, sess string) error {
+	_, _ = t.runFn("set-environment", "-g", "-u", runEnvKey(sess))
+	_, _ = t.runFn("set-environment", "-g", "-u", runPlanEnvKey(runID))
+	return nil
 }
 
-func (t *TmuxTerminal) getRunRefs(runID string) (map[string]string, error) {
-	return t.refs.GetRunRefs(context.Background(), runID)
+func (t *TmuxTerminal) loadPlan(runID string) (*apprun.RunPlan, error) {
+	planPath, err := t.lookupEnv(runPlanEnvKey(runID))
+	if err != nil {
+		return nil, err
+	}
+	plan, err := apprun.LoadPlanFromPath(planPath)
+	if err != nil {
+		return nil, err
+	}
+	return plan, nil
 }
 
-func (t *TmuxTerminal) deleteRefs(runID string) error {
-	return t.refs.DeleteRefs(context.Background(), runID)
+func (t *TmuxTerminal) lookupEnv(key string) (string, error) {
+	out, err := t.runFn("show-environment", "-g", key)
+	if err != nil {
+		return "", err
+	}
+	prefix := key + "="
+	if !strings.HasPrefix(out, prefix) {
+		return "", fmt.Errorf("unexpected tmux env value for %s", key)
+	}
+	value := strings.TrimPrefix(out, prefix)
+	if value == "" {
+		return "", fmt.Errorf("empty tmux env value for %s", key)
+	}
+	return value, nil
 }
 
 // ensureSessionClosedHook registers a global tmux hook (idempotent) that
 // handles cleanup for any clier run. It looks up the full run ID from
 // a tmux server env var keyed by session name, then calls "clier run stop".
 func (t *TmuxTerminal) ensureSessionClosedHook() error {
-	hookCmd := `run-shell 'ID=$(tmux show-environment -g CLIER_RUN_#{hook_session_name} 2>/dev/null | cut -d= -f2); [ -n "$ID" ] && clier run stop "$ID" && tmux set-environment -g -u CLIER_RUN_#{hook_session_name}'`
+	hookCmd := `run-shell 'ID=$(tmux show-environment -g CLIER_RUN_#{hook_session_name} 2>/dev/null | cut -d= -f2); [ -n "$ID" ] && clier run stop "$ID"'`
 	_, err := t.runFn("set-hook", "-g", "session-closed", hookCmd)
 	return err
 }
@@ -261,4 +284,8 @@ func (t *TmuxTerminal) defaultRun(args ...string) (string, error) {
 
 func runEnvKey(sess string) string {
 	return "CLIER_RUN_" + sess
+}
+
+func runPlanEnvKey(runID string) string {
+	return "CLIER_RUN_PLAN_" + runID
 }

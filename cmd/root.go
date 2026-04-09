@@ -69,8 +69,8 @@ func configPath() string {
 	return path
 }
 
-func newRefStore() *terminal.LocalRefStore {
-	return terminal.NewLocalRefStore(currentConfig().RefsPath)
+func newTerminal() *terminal.TmuxTerminal {
+	return terminal.NewTmuxTerminal()
 }
 
 // requireLogin loads credentials and returns login.

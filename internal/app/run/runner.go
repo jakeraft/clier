@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/jakeraft/clier/internal/domain"
@@ -14,56 +15,72 @@ import (
 // It captures the tmux session layout so that subsequent commands
 // (attach, stop) can find the running processes.
 type RunPlan struct {
+	RunID   string           `json:"run_id"`
 	Session string           `json:"session"`
 	Members []MemberTerminal `json:"members"`
 }
 
 // MemberTerminal maps a member to its tmux window and launch command.
 type MemberTerminal struct {
-	Name    string `json:"name"`
-	Window  int    `json:"window"`
-	Cwd     string `json:"cwd"`
-	Command string `json:"command"`
+	TeamMemberID int64  `json:"team_member_id"`
+	Name         string `json:"name"`
+	Window       int    `json:"window"`
+	Memberspace  string `json:"memberspace"`
+	Cwd          string `json:"cwd"`
+	Command      string `json:"command"`
 }
 
-// Runner handles RunPlan creation and tmux execution.
-// It reuses the existing Terminal interface for tmux operations.
+// Launcher starts a run using a persisted RunPlan.
+type Launcher interface {
+	Launch(runID, planPath string, plan *RunPlan, members []domain.MemberPlan) error
+}
+
+// Runner handles RunPlan creation and execution.
 type Runner struct {
-	terminal Terminal
+	launcher Launcher
 }
 
-// NewRunner creates a Runner with the given terminal adapter.
-func NewRunner(term Terminal) *Runner {
-	return &Runner{terminal: term}
+// NewRunner creates a Runner with the given launcher adapter.
+func NewRunner(launcher Launcher) *Runner {
+	return &Runner{launcher: launcher}
 }
 
 // Run creates a RunPlan from the given member plans, saves it to
 // {workspaceBase}/.clier/{runID}.json, and launches via tmux.
-func (r *Runner) Run(workspaceBase, runID, sessionName string, plans []domain.MemberPlan) error {
+func (r *Runner) Run(workspaceBase, runID, sessionName string, plans []domain.MemberPlan) (*RunPlan, error) {
+	plan := NewPlan(runID, sessionName, plans)
+	planPath := PlanPath(workspaceBase, runID)
+
+	if err := SavePlan(workspaceBase, runID, plan); err != nil {
+		return nil, fmt.Errorf("save plan: %w", err)
+	}
+
+	if err := r.launcher.Launch(runID, planPath, plan, plans); err != nil {
+		return nil, fmt.Errorf("launch: %w", err)
+	}
+
+	return plan, nil
+}
+
+// NewPlan builds a persisted RunPlan from concrete member execution plans.
+func NewPlan(runID, sessionName string, plans []domain.MemberPlan) *RunPlan {
 	memberTerminals := make([]MemberTerminal, len(plans))
 	for i, p := range plans {
 		memberTerminals[i] = MemberTerminal{
-			Name:    p.MemberName,
-			Window:  i,
-			Cwd:     p.Workspace.Memberspace,
-			Command: p.Terminal.Command,
+			TeamMemberID: p.TeamMemberID,
+			Name:         p.MemberName,
+			Window:       i,
+			Memberspace:  p.Workspace.Memberspace,
+			Cwd:          filepath.Join(p.Workspace.Memberspace, "project"),
+			Command:      p.Terminal.Command,
 		}
 	}
 
-	plan := &RunPlan{
+	return &RunPlan{
+		RunID:   runID,
 		Session: sessionName,
 		Members: memberTerminals,
 	}
-
-	if err := SavePlan(workspaceBase, runID, plan); err != nil {
-		return fmt.Errorf("save plan: %w", err)
-	}
-
-	if err := r.terminal.Launch(runID, sessionName, plans); err != nil {
-		return fmt.Errorf("launch: %w", err)
-	}
-
-	return nil
 }
 
 // SavePlan writes the RunPlan to {workspaceBase}/.clier/{runID}.json.
@@ -73,7 +90,7 @@ func SavePlan(workspaceBase, runID string, plan *RunPlan) error {
 		return fmt.Errorf("create plan dir: %w", err)
 	}
 
-	path := filepath.Join(dir, runID+".json")
+	path := PlanPath(workspaceBase, runID)
 	data, err := json.MarshalIndent(plan, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal plan: %w", err)
@@ -81,9 +98,14 @@ func SavePlan(workspaceBase, runID string, plan *RunPlan) error {
 	return os.WriteFile(path, data, 0644)
 }
 
+// PlanPath returns the absolute path of a run plan file under a workspace.
+func PlanPath(workspaceBase, runID string) string {
+	return filepath.Join(workspaceBase, ".clier", runID+".json")
+}
+
 // LoadPlan reads a saved RunPlan from {workspaceBase}/.clier/{runID}.json.
 func LoadPlan(workspaceBase, runID string) (*RunPlan, error) {
-	path := filepath.Join(workspaceBase, ".clier", runID+".json")
+	path := PlanPath(workspaceBase, runID)
 	return LoadPlanFromPath(path)
 }
 
@@ -111,4 +133,23 @@ func SessionName(name, runID string) string {
 		short = short[:8]
 	}
 	return n + "-" + short
+}
+
+// FindMember finds the terminal slot for a team member in the run plan.
+func (p *RunPlan) FindMember(teamMemberID int64) (*MemberTerminal, bool) {
+	for i := range p.Members {
+		if p.Members[i].TeamMemberID == teamMemberID {
+			return &p.Members[i], true
+		}
+	}
+	return nil, false
+}
+
+// ParseTeamMemberID converts a command-line member ID to int64.
+func ParseTeamMemberID(raw string) (int64, error) {
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid team member id %q: %w", raw, err)
+	}
+	return id, nil
 }
