@@ -1,30 +1,23 @@
 GO ?= go
 GOLANGCI_LINT ?= golangci-lint
-GORELEASER ?= goreleaser
 
-.PHONY: help bootstrap check fmt lint test build install run ci release
+.PHONY: help check fmt lint test build install run ci
 
 help:
 	@printf '%s\n' \
-		'First time:' \
-		'  make bootstrap  Install local developer tools and clier itself' \
+		'Dev quality:' \
+		'  make fmt         Format Go sources' \
+		'  make lint        Run golangci-lint' \
+		'  make test        Run go test ./...' \
+		'  make build       Run go build ./...' \
+		'  make check       Run lint, test, and build locally' \
 		'' \
-		'Daily workflow:' \
-		'  make fmt        Format Go sources' \
-		'  make check      Run lint, test, and build locally' \
-		'  make run        Run clier with go run .' \
+		'Local execution:' \
+		'  make run         Run clier with go run .' \
+		'  make install     Install clier with go install .' \
 		'' \
-		'CI and release:' \
-		'  make ci         Run the CI command set' \
-		'  make release    Build a snapshot release with goreleaser' \
-		'' \
-		'Individual commands:' \
-		'  make lint       Run golangci-lint' \
-		'  make test       Run go test ./...' \
-		'  make build      Run go build ./...' \
-		'  make install    Install clier with go install .'
-
-bootstrap: install
+		'CI:' \
+		'  make ci          Run the CI command set'
 
 check: lint test build
 
@@ -47,6 +40,3 @@ run:
 	$(GO) run .
 
 ci: check
-
-release:
-	$(GORELEASER) release --snapshot --clean
