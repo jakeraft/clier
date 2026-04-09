@@ -17,7 +17,6 @@ type File struct {
 	ServerURL       string `json:"server_url,omitempty"`
 	CredentialsPath string `json:"credentials_path,omitempty"`
 	RefsPath        string `json:"refs_path,omitempty"`
-	WorkspacesPath  string `json:"workspaces_path,omitempty"`
 }
 
 func defaultBaseDir() (string, error) {
@@ -48,7 +47,6 @@ func Resolve(cfg *File) (*File, error) {
 		ServerURL:       DefaultServerURL,
 		CredentialsPath: filepath.Join(base, "credentials.json"),
 		RefsPath:        filepath.Join(base, "refs"),
-		WorkspacesPath:  filepath.Join(base, "workspaces"),
 	}
 	if cfg == nil {
 		return out, nil
@@ -62,9 +60,6 @@ func Resolve(cfg *File) (*File, error) {
 	}
 	if cfg.RefsPath != "" {
 		out.RefsPath = expandTilde(base, cfg.RefsPath)
-	}
-	if cfg.WorkspacesPath != "" {
-		out.WorkspacesPath = expandTilde(base, cfg.WorkspacesPath)
 	}
 
 	return out, nil
