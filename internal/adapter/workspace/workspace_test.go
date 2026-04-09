@@ -37,8 +37,8 @@ func TestWorkspace(t *testing.T) {
 				t.Fatalf("Prepare: %v", err)
 			}
 
-			// WorkDir (memberspace/project) created
-			workDir := filepath.Join(memberspace, "project")
+			// WorkDir (memberspace) created
+			workDir := memberspace
 			if _, err := os.Stat(workDir); err != nil {
 				t.Errorf("workdir not created: %v", err)
 			}

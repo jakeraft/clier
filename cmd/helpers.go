@@ -1,30 +1,36 @@
 package cmd
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
 )
 
 // buildMemberEnv returns the environment variables for a member agent.
-// runID is the int64 server-assigned run ID; teamMemberID is the int64 member ID.
-func buildMemberEnv(runID int64, teamMemberID int64, memberName, runPlanPath, memberspace string) map[string]string {
-	return map[string]string{
-		"CLIER_RUN_PLAN":      runPlanPath,
-		"CLIER_RUN_ID":        strconv.FormatInt(runID, 10),
+// runID is a locally generated run ID; teamMemberID is the int64 member ID.
+// teamID is set only for agents launched as part of a team run.
+func buildMemberEnv(runID string, teamMemberID int64, teamID *int64, memberName string) map[string]string {
+	env := map[string]string{
+		"CLIER_RUN_ID":        runID,
 		"CLIER_MEMBER_ID":     strconv.FormatInt(teamMemberID, 10),
 		"CLIER_AGENT":         "true",
-		"CLAUDE_CONFIG_DIR":   filepath.Join(memberspace, ".claude"),
 		"GIT_AUTHOR_NAME":     memberName,
 		"GIT_AUTHOR_EMAIL":    "noreply@clier.com",
 		"GIT_COMMITTER_NAME":  memberName,
 		"GIT_COMMITTER_EMAIL": "noreply@clier.com",
 	}
+	if teamID != nil {
+		env["CLIER_TEAM_ID"] = strconv.FormatInt(*teamID, 10)
+	}
+	return env
 }
 
 // buildFullCommand assembles a shell command with env exports, cd, and the agent command.
@@ -62,18 +68,19 @@ func resolveRunPlan(runID string) (*apprun.RunPlan, error) {
 	return plan, nil
 }
 
-func resolveRunPlanPath(runID string) (string, error) {
-	if planPath := strings.TrimSpace(os.Getenv("CLIER_RUN_PLAN")); planPath != "" {
-		plan, err := apprun.LoadPlanFromPath(planPath)
-		if err != nil {
-			return "", fmt.Errorf("load CLIER_RUN_PLAN: %w", err)
-		}
-		if runID != "" && plan.RunID != "" && plan.RunID != runID {
-			return "", fmt.Errorf("CLIER_RUN_PLAN points to run %s, not %s", plan.RunID, runID)
-		}
-		return planPath, nil
+func saveRunPlan(runID string, plan *apprun.RunPlan) error {
+	runtimeDir, err := resolveRuntimeDir()
+	if err != nil {
+		return err
 	}
+	if runtimeDir == "" {
+		return fmt.Errorf("runtime dir not found in current clone")
+	}
+	workspaceBase := filepath.Dir(runtimeDir)
+	return apprun.SavePlan(workspaceBase, runID, plan)
+}
 
+func resolveRunPlanPath(runID string) (string, error) {
 	base, err := resolveWorkspaceBase()
 	if err != nil {
 		return "", err
@@ -89,5 +96,32 @@ func resolveRunPlanPath(runID string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("run plan %s not found in current workspace", runID)
+	return "", fmt.Errorf("run plan %s not found in current clone", runID)
+}
+
+func resolveRuntimeDir() (string, error) {
+	base, err := resolveWorkspaceBase()
+	if err != nil {
+		return "", err
+	}
+	for dir := base; ; dir = filepath.Dir(dir) {
+		runtimeDir := filepath.Join(dir, ".clier")
+		if stat, err := os.Stat(runtimeDir); err == nil && stat.IsDir() {
+			return runtimeDir, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+	}
+
+	return "", nil
+}
+
+func newRunID() (string, error) {
+	var suffix [4]byte
+	if _, err := rand.Read(suffix[:]); err != nil {
+		return "", fmt.Errorf("generate run id: %w", err)
+	}
+	return time.Now().UTC().Format("20060102T150405") + "-" + hex.EncodeToString(suffix[:]), nil
 }

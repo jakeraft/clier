@@ -17,13 +17,13 @@ const (
 // Execution plan is saved locally to .clier/{RUN_ID}.json.
 // Run stores only status and communication history (Messages, Notes).
 type Run struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
-	UserID    int64     `json:"user_id"`
-	TeamID    *int64    `json:"team_id"`    // nullable
-	MemberID  *int64    `json:"member_id"`  // nullable
-	Status    RunStatus `json:"status"`
-	StartedAt time.Time `json:"started_at"`
+	ID        int64      `json:"id"`
+	Name      string     `json:"name"`
+	UserID    int64      `json:"user_id"`
+	TeamID    *int64     `json:"team_id"`   // nullable
+	MemberID  *int64     `json:"member_id"` // nullable
+	Status    RunStatus  `json:"status"`
+	StartedAt time.Time  `json:"started_at"`
 	StoppedAt *time.Time `json:"stopped_at"`
 }
 
@@ -138,12 +138,13 @@ type TerminalPlan struct {
 // WorkspacePlan holds the filesystem setup for a member's isolated environment.
 type WorkspacePlan struct {
 	Memberspace string      `json:"memberspace"`
+	RepoDir     string      `json:"repo_dir,omitempty"`
 	Files       []FileEntry `json:"files"`
 	GitRepoURL  string      `json:"git_repo_url"`
 }
 
 // FileEntry is a config file to write to a member's workspace.
 type FileEntry struct {
-	Path    string `json:"path"`    // relative to memberspace
+	Path    string `json:"path"` // relative to memberspace
 	Content string `json:"content"`
 }

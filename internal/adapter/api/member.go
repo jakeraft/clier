@@ -18,6 +18,8 @@ type MemberResponse struct {
 	Visibility       int           `json:"visibility"`
 	IsFork           bool          `json:"is_fork"`
 	ForkID           *int64        `json:"fork_id,omitempty"`
+	ForkName         string        `json:"fork_name"`
+	ForkOwnerLogin   string        `json:"fork_owner_login"`
 	ForkCount        int           `json:"fork_count"`
 	LatestVersion    *int          `json:"latest_version,omitempty"`
 	CreatedAt        time.Time     `json:"created_at"`

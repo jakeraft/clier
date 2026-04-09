@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/spf13/cobra"
 )
 
@@ -10,8 +11,9 @@ func init() {
 
 func newClaudeSettingsCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "claude-settings",
-		Short: "Manage Claude settings.json files",
+		Use:     "claude-settings",
+		Short:   "Manage Claude settings.json files",
+		GroupID: rootGroupServer,
 	}
 	cmd.AddCommand(newClaudeSettingsListCmd())
 	cmd.AddCommand(newClaudeSettingsViewCmd())
@@ -71,9 +73,9 @@ func newClaudeSettingsCreateCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			resp, err := client.CreateClaudeSettings(owner, map[string]string{
-				"name":    name,
-				"content": content,
+			resp, err := client.CreateClaudeSettings(owner, api.ClaudeSettingsMutationRequest{
+				Name:    name,
+				Content: content,
 			})
 			if err != nil {
 				return err
@@ -98,13 +100,19 @@ func newClaudeSettingsEditCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-
-			body := map[string]string{}
+			current, err := client.GetClaudeSettings(owner, args[0])
+			if err != nil {
+				return err
+			}
+			body := api.ClaudeSettingsMutationRequest{
+				Name:    current.Name,
+				Content: current.Content,
+			}
 			if cmd.Flags().Changed("name") {
-				body["name"] = name
+				body.Name = name
 			}
 			if cmd.Flags().Changed("content") {
-				body["content"] = content
+				body.Content = content
 			}
 
 			resp, err := client.UpdateClaudeSettings(owner, args[0], body)

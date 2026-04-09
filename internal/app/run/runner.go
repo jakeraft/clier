@@ -7,17 +7,27 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-// RunPlan is the execution plan saved to .clier/{RUN_ID}.json.
-// It captures the tmux session layout so that subsequent commands
-// (attach, stop) can find the running processes.
+const (
+	StatusRunning = "running"
+	StatusStopped = "stopped"
+)
+
+// RunPlan is the persisted local run record saved to .clier/{RUN_ID}.json.
+// It captures both the tmux execution plan and mutable runtime state.
 type RunPlan struct {
-	RunID   string           `json:"run_id"`
-	Session string           `json:"session"`
-	Members []MemberTerminal `json:"members"`
+	RunID     string            `json:"run_id"`
+	Session   string            `json:"session"`
+	Members   []MemberTerminal  `json:"members"`
+	Status    string            `json:"status"`
+	StartedAt time.Time         `json:"started_at"`
+	StoppedAt *time.Time        `json:"stopped_at,omitempty"`
+	Messages  []RecordedMessage `json:"messages,omitempty"`
+	Notes     []RecordedNote    `json:"notes,omitempty"`
 }
 
 // MemberTerminal maps a member to its tmux window and launch command.
@@ -28,6 +38,19 @@ type MemberTerminal struct {
 	Memberspace  string `json:"memberspace"`
 	Cwd          string `json:"cwd"`
 	Command      string `json:"command"`
+}
+
+type RecordedMessage struct {
+	FromTeamMemberID *int64    `json:"from_team_member_id,omitempty"`
+	ToTeamMemberID   *int64    `json:"to_team_member_id,omitempty"`
+	Content          string    `json:"content"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+type RecordedNote struct {
+	TeamMemberID *int64    `json:"team_member_id,omitempty"`
+	Content      string    `json:"content"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 // Launcher starts a run from a persisted RunPlan.
@@ -55,6 +78,7 @@ func (r *Runner) Run(workspaceBase, runID, sessionName string, plans []domain.Me
 	}
 
 	if err := r.launcher.Launch(plan, plans); err != nil {
+		_ = os.Remove(PlanPath(workspaceBase, runID))
 		return nil, fmt.Errorf("launch: %w", err)
 	}
 
@@ -65,20 +89,26 @@ func (r *Runner) Run(workspaceBase, runID, sessionName string, plans []domain.Me
 func NewPlan(runID, sessionName string, plans []domain.MemberPlan) *RunPlan {
 	memberTerminals := make([]MemberTerminal, len(plans))
 	for i, p := range plans {
+		cwd := p.Workspace.Memberspace
+		if p.Workspace.RepoDir != "" {
+			cwd = filepath.Join(p.Workspace.Memberspace, p.Workspace.RepoDir)
+		}
 		memberTerminals[i] = MemberTerminal{
 			TeamMemberID: p.TeamMemberID,
 			Name:         p.MemberName,
 			Window:       i,
 			Memberspace:  p.Workspace.Memberspace,
-			Cwd:          filepath.Join(p.Workspace.Memberspace, "project"),
+			Cwd:          cwd,
 			Command:      p.Terminal.Command,
 		}
 	}
 
 	return &RunPlan{
-		RunID:   runID,
-		Session: sessionName,
-		Members: memberTerminals,
+		RunID:     runID,
+		Session:   sessionName,
+		Members:   memberTerminals,
+		Status:    StatusRunning,
+		StartedAt: time.Now(),
 	}
 }
 
@@ -144,6 +174,39 @@ func (p *RunPlan) FindMember(teamMemberID int64) (*MemberTerminal, bool) {
 	return nil, false
 }
 
+func (p *RunPlan) AddMessage(fromTeamMemberID, toTeamMemberID *int64, content string) error {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return fmt.Errorf("message content must not be empty")
+	}
+	p.Messages = append(p.Messages, RecordedMessage{
+		FromTeamMemberID: cloneInt64Ptr(fromTeamMemberID),
+		ToTeamMemberID:   cloneInt64Ptr(toTeamMemberID),
+		Content:          content,
+		CreatedAt:        time.Now(),
+	})
+	return nil
+}
+
+func (p *RunPlan) AddNote(teamMemberID *int64, content string) error {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return fmt.Errorf("note content must not be empty")
+	}
+	p.Notes = append(p.Notes, RecordedNote{
+		TeamMemberID: cloneInt64Ptr(teamMemberID),
+		Content:      content,
+		CreatedAt:    time.Now(),
+	})
+	return nil
+}
+
+func (p *RunPlan) MarkStopped() {
+	now := time.Now()
+	p.Status = StatusStopped
+	p.StoppedAt = &now
+}
+
 // ParseTeamMemberID converts a command-line member ID to int64.
 func ParseTeamMemberID(raw string) (int64, error) {
 	id, err := strconv.ParseInt(raw, 10, 64)
@@ -151,4 +214,12 @@ func ParseTeamMemberID(raw string) (int64, error) {
 		return 0, fmt.Errorf("invalid team member id %q: %w", raw, err)
 	}
 	return id, nil
+}
+
+func cloneInt64Ptr(v *int64) *int64 {
+	if v == nil {
+		return nil
+	}
+	copied := *v
+	return &copied
 }

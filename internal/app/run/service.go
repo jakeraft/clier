@@ -1,24 +1,12 @@
 package run
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
-
-	"github.com/jakeraft/clier/internal/domain"
 )
-
-// RunStore persists Run lifecycle state.
-type RunStore interface {
-	// Run CRUD
-	CreateRun(ctx context.Context, run *domain.Run) error
-	GetRun(ctx context.Context, id int64) (domain.Run, error)
-	UpdateRunStatus(ctx context.Context, run *domain.Run) error
-	CreateMessage(ctx context.Context, msg *domain.Message) error
-	CreateNote(ctx context.Context, n *domain.Note) error
-}
 
 // Terminal launches and terminates member processes.
 type Terminal interface {
@@ -28,45 +16,38 @@ type Terminal interface {
 
 // Service orchestrates run messaging and lifecycle.
 type Service struct {
-	store    RunStore
 	terminal Terminal
+	sleep    func(time.Duration)
 }
 
 // New creates a run Service.
-func New(store RunStore, term Terminal) *Service {
-	return &Service{store: store, terminal: term}
+func New(term Terminal) *Service {
+	return &Service{
+		terminal: term,
+		sleep:    time.Sleep,
+	}
 }
 
-// Stop terminates a running execution and updates status.
-func (s *Service) Stop(ctx context.Context, runID int64, plan *RunPlan) error {
-	r, err := s.store.GetRun(ctx, runID)
-	if err != nil {
-		return fmt.Errorf("get run: %w", err)
-	}
-
+// Stop terminates a running execution.
+func (s *Service) Stop(plan *RunPlan) error {
 	if err := s.terminal.Terminate(plan); err != nil {
-		return fmt.Errorf("terminate terminal %s: %w", strconv.FormatInt(runID, 10), err)
-	}
-
-	r.Stop()
-	if err := s.store.UpdateRunStatus(ctx, &r); err != nil {
-		return fmt.Errorf("update run status: %w", err)
+		return fmt.Errorf("terminate terminal %s: %w", plan.RunID, err)
 	}
 
 	// Allow OS to release file handles from terminated processes.
-	time.Sleep(2 * time.Second)
+	s.sleep(2 * time.Second)
 
 	return nil
 }
 
-// Send delivers a message to the recipient's terminal, then persists it.
-// Delivery happens first so that a bad recipient fails before anything is saved.
-func (s *Service) Send(ctx context.Context, runID int64, plan *RunPlan, fromTeamMemberID, toTeamMemberID *int64, content string) error {
-	if _, err := s.store.GetRun(ctx, runID); err != nil {
-		return fmt.Errorf("get run: %w", err)
-	}
+// Send delivers a message to the recipient's terminal.
+func (s *Service) Send(plan *RunPlan, fromTeamMemberID, toTeamMemberID *int64, content string) error {
 	if toTeamMemberID == nil {
 		return errors.New("recipient team member id is required")
+	}
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return errors.New("message content must not be empty")
 	}
 
 	text := content
@@ -77,29 +58,14 @@ func (s *Service) Send(ctx context.Context, runID int64, plan *RunPlan, fromTeam
 	if err := s.terminal.Send(plan, *toTeamMemberID, text); err != nil {
 		return fmt.Errorf("deliver message: %w", err)
 	}
-
-	msg, err := domain.NewMessage(runID, fromTeamMemberID, toTeamMemberID, content)
-	if err != nil {
-		return fmt.Errorf("new message: %w", err)
-	}
-	if err := s.store.CreateMessage(ctx, msg); err != nil {
-		return fmt.Errorf("save message: %w", err)
-	}
 	return nil
 }
 
-// Note persists a progress entry posted by a team member.
-func (s *Service) Note(ctx context.Context, runID int64, teamMemberID *int64, content string) error {
-	if _, err := s.store.GetRun(ctx, runID); err != nil {
-		return fmt.Errorf("get run: %w", err)
-	}
-
-	n, err := domain.NewNote(runID, teamMemberID, content)
-	if err != nil {
-		return fmt.Errorf("new note: %w", err)
-	}
-	if err := s.store.CreateNote(ctx, n); err != nil {
-		return fmt.Errorf("save note: %w", err)
+// Note validates a progress entry posted by a team member.
+func (s *Service) Note(teamMemberID *int64, content string) error {
+	_ = teamMemberID
+	if strings.TrimSpace(content) == "" {
+		return errors.New("note content must not be empty")
 	}
 	return nil
 }

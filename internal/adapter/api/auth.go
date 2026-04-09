@@ -20,11 +20,15 @@ type DevicePollResponse struct {
 
 // UserResponse is the server's JSON representation of the current user.
 type UserResponse struct {
-	ID        int64     `json:"id"`
-	Login     string    `json:"login"`
-	Email     *string   `json:"email,omitempty"`
-	AvatarURL *string   `json:"avatar_url,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         int64     `json:"id"`
+	Login      string    `json:"login"`
+	Email      *string   `json:"email,omitempty"`
+	AvatarURL  *string   `json:"avatar_url,omitempty"`
+	GitHubID   *int64    `json:"github_id,omitempty"`
+	Type       int       `json:"type"`
+	Visibility int       `json:"visibility"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
 }
 
 // RequestDeviceCode starts the GitHub Device Flow.

@@ -5,10 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/jakeraft/clier/internal/app/run"
+	apprun "github.com/jakeraft/clier/internal/app/run"
+	appws "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -18,8 +21,21 @@ func init() {
 
 func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "run",
-		Short: "Manage runs",
+		Use:     "run",
+		Short:   "Manage local runtime runs",
+		GroupID: rootGroupRuntime,
+		Long: `Manage local runtime runs inside the current clone.
+
+These commands do not talk to clier-server.
+They read and write local runtime files under .clier/ and control the
+tmux session for an already materialized member or team run.
+
+` + "`clier run ...`" + ` may be invoked from anywhere inside the current
+clone. It finds the owning ` + "`.clier/`" + ` directory by walking parent
+directories until it reaches the clone root.
+
+Runs operate on local clones only. They do not update clier-server
+resources or pull remote changes into an existing clone.`,
 	}
 	cmd.AddCommand(newRunListCmd())
 	cmd.AddCommand(newRunViewCmd())
@@ -33,14 +49,35 @@ func newRunCmd() *cobra.Command {
 func newRunListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List all runs",
+		Short: "List local runs in the current clone",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = requireLogin()
-			client := newAPIClient()
-			runs, err := client.ListRuns()
+			runtimeDir, err := resolveRuntimeDir()
 			if err != nil {
 				return err
 			}
+			if runtimeDir == "" {
+				return printJSON([]*apprun.State{})
+			}
+
+			entries, err := os.ReadDir(runtimeDir)
+			if err != nil {
+				return fmt.Errorf("read runtime dir: %w", err)
+			}
+
+			runs := make([]*apprun.RunPlan, 0)
+			for _, entry := range entries {
+				if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") || strings.HasSuffix(entry.Name(), ".state.json") || entry.Name() == appws.CloneMetadataFile {
+					continue
+				}
+				plan, err := apprun.LoadPlanFromPath(filepath.Join(runtimeDir, entry.Name()))
+				if err != nil {
+					return err
+				}
+				runs = append(runs, plan)
+			}
+			slices.SortFunc(runs, func(a, b *apprun.RunPlan) int {
+				return b.StartedAt.Compare(a.StartedAt)
+			})
 			return printJSON(runs)
 		},
 	}
@@ -49,20 +86,14 @@ func newRunListCmd() *cobra.Command {
 func newRunViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view <id>",
-		Short: "View a run (includes notes and messages)",
+		Short: "View a local run from its .clier run file",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = requireLogin()
-			runID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid run id %q: %w", args[0], err)
-			}
-			client := newAPIClient()
-			resp, err := client.GetRun(runID)
+			plan, err := resolveRunPlan(args[0])
 			if err != nil {
 				return err
 			}
-			return printJSON(resp)
+			return printJSON(plan)
 		},
 	}
 }
@@ -70,26 +101,26 @@ func newRunViewCmd() *cobra.Command {
 func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "stop <id>",
-		Short: "Stop a run from the current workspace",
+		Short: "Stop a local run from the current clone",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil {
-				return fmt.Errorf("invalid run id %q: %w", args[0], err)
-			}
 			plan, err := resolveRunPlan(args[0])
 			if err != nil {
 				return err
 			}
 
-			store := newStore()
-			term := newTerminal()
-			svc := run.New(store, term)
+			svc := apprun.New(newTerminal())
 
-			if err := svc.Stop(cmd.Context(), runID, plan); err != nil {
+			if err := svc.Stop(plan); err != nil {
 				return err
 			}
-			return printJSON(map[string]int64{"stopped": runID})
+
+			plan.MarkStopped()
+			if err := saveRunPlan(plan.RunID, plan); err != nil {
+				return err
+			}
+
+			return printJSON(map[string]string{"stopped": plan.RunID})
 		},
 	}
 }
@@ -99,7 +130,7 @@ func newRunAttachCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "attach <run-id>",
-		Short: "Attach to a running run's terminal from the current workspace",
+		Short: "Attach to a local run's terminal from the current clone",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			term := newTerminal()
@@ -129,7 +160,7 @@ func newRunTellCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "tell [content]",
-		Short: "Tell a teammate",
+		Short: "Send a message inside a local run",
 		Long: `Tell a teammate. Content can be provided as an argument or via stdin.
 
 Examples:
@@ -149,24 +180,31 @@ Examples:
 			if err != nil {
 				return err
 			}
-			plan, err := resolveRunPlan(strconv.FormatInt(runID, 10))
+			plan, err := resolveRunPlan(runID)
 			if err != nil {
 				return err
 			}
 
 			toMemberID := &toMemberIDRaw
 
-			store := newStore()
-			term := newTerminal()
-			svc := run.New(store, term)
+			svc := apprun.New(newTerminal())
 
-			if err := svc.Send(cmd.Context(), runID, plan, fromMemberID, toMemberID, content); err != nil {
+			if err := svc.Send(plan, fromMemberID, toMemberID, content); err != nil {
 				return err
 			}
+
+			if err := plan.AddMessage(fromMemberID, toMemberID, content); err != nil {
+				return err
+			}
+			if err := saveRunPlan(runID, plan); err != nil {
+				return err
+			}
+
 			return printJSON(map[string]any{
 				"status": "delivered",
 				"from":   fromMemberID,
 				"to":     toMemberID,
+				"run":    runID,
 			})
 		},
 	}
@@ -181,7 +219,7 @@ func newRunNoteCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "note [content]",
-		Short: "Post a progress note",
+		Short: "Post a progress note to a local run file",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := readContent(args)
@@ -194,13 +232,23 @@ func newRunNoteCmd() *cobra.Command {
 				return err
 			}
 
-			store := newStore()
-			term := newTerminal()
-			svc := run.New(store, term)
+			svc := apprun.New(newTerminal())
 
-			if err := svc.Note(cmd.Context(), runID, memberID, content); err != nil {
+			if err := svc.Note(memberID, content); err != nil {
 				return err
 			}
+
+			plan, err := resolveRunPlan(runID)
+			if err != nil {
+				return err
+			}
+			if err := plan.AddNote(memberID, content); err != nil {
+				return err
+			}
+			if err := saveRunPlan(runID, plan); err != nil {
+				return err
+			}
+
 			var memberVal any
 			if memberID != nil {
 				memberVal = *memberID
@@ -233,22 +281,18 @@ func readContent(args []string) (string, error) {
 }
 
 // resolveRunContext resolves run ID and member ID from env vars set by clier.
-func resolveRunContext(runFlag string) (runID int64, memberID *int64, err error) {
-	rawRunID := runFlag
-	if rawRunID == "" {
-		rawRunID = os.Getenv("CLIER_RUN_ID")
+func resolveRunContext(runFlag string) (runID string, memberID *int64, err error) {
+	runID = strings.TrimSpace(runFlag)
+	if runID == "" {
+		runID = strings.TrimSpace(os.Getenv("CLIER_RUN_ID"))
 	}
-	if rawRunID == "" {
-		return 0, nil, errors.New("--run flag or CLIER_RUN_ID must be set")
-	}
-	runID, err = strconv.ParseInt(rawRunID, 10, 64)
-	if err != nil {
-		return 0, nil, fmt.Errorf("run id is not a valid int64: %w", err)
+	if runID == "" {
+		return "", nil, errors.New("--run flag or CLIER_RUN_ID must be set")
 	}
 	if raw := os.Getenv("CLIER_MEMBER_ID"); raw != "" {
-		v, parseErr := strconv.ParseInt(raw, 10, 64)
+		v, parseErr := apprun.ParseTeamMemberID(raw)
 		if parseErr != nil {
-			return 0, nil, fmt.Errorf("CLIER_MEMBER_ID is not a valid int64: %w", parseErr)
+			return "", nil, fmt.Errorf("CLIER_MEMBER_ID is not a valid int64: %w", parseErr)
 		}
 		memberID = &v
 	}

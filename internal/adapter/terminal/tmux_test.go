@@ -79,7 +79,7 @@ func TestTmuxTerminal_Send(t *testing.T) {
 			Name:         "leader",
 			Window:       0,
 			Memberspace:  "/tmp/leader",
-			Cwd:          "/tmp/leader/project",
+			Cwd:          "/tmp/leader",
 			Command:      "echo hello",
 		}},
 	}

@@ -42,7 +42,10 @@ func (w *Workspace) Cleanup(runID string) error {
 
 func (w *Workspace) prepareMember(ctx context.Context, m domain.MemberPlan) error {
 	ws := m.Workspace
-	workDir := filepath.Join(ws.Memberspace, "project")
+	workDir := ws.Memberspace
+	if ws.RepoDir != "" {
+		workDir = filepath.Join(ws.Memberspace, ws.RepoDir)
+	}
 
 	// Git first: clone needs an empty or non-existent directory.
 	// Files (CLAUDE.md, skills, etc.) are written after so they land

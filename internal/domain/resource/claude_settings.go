@@ -8,7 +8,7 @@ import (
 )
 
 // ClaudeSettings is a settings.json file for Claude Code.
-// Written to CLAUDE_CONFIG_DIR/settings.json.
+// Written to .claude/settings.json in the working tree.
 type ClaudeSettings struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`

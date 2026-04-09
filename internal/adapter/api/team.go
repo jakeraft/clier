@@ -25,12 +25,15 @@ type TeamResponse struct {
 	ID               int64                  `json:"id"`
 	OwnerID          int64                  `json:"owner_id"`
 	Name             string                 `json:"name"`
+	AgentTypes       []string               `json:"agent_types"`
 	RootTeamMemberID *int64                 `json:"root_team_member_id,omitempty"`
 	TeamMembers      []TeamMemberResponse   `json:"team_members"`
 	Relations        []TeamRelationResponse `json:"relations"`
 	Visibility       int                    `json:"visibility"`
 	IsFork           bool                   `json:"is_fork"`
 	ForkID           *int64                 `json:"fork_id,omitempty"`
+	ForkName         string                 `json:"fork_name"`
+	ForkOwnerLogin   string                 `json:"fork_owner_login"`
 	ForkCount        int                    `json:"fork_count"`
 	LatestVersion    *int                   `json:"latest_version,omitempty"`
 	CreatedAt        time.Time              `json:"created_at"`

@@ -15,8 +15,9 @@ func init() {
 
 func newAuthCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "auth",
-		Short: "Authenticate with the clier server",
+		Use:     "auth",
+		Short:   "Authenticate with the clier server",
+		GroupID: rootGroupServer,
 	}
 	cmd.AddCommand(newAuthLoginCmd())
 	cmd.AddCommand(newAuthLogoutCmd())

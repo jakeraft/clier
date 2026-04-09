@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
@@ -16,13 +17,13 @@ func TestResolveRunPlanPath_SearchesCurrentWorkspaceAncestors(t *testing.T) {
 		t.Fatalf("SavePlan: %v", err)
 	}
 
-	projectDir := filepath.Join(base, "member", "project")
-	if err := os.MkdirAll(projectDir, 0o755); err != nil {
+	repoDir := filepath.Join(base, "member")
+	if err := os.MkdirAll(repoDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 
 	origWD, _ := os.Getwd()
-	if err := os.Chdir(projectDir); err != nil {
+	if err := os.Chdir(repoDir); err != nil {
 		t.Fatalf("Chdir: %v", err)
 	}
 	defer func() { _ = os.Chdir(origWD) }()
@@ -40,26 +41,25 @@ func TestResolveRunPlanPath_SearchesCurrentWorkspaceAncestors(t *testing.T) {
 	}
 }
 
-func TestResolveRunPlanPath_PrefersCLIER_RUN_PLAN(t *testing.T) {
-	base := t.TempDir()
-	runID := "99"
-	plan := &apprun.RunPlan{RunID: runID, Session: "alpha-99"}
-	if err := apprun.SavePlan(base, runID, plan); err != nil {
-		t.Fatalf("SavePlan: %v", err)
-	}
-	planPath := apprun.PlanPath(base, runID)
+func TestBuildMemberEnv_OmitsTeamIDForStandaloneRuns(t *testing.T) {
+	env := buildMemberEnv("run-1", 11, nil, "tech-lead")
 
-	orig := os.Getenv("CLIER_RUN_PLAN")
-	if err := os.Setenv("CLIER_RUN_PLAN", planPath); err != nil {
-		t.Fatalf("Setenv: %v", err)
+	if env["CLIER_TEAM_ID"] != "" {
+		t.Fatalf("CLIER_TEAM_ID should be omitted for standalone runs, got %q", env["CLIER_TEAM_ID"])
 	}
-	defer func() { _ = os.Setenv("CLIER_RUN_PLAN", orig) }()
+	if env["CLIER_RUN_ID"] != "run-1" {
+		t.Fatalf("CLIER_RUN_ID = %q, want run-1", env["CLIER_RUN_ID"])
+	}
+	if env["CLIER_MEMBER_ID"] != "11" {
+		t.Fatalf("CLIER_MEMBER_ID = %q, want 11", env["CLIER_MEMBER_ID"])
+	}
+}
 
-	got, err := resolveRunPlanPath(runID)
-	if err != nil {
-		t.Fatalf("resolveRunPlanPath: %v", err)
-	}
-	if got != planPath {
-		t.Fatalf("plan path = %q, want %q", got, planPath)
+func TestBuildMemberEnv_SetsTeamIDForTeamRuns(t *testing.T) {
+	teamID := int64(22)
+	env := buildMemberEnv("run-1", 11, &teamID, "coder")
+
+	if env["CLIER_TEAM_ID"] != strconv.FormatInt(teamID, 10) {
+		t.Fatalf("CLIER_TEAM_ID = %q, want %d", env["CLIER_TEAM_ID"], teamID)
 	}
 }

@@ -4,7 +4,7 @@
 
 **Design your agent team. Run them in real terminals, not API calls.**
 
-Define your team in JSON — roles, hierarchy, scoped workspaces. Start a run, and agents collaborate while you watch and intervene in real time.
+Define your team in JSON — roles, hierarchy, scoped local clones. Start a run, and agents collaborate while you watch and intervene in real time.
 
 ## Why Clier?
 
@@ -55,7 +55,7 @@ clier run list
 clier run tell --to <member-id> <<'EOF'      # stdin: safe from shell escaping
 message with `backticks` and --flags
 EOF
-clier run stop <run-id>                        # from the current workspace
+clier run stop <run-id>                        # from the current clone
 ```
 
 ### Tutorial Walkthrough

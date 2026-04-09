@@ -10,8 +10,9 @@ func init() {
 
 func newExploreCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "explore",
-		Short: "Discover public resources",
+		Use:     "explore",
+		Short:   "Discover public resources",
+		GroupID: rootGroupDiscovery,
 	}
 	cmd.AddCommand(newExploreTeamsCmd())
 	cmd.AddCommand(newExploreMembersCmd())

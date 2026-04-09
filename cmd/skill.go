@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/spf13/cobra"
 )
 
@@ -10,8 +11,9 @@ func init() {
 
 func newSkillCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "skill",
-		Short: "Manage skills",
+		Use:     "skill",
+		Short:   "Manage skills",
+		GroupID: rootGroupServer,
 	}
 	cmd.AddCommand(newSkillListCmd())
 	cmd.AddCommand(newSkillViewCmd())
@@ -71,9 +73,9 @@ func newSkillCreateCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			resp, err := client.CreateSkill(owner, map[string]string{
-				"name":    name,
-				"content": content,
+			resp, err := client.CreateSkill(owner, api.SkillMutationRequest{
+				Name:    name,
+				Content: content,
 			})
 			if err != nil {
 				return err
@@ -98,13 +100,19 @@ func newSkillEditCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-
-			body := map[string]string{}
+			current, err := client.GetSkill(owner, args[0])
+			if err != nil {
+				return err
+			}
+			body := api.SkillMutationRequest{
+				Name:    current.Name,
+				Content: current.Content,
+			}
 			if cmd.Flags().Changed("name") {
-				body["name"] = name
+				body.Name = name
 			}
 			if cmd.Flags().Changed("content") {
-				body["content"] = content
+				body.Content = content
 			}
 
 			resp, err := client.UpdateSkill(owner, args[0], body)
