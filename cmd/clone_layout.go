@@ -66,7 +66,7 @@ func shouldReuseCloneRoot(target cloneTarget, cloneRoot string, meta *appws.Clon
 	return meta.Kind == target.Kind && meta.Owner == target.Owner && meta.Name == target.Name
 }
 
-func requireCurrentCloneRoot(target cloneTarget, action string) (string, *appws.CloneMetadata, error) {
+func requireCurrentCloneRootKind(expectedKind, action string) (string, *appws.CloneMetadata, error) {
 	base, err := resolveWorkspaceBase()
 	if err != nil {
 		return "", nil, err
@@ -81,6 +81,18 @@ func requireCurrentCloneRoot(target cloneTarget, action string) (string, *appws.
 	}
 
 	meta, err := appws.LoadCloneMetadata(base)
+	if err != nil {
+		return "", nil, err
+	}
+	if meta.Kind != expectedKind {
+		return "", nil, fmt.Errorf("current clone root is %s/%s (%s), not a %s clone",
+			meta.Owner, meta.Name, meta.Kind, expectedKind)
+	}
+	return base, meta, nil
+}
+
+func requireCurrentCloneRoot(target cloneTarget, action string) (string, *appws.CloneMetadata, error) {
+	base, meta, err := requireCurrentCloneRootKind(target.Kind, action)
 	if err != nil {
 		return "", nil, err
 	}

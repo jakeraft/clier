@@ -309,33 +309,28 @@ func newMemberCloneCmd() *cobra.Command {
 
 func newMemberRunCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "run <[owner/]name>",
+		Use:     "run",
 		Short:   "Launch a local member run from the current clone root",
 		GroupID: subGroupRuntime,
 		Long: `Launch a single member from the current clone root.
 This command is local runtime, not a clier-server run API call.
 
 The current directory must be the member clone root that directly owns
-` + "`.clier/clone.json`" + ` for the requested member. Run ` + "`member clone`" + `
+` + "`.clier/clone.json`" + `. Run ` + "`member clone`" + `
 first, then ` + "`cd`" + ` into that clone root before starting a run.
 
 The clone is a one-way local worktree. To refresh it from server
 resources, remove the clone and create it again.`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner, name := parseOwnerName(args[0])
 			_ = requireLogin()
 
-			absBase, _, err := requireCurrentCloneRoot(cloneTarget{
-				Kind:  resourceKindMember,
-				Owner: owner,
-				Name:  name,
-			}, "`clier member run`")
+			absBase, meta, err := requireCurrentCloneRootKind(resourceKindMember, "`clier member run`")
 			if err != nil {
 				return err
 			}
-			member, err := client.GetMember(owner, name)
+			member, err := client.GetMember(meta.Owner, meta.Name)
 			if err != nil {
 				return fmt.Errorf("get member: %w", err)
 			}
@@ -345,11 +340,11 @@ resources, remove the clone and create it again.`,
 				return err
 			}
 			if !prepared {
-				writer := appws.NewWriter(client, owner)
-				if err := writer.PrepareMember(absBase, name); err != nil {
+				writer := appws.NewWriter(client, meta.Owner)
+				if err := writer.PrepareMember(absBase, meta.Name); err != nil {
 					return fmt.Errorf("prepare clone: %w", err)
 				}
-				meta, err := buildMemberCloneMetadata(client, owner, name)
+				meta, err := buildMemberCloneMetadata(client, meta.Owner, meta.Name)
 				if err != nil {
 					return err
 				}
