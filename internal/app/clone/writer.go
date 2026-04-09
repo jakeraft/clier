@@ -154,7 +154,7 @@ func (w *Writer) PrepareTeam(base, teamName string) error {
 		}); err != nil {
 			return fmt.Errorf("prepare member %s: %w", tm.Name, err)
 		}
-		protocol := BuildProtocol(team.Name, tm.Name, relMap[tm.ID], membersByID)
+		protocol := BuildAgentFacingTeamProtocol(team.Name, tm.Name, relMap[tm.ID], membersByID)
 		protocolPath := filepath.Join(memberBase, ".clier", TeamProtocolFileName(tm.Name))
 		if err := writeFile(protocolPath, protocol); err != nil {
 			return fmt.Errorf("write protocol for %s: %w", tm.Name, err)
@@ -180,7 +180,7 @@ func writeLocalSettings(base string) error {
 }
 
 func writeWorkLogProtocol(base string) error {
-	return writeFile(filepath.Join(base, ".clier", workLogProtocolFileName), BuildWorkLogProtocol())
+	return writeFile(filepath.Join(base, ".clier", workLogProtocolFileName), BuildAgentFacingWorkLogProtocol())
 }
 
 func localSettingsContent() (string, error) {

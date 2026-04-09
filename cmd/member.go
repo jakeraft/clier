@@ -16,7 +16,7 @@ func init() {
 func newMemberCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "member",
-		Short:   "Manage members",
+		Short:   "Manage members and member clones",
 		GroupID: rootGroupServer,
 		Long: `Manage member resources and member clones.
 

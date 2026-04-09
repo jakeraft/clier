@@ -97,30 +97,44 @@ func requireLogin() string {
 var rootCmd = &cobra.Command{
 	Use:   "clier",
 	Short: "Orchestrate AI coding agent teams in isolated local clones",
-	Long: `Orchestrate AI coding agent teams in isolated local clones.
+	Long: `clier manages reusable agent resources on clier-server and materializes
+them into runnable local clones.
 
-clier has two user-facing surfaces:
+Command groups:
+  Resource commands
+    These talk to clier-server and manage shared resources such as
+    members, teams, claude-md files, claude-settings files, skills,
+    auth, and discovery.
 
-1. Resource commands
-   These talk to clier-server and manage shared resources such as
-   members, teams, skills, claude-md files, auth, and discovery.
+  Clone and run commands
+    These materialize local member clones or team clones and run local
+    member agents in tmux. ` + "`member clone`" + `, ` + "`member run`" + `,
+    ` + "`team clone`" + `, ` + "`team run`" + `, and ` + "`run ...`" + `
+    are all local commands.
 
-2. Clone and run commands
-   These materialize local clones and operate local tmux-based runs.
-   ` + "`member clone`" + `, ` + "`member run`" + `, ` + "`team clone`" + `, ` + "`team run`" + `,
-   and ` + "`run ...`" + ` are all local commands.
+Common starting points:
+  Work with a single member
+    ` + "`clier member --help`" + `
 
-A clone root is the directory that directly owns ` + "`.clier/clone.json`" + `.
-Use ` + "`member run`" + ` and ` + "`team run`" + ` from that clone root.
-Use ` + "`run ...`" + ` from anywhere inside that clone.
+  Work with a team and its member agents
+    ` + "`clier team --help`" + `
 
-Clones are one-way materializations from clier-server resources.
-Local file edits do not sync back to the server. To change server state,
-use explicit resource commands such as ` + "`member edit`" + `, ` + "`team edit`" + `,
-` + "`claudemd edit`" + `, ` + "`claudesettings edit`" + `, and ` + "`skill edit`" + `.
-To refresh a clone, remove it and clone again.
+  Operate an existing local run
+    ` + "`clier run --help`" + `
 
-New to clier? Run "clier tutorial" for a step-by-step guide.`,
+  Learn the workflow end to end
+    ` + "`clier tutorial`" + `
+
+Clone model:
+  A clone root is the directory that directly owns ` + "`.clier/clone.json`" + `.
+  Use ` + "`member run`" + ` and ` + "`team run`" + ` from that clone root.
+  Use ` + "`run ...`" + ` from anywhere inside that clone.
+
+  Clones are one-way materializations from clier-server resources.
+  Local file edits do not sync back to the server. To change server state,
+  use explicit resource commands such as ` + "`member edit`" + `, ` + "`team edit`" + `,
+  ` + "`claudemd edit`" + `, ` + "`claudesettings edit`" + `, and ` + "`skill edit`" + `.
+  To refresh a clone, remove it and clone again.`,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -128,14 +142,13 @@ New to clier? Run "clier tutorial" for a step-by-step guide.`,
 
 func Execute() {
 	configureCommandGroups()
-	if os.Getenv("CLIER_AGENT") == "true" {
-		teamScoped := isTeamAgent()
-		filterAgentCommands(rootCmd, teamScoped)
-		applyAgentHelp(rootCmd, teamScoped)
+	cmd := rootCmd
+	if isAgentMode() {
+		cmd = newAgentRootCmd(isTeamAgent())
 	} else {
 		filterUserCommands()
 	}
-	if err := rootCmd.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -180,64 +193,51 @@ func parseOwnerName(s string) (owner, name string) {
 	return requireLogin(), s
 }
 
-func isTeamAgent() bool {
-	return strings.TrimSpace(os.Getenv("CLIER_TEAM_ID")) != ""
-}
-
-// filterAgentCommands removes all commands except "run" when running as an agent,
-// and within "run" keeps only the subcommands available in the current agent scope.
-func filterAgentCommands(root *cobra.Command, teamScoped bool) {
-	allowed := map[string]bool{"run": true}
-	var keep []*cobra.Command
-	for _, cmd := range root.Commands() {
-		if allowed[cmd.Name()] {
-			keep = append(keep, cmd)
-		}
+func newAgentRootCmd(teamScoped bool) *cobra.Command {
+	root := &cobra.Command{
+		Use:   "clier",
+		Short: "Commands for this run",
+		CompletionOptions: cobra.CompletionOptions{
+			DisableDefaultCmd: true,
+		},
 	}
-	root.ResetCommands()
-	for _, cmd := range keep {
-		root.AddCommand(cmd)
-	}
-
-	agentSubs := map[string]bool{"note": true}
 	if teamScoped {
-		agentSubs["tell"] = true
-	}
-	for _, cmd := range root.Commands() {
-		if cmd.Name() == "run" {
-			var subs []*cobra.Command
-			for _, sub := range cmd.Commands() {
-				if agentSubs[sub.Name()] {
-					subs = append(subs, sub)
-				}
-			}
-			cmd.ResetCommands()
-			for _, sub := range subs {
-				cmd.AddCommand(sub)
-			}
-		}
-	}
-}
-
-func applyAgentHelp(root *cobra.Command, teamScoped bool) {
-	root.Short = "Commands for this run"
-	if teamScoped {
-		root.Long = `Use ` + "`clier run tell`" + ` to message another team member.
-Use ` + "`clier run note`" + ` to record a work log entry.`
+		root.Long = "Use `clier run tell` to message another team member.\nUse `clier run note` to record a work log entry."
 	} else {
-		root.Long = `Use ` + "`clier run note`" + ` to record a work log entry.`
+		root.Long = "Use `clier run note` to record a work log entry."
 	}
+	root.SetHelpCommand(&cobra.Command{Hidden: true})
+	root.SetHelpTemplate(`{{with (or .Long .Short)}}{{.}}
+{{end}}{{if or .Runnable .HasSubCommands}}{{if .HasSubCommands}}
+Usage:
+  {{.UseLine}}
 
-	for _, cmd := range root.Commands() {
-		if cmd.Name() != "run" {
-			continue
-		}
-		cmd.Short = "Commands for this run"
-		if teamScoped {
-			cmd.Long = `Use ` + "`tell`" + ` to message another team member.
-Use ` + "`note`" + ` to record a work log entry.`
-		} else {
-			cmd.Long = `Use ` + "`note`" + ` to record a work log entry.`
-		}
+Available Commands:{{range .Commands}}{{if (and .IsAvailableCommand (not .Hidden))}}
+  {{rpad .Name .NamePadding }} {{.Short}}{{end}}{{end}}{{end}}{{if .HasAvailableLocalFlags}}
+
+Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasAvailableInheritedFlags}}
+
+Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}{{end}}{{if .HasSubCommands}}
+
+Use "{{.CommandPath}} [command] --help" for more information about a command.{{end}}{{end}}
+`)
+	root.AddCommand(newAgentRunCmd(teamScoped))
+	return root
+}
+
+func newAgentRunCmd(teamScoped bool) *cobra.Command {
+	run := &cobra.Command{
+		Use:   "run",
+		Short: "Commands for this run",
 	}
+	if teamScoped {
+		run.Long = "Use `tell` to message another team member.\nUse `note` to record a work log entry."
+		run.AddCommand(newRunTellCmd())
+	} else {
+		run.Long = "Use `note` to record a work log entry."
+	}
+	run.AddCommand(newRunNoteCmd())
+	return run
 }

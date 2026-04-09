@@ -22,7 +22,7 @@ func init() {
 func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "run",
-		Short:   "Manage local runtime runs",
+		Short:   "Operate an existing local run",
 		GroupID: rootGroupRuntime,
 		Long: `Operate an existing local run inside the current clone.
 
@@ -212,7 +212,7 @@ Examples:
 			})
 		},
 	}
-	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to CLIER_RUN_ID)")
+	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to "+envClierRunID+")")
 	cmd.Flags().Int64Var(&toMemberIDRaw, "to", 0, "Recipient member ID")
 	_ = cmd.MarkFlagRequired("to")
 	return cmd
@@ -268,7 +268,7 @@ to the local run file under ` + "`.clier/`" + ` and is not sent to clier-server.
 			})
 		},
 	}
-	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to CLIER_RUN_ID)")
+	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to "+envClierRunID+")")
 	return cmd
 }
 
@@ -292,15 +292,15 @@ func readContent(args []string) (string, error) {
 func resolveRunContext(runFlag string) (runID string, memberID *int64, err error) {
 	runID = strings.TrimSpace(runFlag)
 	if runID == "" {
-		runID = strings.TrimSpace(os.Getenv("CLIER_RUN_ID"))
+		runID = strings.TrimSpace(os.Getenv(envClierRunID))
 	}
 	if runID == "" {
-		return "", nil, errors.New("--run flag or CLIER_RUN_ID must be set")
+		return "", nil, fmt.Errorf("--run flag or %s must be set", envClierRunID)
 	}
-	if raw := os.Getenv("CLIER_MEMBER_ID"); raw != "" {
+	if raw := os.Getenv(envClierMemberID); raw != "" {
 		v, parseErr := apprun.ParseTeamMemberID(raw)
 		if parseErr != nil {
-			return "", nil, fmt.Errorf("CLIER_MEMBER_ID is not a valid int64: %w", parseErr)
+			return "", nil, fmt.Errorf("%s is not a valid int64: %w", envClierMemberID, parseErr)
 		}
 		memberID = &v
 	}

@@ -7,8 +7,8 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func TestBuildProtocol_UsesTeamMemberIDsForTellCommands(t *testing.T) {
-	protocol := BuildProtocol(
+func TestBuildAgentFacingTeamProtocol_UsesTeamMemberIDsForTellCommands(t *testing.T) {
+	protocol := BuildAgentFacingTeamProtocol(
 		"alpha",
 		"leader",
 		domain.MemberRelations{
@@ -33,8 +33,8 @@ func TestBuildProtocol_UsesTeamMemberIDsForTellCommands(t *testing.T) {
 	}
 }
 
-func TestBuildWorkLogProtocol_ExplainsNotesAsCliAction(t *testing.T) {
-	protocol := BuildWorkLogProtocol()
+func TestBuildAgentFacingWorkLogProtocol_ExplainsNotesAsCliAction(t *testing.T) {
+	protocol := BuildAgentFacingWorkLogProtocol()
 
 	if !strings.Contains(protocol, "Use `clier run note` to record work log entries.") {
 		t.Fatalf("work log protocol should direct note usage:\n%s", protocol)
@@ -65,8 +65,8 @@ func TestComposeAndStripTeamClaudeMdPrelude(t *testing.T) {
 	}
 }
 
-func TestBuildProtocol_UsesProfessionalCommunicationTone(t *testing.T) {
-	protocol := BuildProtocol(
+func TestBuildAgentFacingTeamProtocol_UsesProfessionalCommunicationTone(t *testing.T) {
+	protocol := BuildAgentFacingTeamProtocol(
 		"alpha",
 		"leader",
 		domain.MemberRelations{},

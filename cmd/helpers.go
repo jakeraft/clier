@@ -20,16 +20,16 @@ import (
 // teamID is set only for agents launched as part of a team run.
 func buildMemberEnv(runID string, teamMemberID int64, teamID *int64, memberName string) map[string]string {
 	env := map[string]string{
-		"CLIER_RUN_ID":        runID,
-		"CLIER_MEMBER_ID":     strconv.FormatInt(teamMemberID, 10),
-		"CLIER_AGENT":         "true",
+		envClierRunID:         runID,
+		envClierMemberID:      strconv.FormatInt(teamMemberID, 10),
+		envClierAgent:         "true",
 		"GIT_AUTHOR_NAME":     memberName,
 		"GIT_AUTHOR_EMAIL":    "noreply@clier.com",
 		"GIT_COMMITTER_NAME":  memberName,
 		"GIT_COMMITTER_EMAIL": "noreply@clier.com",
 	}
 	if teamID != nil {
-		env["CLIER_TEAM_ID"] = strconv.FormatInt(*teamID, 10)
+		env[envClierTeamID] = strconv.FormatInt(*teamID, 10)
 	}
 	return env
 }

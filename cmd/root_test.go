@@ -7,25 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestApplyAgentHelp_ScopesStandaloneAgentDescriptions(t *testing.T) {
-	root := &cobra.Command{
-		Use:   "clier",
-		Short: "root short",
-		Long:  "root long",
-	}
-	run := &cobra.Command{
-		Use:   "run",
-		Short: "run short",
-		Long:  "run long",
-	}
-	member := &cobra.Command{
-		Use:   "member",
-		Short: "member short",
-		Long:  "member long",
-	}
-	root.AddCommand(run, member)
-
-	applyAgentHelp(root, false)
+func TestNewAgentRootCmd_StandaloneScope(t *testing.T) {
+	root := newAgentRootCmd(false)
 
 	if strings.Contains(root.Long, "`clier run tell`") {
 		t.Fatalf("standalone agent help should not mention tell:\n%s", root.Long)
@@ -33,31 +16,24 @@ func TestApplyAgentHelp_ScopesStandaloneAgentDescriptions(t *testing.T) {
 	if !strings.Contains(root.Long, "Use `clier run note` to record a work log entry.") {
 		t.Fatalf("standalone agent help should mention note:\n%s", root.Long)
 	}
+	if got := commandNames(root.Commands()); strings.Join(got, ",") != "run" {
+		t.Fatalf("standalone agent commands = %v, want [run]", got)
+	}
+
+	run := root.Commands()[0]
 	if !strings.Contains(run.Long, "Use `note` to record a work log entry.") {
-		t.Fatalf("run long should describe note in standalone scope:\n%s", run.Long)
+		t.Fatalf("standalone run help should mention note:\n%s", run.Long)
 	}
-	if strings.Contains(run.Long, "Use `tell` to send a message") {
-		t.Fatalf("run long should not describe tell in standalone scope:\n%s", run.Long)
+	if strings.Contains(run.Long, "Use `tell` to message another team member.") {
+		t.Fatalf("standalone run help should not mention tell:\n%s", run.Long)
 	}
-	if member.Long != "member long" {
-		t.Fatalf("non-run command help should remain unchanged, got %q", member.Long)
+	if got := commandNames(run.Commands()); strings.Join(got, ",") != "note" {
+		t.Fatalf("standalone run commands = %v, want [note]", got)
 	}
 }
 
-func TestApplyAgentHelp_ScopesTeamAgentDescriptions(t *testing.T) {
-	root := &cobra.Command{
-		Use:   "clier",
-		Short: "root short",
-		Long:  "root long",
-	}
-	run := &cobra.Command{
-		Use:   "run",
-		Short: "run short",
-		Long:  "run long",
-	}
-	root.AddCommand(run)
-
-	applyAgentHelp(root, true)
+func TestNewAgentRootCmd_TeamScope(t *testing.T) {
+	root := newAgentRootCmd(true)
 
 	if !strings.Contains(root.Long, "Use `clier run tell` to message another team member.") {
 		t.Fatalf("team agent help should mention tell:\n%s", root.Long)
@@ -65,51 +41,20 @@ func TestApplyAgentHelp_ScopesTeamAgentDescriptions(t *testing.T) {
 	if !strings.Contains(root.Long, "Use `clier run note` to record a work log entry.") {
 		t.Fatalf("team agent help should mention note:\n%s", root.Long)
 	}
+	if got := commandNames(root.Commands()); strings.Join(got, ",") != "run" {
+		t.Fatalf("team agent commands = %v, want [run]", got)
+	}
+
+	run := root.Commands()[0]
 	if !strings.Contains(run.Long, "Use `tell` to message another team member.") {
-		t.Fatalf("run long should describe tell in team scope:\n%s", run.Long)
+		t.Fatalf("team run help should mention tell:\n%s", run.Long)
 	}
 	if !strings.Contains(run.Long, "Use `note` to record a work log entry.") {
-		t.Fatalf("run long should describe note in team scope:\n%s", run.Long)
+		t.Fatalf("team run help should mention note:\n%s", run.Long)
 	}
-}
-
-func TestFilterAgentCommands_ScopesStandaloneToNoteOnly(t *testing.T) {
-	root := &cobra.Command{Use: "clier"}
-	run := &cobra.Command{Use: "run"}
-	run.AddCommand(
-		&cobra.Command{Use: "tell"},
-		&cobra.Command{Use: "note"},
-		&cobra.Command{Use: "attach"},
-	)
-	root.AddCommand(run, &cobra.Command{Use: "member"})
-
-	filterAgentCommands(root, false)
-
-	if len(root.Commands()) != 1 || root.Commands()[0].Name() != "run" {
-		t.Fatalf("agent scope should only keep run, got %v", commandNames(root.Commands()))
-	}
-	if got := commandNames(root.Commands()[0].Commands()); strings.Join(got, ",") != "note" {
-		t.Fatalf("standalone agent run commands = %v, want [note]", got)
-	}
-}
-
-func TestFilterAgentCommands_ScopesTeamToTellAndNote(t *testing.T) {
-	root := &cobra.Command{Use: "clier"}
-	run := &cobra.Command{Use: "run"}
-	run.AddCommand(
-		&cobra.Command{Use: "tell"},
-		&cobra.Command{Use: "note"},
-		&cobra.Command{Use: "attach"},
-	)
-	root.AddCommand(run, &cobra.Command{Use: "member"})
-
-	filterAgentCommands(root, true)
-
-	if len(root.Commands()) != 1 || root.Commands()[0].Name() != "run" {
-		t.Fatalf("agent scope should only keep run, got %v", commandNames(root.Commands()))
-	}
-	if got := commandNames(root.Commands()[0].Commands()); strings.Join(got, ",") != "note,tell" && strings.Join(got, ",") != "tell,note" {
-		t.Fatalf("team agent run commands = %v, want [tell note]", got)
+	got := strings.Join(commandNames(run.Commands()), ",")
+	if got != "note,tell" && got != "tell,note" {
+		t.Fatalf("team run commands = %v, want [tell note]", commandNames(run.Commands()))
 	}
 }
 

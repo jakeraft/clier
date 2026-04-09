@@ -17,7 +17,7 @@ func init() {
 func newTeamCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "team",
-		Short:   "Manage teams",
+		Short:   "Manage teams and team clones",
 		GroupID: rootGroupServer,
 		Long: `Manage team resources and team clones.
 
@@ -279,39 +279,32 @@ func newTeamCloneCmd() *cobra.Command {
 
 func newTeamRunCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "run <[owner/]name>",
+		Use:     "run",
 		Short:   "Launch a local team run from the current clone root",
 		GroupID: subGroupRuntime,
 		Long: `Launch a team run from the current clone root.
 This command is local runtime, not a clier-server run API call.
 
 The current directory must be the team clone root that directly owns
-` + "`.clier/clone.json`" + ` for the requested team. Run ` + "`team clone`" + `
+` + "`.clier/clone.json`" + `. Run ` + "`team clone`" + `
 first, then ` + "`cd`" + ` into that clone root before starting a run.
 Each member gets its own tmux window within a single session.
 
 The clone is a one-way local worktree. To refresh it from server
 resources, remove the clone and create it again.`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner, name := parseOwnerName(args[0])
-			_ = requireLogin()
-
-			team, err := client.GetTeam(owner, name)
-			if err != nil {
-				return fmt.Errorf("get team: %w", err)
-			}
-			teamBase, _, err := requireCurrentCloneRoot(cloneTarget{
-				Kind:  resourceKindTeam,
-				Owner: owner,
-				Name:  team.Name,
-			}, "`clier team run`")
+			teamBase, meta, err := requireCurrentCloneRootKind(resourceKindTeam, "`clier team run`")
 			if err != nil {
 				return err
 			}
+			team, err := client.GetTeam(meta.Owner, meta.Name)
+			if err != nil {
+				return fmt.Errorf("get team: %w", err)
+			}
 
-			writer := appclone.NewWriter(client, owner)
+			writer := appclone.NewWriter(client, meta.Owner)
 			needsPrepare := false
 			memberResponses := make(map[string]*api.MemberResponse, len(team.TeamMembers))
 			for _, tm := range team.TeamMembers {
@@ -330,10 +323,10 @@ resources, remove the clone and create it again.`,
 				}
 			}
 			if needsPrepare {
-				if err := writer.PrepareTeam(teamBase, name); err != nil {
+				if err := writer.PrepareTeam(teamBase, meta.Name); err != nil {
 					return fmt.Errorf("prepare team clone: %w", err)
 				}
-				meta, err := buildTeamCloneMetadata(client, owner, name)
+				meta, err := buildTeamCloneMetadata(client, meta.Owner, meta.Name)
 				if err != nil {
 					return err
 				}

@@ -90,7 +90,7 @@ func StripTeamClaudeMdPrelude(memberName, content string) string {
 	return content
 }
 
-func BuildWorkLogProtocol() string {
+func BuildAgentFacingWorkLogProtocol() string {
 	var b strings.Builder
 
 	b.WriteString("# Work Log Protocol\n\n")
@@ -104,10 +104,11 @@ func BuildWorkLogProtocol() string {
 	return b.String()
 }
 
-// BuildProtocol generates the team protocol CLAUDE.md content.
+// BuildAgentFacingTeamProtocol generates the team-specific agent-facing
+// protocol content imported by a member clone's CLAUDE.md.
 // Written to {teamRoot}/{member}/.clier/{member}-team-protocol.md and imported by
 // each member's root CLAUDE.md.
-func BuildProtocol(teamName, memberName string, relations domain.MemberRelations, membersByID map[int64]ProtocolMember) string {
+func BuildAgentFacingTeamProtocol(teamName, memberName string, relations domain.MemberRelations, membersByID map[int64]ProtocolMember) string {
 	var b strings.Builder
 
 	// Header
