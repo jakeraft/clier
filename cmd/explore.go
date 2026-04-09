@@ -11,7 +11,7 @@ func init() {
 func newExploreCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "explore",
-		Short:   "Discover public resources",
+		Short:   "Browse public resources",
 		GroupID: rootGroupDiscovery,
 	}
 	cmd.AddCommand(newExploreTeamsCmd())
@@ -25,7 +25,7 @@ func newExploreCmd() *cobra.Command {
 func newExploreTeamsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "teams",
-		Short: "List all public teams",
+		Short: "Browse public teams",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			items, err := client.ListPublicTeams()
@@ -40,7 +40,7 @@ func newExploreTeamsCmd() *cobra.Command {
 func newExploreMembersCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "members",
-		Short: "List all public members",
+		Short: "Browse public members",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			items, err := client.ListPublicMembers()
@@ -55,7 +55,7 @@ func newExploreMembersCmd() *cobra.Command {
 func newExploreSkillsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "skills",
-		Short: "List all public skills",
+		Short: "Browse public skills",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			items, err := client.ListPublicSkills()
@@ -70,7 +70,7 @@ func newExploreSkillsCmd() *cobra.Command {
 func newExploreClaudeMdsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "claude-mds",
-		Short: "List all public claude-md files",
+		Short: "Browse public CLAUDE.md files",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			items, err := client.ListPublicClaudeMds()
@@ -85,7 +85,7 @@ func newExploreClaudeMdsCmd() *cobra.Command {
 func newExploreClaudeSettingsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "claude-settings",
-		Short: "List all public claude-settings files",
+		Short: "Browse public settings files",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			items, err := client.ListPublicClaudeSettings()

@@ -96,45 +96,23 @@ func requireLogin() string {
 
 var rootCmd = &cobra.Command{
 	Use:   "clier",
-	Short: "Orchestrate AI coding agent teams in isolated local clones",
-	Long: `clier manages reusable agent resources on clier-server and materializes
-them into runnable local clones.
+	Short: "Harness AI agent teams",
+	Long: `clier is a harness for AI coding agent teams.
 
-Command groups:
-  Resource commands
-    These talk to clier-server and manage shared resources such as
-    members, teams, claude-md files, claude-settings files, skills,
-    auth, and discovery.
+Define agents, compose them into teams, and run them locally in tmux.
+Each agent gets its own terminal, git repo, and system prompt.
+You watch, steer, and intervene in real time.
 
-  Clone and run commands
-    These materialize local member clones or team clones and run local
-    member agents in tmux. ` + "`member clone`" + `, ` + "`member run`" + `,
-    ` + "`team clone`" + `, ` + "`team run`" + `, and ` + "`run ...`" + `
-    are all local commands.
+Get started:
+  clier tutorial             Walk through an example team
+  clier explore teams        Browse what others have built
 
-Common starting points:
-  Work with a single member
-    ` + "`clier member --help`" + `
-
-  Work with a team and its member agents
-    ` + "`clier team --help`" + `
-
-  Operate an existing local run
-    ` + "`clier run --help`" + `
-
-  Learn the workflow end to end
-    ` + "`clier tutorial`" + `
-
-Clone model:
-  A clone root is the directory that directly owns ` + "`.clier/clone.json`" + `.
-  Use ` + "`member run`" + ` and ` + "`team run`" + ` from that clone root.
-  Use ` + "`run ...`" + ` from anywhere inside that clone.
-
-  Clones are one-way materializations from clier-server resources.
-  Local file edits do not sync back to the server. To change server state,
-  use explicit resource commands such as ` + "`member edit`" + `, ` + "`team edit`" + `,
-  ` + "`claudemd edit`" + `, ` + "`claudesettings edit`" + `, and ` + "`skill edit`" + `.
-  To refresh a clone, remove it and clone again.`,
+Core workflow:
+  clier member               Define individual agents
+  clier team                 Compose agents into teams
+  clier team clone <name>    Pull a team to your machine
+  clier team run             Launch the team in tmux
+  clier run                  Observe and control running agents`,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -156,10 +134,10 @@ func Execute() {
 
 func configureCommandGroups() {
 	rootCmd.AddGroup(
-		&cobra.Group{ID: rootGroupServer, Title: "Server-Backed Resource Commands"},
-		&cobra.Group{ID: rootGroupRuntime, Title: "Local Runtime Commands"},
-		&cobra.Group{ID: rootGroupDiscovery, Title: "Discovery Commands"},
-		&cobra.Group{ID: rootGroupLocal, Title: "Local Configuration Commands"},
+		&cobra.Group{ID: rootGroupServer, Title: "Resources"},
+		&cobra.Group{ID: rootGroupRuntime, Title: "Runtime"},
+		&cobra.Group{ID: rootGroupDiscovery, Title: "Getting Started"},
+		&cobra.Group{ID: rootGroupLocal, Title: "Settings"},
 	)
 }
 

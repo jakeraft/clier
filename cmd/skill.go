@@ -12,7 +12,7 @@ func init() {
 func newSkillCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "skill",
-		Short:   "Manage skills",
+		Short:   "Manage reusable agent skills",
 		GroupID: rootGroupServer,
 	}
 	cmd.AddCommand(newSkillListCmd())
@@ -27,7 +27,7 @@ func newSkillCmd() *cobra.Command {
 func newSkillListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list [owner]",
-		Short: "List skills",
+		Short: "List your skills",
 		Long:  "List your skills, or another user's skills if [owner] is given.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -50,7 +50,7 @@ func newSkillListCmd() *cobra.Command {
 func newSkillViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view <[owner/]name>",
-		Short: "View a skill",
+		Short: "Show skill details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -69,7 +69,7 @@ func newSkillCreateCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create a skill",
+		Short: "Create a new skill",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
@@ -95,7 +95,7 @@ func newSkillEditCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "edit <name>",
-		Short: "Edit a skill",
+		Short: "Update a skill",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -146,7 +146,7 @@ func newSkillDeleteCmd() *cobra.Command {
 func newSkillForkCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "fork <owner/name>",
-		Short: "Fork a skill to your namespace",
+		Short: "Copy a public skill to your namespace",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()

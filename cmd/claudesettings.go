@@ -12,7 +12,7 @@ func init() {
 func newClaudeSettingsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "claude-settings",
-		Short:   "Manage Claude settings.json files",
+		Short:   "Manage Claude settings files",
 		GroupID: rootGroupServer,
 	}
 	cmd.AddCommand(newClaudeSettingsListCmd())
@@ -27,8 +27,8 @@ func newClaudeSettingsCmd() *cobra.Command {
 func newClaudeSettingsListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list [owner]",
-		Short: "List claude-settings files",
-		Long:  "List your claude-settings files, or another user's if [owner] is given.",
+		Short: "List your settings files",
+		Long:  "List your settings files, or another user's if [owner] is given.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -50,7 +50,7 @@ func newClaudeSettingsListCmd() *cobra.Command {
 func newClaudeSettingsViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view <[owner/]name>",
-		Short: "View a claude-settings file",
+		Short: "Show settings file details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -69,7 +69,7 @@ func newClaudeSettingsCreateCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create a claude-settings file",
+		Short: "Create a new settings file",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
@@ -95,7 +95,7 @@ func newClaudeSettingsEditCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "edit <name>",
-		Short: "Edit a claude-settings file",
+		Short: "Update a settings file",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -130,7 +130,7 @@ func newClaudeSettingsEditCmd() *cobra.Command {
 func newClaudeSettingsDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <name>",
-		Short: "Delete a claude-settings file",
+		Short: "Delete a settings file",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -146,7 +146,7 @@ func newClaudeSettingsDeleteCmd() *cobra.Command {
 func newClaudeSettingsForkCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "fork <owner/name>",
-		Short: "Fork a claude-settings file to your namespace",
+		Short: "Copy a public settings file to your namespace",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()

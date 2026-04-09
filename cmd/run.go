@@ -22,20 +22,13 @@ func init() {
 func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "run",
-		Short:   "Operate an existing local run",
+		Short:   "Observe and control running agents",
 		GroupID: rootGroupRuntime,
-		Long: `Operate an existing local run inside the current clone.
+		Long: `Observe and control running agents.
 
-These commands do not talk to clier-server.
-They read and write local run files under ` + "`.clier/`" + ` and control the
-tmux session for an already started member or team run.
-
-` + "`clier run ...`" + ` may be invoked from anywhere inside the current
-clone. The owning run directory is the nearest ancestor that contains
-` + "`.clier/clone.json`" + `.
-
-Runs are local-only. They do not update server resources or refresh an
-existing clone.`,
+These commands work inside any clone directory. Run them from
+anywhere within a clone — the nearest ` + "`.clier/clone.json`" + ` is
+used automatically.`,
 	}
 	cmd.AddCommand(newRunListCmd())
 	cmd.AddCommand(newRunViewCmd())
@@ -49,7 +42,7 @@ existing clone.`,
 func newRunListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List local runs in the current clone",
+		Short: "List active runs",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runtimeDir, err := resolveRuntimeDir()
 			if err != nil {
@@ -86,7 +79,7 @@ func newRunListCmd() *cobra.Command {
 func newRunViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view <id>",
-		Short: "View a local run from its .clier run file",
+		Short: "Show run status and notes",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			plan, err := resolveRunPlan(args[0])
@@ -101,7 +94,7 @@ func newRunViewCmd() *cobra.Command {
 func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "stop <id>",
-		Short: "Stop a local run from the current clone",
+		Short: "Stop a running session",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			plan, err := resolveRunPlan(args[0])
@@ -130,7 +123,7 @@ func newRunAttachCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "attach <run-id>",
-		Short: "Attach to a local run's terminal from the current clone",
+		Short: "Watch agents in real time",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			term := newTerminal()
@@ -160,12 +153,9 @@ func newRunTellCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "tell [content]",
-		Short: "Send a message inside a local run",
+		Short: "Send a message to an agent",
 		Long: `Send a message to another member in the current team run.
 Content can be provided as an argument or via stdin.
-
-This command operates only on the local run file and tmux session. It does
-not call clier-server.
 
 Examples:
   clier run tell --to <id> "simple message"
@@ -223,11 +213,11 @@ func newRunNoteCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "note [content]",
-		Short: "Post a progress note to a local run file",
-		Long: `Record a work log entry in the current local run.
+		Short: "Record a progress note",
+		Long: `Record a work log entry in the current run.
 
-Content can be provided as an argument or via stdin. The note is appended
-to the local run file under ` + "`.clier/`" + ` and is not sent to clier-server.`,
+Content can be provided as an argument or via stdin. The note is
+appended to the run file under ` + "`.clier/`" + `.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := readContent(args)

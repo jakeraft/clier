@@ -17,28 +17,21 @@ func init() {
 func newTeamCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "team",
-		Short:   "Manage teams and team clones",
+		Short:   "Compose and run agent teams",
 		GroupID: rootGroupServer,
-		Long: `Manage team resources and team clones.
+		Long: `Compose and run agent teams.
 
-Server-backed subcommands:
-  list, view, create, edit, delete, fork
+Use list, view, create, edit, delete, and fork to manage your
+team definitions. Use clone and run to bring them to life locally.
 
-Local runtime subcommands:
-  clone, run
-
-Use ` + "`team clone`" + ` to materialize a local team clone under
-` + "`./<owner>/<name>`" + `. Use ` + "`team run`" + ` from that clone root
-to launch a tmux session with one window per team member.
-
-` + "`team clone`" + ` is one-way: it writes local member worktrees and
-team protocol files, but does not sync local file edits back to
-clier-server. Update server resources with explicit resource commands,
-then remove and re-clone when you want a fresh local copy.`,
+Workflow:
+  clier team create          Define a new team
+  clier team clone <name>    Pull it to your machine
+  clier team run             Start all agents in tmux`,
 	}
 	cmd.AddGroup(
-		&cobra.Group{ID: subGroupServer, Title: "Server-Backed Team Commands"},
-		&cobra.Group{ID: subGroupRuntime, Title: "Local Runtime Commands"},
+		&cobra.Group{ID: subGroupServer, Title: "Define"},
+		&cobra.Group{ID: subGroupRuntime, Title: "Run"},
 	)
 	cmd.AddCommand(newTeamListCmd())
 	cmd.AddCommand(newTeamViewCmd())
@@ -54,7 +47,7 @@ then remove and re-clone when you want a fresh local copy.`,
 func newTeamListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "list [owner]",
-		Short:   "List teams from clier-server",
+		Short:   "List your teams",
 		Long:    "List your teams, or another user's teams if [owner] is given.",
 		GroupID: subGroupServer,
 		Args:    cobra.MaximumNArgs(1),
@@ -78,7 +71,7 @@ func newTeamListCmd() *cobra.Command {
 func newTeamViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "view <[owner/]name>",
-		Short:   "View a team from clier-server",
+		Short:   "Show team details",
 		GroupID: subGroupServer,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -100,7 +93,7 @@ func newTeamCreateCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "create",
-		Short:   "Create a team on clier-server",
+		Short:   "Create a new team",
 		GroupID: subGroupServer,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -146,7 +139,7 @@ func newTeamEditCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "edit <name>",
-		Short:   "Edit a team on clier-server",
+		Short:   "Update a team",
 		GroupID: subGroupServer,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -205,7 +198,7 @@ func newTeamEditCmd() *cobra.Command {
 func newTeamDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "delete <name>",
-		Short:   "Delete a team from clier-server",
+		Short:   "Delete a team",
 		GroupID: subGroupServer,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -222,7 +215,7 @@ func newTeamDeleteCmd() *cobra.Command {
 func newTeamForkCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "fork <owner/name>",
-		Short:   "Fork a team on clier-server to your namespace",
+		Short:   "Copy a public team to your namespace",
 		GroupID: subGroupServer,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -242,7 +235,7 @@ func newTeamCloneCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "clone <[owner/]name>",
 		Aliases: []string{"workspace"},
-		Short:   "Create a local team clone under ./<owner>/<name>",
+		Short:   "Clone a team to a local directory",
 		GroupID: subGroupRuntime,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -280,18 +273,15 @@ func newTeamCloneCmd() *cobra.Command {
 func newTeamRunCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "run",
-		Short:   "Launch a local team run from the current clone root",
+		Short:   "Start all agents in tmux",
 		GroupID: subGroupRuntime,
-		Long: `Launch a team run from the current clone root.
-This command is local runtime, not a clier-server run API call.
+		Long: `Start all team agents in a tmux session.
 
-The current directory must be the team clone root that directly owns
-` + "`.clier/clone.json`" + `. Run ` + "`team clone`" + `
-first, then ` + "`cd`" + ` into that clone root before starting a run.
-Each member gets its own tmux window within a single session.
+Run this from the clone directory created by ` + "`team clone`" + `.
+The current directory must contain ` + "`.clier/clone.json`" + `.
+Each agent gets its own tmux window within a single session.
 
-The clone is a one-way local worktree. To refresh it from server
-resources, remove the clone and create it again.`,
+To refresh a clone, remove the directory and clone again.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()

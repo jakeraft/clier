@@ -15,7 +15,7 @@ func init() {
 func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "config",
-		Short:   "Manage local clier configuration",
+		Short:   "Manage clier settings",
 		GroupID: rootGroupLocal,
 	}
 	cmd.AddCommand(newConfigViewCmd())
@@ -26,7 +26,7 @@ func newConfigCmd() *cobra.Command {
 func newConfigViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view",
-		Short: "Show current config",
+		Short: "Show current settings",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig()
 			if err != nil {

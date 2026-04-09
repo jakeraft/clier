@@ -11,8 +11,8 @@ func init() {
 func newTutorialCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "tutorial",
-		Short: "Learn the clier workflow with an example team",
-		Long: `Learn the clier workflow with an example team.
+		Short: "Learn to harness your first agent team",
+		Long: `Learn to harness your first agent team.
 
 The "todo-team" is a team of AI agents that implements a feature
 on a real GitHub repo (github.com/jakeraft/clier_todo) with
@@ -36,7 +36,7 @@ Step 2. Explore the pre-loaded todo-team
   clier explore teams
   clier team view jakeraft/todo-team
 
-  The "jakeraft/todo-team" is already available on the server.
+  The "jakeraft/todo-team" is already available.
 
 Step 3. Fork and run the team
 
@@ -48,8 +48,7 @@ Step 3. Fork and run the team
   under ./<your-login>/todo-team/, and launches all agents in tmux.
   Copy the run ID from the output.
 
-  The clone is a one-way local worktree. To refresh it later,
-  remove the directory and clone again.
+  To refresh a clone later, remove the directory and clone again.
 
 Step 4. Give the team a job
 

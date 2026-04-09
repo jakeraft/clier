@@ -16,7 +16,7 @@ func init() {
 func newAuthCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "auth",
-		Short:   "Authenticate with the clier server",
+		Short:   "Log in to clier",
 		GroupID: rootGroupServer,
 	}
 	cmd.AddCommand(newAuthLoginCmd())
@@ -81,7 +81,7 @@ func newAuthLoginCmd() *cobra.Command {
 func newAuthLogoutCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "logout",
-		Short: "Log out and remove stored credentials",
+		Short: "Log out",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := auth.Delete(currentConfig().CredentialsPath); err != nil {
 				return err
@@ -95,7 +95,7 @@ func newAuthLogoutCmd() *cobra.Command {
 func newAuthStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
-		Short: "Show current authentication status",
+		Short: "Show login status",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			creds, err := auth.Load(currentConfig().CredentialsPath)
 			if err != nil {

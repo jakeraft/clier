@@ -12,7 +12,7 @@ func init() {
 func newClaudeMdCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "claude-md",
-		Short:   "Manage claude md files",
+		Short:   "Manage CLAUDE.md files",
 		GroupID: rootGroupServer,
 	}
 	cmd.AddCommand(newClaudeMdListCmd())
@@ -27,8 +27,8 @@ func newClaudeMdCmd() *cobra.Command {
 func newClaudeMdListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list [owner]",
-		Short: "List claude-md files",
-		Long:  "List your claude-md files, or another user's if [owner] is given.",
+		Short: "List your CLAUDE.md files",
+		Long:  "List your CLAUDE.md files, or another user's if [owner] is given.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -50,7 +50,7 @@ func newClaudeMdListCmd() *cobra.Command {
 func newClaudeMdViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view <[owner/]name>",
-		Short: "View a claude-md file",
+		Short: "Show CLAUDE.md details",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -69,7 +69,7 @@ func newClaudeMdCreateCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "create",
-		Short: "Create a claude-md file",
+		Short: "Create a new CLAUDE.md file",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
@@ -95,7 +95,7 @@ func newClaudeMdEditCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "edit <name>",
-		Short: "Edit a claude-md file",
+		Short: "Update a CLAUDE.md file",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -130,7 +130,7 @@ func newClaudeMdEditCmd() *cobra.Command {
 func newClaudeMdDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <name>",
-		Short: "Delete a claude-md file",
+		Short: "Delete a CLAUDE.md file",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -146,7 +146,7 @@ func newClaudeMdDeleteCmd() *cobra.Command {
 func newClaudeMdForkCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "fork <owner/name>",
-		Short: "Fork a claude-md file to your namespace",
+		Short: "Copy a public CLAUDE.md to your namespace",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()

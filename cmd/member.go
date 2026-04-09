@@ -16,28 +16,21 @@ func init() {
 func newMemberCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "member",
-		Short:   "Manage members and member clones",
+		Short:   "Define and run individual agents",
 		GroupID: rootGroupServer,
-		Long: `Manage member resources and member clones.
+		Long: `Define and run individual agents.
 
-Server-backed subcommands:
-  list, view, create, edit, delete, fork
+Use list, view, create, edit, delete, and fork to manage your
+agent definitions. Use clone and run to bring them to life locally.
 
-Local runtime subcommands:
-  clone, run
-
-Use ` + "`member clone`" + ` to materialize a local clone under
-` + "`./<owner>/<name>`" + `. Use ` + "`member run`" + ` from that clone root
-to launch a local tmux-based run.
-
-` + "`member clone`" + ` is one-way: it writes a local runnable worktree,
-but does not sync local file edits back to clier-server. Update server
-resources with explicit resource commands, then remove and re-clone when
-you want a fresh local copy.`,
+Workflow:
+  clier member create        Define a new agent
+  clier member clone <name>  Pull it to your machine
+  clier member run           Start the agent in tmux`,
 	}
 	cmd.AddGroup(
-		&cobra.Group{ID: subGroupServer, Title: "Server-Backed Member Commands"},
-		&cobra.Group{ID: subGroupRuntime, Title: "Local Runtime Commands"},
+		&cobra.Group{ID: subGroupServer, Title: "Define"},
+		&cobra.Group{ID: subGroupRuntime, Title: "Run"},
 	)
 	cmd.AddCommand(newMemberListCmd())
 	cmd.AddCommand(newMemberViewCmd())
@@ -53,7 +46,7 @@ you want a fresh local copy.`,
 func newMemberListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "list [owner]",
-		Short:   "List members from clier-server",
+		Short:   "List your members",
 		Long:    "List your members, or another user's members if [owner] is given.",
 		GroupID: subGroupServer,
 		Args:    cobra.MaximumNArgs(1),
@@ -77,7 +70,7 @@ func newMemberListCmd() *cobra.Command {
 func newMemberViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "view <[owner/]name>",
-		Short:   "View a member from clier-server",
+		Short:   "Show member details",
 		GroupID: subGroupServer,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -98,7 +91,7 @@ func newMemberCreateCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "create",
-		Short:   "Create a member on clier-server",
+		Short:   "Create a new member",
 		GroupID: subGroupServer,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -158,7 +151,7 @@ func newMemberEditCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "edit <name>",
-		Short:   "Edit a member on clier-server",
+		Short:   "Update a member",
 		GroupID: subGroupServer,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -235,7 +228,7 @@ func newMemberEditCmd() *cobra.Command {
 func newMemberDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "delete <name>",
-		Short:   "Delete a member from clier-server",
+		Short:   "Delete a member",
 		GroupID: subGroupServer,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -252,7 +245,7 @@ func newMemberDeleteCmd() *cobra.Command {
 func newMemberForkCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "fork <owner/name>",
-		Short:   "Fork a member on clier-server to your namespace",
+		Short:   "Copy a public member to your namespace",
 		GroupID: subGroupServer,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -272,7 +265,7 @@ func newMemberCloneCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "clone <[owner/]name>",
 		Aliases: []string{"workspace"},
-		Short:   "Create a local member clone under ./<owner>/<name>",
+		Short:   "Clone a member to a local directory",
 		GroupID: subGroupRuntime,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -310,17 +303,14 @@ func newMemberCloneCmd() *cobra.Command {
 func newMemberRunCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "run",
-		Short:   "Launch a local member run from the current clone root",
+		Short:   "Start the agent in tmux",
 		GroupID: subGroupRuntime,
-		Long: `Launch a single member from the current clone root.
-This command is local runtime, not a clier-server run API call.
+		Long: `Start the agent in a tmux session.
 
-The current directory must be the member clone root that directly owns
-` + "`.clier/clone.json`" + `. Run ` + "`member clone`" + `
-first, then ` + "`cd`" + ` into that clone root before starting a run.
+Run this from the clone directory created by ` + "`member clone`" + `.
+The current directory must contain ` + "`.clier/clone.json`" + `.
 
-The clone is a one-way local worktree. To refresh it from server
-resources, remove the clone and create it again.`,
+To refresh a clone, remove the directory and clone again.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
