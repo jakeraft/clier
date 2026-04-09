@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
+	appws "github.com/jakeraft/clier/internal/app/workspace"
 )
 
 func TestResolveRunPlanPath_SearchesCurrentWorkspaceAncestors(t *testing.T) {
@@ -15,6 +16,13 @@ func TestResolveRunPlanPath_SearchesCurrentWorkspaceAncestors(t *testing.T) {
 	plan := &apprun.RunPlan{RunID: runID, Session: "alpha-42"}
 	if err := apprun.SavePlan(base, runID, plan); err != nil {
 		t.Fatalf("SavePlan: %v", err)
+	}
+	if err := appws.SaveCloneMetadata(base, &appws.CloneMetadata{
+		Kind:  resourceKindMember,
+		Owner: "jakeraft",
+		Name:  "tech-lead",
+	}); err != nil {
+		t.Fatalf("SaveCloneMetadata: %v", err)
 	}
 
 	repoDir := filepath.Join(base, "member")

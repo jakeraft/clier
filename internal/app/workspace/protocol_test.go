@@ -52,7 +52,7 @@ func TestComposeAndStripTeamClaudeMdPrelude(t *testing.T) {
 
 	content := "You are a reviewer.\n"
 	composed := ComposeTeamClaudeMd("reviewer", content)
-	if !strings.HasPrefix(composed, "@../.clier/work-log-protocol.md\n@../.clier/reviewer-team-protocol.md") {
+	if !strings.HasPrefix(composed, "@.clier/work-log-protocol.md\n@.clier/reviewer-team-protocol.md") {
 		t.Fatalf("missing import prelude:\n%s", composed)
 	}
 

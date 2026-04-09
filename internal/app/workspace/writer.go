@@ -108,15 +108,13 @@ func (w *Writer) prepareMemberFromResponse(base string, member *api.MemberRespon
 
 // PrepareTeam creates workspaces for all team members.
 // Each member gets a subdirectory named after the team member name.
-// The team clone owns a single root .clier directory, which stores
-// per-member team protocol files imported by each member's CLAUDE.md.
+// The team clone owns a single root .clier directory for runtime metadata,
+// while each member owns a generated-only .clier directory for imported
+// protocol files inside its own working tree.
 func (w *Writer) PrepareTeam(base, teamName string) error {
 	team, err := w.client.GetTeam(w.owner, teamName)
 	if err != nil {
 		return fmt.Errorf("get team %s: %w", teamName, err)
-	}
-	if err := writeWorkLogProtocol(base); err != nil {
-		return fmt.Errorf("write work log protocol: %w", err)
 	}
 
 	// Build member lookup for protocol generation.
@@ -151,15 +149,15 @@ func (w *Writer) PrepareTeam(base, teamName string) error {
 		if err != nil {
 			return fmt.Errorf("get member %s: %w", tm.Name, err)
 		}
-		protocol := BuildProtocol(team.Name, tm.Name, relMap[tm.ID], membersByID)
-		protocolPath := filepath.Join(base, ".clier", TeamProtocolFileName(tm.Name))
-		if err := writeFile(protocolPath, protocol); err != nil {
-			return fmt.Errorf("write protocol for %s: %w", tm.Name, err)
-		}
 		if err := w.prepareMemberFromResponse(memberBase, member, memberWriteOptions{
 			TeamMemberName: tm.Name,
 		}); err != nil {
 			return fmt.Errorf("prepare member %s: %w", tm.Name, err)
+		}
+		protocol := BuildProtocol(team.Name, tm.Name, relMap[tm.ID], membersByID)
+		protocolPath := filepath.Join(memberBase, ".clier", TeamProtocolFileName(tm.Name))
+		if err := writeFile(protocolPath, protocol); err != nil {
+			return fmt.Errorf("write protocol for %s: %w", tm.Name, err)
 		}
 	}
 

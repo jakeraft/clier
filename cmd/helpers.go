@@ -12,6 +12,7 @@ import (
 	"time"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
+	appws "github.com/jakeraft/clier/internal/app/workspace"
 )
 
 // buildMemberEnv returns the environment variables for a member agent.
@@ -81,21 +82,17 @@ func saveRunPlan(runID string, plan *apprun.RunPlan) error {
 }
 
 func resolveRunPlanPath(runID string) (string, error) {
-	base, err := resolveWorkspaceBase()
+	runtimeDir, err := resolveRuntimeDir()
 	if err != nil {
 		return "", err
 	}
-	for dir := base; ; dir = filepath.Dir(dir) {
-		planPath := apprun.PlanPath(dir, runID)
-		if _, err := os.Stat(planPath); err == nil {
-			return planPath, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
+	if runtimeDir == "" {
+		return "", fmt.Errorf("runtime dir not found in current clone")
 	}
-
+	planPath := filepath.Join(runtimeDir, runID+".json")
+	if _, err := os.Stat(planPath); err == nil {
+		return planPath, nil
+	}
 	return "", fmt.Errorf("run plan %s not found in current clone", runID)
 }
 
@@ -106,7 +103,15 @@ func resolveRuntimeDir() (string, error) {
 	}
 	for dir := base; ; dir = filepath.Dir(dir) {
 		runtimeDir := filepath.Join(dir, ".clier")
+		cloneMeta := filepath.Join(runtimeDir, appws.CloneMetadataFile)
 		if stat, err := os.Stat(runtimeDir); err == nil && stat.IsDir() {
+			if _, err := os.Stat(cloneMeta); err == nil {
+				return runtimeDir, nil
+			}
+		} else if err != nil && !os.IsNotExist(err) {
+			return "", fmt.Errorf("stat runtime dir: %w", err)
+		}
+		if _, err := os.Stat(cloneMeta); err == nil {
 			return runtimeDir, nil
 		}
 		parent := filepath.Dir(dir)

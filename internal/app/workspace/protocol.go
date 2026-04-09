@@ -21,7 +21,7 @@ func WorkLogProtocolImportPath() string {
 }
 
 func TeamWorkLogProtocolImportPath() string {
-	return filepath.ToSlash(filepath.Join("..", ".clier", workLogProtocolFileName))
+	return filepath.ToSlash(filepath.Join(".clier", workLogProtocolFileName))
 }
 
 func TeamProtocolFileName(memberName string) string {
@@ -29,7 +29,7 @@ func TeamProtocolFileName(memberName string) string {
 }
 
 func TeamProtocolImportPath(memberName string) string {
-	return filepath.ToSlash(filepath.Join("..", ".clier", TeamProtocolFileName(memberName)))
+	return filepath.ToSlash(filepath.Join(".clier", TeamProtocolFileName(memberName)))
 }
 
 func TeamProtocolImportLine(memberName string) string {
@@ -106,7 +106,7 @@ func BuildWorkLogProtocol() string {
 }
 
 // BuildProtocol generates the team protocol CLAUDE.md content.
-// Written to {teamRoot}/.clier/{member}-team-protocol.md and imported by
+// Written to {teamRoot}/{member}/.clier/{member}-team-protocol.md and imported by
 // each member's root CLAUDE.md.
 func BuildProtocol(teamName, memberName string, relations domain.MemberRelations, membersByID map[int64]ProtocolMember) string {
 	var b strings.Builder
