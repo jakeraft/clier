@@ -1,4 +1,4 @@
-package clone
+package workspace
 
 import (
 	"os"
@@ -6,19 +6,19 @@ import (
 	"testing"
 )
 
-func TestSaveCloneMetadata(t *testing.T) {
+func TestSaveManifest(t *testing.T) {
 	t.Parallel()
 
 	base := t.TempDir()
 	version := 7
 	resourceVersion := 3
-	meta := &CloneMetadata{
+	meta := &Manifest{
 		Kind:          "team",
 		Owner:         "jakeraft",
 		Name:          "dev-squad",
 		Materializer:  "local-git",
 		LatestVersion: &version,
-		Resources: []CloneResourceMetadata{{
+		Resources: []ResourceManifest{{
 			Kind:          "skill",
 			Owner:         "jakeraft",
 			Name:          "reviewer",
@@ -27,8 +27,8 @@ func TestSaveCloneMetadata(t *testing.T) {
 		}},
 	}
 
-	if err := SaveCloneMetadata(base, meta); err != nil {
-		t.Fatalf("SaveCloneMetadata: %v", err)
+	if err := SaveManifest(base, meta); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
 	}
 
 	path := filepath.Join(base, ".clier", WorkspaceMetadataFile)
@@ -36,9 +36,9 @@ func TestSaveCloneMetadata(t *testing.T) {
 		t.Fatalf("stat metadata file: %v", err)
 	}
 
-	loaded, err := LoadCloneMetadata(base)
+	loaded, err := LoadManifest(base)
 	if err != nil {
-		t.Fatalf("LoadCloneMetadata: %v", err)
+		t.Fatalf("LoadManifest: %v", err)
 	}
 	if loaded.Kind != meta.Kind || loaded.Owner != meta.Owner || loaded.Name != meta.Name {
 		t.Fatalf("loaded metadata mismatch: %#v", loaded)
@@ -57,11 +57,11 @@ func TestSaveCloneMetadata(t *testing.T) {
 	}
 }
 
-func TestLoadCloneMetadata_RequiresWorkspaceMetadataPath(t *testing.T) {
+func TestLoadManifest_RequiresWorkspaceMetadataPath(t *testing.T) {
 	t.Parallel()
 
 	base := t.TempDir()
-	if _, err := LoadCloneMetadata(base); err == nil {
+	if _, err := LoadManifest(base); err == nil {
 		t.Fatalf("expected workspace metadata lookup to fail without workspace.json")
 	}
 }

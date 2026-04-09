@@ -1,4 +1,4 @@
-package clone
+package workspace
 
 import (
 	"os"
@@ -32,14 +32,14 @@ func TestEnsureRepoDir_ClonesRepoAndReusesSameOrigin(t *testing.T) {
 	repoDir := filepath.Join(t.TempDir(), "clier_todo")
 
 	if err := ensureRepoDir(repoURL, repoDir); err != nil {
-		t.Fatalf("ensureRepoDir initial clone: %v", err)
+		t.Fatalf("ensureRepoDir initial checkout: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(repoDir, ".git")); err != nil {
 		t.Fatalf("stat .git: %v", err)
 	}
 
 	if err := ensureRepoDir(repoURL, repoDir); err != nil {
-		t.Fatalf("ensureRepoDir second clone: %v", err)
+		t.Fatalf("ensureRepoDir second checkout: %v", err)
 	}
 }
 
@@ -51,7 +51,7 @@ func TestEnsureRepoDir_RejectsDifferentOrigin(t *testing.T) {
 	repoDir := filepath.Join(t.TempDir(), "clier_todo")
 
 	if err := ensureRepoDir(firstRepoURL, repoDir); err != nil {
-		t.Fatalf("ensureRepoDir initial clone: %v", err)
+		t.Fatalf("ensureRepoDir initial checkout: %v", err)
 	}
 	if err := ensureRepoDir(secondRepoURL, repoDir); err == nil {
 		t.Fatalf("ensureRepoDir should reject a different origin")

@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
-	appclone "github.com/jakeraft/clier/internal/app/clone"
 	apprun "github.com/jakeraft/clier/internal/app/run"
+	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -234,15 +234,15 @@ func newTeamForkCmd() *cobra.Command {
 func newTeamDownloadCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "download <[owner/]name>",
-		Aliases: []string{"clone", "workspace"},
+		Aliases: []string{"workspace"},
 		Short:   "Download a team to a local directory",
 		GroupID: subGroupRuntime,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner, name := parseOwnerName(args[0])
-			writer := appclone.NewWriter(client, owner)
-			teamBase, err := resolveCloneCreateBase(cloneTarget{
+			writer := appworkspace.NewWriter(client, owner)
+			teamBase, err := resolveWorkspaceCreateBase(workspaceTarget{
 				Kind:  resourceKindTeam,
 				Owner: owner,
 				Name:  name,
@@ -254,11 +254,11 @@ func newTeamDownloadCmd() *cobra.Command {
 			if err := writer.PrepareTeam(teamBase, name); err != nil {
 				return err
 			}
-			meta, err := buildTeamCloneMetadata(client, owner, name)
+			meta, err := buildTeamManifest(client, owner, name)
 			if err != nil {
 				return err
 			}
-			if err := appclone.SaveCloneMetadata(teamBase, meta); err != nil {
+			if err := appworkspace.SaveManifest(teamBase, meta); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
@@ -284,7 +284,7 @@ Each agent gets its own tmux window within a single session.
 To refresh a workspace, download it again.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			teamBase, meta, err := requireCurrentCloneRootKind(resourceKindTeam, "`clier team run`")
+			teamBase, meta, err := requireCurrentWorkspaceRootKind(resourceKindTeam, "`clier team run`")
 			if err != nil {
 				return err
 			}

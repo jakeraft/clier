@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
-	appclone "github.com/jakeraft/clier/internal/app/clone"
+	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
 
 const (
@@ -19,14 +19,14 @@ const (
 	resourceKindSkill          = "skill"
 )
 
-func resolveCloneFromCWD(expectedKind string) (string, *appclone.CloneMetadata, error) {
+func resolveWorkspaceFromCWD(expectedKind string) (string, *appworkspace.Manifest, error) {
 	base, err := resolveWorkspaceBase()
 	if err != nil {
 		return "", nil, err
 	}
 	for dir := base; ; dir = filepath.Dir(dir) {
-		if _, err := appclone.FindCloneMetadataPath(dir); err == nil {
-			meta, err := appclone.LoadCloneMetadata(dir)
+		if _, err := appworkspace.FindManifestPath(dir); err == nil {
+			meta, err := appworkspace.LoadManifest(dir)
 			if err != nil {
 				return "", nil, err
 			}
@@ -43,22 +43,22 @@ func resolveCloneFromCWD(expectedKind string) (string, *appclone.CloneMetadata, 
 	return "", nil, errors.New("workspace metadata not found in current directory")
 }
 
-func buildMemberCloneMetadata(client *api.Client, owner, name string) (*appclone.CloneMetadata, error) {
+func buildMemberManifest(client *api.Client, owner, name string) (*appworkspace.Manifest, error) {
 	member, err := client.GetMember(owner, name)
 	if err != nil {
 		return nil, fmt.Errorf("get member %s/%s: %w", owner, name, err)
 	}
 
-	meta := &appclone.CloneMetadata{
+	meta := &appworkspace.Manifest{
 		Kind:          resourceKindMember,
 		Owner:         member.OwnerLogin,
 		Name:          member.Name,
 		Materializer:  "local-git",
 		GitRepoURL:    member.GitRepoURL,
 		LatestVersion: member.LatestVersion,
-		ClonedAt:      time.Now().UTC(),
-		Workspace: &appclone.WorkspaceMetadata{
-			Member: &appclone.MemberWorkspaceMetadata{
+		DownloadedAt:  time.Now().UTC(),
+		Workspace: &appworkspace.WorkspaceMetadata{
+			Member: &appworkspace.MemberWorkspaceMetadata{
 				ID:         member.ID,
 				Name:       member.Name,
 				Command:    member.Command,
@@ -71,25 +71,25 @@ func buildMemberCloneMetadata(client *api.Client, owner, name string) (*appclone
 		return nil, err
 	}
 	meta.Resources = resources
-	sortCloneResources(meta.Resources)
+	sortWorkspaceResources(meta.Resources)
 	return meta, nil
 }
 
-func buildTeamCloneMetadata(client *api.Client, owner, name string) (*appclone.CloneMetadata, error) {
+func buildTeamManifest(client *api.Client, owner, name string) (*appworkspace.Manifest, error) {
 	team, err := client.GetTeam(owner, name)
 	if err != nil {
 		return nil, fmt.Errorf("get team %s/%s: %w", owner, name, err)
 	}
 
-	meta := &appclone.CloneMetadata{
+	meta := &appworkspace.Manifest{
 		Kind:          resourceKindTeam,
 		Owner:         team.OwnerLogin,
 		Name:          team.Name,
 		Materializer:  "local-git",
 		LatestVersion: team.LatestVersion,
-		ClonedAt:      time.Now().UTC(),
-		Workspace: &appclone.WorkspaceMetadata{
-			Team: &appclone.TeamWorkspaceMetadata{
+		DownloadedAt:  time.Now().UTC(),
+		Workspace: &appworkspace.WorkspaceMetadata{
+			Team: &appworkspace.TeamWorkspaceMetadata{
 				ID:   team.ID,
 				Name: team.Name,
 			},
@@ -101,7 +101,7 @@ func buildTeamCloneMetadata(client *api.Client, owner, name string) (*appclone.C
 		if err != nil {
 			return nil, fmt.Errorf("get member %s/%s: %w", tm.Member.Owner, tm.Member.Name, err)
 		}
-		meta.Resources = append(meta.Resources, appclone.CloneResourceMetadata{
+		meta.Resources = append(meta.Resources, appworkspace.ResourceManifest{
 			Kind:          resourceKindMember,
 			Owner:         member.OwnerLogin,
 			Name:          member.Name,
@@ -109,7 +109,7 @@ func buildTeamCloneMetadata(client *api.Client, owner, name string) (*appclone.C
 			LocalPath:     filepath.ToSlash(tm.Name),
 			LatestVersion: member.LatestVersion,
 		})
-		meta.Workspace.Team.Members = append(meta.Workspace.Team.Members, appclone.TeamMemberWorkspaceMetadata{
+		meta.Workspace.Team.Members = append(meta.Workspace.Team.Members, appworkspace.TeamMemberWorkspaceMetadata{
 			TeamMemberID: tm.ID,
 			Name:         tm.Name,
 			Command:      member.Command,
@@ -122,19 +122,19 @@ func buildTeamCloneMetadata(client *api.Client, owner, name string) (*appclone.C
 		meta.Resources = append(meta.Resources, resources...)
 	}
 
-	sortCloneResources(meta.Resources)
+	sortWorkspaceResources(meta.Resources)
 	return meta, nil
 }
 
-func memberMaterializedResources(client *api.Client, memberDir string, member *api.MemberResponse) ([]appclone.CloneResourceMetadata, error) {
-	var resources []appclone.CloneResourceMetadata
+func memberMaterializedResources(client *api.Client, memberDir string, member *api.MemberResponse) ([]appworkspace.ResourceManifest, error) {
+	var resources []appworkspace.ResourceManifest
 
 	if member.ClaudeMd != nil {
 		claudeMd, err := client.GetClaudeMd(member.ClaudeMd.Owner, member.ClaudeMd.Name)
 		if err != nil {
 			return nil, fmt.Errorf("get claude md %s/%s: %w", member.ClaudeMd.Owner, member.ClaudeMd.Name, err)
 		}
-		resources = append(resources, appclone.CloneResourceMetadata{
+		resources = append(resources, appworkspace.ResourceManifest{
 			Kind:          resourceKindClaudeMd,
 			Owner:         claudeMd.OwnerLogin,
 			Name:          claudeMd.Name,
@@ -148,7 +148,7 @@ func memberMaterializedResources(client *api.Client, memberDir string, member *a
 		if err != nil {
 			return nil, fmt.Errorf("get claude settings %s/%s: %w", member.ClaudeSettings.Owner, member.ClaudeSettings.Name, err)
 		}
-		resources = append(resources, appclone.CloneResourceMetadata{
+		resources = append(resources, appworkspace.ResourceManifest{
 			Kind:          resourceKindClaudeSettings,
 			Owner:         settings.OwnerLogin,
 			Name:          settings.Name,
@@ -162,7 +162,7 @@ func memberMaterializedResources(client *api.Client, memberDir string, member *a
 		if err != nil {
 			return nil, fmt.Errorf("get skill %s/%s: %w", skillRef.Owner, skillRef.Name, err)
 		}
-		resources = append(resources, appclone.CloneResourceMetadata{
+		resources = append(resources, appworkspace.ResourceManifest{
 			Kind:          resourceKindSkill,
 			Owner:         skill.OwnerLogin,
 			Name:          skill.Name,
@@ -174,14 +174,14 @@ func memberMaterializedResources(client *api.Client, memberDir string, member *a
 	return resources, nil
 }
 
-func sortCloneResources(resources []appclone.CloneResourceMetadata) {
+func sortWorkspaceResources(resources []appworkspace.ResourceManifest) {
 	sort.Slice(resources, func(i, j int) bool {
-		left := cloneMetadataResourceKey(resources[i].Kind, resources[i].Owner, resources[i].Name, resources[i].LocalPath)
-		right := cloneMetadataResourceKey(resources[j].Kind, resources[j].Owner, resources[j].Name, resources[j].LocalPath)
+		left := workspaceResourceKey(resources[i].Kind, resources[i].Owner, resources[i].Name, resources[i].LocalPath)
+		right := workspaceResourceKey(resources[j].Kind, resources[j].Owner, resources[j].Name, resources[j].LocalPath)
 		return left < right
 	})
 }
 
-func cloneMetadataResourceKey(kind, owner, name, localPath string) string {
+func workspaceResourceKey(kind, owner, name, localPath string) string {
 	return kind + "|" + owner + "|" + name + "|" + filepath.ToSlash(filepath.Clean(localPath))
 }

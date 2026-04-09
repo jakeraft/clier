@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
-	appclone "github.com/jakeraft/clier/internal/app/clone"
 	apprun "github.com/jakeraft/clier/internal/app/run"
+	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -264,15 +264,15 @@ func newMemberForkCmd() *cobra.Command {
 func newMemberDownloadCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "download <[owner/]name>",
-		Aliases: []string{"clone", "workspace"},
+		Aliases: []string{"workspace"},
 		Short:   "Download a member to a local directory",
 		GroupID: subGroupRuntime,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner, name := parseOwnerName(args[0])
-			writer := appclone.NewWriter(client, owner)
-			base, err := resolveCloneCreateBase(cloneTarget{
+			writer := appworkspace.NewWriter(client, owner)
+			base, err := resolveWorkspaceCreateBase(workspaceTarget{
 				Kind:  resourceKindMember,
 				Owner: owner,
 				Name:  name,
@@ -284,11 +284,11 @@ func newMemberDownloadCmd() *cobra.Command {
 			if err := writer.PrepareMember(base, name); err != nil {
 				return err
 			}
-			meta, err := buildMemberCloneMetadata(client, owner, name)
+			meta, err := buildMemberManifest(client, owner, name)
 			if err != nil {
 				return err
 			}
-			if err := appclone.SaveCloneMetadata(base, meta); err != nil {
+			if err := appworkspace.SaveManifest(base, meta); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{
@@ -313,7 +313,7 @@ The current directory must contain ` + "`.clier/workspace.json`" + `.
 To refresh a workspace, download it again.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			absBase, meta, err := requireCurrentCloneRootKind(resourceKindMember, "`clier member run`")
+			absBase, meta, err := requireCurrentWorkspaceRootKind(resourceKindMember, "`clier member run`")
 			if err != nil {
 				return err
 			}

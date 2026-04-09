@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	appclone "github.com/jakeraft/clier/internal/app/clone"
+	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
 
 func TestValidateDownloadedWorkspace_Member(t *testing.T) {
@@ -24,10 +24,10 @@ func TestValidateDownloadedWorkspace_Member(t *testing.T) {
 		}
 	}
 
-	meta := &appclone.CloneMetadata{
+	meta := &appworkspace.Manifest{
 		Kind: resourceKindMember,
-		Workspace: &appclone.WorkspaceMetadata{
-			Member: &appclone.MemberWorkspaceMetadata{
+		Workspace: &appworkspace.WorkspaceMetadata{
+			Member: &appworkspace.MemberWorkspaceMetadata{
 				ID:      1,
 				Name:    "reviewer",
 				Command: "codex",
@@ -41,10 +41,10 @@ func TestValidateDownloadedWorkspace_Member(t *testing.T) {
 
 func TestValidateDownloadedWorkspace_MissingFileFails(t *testing.T) {
 	base := t.TempDir()
-	meta := &appclone.CloneMetadata{
+	meta := &appworkspace.Manifest{
 		Kind: resourceKindMember,
-		Workspace: &appclone.WorkspaceMetadata{
-			Member: &appclone.MemberWorkspaceMetadata{
+		Workspace: &appworkspace.WorkspaceMetadata{
+			Member: &appworkspace.MemberWorkspaceMetadata{
 				ID:      1,
 				Name:    "reviewer",
 				Command: "codex",

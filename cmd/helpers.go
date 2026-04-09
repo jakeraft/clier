@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	appclone "github.com/jakeraft/clier/internal/app/clone"
 	apprun "github.com/jakeraft/clier/internal/app/run"
+	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
 
 // buildMemberEnv returns the environment variables for a member agent.
@@ -109,13 +109,13 @@ func resolveRuntimeDir() (string, error) {
 	for dir := base; ; dir = filepath.Dir(dir) {
 		runtimeDir := filepath.Join(dir, ".clier")
 		if stat, err := os.Stat(runtimeDir); err == nil && stat.IsDir() {
-			if _, err := appclone.FindCloneMetadataPath(dir); err == nil {
+			if _, err := appworkspace.FindManifestPath(dir); err == nil {
 				return runtimeDir, nil
 			}
 		} else if err != nil && !os.IsNotExist(err) {
 			return "", fmt.Errorf("stat runtime dir: %w", err)
 		}
-		if _, err := appclone.FindCloneMetadataPath(dir); err == nil {
+		if _, err := appworkspace.FindManifestPath(dir); err == nil {
 			return runtimeDir, nil
 		}
 		parent := filepath.Dir(dir)

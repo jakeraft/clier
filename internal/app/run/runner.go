@@ -165,8 +165,8 @@ func (p *RunPlan) AddMessage(fromTeamMemberID, toTeamMemberID *int64, content st
 		return errors.New("message content must not be empty")
 	}
 	p.Messages = append(p.Messages, RecordedMessage{
-		FromTeamMemberID: cloneInt64Ptr(fromTeamMemberID),
-		ToTeamMemberID:   cloneInt64Ptr(toTeamMemberID),
+		FromTeamMemberID: copyInt64Ptr(fromTeamMemberID),
+		ToTeamMemberID:   copyInt64Ptr(toTeamMemberID),
 		Content:          content,
 		CreatedAt:        time.Now(),
 	})
@@ -179,7 +179,7 @@ func (p *RunPlan) AddNote(teamMemberID *int64, content string) error {
 		return errors.New("note content must not be empty")
 	}
 	p.Notes = append(p.Notes, RecordedNote{
-		TeamMemberID: cloneInt64Ptr(teamMemberID),
+		TeamMemberID: copyInt64Ptr(teamMemberID),
 		Content:      content,
 		CreatedAt:    time.Now(),
 	})
@@ -201,7 +201,7 @@ func ParseTeamMemberID(raw string) (int64, error) {
 	return id, nil
 }
 
-func cloneInt64Ptr(v *int64) *int64 {
+func copyInt64Ptr(v *int64) *int64 {
 	if v == nil {
 		return nil
 	}

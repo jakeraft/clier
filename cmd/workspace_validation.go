@@ -6,14 +6,14 @@ import (
 	"os"
 	"path/filepath"
 
-	appclone "github.com/jakeraft/clier/internal/app/clone"
+	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
 
 func workspaceMetadataPathLabel() string {
-	return filepath.ToSlash(filepath.Join(".clier", appclone.WorkspaceMetadataFile))
+	return filepath.ToSlash(filepath.Join(".clier", appworkspace.WorkspaceMetadataFile))
 }
 
-func validateDownloadedWorkspace(base string, meta *appclone.CloneMetadata) error {
+func validateDownloadedWorkspace(base string, meta *appworkspace.Manifest) error {
 	if meta == nil {
 		return errors.New("workspace metadata is missing")
 	}
@@ -32,7 +32,7 @@ func validateDownloadedWorkspace(base string, meta *appclone.CloneMetadata) erro
 		}
 		for _, member := range meta.Workspace.Team.Members {
 			memberBase := filepath.Join(base, member.Name)
-			if err := validateMemberWorkspace(memberBase, &appclone.MemberWorkspaceMetadata{
+			if err := validateMemberWorkspace(memberBase, &appworkspace.MemberWorkspaceMetadata{
 				ID:         member.TeamMemberID,
 				Name:       member.Name,
 				Command:    member.Command,
@@ -47,14 +47,14 @@ func validateDownloadedWorkspace(base string, meta *appclone.CloneMetadata) erro
 	}
 }
 
-func validateMemberWorkspace(base string, member *appclone.MemberWorkspaceMetadata, teamMemberName string) error {
+func validateMemberWorkspace(base string, member *appworkspace.MemberWorkspaceMetadata, teamMemberName string) error {
 	if member == nil {
 		return errors.New("workspace member metadata is missing")
 	}
 	if member.ID == 0 || member.Name == "" || member.Command == "" {
 		return fmt.Errorf("workspace metadata in %s is incomplete; download the resource again", workspaceMetadataPathLabel())
 	}
-	prepared, err := appclone.IsPreparedRoot(member.GitRepoURL, base)
+	prepared, err := appworkspace.IsPreparedRoot(member.GitRepoURL, base)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func validateMemberWorkspace(base string, member *appclone.MemberWorkspaceMetada
 		filepath.Join(base, ".claude", "settings.local.json"),
 	}
 	if teamMemberName != "" {
-		required = append(required, filepath.Join(base, ".clier", appclone.TeamProtocolFileName(teamMemberName)))
+		required = append(required, filepath.Join(base, ".clier", appworkspace.TeamProtocolFileName(teamMemberName)))
 	}
 	for _, path := range required {
 		if err := requireWorkspacePath(path); err != nil {

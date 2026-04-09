@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	appclone "github.com/jakeraft/clier/internal/app/clone"
 	apprun "github.com/jakeraft/clier/internal/app/run"
+	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -59,7 +59,7 @@ func newRunListCmd() *cobra.Command {
 
 			runs := make([]*apprun.RunPlan, 0)
 			for _, entry := range entries {
-				if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") || strings.HasSuffix(entry.Name(), ".state.json") || entry.Name() == appclone.CloneMetadataFile {
+				if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") || strings.HasSuffix(entry.Name(), ".state.json") || entry.Name() == appworkspace.ManifestFile {
 					continue
 				}
 				plan, err := apprun.LoadPlanFromPath(filepath.Join(runtimeDir, entry.Name()))

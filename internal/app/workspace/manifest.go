@@ -1,4 +1,4 @@
-package clone
+package workspace
 
 import (
 	"encoding/json"
@@ -10,23 +10,23 @@ import (
 
 const (
 	WorkspaceMetadataFile = "workspace.json"
-	CloneMetadataFile     = WorkspaceMetadataFile
+	ManifestFile          = WorkspaceMetadataFile
 )
 
-type CloneMetadata struct {
-	Kind          string                  `json:"kind"`
-	Owner         string                  `json:"owner"`
-	Name          string                  `json:"name"`
-	Materializer  string                  `json:"materializer,omitempty"`
-	GitRepoURL    string                  `json:"git_repo_url,omitempty"`
-	RepoDir       string                  `json:"repo_dir,omitempty"`
-	LatestVersion *int                    `json:"latest_version,omitempty"`
-	Resources     []CloneResourceMetadata `json:"resources,omitempty"`
-	ClonedAt      time.Time               `json:"cloned_at"`
-	Workspace     *WorkspaceMetadata      `json:"workspace,omitempty"`
+type Manifest struct {
+	Kind          string             `json:"kind"`
+	Owner         string             `json:"owner"`
+	Name          string             `json:"name"`
+	Materializer  string             `json:"materializer,omitempty"`
+	GitRepoURL    string             `json:"git_repo_url,omitempty"`
+	RepoDir       string             `json:"repo_dir,omitempty"`
+	LatestVersion *int               `json:"latest_version,omitempty"`
+	Resources     []ResourceManifest `json:"resources,omitempty"`
+	DownloadedAt  time.Time          `json:"downloaded_at"`
+	Workspace     *WorkspaceMetadata `json:"workspace,omitempty"`
 }
 
-type CloneResourceMetadata struct {
+type ResourceManifest struct {
 	Kind          string `json:"kind"`
 	Owner         string `json:"owner"`
 	Name          string `json:"name"`
@@ -65,7 +65,7 @@ func MetadataPath(base string) string {
 	return filepath.Join(base, ".clier", WorkspaceMetadataFile)
 }
 
-func FindCloneMetadataPath(base string) (string, error) {
+func FindManifestPath(base string) (string, error) {
 	path := MetadataPath(base)
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
@@ -75,7 +75,7 @@ func FindCloneMetadataPath(base string) (string, error) {
 	return "", os.ErrNotExist
 }
 
-func SaveCloneMetadata(base string, meta *CloneMetadata) error {
+func SaveManifest(base string, meta *Manifest) error {
 	dir := filepath.Join(base, ".clier")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("create workspace metadata dir: %w", err)
@@ -92,8 +92,8 @@ func SaveCloneMetadata(base string, meta *CloneMetadata) error {
 	return nil
 }
 
-func LoadCloneMetadata(base string) (*CloneMetadata, error) {
-	path, err := FindCloneMetadataPath(base)
+func LoadManifest(base string) (*Manifest, error) {
+	path, err := FindManifestPath(base)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("read workspace metadata: %w", err)
@@ -105,7 +105,7 @@ func LoadCloneMetadata(base string) (*CloneMetadata, error) {
 		return nil, fmt.Errorf("read workspace metadata: %w", err)
 	}
 
-	var meta CloneMetadata
+	var meta Manifest
 	if err := json.Unmarshal(data, &meta); err != nil {
 		return nil, fmt.Errorf("unmarshal workspace metadata: %w", err)
 	}

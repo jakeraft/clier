@@ -1,4 +1,4 @@
-package clone
+package workspace
 
 import (
 	"encoding/json"
@@ -108,7 +108,7 @@ func (w *Writer) prepareMemberFromResponse(base string, member *api.MemberRespon
 
 // PrepareTeam creates workspaces for all team members.
 // Each member gets a subdirectory named after the team member name.
-// The team clone owns a single root .clier directory for runtime metadata,
+// The team workspace owns a single root .clier directory for runtime metadata,
 // while each member owns a generated-only .clier directory for imported
 // protocol files inside its own working tree.
 func (w *Writer) PrepareTeam(base, teamName string) error {
