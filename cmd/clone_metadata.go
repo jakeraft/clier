@@ -1,8 +1,8 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 	"time"
@@ -25,8 +25,7 @@ func resolveCloneFromCWD(expectedKind string) (string, *appclone.CloneMetadata, 
 		return "", nil, err
 	}
 	for dir := base; ; dir = filepath.Dir(dir) {
-		metaPath := filepath.Join(dir, ".clier", appclone.CloneMetadataFile)
-		if _, err := os.Stat(metaPath); err == nil {
+		if _, err := appclone.FindCloneMetadataPath(dir); err == nil {
 			meta, err := appclone.LoadCloneMetadata(dir)
 			if err != nil {
 				return "", nil, err
@@ -41,12 +40,7 @@ func resolveCloneFromCWD(expectedKind string) (string, *appclone.CloneMetadata, 
 			break
 		}
 	}
-	return "", nil, fmt.Errorf("workspace metadata not found in current directory")
-}
-
-func cloneMetadataExists(base string) bool {
-	_, err := os.Stat(filepath.Join(base, ".clier", appclone.CloneMetadataFile))
-	return err == nil
+	return "", nil, errors.New("workspace metadata not found in current directory")
 }
 
 func buildMemberCloneMetadata(client *api.Client, owner, name string) (*appclone.CloneMetadata, error) {

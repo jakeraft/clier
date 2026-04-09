@@ -9,9 +9,8 @@ import (
 )
 
 const (
-	WorkspaceMetadataFile   = "workspace.json"
-	LegacyCloneMetadataFile = "clone.json"
-	CloneMetadataFile       = WorkspaceMetadataFile
+	WorkspaceMetadataFile = "workspace.json"
+	CloneMetadataFile     = WorkspaceMetadataFile
 )
 
 type CloneMetadata struct {
@@ -66,18 +65,12 @@ func MetadataPath(base string) string {
 	return filepath.Join(base, ".clier", WorkspaceMetadataFile)
 }
 
-func legacyMetadataPath(base string) string {
-	return filepath.Join(base, ".clier", LegacyCloneMetadataFile)
-}
-
 func FindCloneMetadataPath(base string) (string, error) {
-	candidates := []string{MetadataPath(base), legacyMetadataPath(base)}
-	for _, path := range candidates {
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
-		} else if err != nil && !os.IsNotExist(err) {
-			return "", fmt.Errorf("stat workspace metadata: %w", err)
-		}
+	path := MetadataPath(base)
+	if _, err := os.Stat(path); err == nil {
+		return path, nil
+	} else if err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("stat workspace metadata: %w", err)
 	}
 	return "", os.ErrNotExist
 }

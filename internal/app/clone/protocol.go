@@ -83,8 +83,8 @@ func StripTeamClaudeMdPrelude(memberName, content string) string {
 		TeamProtocolImportLine(memberName) + "\n",
 	}
 	for _, prefix := range prefixes {
-		if strings.HasPrefix(content, prefix) {
-			return strings.TrimLeft(strings.TrimPrefix(content, prefix), "\n")
+		if stripped, ok := strings.CutPrefix(content, prefix); ok {
+			return strings.TrimLeft(stripped, "\n")
 		}
 	}
 	return content

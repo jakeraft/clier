@@ -14,20 +14,6 @@ type cloneTarget struct {
 	Name  string
 }
 
-func resolveCloneBase(target cloneTarget) (string, error) {
-	if cloneRoot, meta, err := resolveCloneFromCWD(target.Kind); err == nil {
-		if shouldReuseCloneRoot(target, cloneRoot, meta) {
-			return cloneRoot, nil
-		}
-	}
-
-	base, err := resolveWorkspaceBase()
-	if err != nil {
-		return "", err
-	}
-	return defaultCloneBase(base, target), nil
-}
-
 func resolveCloneCreateBase(target cloneTarget) (string, error) {
 	if cloneRoot, meta, err := resolveCloneFromCWD(target.Kind); err == nil {
 		if shouldReuseCloneRoot(target, cloneRoot, meta) {

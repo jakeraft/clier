@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,7 +18,7 @@ type Credentials struct {
 func Load(path string) (*Credentials, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("not logged in. Run 'clier auth login' first.")
+		return nil, errors.New("not logged in; run 'clier auth login' first")
 	}
 	var c Credentials
 	if err := json.Unmarshal(data, &c); err != nil {

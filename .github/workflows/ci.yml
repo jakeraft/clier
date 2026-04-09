@@ -7,47 +7,14 @@ on:
     branches: [main]
 
 jobs:
-  lint:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: latest
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: pnpm
-          cache-dependency-path: ui/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-        working-directory: ui
-      - run: pnpm build
-        working-directory: ui
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
-      - uses: golangci/golangci-lint-action@v7
-        with:
-          version: latest
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: latest
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: pnpm
-          cache-dependency-path: ui/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-        working-directory: ui
-      - run: pnpm build
-        working-directory: ui
-      - uses: actions/setup-go@v5
-        with:
-          go-version: "1.25"
-      - run: go build ./...
-      - run: go test ./...
+      - run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.11.4
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - run: make ci

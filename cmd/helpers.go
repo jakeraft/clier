@@ -3,6 +3,7 @@ package cmd
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,12 +39,16 @@ func buildMemberEnv(runID string, teamMemberID int64, teamID *int64, memberName 
 func buildFullCommand(env map[string]string, command, cwd string) string {
 	var parts []string
 	for k, v := range env {
-		parts = append(parts, fmt.Sprintf("export %s='%s'", k, v))
+		parts = append(parts, fmt.Sprintf("export %s=%s", k, shellQuote(v)))
 	}
 	sort.Strings(parts) // deterministic order
-	parts = append(parts, fmt.Sprintf("cd '%s'", cwd))
+	parts = append(parts, "cd "+shellQuote(cwd))
 	parts = append(parts, command)
 	return strings.Join(parts, " &&\n")
+}
+
+func shellQuote(v string) string {
+	return "'" + strings.ReplaceAll(v, "'", `'"'"'`) + "'"
 }
 
 func resolveWorkspaceBase() (string, error) {
@@ -75,7 +80,7 @@ func saveRunPlan(runID string, plan *apprun.RunPlan) error {
 		return err
 	}
 	if runtimeDir == "" {
-		return fmt.Errorf("runtime dir not found in current workspace")
+		return errors.New("runtime dir not found in current workspace")
 	}
 	workspaceBase := filepath.Dir(runtimeDir)
 	return apprun.SavePlan(workspaceBase, runID, plan)
@@ -87,7 +92,7 @@ func resolveRunPlanPath(runID string) (string, error) {
 		return "", err
 	}
 	if runtimeDir == "" {
-		return "", fmt.Errorf("runtime dir not found in current workspace")
+		return "", errors.New("runtime dir not found in current workspace")
 	}
 	planPath := filepath.Join(runtimeDir, runID+".json")
 	if _, err := os.Stat(planPath); err == nil {

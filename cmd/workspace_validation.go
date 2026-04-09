@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,7 +15,7 @@ func workspaceMetadataPathLabel() string {
 
 func validateDownloadedWorkspace(base string, meta *appclone.CloneMetadata) error {
 	if meta == nil {
-		return fmt.Errorf("workspace metadata is missing")
+		return errors.New("workspace metadata is missing")
 	}
 	switch meta.Kind {
 	case resourceKindMember:
@@ -48,7 +49,7 @@ func validateDownloadedWorkspace(base string, meta *appclone.CloneMetadata) erro
 
 func validateMemberWorkspace(base string, member *appclone.MemberWorkspaceMetadata, teamMemberName string) error {
 	if member == nil {
-		return fmt.Errorf("workspace member metadata is missing")
+		return errors.New("workspace member metadata is missing")
 	}
 	if member.ID == 0 || member.Name == "" || member.Command == "" {
 		return fmt.Errorf("workspace metadata in %s is incomplete; download the resource again", workspaceMetadataPathLabel())
