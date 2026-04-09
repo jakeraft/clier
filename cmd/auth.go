@@ -60,7 +60,7 @@ func newAuthLoginCmd() *cobra.Command {
 						Token: poll.AccessToken,
 						Login: poll.User.Login,
 					}
-					if err := auth.Save(auth.DefaultPath(), creds); err != nil {
+					if err := auth.Save(currentConfig().CredentialsPath, creds); err != nil {
 						return fmt.Errorf("failed to save credentials: %w", err)
 					}
 					fmt.Fprintf(os.Stderr, "Logged in as %s\n", poll.User.Login)
@@ -82,7 +82,7 @@ func newAuthLogoutCmd() *cobra.Command {
 		Use:   "logout",
 		Short: "Log out and remove stored credentials",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := auth.Delete(auth.DefaultPath()); err != nil {
+			if err := auth.Delete(currentConfig().CredentialsPath); err != nil {
 				return err
 			}
 			fmt.Fprintln(os.Stderr, "Logged out.")
@@ -96,7 +96,7 @@ func newAuthStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show current authentication status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			creds, err := auth.Load(auth.DefaultPath())
+			creds, err := auth.Load(currentConfig().CredentialsPath)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Not logged in.")
 				return nil
@@ -120,7 +120,7 @@ func newAuthTokenCmd() *cobra.Command {
 		Use:   "token",
 		Short: "Print the current access token",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			creds, err := auth.Load(auth.DefaultPath())
+			creds, err := auth.Load(currentConfig().CredentialsPath)
 			if err != nil {
 				return fmt.Errorf("not logged in. Run 'clier auth login' first.")
 			}

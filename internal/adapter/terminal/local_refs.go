@@ -11,19 +11,14 @@ import (
 )
 
 // LocalRefStore persists terminal refs to the local filesystem under
-// ~/.clier/refs/. Each run gets a JSON file keyed by member ID.
+// the configured refs directory. Each run gets a JSON file keyed by member ID.
 type LocalRefStore struct {
 	dir string
 	mu  sync.Mutex
 }
 
-// NewLocalRefStore creates a file-backed RefStore.
-// If dir is empty, ~/.clier/refs is used.
+// NewLocalRefStore creates a file-backed RefStore rooted at dir.
 func NewLocalRefStore(dir string) *LocalRefStore {
-	if dir == "" {
-		home, _ := os.UserHomeDir()
-		dir = filepath.Join(home, ".clier", "refs")
-	}
 	return &LocalRefStore{dir: dir}
 }
 

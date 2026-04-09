@@ -55,10 +55,3 @@ func TestDelete_NotExists(t *testing.T) {
 		t.Fatal(err)
 	}
 }
-
-func TestDefaultPath(t *testing.T) {
-	p := DefaultPath()
-	if !filepath.IsAbs(p) {
-		t.Fatalf("expected absolute path, got %q", p)
-	}
-}

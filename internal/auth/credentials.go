@@ -13,12 +13,6 @@ type Credentials struct {
 	Login string `json:"login"`
 }
 
-// DefaultPath returns ~/.clier/credentials.json.
-func DefaultPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".clier", "credentials.json")
-}
-
 // Load reads credentials from the given path.
 func Load(path string) (*Credentials, error) {
 	data, err := os.ReadFile(path)

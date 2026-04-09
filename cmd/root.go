@@ -1,32 +1,82 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/auth"
+	"github.com/jakeraft/clier/internal/config"
 	"github.com/spf13/cobra"
 )
-
-const defaultServerURL = "http://localhost:8080"
 
 // newAPIClient creates an API client.
 // Token is loaded from credentials if available, empty otherwise.
 func newAPIClient() *api.Client {
+	cfg := currentConfig()
+
 	token := ""
-	creds, err := auth.Load(auth.DefaultPath())
+	creds, err := auth.Load(cfg.CredentialsPath)
 	if err == nil {
 		token = creds.Token
 	}
-	return api.NewClient(defaultServerURL, token)
+	return api.NewClient(cfg.ServerURL, token)
+}
+
+func loadRawConfig() (*config.File, error) {
+	path, err := config.DefaultPath()
+	if err != nil {
+		return nil, err
+	}
+	cfg, err := config.Load(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func loadConfig() (*config.File, error) {
+	raw, err := loadRawConfig()
+	if err != nil {
+		return nil, err
+	}
+	return config.Resolve(raw)
+}
+
+func currentConfig() *config.File {
+	cfg, err := loadConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to load clier config: %v\n", err)
+		os.Exit(1)
+	}
+	return cfg
+}
+
+func configPath() string {
+	path, err := config.DefaultPath()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: failed to resolve clier config path: %v\n", err)
+		os.Exit(1)
+	}
+	return path
+}
+
+func newRefStore() *terminal.LocalRefStore {
+	return terminal.NewLocalRefStore(currentConfig().RefsPath)
 }
 
 // requireLogin loads credentials and returns login.
 // Exits with error if not logged in.
 func requireLogin() string {
-	creds, err := auth.Load(auth.DefaultPath())
+	creds, err := auth.Load(currentConfig().CredentialsPath)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error: not logged in. Run 'clier auth login' first.")
 		os.Exit(1)

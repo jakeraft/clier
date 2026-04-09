@@ -277,6 +277,7 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			}
 
 			runResp, err := client.CreateRun(map[string]any{
+				"name":      member.Name,
 				"member_id": member.ID,
 			})
 			if err != nil {
@@ -305,7 +306,7 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 				return fmt.Errorf("save plan: %w", err)
 			}
 
-			term := terminal.NewTmuxTerminal(terminal.NewLocalRefStore(""))
+			term := terminal.NewTmuxTerminal(newRefStore())
 			domainPlans := []domain.MemberPlan{{
 				TeamMemberID: member.ID,
 				MemberName:   member.Name,

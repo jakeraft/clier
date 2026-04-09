@@ -235,6 +235,7 @@ Each member gets its own tmux window within a single session.`,
 			}
 
 			runResp, err := client.CreateRun(map[string]any{
+				"name":    team.Name,
 				"team_id": team.ID,
 			})
 			if err != nil {
@@ -284,7 +285,7 @@ Each member gets its own tmux window within a single session.`,
 				return fmt.Errorf("save plan: %w", err)
 			}
 
-			term := terminal.NewTmuxTerminal(terminal.NewLocalRefStore(""))
+			term := terminal.NewTmuxTerminal(newRefStore())
 			if err := term.Launch(runIDStr, plan.Session, domainPlans); err != nil {
 				return fmt.Errorf("launch: %w", err)
 			}
