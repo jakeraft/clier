@@ -180,6 +180,21 @@ func TestTmuxTerminal_Terminate_AlreadyDead(t *testing.T) {
 	}
 }
 
+func TestTmuxTerminal_Terminate_FailsWhenPlanLookupMissing(t *testing.T) {
+	runner := &fakeRunner{errByPrefix: map[string]error{
+		"show-environment": errors.New("not found"),
+	}}
+	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
+
+	err := tm.Terminate("s-1")
+	if err == nil {
+		t.Fatal("expected error when run plan lookup is missing")
+	}
+	if hasCall(runner.calls, "kill-session") {
+		t.Fatal("kill-session should not run without runtime state")
+	}
+}
+
 func TestTmuxTerminal_Attach(t *testing.T) {
 	planPath := writePlan(t, "s-1", "my-team-s-1", []apprun.MemberTerminal{{
 		TeamMemberID: 1,

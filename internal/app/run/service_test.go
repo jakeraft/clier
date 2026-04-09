@@ -9,9 +9,10 @@ import (
 )
 
 type stubStore struct {
-	run   *domain.Run
-	notes []*domain.Note
-	msgs  []*domain.Message
+	run         *domain.Run
+	updatedRuns []*domain.Run
+	notes       []*domain.Note
+	msgs        []*domain.Message
 }
 
 func (s *stubStore) CreateRun(_ context.Context, r *domain.Run) error { return nil }
@@ -21,7 +22,10 @@ func (s *stubStore) GetRun(_ context.Context, id int64) (domain.Run, error) {
 	}
 	return domain.Run{}, errors.New("run not found")
 }
-func (s *stubStore) UpdateRunStatus(_ context.Context, _ *domain.Run) error { return nil }
+func (s *stubStore) UpdateRunStatus(_ context.Context, run *domain.Run) error {
+	s.updatedRuns = append(s.updatedRuns, run)
+	return nil
+}
 func (s *stubStore) CreateMessage(_ context.Context, msg *domain.Message) error {
 	s.msgs = append(s.msgs, msg)
 	return nil
@@ -32,11 +36,14 @@ func (s *stubStore) CreateNote(_ context.Context, n *domain.Note) error {
 }
 
 type stubTerminal struct {
-	sent []string
+	sent    []string
+	stopErr error
 }
 
 func (t *stubTerminal) Launch(_, _ string, _ []domain.MemberPlan) error { return nil }
-func (t *stubTerminal) Terminate(_ string) error                        { return nil }
+func (t *stubTerminal) Terminate(_ string) error {
+	return t.stopErr
+}
 func (t *stubTerminal) Send(_, _, text string) error {
 	t.sent = append(t.sent, text)
 	return nil
@@ -77,6 +84,40 @@ func TestService_Note(t *testing.T) {
 		err := svc.Note(context.Background(), 1, int64Ptr(7), "  ")
 		if err == nil {
 			t.Fatal("expected error for empty content")
+		}
+	})
+}
+
+func TestService_Stop(t *testing.T) {
+	r := &domain.Run{ID: 1, TeamID: int64Ptr(1), Status: domain.RunRunning}
+
+	t.Run("success", func(t *testing.T) {
+		store := &stubStore{run: r}
+		term := &stubTerminal{}
+		svc := New(store, term)
+
+		if err := svc.Stop(context.Background(), 1); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(store.updatedRuns) != 1 {
+			t.Fatalf("expected 1 status update, got %d", len(store.updatedRuns))
+		}
+		if store.updatedRuns[0].Status != domain.RunStopped {
+			t.Fatalf("status = %q, want %q", store.updatedRuns[0].Status, domain.RunStopped)
+		}
+	})
+
+	t.Run("terminate failure prevents status update", func(t *testing.T) {
+		store := &stubStore{run: r}
+		term := &stubTerminal{stopErr: errors.New("run plan not found")}
+		svc := New(store, term)
+
+		err := svc.Stop(context.Background(), 1)
+		if err == nil {
+			t.Fatal("expected error for failed termination")
+		}
+		if len(store.updatedRuns) != 0 {
+			t.Fatalf("expected 0 status updates after termination failure, got %d", len(store.updatedRuns))
 		}
 	})
 }
@@ -141,4 +182,4 @@ type failTerminal struct{}
 func (t *failTerminal) Launch(_, _ string, _ []domain.MemberPlan) error { return nil }
 func (t *failTerminal) Terminate(_ string) error                        { return nil }
 func (t *failTerminal) Send(_, _, _ string) error                       { return errors.New("surface not found") }
-func (t *failTerminal) Attach(_ string, _ *string) error               { return nil }
+func (t *failTerminal) Attach(_ string, _ *string) error                { return nil }

@@ -3,7 +3,6 @@ package run
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
@@ -47,7 +46,7 @@ func (s *Service) Stop(ctx context.Context, runID int64) error {
 
 	runIDStr := strconv.FormatInt(runID, 10)
 	if err := s.terminal.Terminate(runIDStr); err != nil {
-		log.Printf("terminate terminal %s: %v", runIDStr, err)
+		return fmt.Errorf("terminate terminal %s: %w", runIDStr, err)
 	}
 
 	r.Stop()

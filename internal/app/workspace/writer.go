@@ -86,10 +86,13 @@ func (w *Writer) PrepareTeam(base, teamName string) error {
 		return fmt.Errorf("get team %s: %w", teamName, err)
 	}
 
-	// Build name lookup for protocol generation (ID -> name).
-	nameByID := make(map[int64]string, len(team.TeamMembers))
+	// Build member lookup for protocol generation.
+	membersByID := make(map[int64]ProtocolMember, len(team.TeamMembers))
 	for _, tm := range team.TeamMembers {
-		nameByID[tm.ID] = tm.Name
+		membersByID[tm.ID] = ProtocolMember{
+			ID:   tm.ID,
+			Name: tm.Name,
+		}
 	}
 
 	// Build relations from team.Relations.
@@ -120,7 +123,7 @@ func (w *Writer) PrepareTeam(base, teamName string) error {
 		}
 
 		// Write team protocol to parent CLAUDE.md.
-		protocol := BuildProtocol(team.Name, tm.Name, relMap[tm.ID], nameByID)
+		protocol := BuildProtocol(team.Name, tm.Name, relMap[tm.ID], membersByID)
 		protocolPath := filepath.Join(memberBase, "CLAUDE.md")
 		if err := writeFile(protocolPath, protocol); err != nil {
 			return fmt.Errorf("write protocol for %s: %w", tm.Name, err)

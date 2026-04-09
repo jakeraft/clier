@@ -7,9 +7,15 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
+// ProtocolMember carries the runtime identity agents must use when communicating.
+type ProtocolMember struct {
+	ID   int64
+	Name string
+}
+
 // BuildProtocol generates the team protocol CLAUDE.md content.
 // Written to {memberDir}/CLAUDE.md (parent of project/).
-func BuildProtocol(teamName, memberName string, relations domain.MemberRelations, nameByID map[int64]string) string {
+func BuildProtocol(teamName, memberName string, relations domain.MemberRelations, membersByID map[int64]ProtocolMember) string {
 	var b strings.Builder
 
 	// Header
@@ -18,8 +24,8 @@ func BuildProtocol(teamName, memberName string, relations domain.MemberRelations
 
 	// Team Structure
 	b.WriteString("## Team Structure\n\n")
-	writeRelNames(&b, "Leaders", relations.Leaders, nameByID)
-	writeRelNames(&b, "Workers", relations.Workers, nameByID)
+	writeRelNames(&b, "Leaders", relations.Leaders, membersByID)
+	writeRelNames(&b, "Workers", relations.Workers, membersByID)
 	if len(relations.Leaders) == 0 && len(relations.Workers) == 0 {
 		b.WriteString("- (none)\n")
 	}
@@ -28,8 +34,9 @@ func BuildProtocol(teamName, memberName string, relations domain.MemberRelations
 	b.WriteString("\n## Communication\n\n")
 	b.WriteString("**IMPORTANT:** Only use the `clier run tell` bash command below.\n")
 	b.WriteString("Do NOT use SendMessage, Agent, or any other built-in tool for communication.\n\n")
+	b.WriteString("The `--to` value must be the numeric team member ID shown below.\n\n")
 	b.WriteString("Use heredoc to avoid shell escaping issues with backticks, flags, etc.:\n\n")
-	writeTellCommands(&b, relations, nameByID)
+	writeTellCommands(&b, relations, membersByID)
 	b.WriteString("- Replies arrive directly in your terminal input. Do not poll.\n")
 	b.WriteString("- Keep each tell substantive. Avoid short fragments like \"ok\" or \"hi\".\n")
 
@@ -51,24 +58,25 @@ func BuildProtocol(teamName, memberName string, relations domain.MemberRelations
 }
 
 // writeTellCommands writes ready-to-use tell commands for each related member.
-func writeTellCommands(b *strings.Builder, rel domain.MemberRelations, nameByID map[int64]string) {
+func writeTellCommands(b *strings.Builder, rel domain.MemberRelations, membersByID map[int64]ProtocolMember) {
 	all := make([]int64, 0, len(rel.Leaders)+len(rel.Workers))
 	all = append(all, rel.Leaders...)
 	all = append(all, rel.Workers...)
 	for _, id := range all {
-		name := nameByID[id]
-		fmt.Fprintf(b, "Tell %s:\n```bash\nclier run tell --to %s <<'EOF'\n<message>\nEOF\n```\n", name, name)
+		member := membersByID[id]
+		fmt.Fprintf(b, "Tell %s (team member %d):\n```bash\nclier run tell --to %d <<'EOF'\n<message>\nEOF\n```\n", member.Name, member.ID, member.ID)
 	}
 }
 
 // writeRelNames formats a relation line like "- Leaders: alice, bob".
-func writeRelNames(b *strings.Builder, label string, ids []int64, nameByID map[int64]string) {
+func writeRelNames(b *strings.Builder, label string, ids []int64, membersByID map[int64]ProtocolMember) {
 	if len(ids) == 0 {
 		return
 	}
 	names := make([]string, 0, len(ids))
 	for _, id := range ids {
-		names = append(names, nameByID[id])
+		member := membersByID[id]
+		names = append(names, fmt.Sprintf("%s (%d)", member.Name, member.ID))
 	}
 	fmt.Fprintf(b, "- %s: %s\n", label, strings.Join(names, ", "))
 }

@@ -112,16 +112,15 @@ func (t *TmuxTerminal) Send(runID, memberID, text string) error {
 
 func (t *TmuxTerminal) Terminate(runID string) error {
 	plan, err := t.loadPlan(runID)
-	if err == nil {
-		sess := plan.Session
-		// Gracefully exit each agent before killing the session.
-		t.exitAllWindows(sess)
-		_, _ = t.runFn("kill-session", "-t", sess)
-		_ = t.unregisterRun(runID, sess)
-		return nil
+	if err != nil {
+		return fmt.Errorf("load plan: %w", err)
 	}
 
-	// If the plan index is already gone, termination is still idempotent.
+	sess := plan.Session
+	// Gracefully exit each agent before killing the session.
+	t.exitAllWindows(sess)
+	_, _ = t.runFn("kill-session", "-t", sess)
+	_ = t.unregisterRun(runID, sess)
 	return nil
 }
 
