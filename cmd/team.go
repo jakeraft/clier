@@ -22,11 +22,11 @@ func newTeamCmd() *cobra.Command {
 		Long: `Compose and run agent teams.
 
 Use list, view, create, edit, delete, and fork to manage your
-team definitions. Use clone and run to bring them to life locally.
+team definitions. Use download and run to bring them to life locally.
 
 Workflow:
   clier team create          Define a new team
-  clier team clone <name>    Pull it to your machine
+  clier team download <name> Pull it to your machine
   clier team run             Start all agents in tmux`,
 	}
 	cmd.AddGroup(
@@ -39,7 +39,7 @@ Workflow:
 	cmd.AddCommand(newTeamEditCmd())
 	cmd.AddCommand(newTeamDeleteCmd())
 	cmd.AddCommand(newTeamForkCmd())
-	cmd.AddCommand(newTeamCloneCmd())
+	cmd.AddCommand(newTeamDownloadCmd())
 	cmd.AddCommand(newTeamRunCmd())
 	return cmd
 }
@@ -231,11 +231,11 @@ func newTeamForkCmd() *cobra.Command {
 	}
 }
 
-func newTeamCloneCmd() *cobra.Command {
+func newTeamDownloadCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "clone <[owner/]name>",
-		Aliases: []string{"workspace"},
-		Short:   "Clone a team to a local directory",
+		Use:     "download <[owner/]name>",
+		Aliases: []string{"clone", "workspace"},
+		Short:   "Download a team to a local directory",
 		GroupID: subGroupRuntime,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -262,7 +262,7 @@ func newTeamCloneCmd() *cobra.Command {
 				return err
 			}
 			return printJSON(map[string]string{
-				"status": "cloned",
+				"status": "downloaded",
 				"team":   name,
 				"dir":    teamBase,
 			})
@@ -277,53 +277,21 @@ func newTeamRunCmd() *cobra.Command {
 		GroupID: subGroupRuntime,
 		Long: `Start all team agents in a tmux session.
 
-Run this from the clone directory created by ` + "`team clone`" + `.
-The current directory must contain ` + "`.clier/clone.json`" + `.
+Run this from the workspace directory created by ` + "`team download`" + `.
+The current directory must contain ` + "`.clier/workspace.json`" + `.
 Each agent gets its own tmux window within a single session.
 
-To refresh a clone, remove the directory and clone again.`,
+To refresh a workspace, download it again.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
 			teamBase, meta, err := requireCurrentCloneRootKind(resourceKindTeam, "`clier team run`")
 			if err != nil {
 				return err
 			}
-			team, err := client.GetTeam(meta.Owner, meta.Name)
-			if err != nil {
-				return fmt.Errorf("get team: %w", err)
+			if err := validateDownloadedWorkspace(teamBase, meta); err != nil {
+				return err
 			}
-
-			writer := appclone.NewWriter(client, meta.Owner)
-			needsPrepare := false
-			memberResponses := make(map[string]*api.MemberResponse, len(team.TeamMembers))
-			for _, tm := range team.TeamMembers {
-				member, err := client.GetMember(tm.Member.Owner, tm.Member.Name)
-				if err != nil {
-					return fmt.Errorf("get member %s: %w", tm.Name, err)
-				}
-				memberResponses[tm.Name] = member
-				memberBase := filepath.Join(teamBase, tm.Name)
-				prepared, err := appclone.IsPreparedRoot(member.GitRepoURL, memberBase)
-				if err != nil {
-					return err
-				}
-				if !prepared {
-					needsPrepare = true
-				}
-			}
-			if needsPrepare {
-				if err := writer.PrepareTeam(teamBase, meta.Name); err != nil {
-					return fmt.Errorf("prepare team clone: %w", err)
-				}
-				meta, err := buildTeamCloneMetadata(client, meta.Owner, meta.Name)
-				if err != nil {
-					return err
-				}
-				if err := appclone.SaveCloneMetadata(teamBase, meta); err != nil {
-					return err
-				}
-			}
+			team := meta.Workspace.Team
 
 			runID, err := newRunID()
 			if err != nil {
@@ -333,16 +301,15 @@ To refresh a clone, remove the directory and clone again.`,
 
 			var terminalPlans []apprun.MemberTerminal
 
-			for i, tm := range team.TeamMembers {
-				member := memberResponses[tm.Name]
+			for i, tm := range team.Members {
 				memberBase := filepath.Join(teamBase, tm.Name)
 				repoPath := memberBase
 
-				envVars := buildMemberEnv(runID, tm.ID, &team.ID, tm.Name)
-				fullCommand := buildFullCommand(envVars, member.Command, repoPath)
+				envVars := buildMemberEnv(runID, tm.TeamMemberID, &team.ID, tm.Name)
+				fullCommand := buildFullCommand(envVars, tm.Command, repoPath)
 
 				terminalPlans = append(terminalPlans, apprun.MemberTerminal{
-					TeamMemberID: tm.ID,
+					TeamMemberID: tm.TeamMemberID,
 					Name:         tm.Name,
 					Window:       i,
 					Memberspace:  memberBase,

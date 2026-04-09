@@ -31,7 +31,7 @@ func resolveCloneBase(target cloneTarget) (string, error) {
 func resolveCloneCreateBase(target cloneTarget) (string, error) {
 	if cloneRoot, meta, err := resolveCloneFromCWD(target.Kind); err == nil {
 		if shouldReuseCloneRoot(target, cloneRoot, meta) {
-			return "", fmt.Errorf("%s clone already exists at %s", target.Kind, cloneRoot)
+			return "", fmt.Errorf("%s workspace already exists at %s", target.Kind, cloneRoot)
 		}
 	}
 
@@ -41,9 +41,9 @@ func resolveCloneCreateBase(target cloneTarget) (string, error) {
 	}
 	cloneBase := defaultCloneBase(base, target)
 	if _, err := os.Stat(cloneBase); err == nil {
-		return "", fmt.Errorf("%s clone destination already exists: %s", target.Kind, cloneBase)
+		return "", fmt.Errorf("%s download destination already exists: %s", target.Kind, cloneBase)
 	} else if !os.IsNotExist(err) {
-		return "", fmt.Errorf("stat clone destination: %w", err)
+		return "", fmt.Errorf("stat download destination: %w", err)
 	}
 	return cloneBase, nil
 }
@@ -72,12 +72,11 @@ func requireCurrentCloneRootKind(expectedKind, action string) (string, *appclone
 		return "", nil, err
 	}
 
-	metaPath := filepath.Join(base, ".clier", appclone.CloneMetadataFile)
-	if _, err := os.Stat(metaPath); err != nil {
+	if _, err := appclone.FindCloneMetadataPath(base); err != nil {
 		if os.IsNotExist(err) {
-			return "", nil, fmt.Errorf("%s must be run from the clone root that owns .clier/clone.json", action)
+			return "", nil, fmt.Errorf("%s must be run from the workspace root that owns %s", action, workspaceMetadataPathLabel())
 		}
-		return "", nil, fmt.Errorf("stat clone metadata: %w", err)
+		return "", nil, err
 	}
 
 	meta, err := appclone.LoadCloneMetadata(base)
@@ -85,7 +84,7 @@ func requireCurrentCloneRootKind(expectedKind, action string) (string, *appclone
 		return "", nil, err
 	}
 	if meta.Kind != expectedKind {
-		return "", nil, fmt.Errorf("current clone root is %s/%s (%s), not a %s clone",
+		return "", nil, fmt.Errorf("current workspace is %s/%s (%s), not a %s workspace",
 			meta.Owner, meta.Name, meta.Kind, expectedKind)
 	}
 	return base, meta, nil
@@ -97,7 +96,7 @@ func requireCurrentCloneRoot(target cloneTarget, action string) (string, *appclo
 		return "", nil, err
 	}
 	if !shouldReuseCloneRoot(target, base, meta) {
-		return "", nil, fmt.Errorf("current clone root is %s/%s (%s), not %s/%s (%s)",
+		return "", nil, fmt.Errorf("current workspace is %s/%s (%s), not %s/%s (%s)",
 			meta.Owner, meta.Name, meta.Kind, target.Owner, target.Name, target.Kind)
 	}
 	return base, meta, nil

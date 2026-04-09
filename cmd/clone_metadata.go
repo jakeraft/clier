@@ -32,7 +32,7 @@ func resolveCloneFromCWD(expectedKind string) (string, *appclone.CloneMetadata, 
 				return "", nil, err
 			}
 			if meta.Kind != expectedKind {
-				return "", nil, fmt.Errorf("current clone is %s, not %s", meta.Kind, expectedKind)
+				return "", nil, fmt.Errorf("current workspace is %s, not %s", meta.Kind, expectedKind)
 			}
 			return dir, meta, nil
 		}
@@ -41,7 +41,7 @@ func resolveCloneFromCWD(expectedKind string) (string, *appclone.CloneMetadata, 
 			break
 		}
 	}
-	return "", nil, fmt.Errorf("clone metadata not found in current directory")
+	return "", nil, fmt.Errorf("workspace metadata not found in current directory")
 }
 
 func cloneMetadataExists(base string) bool {
@@ -63,6 +63,14 @@ func buildMemberCloneMetadata(client *api.Client, owner, name string) (*appclone
 		GitRepoURL:    member.GitRepoURL,
 		LatestVersion: member.LatestVersion,
 		ClonedAt:      time.Now().UTC(),
+		Workspace: &appclone.WorkspaceMetadata{
+			Member: &appclone.MemberWorkspaceMetadata{
+				ID:         member.ID,
+				Name:       member.Name,
+				Command:    member.Command,
+				GitRepoURL: member.GitRepoURL,
+			},
+		},
 	}
 	resources, err := memberMaterializedResources(client, "", member)
 	if err != nil {
@@ -86,6 +94,12 @@ func buildTeamCloneMetadata(client *api.Client, owner, name string) (*appclone.C
 		Materializer:  "local-git",
 		LatestVersion: team.LatestVersion,
 		ClonedAt:      time.Now().UTC(),
+		Workspace: &appclone.WorkspaceMetadata{
+			Team: &appclone.TeamWorkspaceMetadata{
+				ID:   team.ID,
+				Name: team.Name,
+			},
+		},
 	}
 
 	for _, tm := range team.TeamMembers {
@@ -100,6 +114,12 @@ func buildTeamCloneMetadata(client *api.Client, owner, name string) (*appclone.C
 			GitRepoURL:    member.GitRepoURL,
 			LocalPath:     filepath.ToSlash(tm.Name),
 			LatestVersion: member.LatestVersion,
+		})
+		meta.Workspace.Team.Members = append(meta.Workspace.Team.Members, appclone.TeamMemberWorkspaceMetadata{
+			TeamMemberID: tm.ID,
+			Name:         tm.Name,
+			Command:      member.Command,
+			GitRepoURL:   member.GitRepoURL,
 		})
 		resources, err := memberMaterializedResources(client, tm.Name, member)
 		if err != nil {

@@ -75,7 +75,7 @@ func saveRunPlan(runID string, plan *apprun.RunPlan) error {
 		return err
 	}
 	if runtimeDir == "" {
-		return fmt.Errorf("runtime dir not found in current clone")
+		return fmt.Errorf("runtime dir not found in current workspace")
 	}
 	workspaceBase := filepath.Dir(runtimeDir)
 	return apprun.SavePlan(workspaceBase, runID, plan)
@@ -87,13 +87,13 @@ func resolveRunPlanPath(runID string) (string, error) {
 		return "", err
 	}
 	if runtimeDir == "" {
-		return "", fmt.Errorf("runtime dir not found in current clone")
+		return "", fmt.Errorf("runtime dir not found in current workspace")
 	}
 	planPath := filepath.Join(runtimeDir, runID+".json")
 	if _, err := os.Stat(planPath); err == nil {
 		return planPath, nil
 	}
-	return "", fmt.Errorf("run plan %s not found in current clone", runID)
+	return "", fmt.Errorf("run plan %s not found in current workspace", runID)
 }
 
 func resolveRuntimeDir() (string, error) {
@@ -103,15 +103,14 @@ func resolveRuntimeDir() (string, error) {
 	}
 	for dir := base; ; dir = filepath.Dir(dir) {
 		runtimeDir := filepath.Join(dir, ".clier")
-		cloneMeta := filepath.Join(runtimeDir, appclone.CloneMetadataFile)
 		if stat, err := os.Stat(runtimeDir); err == nil && stat.IsDir() {
-			if _, err := os.Stat(cloneMeta); err == nil {
+			if _, err := appclone.FindCloneMetadataPath(dir); err == nil {
 				return runtimeDir, nil
 			}
 		} else if err != nil && !os.IsNotExist(err) {
 			return "", fmt.Errorf("stat runtime dir: %w", err)
 		}
-		if _, err := os.Stat(cloneMeta); err == nil {
+		if _, err := appclone.FindCloneMetadataPath(dir); err == nil {
 			return runtimeDir, nil
 		}
 		parent := filepath.Dir(dir)

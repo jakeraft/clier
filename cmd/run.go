@@ -26,8 +26,8 @@ func newRunCmd() *cobra.Command {
 		GroupID: rootGroupRuntime,
 		Long: `Observe and control running agents.
 
-These commands work inside any clone directory. Run them from
-anywhere within a clone — the nearest ` + "`.clier/clone.json`" + ` is
+These commands work inside any downloaded workspace. Run them from
+anywhere within a workspace — the nearest ` + "`.clier/workspace.json`" + ` is
 used automatically.`,
 	}
 	cmd.AddCommand(newRunListCmd())
@@ -124,7 +124,12 @@ func newRunAttachCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "attach <run-id>",
 		Short: "Watch agents in real time",
-		Args:  cobra.ExactArgs(1),
+		Long: `Attach to the tmux session for a running workspace.
+
+This command is intended for use from a normal user terminal.
+It is not supported when clier itself is running inside an agent
+environment.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			term := newTerminal()
 			plan, err := resolveRunPlan(args[0])
