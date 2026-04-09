@@ -21,11 +21,11 @@ func newMemberCmd() *cobra.Command {
 		Long: `Define and run individual agents.
 
 Use list, view, create, edit, delete, and fork to manage your
-agent definitions. Use clone and run to bring them to life locally.
+agent definitions. Use download and run to bring them to life locally.
 
 Workflow:
   clier member create        Define a new agent
-  clier member clone <name>  Pull it to your machine
+  clier member download <name>  Pull it to your machine
   clier member run           Start the agent in tmux`,
 	}
 	cmd.AddGroup(
@@ -38,7 +38,7 @@ Workflow:
 	cmd.AddCommand(newMemberEditCmd())
 	cmd.AddCommand(newMemberDeleteCmd())
 	cmd.AddCommand(newMemberForkCmd())
-	cmd.AddCommand(newMemberCloneCmd())
+	cmd.AddCommand(newMemberDownloadCmd())
 	cmd.AddCommand(newMemberRunCmd())
 	return cmd
 }
@@ -261,11 +261,11 @@ func newMemberForkCmd() *cobra.Command {
 	}
 }
 
-func newMemberCloneCmd() *cobra.Command {
+func newMemberDownloadCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "clone <[owner/]name>",
-		Aliases: []string{"workspace"},
-		Short:   "Clone a member to a local directory",
+		Use:     "download <[owner/]name>",
+		Aliases: []string{"clone", "workspace"},
+		Short:   "Download a member to a local directory",
 		GroupID: subGroupRuntime,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -292,7 +292,7 @@ func newMemberCloneCmd() *cobra.Command {
 				return err
 			}
 			return printJSON(map[string]string{
-				"status": "cloned",
+				"status": "downloaded",
 				"member": name,
 				"dir":    base,
 			})
@@ -307,41 +307,21 @@ func newMemberRunCmd() *cobra.Command {
 		GroupID: subGroupRuntime,
 		Long: `Start the agent in a tmux session.
 
-Run this from the clone directory created by ` + "`member clone`" + `.
-The current directory must contain ` + "`.clier/clone.json`" + `.
+Run this from the workspace directory created by ` + "`member download`" + `.
+The current directory must contain ` + "`.clier/workspace.json`" + `.
 
-To refresh a clone, remove the directory and clone again.`,
+To refresh a workspace, download it again.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			_ = requireLogin()
-
 			absBase, meta, err := requireCurrentCloneRootKind(resourceKindMember, "`clier member run`")
 			if err != nil {
 				return err
 			}
-			member, err := client.GetMember(meta.Owner, meta.Name)
-			if err != nil {
-				return fmt.Errorf("get member: %w", err)
-			}
-			repoPath := absBase
-			prepared, err := appclone.IsPreparedRoot(member.GitRepoURL, repoPath)
-			if err != nil {
+			if err := validateDownloadedWorkspace(absBase, meta); err != nil {
 				return err
 			}
-			if !prepared {
-				writer := appclone.NewWriter(client, meta.Owner)
-				if err := writer.PrepareMember(absBase, meta.Name); err != nil {
-					return fmt.Errorf("prepare clone: %w", err)
-				}
-				meta, err := buildMemberCloneMetadata(client, meta.Owner, meta.Name)
-				if err != nil {
-					return err
-				}
-				if err := appclone.SaveCloneMetadata(absBase, meta); err != nil {
-					return err
-				}
-			}
+			member := meta.Workspace.Member
+			repoPath := absBase
 
 			runID, err := newRunID()
 			if err != nil {

@@ -31,7 +31,7 @@ func TestSaveCloneMetadata(t *testing.T) {
 		t.Fatalf("SaveCloneMetadata: %v", err)
 	}
 
-	path := filepath.Join(base, ".clier", CloneMetadataFile)
+	path := filepath.Join(base, ".clier", WorkspaceMetadataFile)
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("stat metadata file: %v", err)
 	}
@@ -54,5 +54,27 @@ func TestSaveCloneMetadata(t *testing.T) {
 	}
 	if loaded.Resources[0].LocalPath != meta.Resources[0].LocalPath {
 		t.Fatalf("loaded resource local path mismatch: %#v", loaded.Resources[0])
+	}
+}
+
+func TestLoadCloneMetadata_LegacyPath(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(base, ".clier"), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	legacyPath := filepath.Join(base, ".clier", LegacyCloneMetadataFile)
+	data := []byte(`{"kind":"member","owner":"jakeraft","name":"reviewer"}`)
+	if err := os.WriteFile(legacyPath, data, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	loaded, err := LoadCloneMetadata(base)
+	if err != nil {
+		t.Fatalf("LoadCloneMetadata: %v", err)
+	}
+	if loaded.Kind != "member" || loaded.Owner != "jakeraft" || loaded.Name != "reviewer" {
+		t.Fatalf("loaded metadata mismatch: %#v", loaded)
 	}
 }

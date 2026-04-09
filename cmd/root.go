@@ -110,7 +110,7 @@ Get started:
 Core workflow:
   clier member               Define individual agents
   clier team                 Compose agents into teams
-  clier team clone <name>    Pull a team to your machine
+  clier team download <name> Pull a team to your machine
   clier team run             Launch the team in tmux
   clier run                  Observe and control running agents`,
 	CompletionOptions: cobra.CompletionOptions{

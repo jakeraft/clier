@@ -41,14 +41,15 @@ Step 2. Explore the pre-loaded todo-team
 Step 3. Fork and run the team
 
   clier team fork jakeraft/todo-team
-  clier team clone todo-team
-  clier team run todo-team
+  clier team download todo-team
+  cd todo-team
+  clier team run
 
-  This forks the team to your namespace, creates a local clone
+  This forks the team to your namespace, downloads a local workspace
   under ./<your-login>/todo-team/, and launches all agents in tmux.
   Copy the run ID from the output.
 
-  To refresh a clone later, remove the directory and clone again.
+  To refresh a workspace later, download it again.
 
 Step 4. Give the team a job
 
@@ -59,12 +60,12 @@ Step 4. Give the team a job
   creates a PR, and the reviewer iterates on it until approved.
   The tech-lead writes a final report on the PR.
 
-Step 5. Watch them work from the current clone
+Step 5. Watch them work from the current workspace
 
   clier run attach <run-id>        Watch agents in real time
   clier run view <run-id>          Check progress notes and messages
 
-Step 6. When done, stop the run from the current clone
+Step 6. When done, stop the run from the current workspace
 
   clier run stop <run-id>
 

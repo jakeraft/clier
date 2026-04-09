@@ -26,8 +26,8 @@ func newRunCmd() *cobra.Command {
 		GroupID: rootGroupRuntime,
 		Long: `Observe and control running agents.
 
-These commands work inside any clone directory. Run them from
-anywhere within a clone — the nearest ` + "`.clier/clone.json`" + ` is
+These commands work inside any downloaded workspace. Run them from
+anywhere within a workspace — the nearest ` + "`.clier/workspace.json`" + ` is
 used automatically.`,
 	}
 	cmd.AddCommand(newRunListCmd())
