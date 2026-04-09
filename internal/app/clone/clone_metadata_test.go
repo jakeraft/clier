@@ -57,24 +57,11 @@ func TestSaveCloneMetadata(t *testing.T) {
 	}
 }
 
-func TestLoadCloneMetadata_LegacyPath(t *testing.T) {
+func TestLoadCloneMetadata_RequiresWorkspaceMetadataPath(t *testing.T) {
 	t.Parallel()
 
 	base := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(base, ".clier"), 0o755); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-	legacyPath := filepath.Join(base, ".clier", LegacyCloneMetadataFile)
-	data := []byte(`{"kind":"member","owner":"jakeraft","name":"reviewer"}`)
-	if err := os.WriteFile(legacyPath, data, 0o644); err != nil {
-		t.Fatalf("WriteFile: %v", err)
-	}
-
-	loaded, err := LoadCloneMetadata(base)
-	if err != nil {
-		t.Fatalf("LoadCloneMetadata: %v", err)
-	}
-	if loaded.Kind != "member" || loaded.Owner != "jakeraft" || loaded.Name != "reviewer" {
-		t.Fatalf("loaded metadata mismatch: %#v", loaded)
+	if _, err := LoadCloneMetadata(base); err == nil {
+		t.Fatalf("expected workspace metadata lookup to fail without workspace.json")
 	}
 }

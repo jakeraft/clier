@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	appclone "github.com/jakeraft/clier/internal/app/clone"
@@ -69,5 +70,18 @@ func TestBuildMemberEnv_SetsTeamIDForTeamRuns(t *testing.T) {
 
 	if env["CLIER_TEAM_ID"] != strconv.FormatInt(teamID, 10) {
 		t.Fatalf("CLIER_TEAM_ID = %q, want %d", env["CLIER_TEAM_ID"], teamID)
+	}
+}
+
+func TestBuildFullCommand_QuotesShellSensitiveValues(t *testing.T) {
+	command := buildFullCommand(map[string]string{
+		"GIT_AUTHOR_NAME": "O'Brien",
+	}, "claude --dangerously-skip-permissions", "/tmp/owner's/workspace")
+
+	if !strings.Contains(command, "export GIT_AUTHOR_NAME='O'\"'\"'Brien'") {
+		t.Fatalf("expected quoted env value, got %q", command)
+	}
+	if !strings.Contains(command, "cd '/tmp/owner'\"'\"'s/workspace'") {
+		t.Fatalf("expected quoted cwd, got %q", command)
 	}
 }

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"errors"
 	"path/filepath"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
@@ -107,7 +107,7 @@ func newTeamCreateCmd() *cobra.Command {
 				return err
 			}
 			if rootIndex < 0 {
-				return fmt.Errorf("--root-index must be set to a non-negative team_members index")
+				return errors.New("--root-index must be set to a non-negative team_members index")
 			}
 			body := api.TeamMutationRequest{
 				Name:        name,
@@ -165,7 +165,7 @@ func newTeamEditCmd() *cobra.Command {
 					body.Relations = nil
 				}
 				if !cmd.Flags().Changed("root-index") {
-					return fmt.Errorf("--root-index is required when replacing --member because team membership is index-based")
+					return errors.New("--root-index is required when replacing --member because team membership is index-based")
 				}
 			}
 			if cmd.Flags().Changed("relation") {

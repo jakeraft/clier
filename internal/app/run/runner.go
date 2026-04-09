@@ -2,6 +2,7 @@ package run
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -161,7 +162,7 @@ func (p *RunPlan) FindMember(teamMemberID int64) (*MemberTerminal, bool) {
 func (p *RunPlan) AddMessage(fromTeamMemberID, toTeamMemberID *int64, content string) error {
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return fmt.Errorf("message content must not be empty")
+		return errors.New("message content must not be empty")
 	}
 	p.Messages = append(p.Messages, RecordedMessage{
 		FromTeamMemberID: cloneInt64Ptr(fromTeamMemberID),
@@ -175,7 +176,7 @@ func (p *RunPlan) AddMessage(fromTeamMemberID, toTeamMemberID *int64, content st
 func (p *RunPlan) AddNote(teamMemberID *int64, content string) error {
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return fmt.Errorf("note content must not be empty")
+		return errors.New("note content must not be empty")
 	}
 	p.Notes = append(p.Notes, RecordedNote{
 		TeamMemberID: cloneInt64Ptr(teamMemberID),

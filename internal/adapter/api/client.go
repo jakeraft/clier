@@ -46,7 +46,9 @@ func (c *Client) do(method, path string, body any, result any) error {
 	if err != nil {
 		return fmt.Errorf("do: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode >= 400 {
 		b, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("api error %d: %s", resp.StatusCode, string(b))
@@ -59,10 +61,7 @@ func (c *Client) do(method, path string, body any, result any) error {
 	return nil
 }
 
-func (c *Client) get(path string, result any) error    { return c.do("GET", path, nil, result) }
+func (c *Client) get(path string, result any) error        { return c.do("GET", path, nil, result) }
 func (c *Client) post(path string, body, result any) error { return c.do("POST", path, body, result) }
 func (c *Client) put(path string, body, result any) error  { return c.do("PUT", path, body, result) }
-func (c *Client) patch(path string, body, result any) error {
-	return c.do("PATCH", path, body, result)
-}
-func (c *Client) delete(path string) error { return c.do("DELETE", path, nil, nil) }
+func (c *Client) delete(path string) error                 { return c.do("DELETE", path, nil, nil) }

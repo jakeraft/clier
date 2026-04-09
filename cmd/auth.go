@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -73,7 +74,7 @@ func newAuthLoginCmd() *cobra.Command {
 				}
 			}
 
-			return fmt.Errorf("login timed out — please try again")
+			return errors.New("login timed out — please try again")
 		},
 	}
 }
@@ -97,17 +98,15 @@ func newAuthStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show login status",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			creds, err := auth.Load(currentConfig().CredentialsPath)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Not logged in.")
-				return nil
+			creds, loadErr := auth.Load(currentConfig().CredentialsPath)
+			if loadErr != nil {
+				return printAuthLoggedOutStatus()
 			}
 
 			client := newAPIClient()
-			user, err := client.GetCurrentUser()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Logged in as %s (token may be expired)\n", creds.Login)
-				return nil
+			user, userErr := client.GetCurrentUser()
+			if userErr != nil {
+				return printAuthExpiredStatus(creds.Login)
 			}
 
 			fmt.Fprintf(os.Stderr, "Logged in as %s\n", user.Login)
@@ -123,10 +122,20 @@ func newAuthTokenCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			creds, err := auth.Load(currentConfig().CredentialsPath)
 			if err != nil {
-				return fmt.Errorf("not logged in. Run 'clier auth login' first.")
+				return err
 			}
 			fmt.Println(creds.Token)
 			return nil
 		},
 	}
+}
+
+func printAuthLoggedOutStatus() error {
+	fmt.Fprintln(os.Stderr, "Not logged in.")
+	return nil
+}
+
+func printAuthExpiredStatus(login string) error {
+	fmt.Fprintf(os.Stderr, "Logged in as %s (token may be expired)\n", login)
+	return nil
 }
