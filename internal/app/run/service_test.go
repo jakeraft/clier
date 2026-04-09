@@ -40,15 +40,13 @@ type stubTerminal struct {
 	stopErr error
 }
 
-func (t *stubTerminal) Launch(_, _ string, _ []domain.MemberPlan) error { return nil }
-func (t *stubTerminal) Terminate(_ string) error {
+func (t *stubTerminal) Terminate(_ *RunPlan) error {
 	return t.stopErr
 }
-func (t *stubTerminal) Send(_, _, text string) error {
+func (t *stubTerminal) Send(_ *RunPlan, _ int64, text string) error {
 	t.sent = append(t.sent, text)
 	return nil
 }
-func (t *stubTerminal) Attach(_ string, _ *string) error { return nil }
 
 func int64Ptr(v int64) *int64 { return &v }
 
@@ -90,13 +88,14 @@ func TestService_Note(t *testing.T) {
 
 func TestService_Stop(t *testing.T) {
 	r := &domain.Run{ID: 1, TeamID: int64Ptr(1), Status: domain.RunRunning}
+	plan := &RunPlan{RunID: "1", Session: "team-1"}
 
 	t.Run("success", func(t *testing.T) {
 		store := &stubStore{run: r}
 		term := &stubTerminal{}
 		svc := New(store, term)
 
-		if err := svc.Stop(context.Background(), 1); err != nil {
+		if err := svc.Stop(context.Background(), 1, plan); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(store.updatedRuns) != 1 {
@@ -112,7 +111,7 @@ func TestService_Stop(t *testing.T) {
 		term := &stubTerminal{stopErr: errors.New("run plan not found")}
 		svc := New(store, term)
 
-		err := svc.Stop(context.Background(), 1)
+		err := svc.Stop(context.Background(), 1, plan)
 		if err == nil {
 			t.Fatal("expected error for failed termination")
 		}
@@ -128,13 +127,18 @@ func TestService_Send(t *testing.T) {
 		TeamID: int64Ptr(1),
 		Status: domain.RunRunning,
 	}
+	plan := &RunPlan{
+		RunID:   "1",
+		Session: "team-1",
+		Members: []MemberTerminal{{TeamMemberID: 2, Name: "worker", Window: 1}},
+	}
 
 	t.Run("agent message includes sender name", func(t *testing.T) {
 		store := &stubStore{run: r}
 		term := &stubTerminal{}
 		svc := New(store, term)
 
-		if err := svc.Send(context.Background(), 1, int64Ptr(1), int64Ptr(2), "hello"); err != nil {
+		if err := svc.Send(context.Background(), 1, plan, int64Ptr(1), int64Ptr(2), "hello"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(term.sent) != 1 {
@@ -154,7 +158,7 @@ func TestService_Send(t *testing.T) {
 		term := &stubTerminal{}
 		svc := New(store, term)
 
-		if err := svc.Send(context.Background(), 1, nil, int64Ptr(2), "do this"); err != nil {
+		if err := svc.Send(context.Background(), 1, plan, nil, int64Ptr(2), "do this"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if term.sent[0] != "do this" {
@@ -167,7 +171,7 @@ func TestService_Send(t *testing.T) {
 		term := &failTerminal{}
 		svc := New(store, term)
 
-		err := svc.Send(context.Background(), 1, int64Ptr(1), int64Ptr(99), "hello")
+		err := svc.Send(context.Background(), 1, plan, int64Ptr(1), int64Ptr(99), "hello")
 		if err == nil {
 			t.Fatal("expected error for failed delivery")
 		}
@@ -179,7 +183,7 @@ func TestService_Send(t *testing.T) {
 
 type failTerminal struct{}
 
-func (t *failTerminal) Launch(_, _ string, _ []domain.MemberPlan) error { return nil }
-func (t *failTerminal) Terminate(_ string) error                        { return nil }
-func (t *failTerminal) Send(_, _, _ string) error                       { return errors.New("surface not found") }
-func (t *failTerminal) Attach(_ string, _ *string) error                { return nil }
+func (t *failTerminal) Terminate(_ *RunPlan) error { return nil }
+func (t *failTerminal) Send(_ *RunPlan, _ int64, _ string) error {
+	return errors.New("surface not found")
+}

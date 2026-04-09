@@ -209,9 +209,7 @@ func newMemberForkCmd() *cobra.Command {
 }
 
 func newMemberWorkspaceCmd() *cobra.Command {
-	var dir string
-
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "workspace <[owner/]name>",
 		Short: "Create workspace for a member",
 		Args:  cobra.ExactArgs(1),
@@ -219,10 +217,9 @@ func newMemberWorkspaceCmd() *cobra.Command {
 			client := newAPIClient()
 			owner, name := parseOwnerName(args[0])
 			writer := appws.NewWriter(client, owner)
-
-			base := dir
-			if base == "" {
-				base = "."
+			base, err := resolveWorkspaceBase()
+			if err != nil {
+				return err
 			}
 
 			if err := writer.PrepareMember(base, name); err != nil {
@@ -235,14 +232,10 @@ func newMemberWorkspaceCmd() *cobra.Command {
 			})
 		},
 	}
-	cmd.Flags().StringVar(&dir, "dir", "", "Base directory for workspace (default: current directory)")
-	return cmd
 }
 
 func newMemberRunCmd() *cobra.Command {
-	var dir string
-
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "run <[owner/]name>",
 		Short: "Create workspace and run a single member",
 		Long: `Create workspace (idempotent) and run a single member.
@@ -253,13 +246,9 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			owner, name := parseOwnerName(args[0])
 			_ = requireLogin()
 
-			base := dir
-			if base == "" {
-				base = "."
-			}
-			absBase, err := filepath.Abs(base)
+			absBase, err := resolveWorkspaceBase()
 			if err != nil {
-				return fmt.Errorf("resolve base path: %w", err)
+				return err
 			}
 
 			projectDir := filepath.Join(absBase, "project")
@@ -308,6 +297,4 @@ This prepares the workspace files and launches the agent in a tmux session.`,
 			})
 		},
 	}
-	cmd.Flags().StringVar(&dir, "dir", "", "Base directory for workspace (default: current directory)")
-	return cmd
 }

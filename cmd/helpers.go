@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	apprun "github.com/jakeraft/clier/internal/app/run"
 )
 
 // buildMemberEnv returns the environment variables for a member agent.
@@ -34,4 +37,57 @@ func buildFullCommand(env map[string]string, command, cwd string) string {
 	parts = append(parts, fmt.Sprintf("cd '%s'", cwd))
 	parts = append(parts, command)
 	return strings.Join(parts, " &&\n")
+}
+
+func resolveWorkspaceBase() (string, error) {
+	base, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("resolve current directory: %w", err)
+	}
+	return filepath.Abs(base)
+}
+
+func resolveRunPlan(runID string) (*apprun.RunPlan, error) {
+	planPath, err := resolveRunPlanPath(runID)
+	if err != nil {
+		return nil, err
+	}
+	plan, err := apprun.LoadPlanFromPath(planPath)
+	if err != nil {
+		return nil, fmt.Errorf("load run plan: %w", err)
+	}
+	if plan.RunID != "" && plan.RunID != runID {
+		return nil, fmt.Errorf("run plan %s belongs to run %s", planPath, plan.RunID)
+	}
+	return plan, nil
+}
+
+func resolveRunPlanPath(runID string) (string, error) {
+	if planPath := strings.TrimSpace(os.Getenv("CLIER_RUN_PLAN")); planPath != "" {
+		plan, err := apprun.LoadPlanFromPath(planPath)
+		if err != nil {
+			return "", fmt.Errorf("load CLIER_RUN_PLAN: %w", err)
+		}
+		if runID != "" && plan.RunID != "" && plan.RunID != runID {
+			return "", fmt.Errorf("CLIER_RUN_PLAN points to run %s, not %s", plan.RunID, runID)
+		}
+		return planPath, nil
+	}
+
+	base, err := resolveWorkspaceBase()
+	if err != nil {
+		return "", err
+	}
+	for dir := base; ; dir = filepath.Dir(dir) {
+		planPath := apprun.PlanPath(dir, runID)
+		if _, err := os.Stat(planPath); err == nil {
+			return planPath, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+	}
+
+	return "", fmt.Errorf("run plan %s not found in current workspace", runID)
 }

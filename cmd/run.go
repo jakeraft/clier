@@ -70,19 +70,23 @@ func newRunViewCmd() *cobra.Command {
 func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "stop <id>",
-		Short: "Stop a run",
+		Short: "Stop a run from the current workspace",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runID, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil {
 				return fmt.Errorf("invalid run id %q: %w", args[0], err)
 			}
+			plan, err := resolveRunPlan(args[0])
+			if err != nil {
+				return err
+			}
 
 			store := newStore()
 			term := newTerminal()
 			svc := run.New(store, term)
 
-			if err := svc.Stop(cmd.Context(), runID); err != nil {
+			if err := svc.Stop(cmd.Context(), runID, plan); err != nil {
 				return err
 			}
 			return printJSON(map[string]int64{"stopped": runID})
@@ -95,19 +99,27 @@ func newRunAttachCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "attach <run-id>",
-		Short: "Attach to a running run's terminal",
+		Short: "Attach to a running run's terminal from the current workspace",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			term := newTerminal()
-
-			var memberID *string
-			if memberFlag != "" {
-				memberID = &memberFlag
+			plan, err := resolveRunPlan(args[0])
+			if err != nil {
+				return err
 			}
-			return term.Attach(args[0], memberID)
+
+			var memberID *int64
+			if memberFlag != "" {
+				parsed, err := strconv.ParseInt(memberFlag, 10, 64)
+				if err != nil {
+					return fmt.Errorf("invalid member id %q: %w", memberFlag, err)
+				}
+				memberID = &parsed
+			}
+			return term.Attach(plan, memberID)
 		},
 	}
-	cmd.Flags().StringVar(&memberFlag, "member", "", "Attach to a specific member's window")
+	cmd.Flags().StringVar(&memberFlag, "member", "", "Attach to a specific team member ID")
 	return cmd
 }
 
@@ -137,6 +149,10 @@ Examples:
 			if err != nil {
 				return err
 			}
+			plan, err := resolveRunPlan(strconv.FormatInt(runID, 10))
+			if err != nil {
+				return err
+			}
 
 			toMemberID := &toMemberIDRaw
 
@@ -144,7 +160,7 @@ Examples:
 			term := newTerminal()
 			svc := run.New(store, term)
 
-			if err := svc.Send(cmd.Context(), runID, fromMemberID, toMemberID, content); err != nil {
+			if err := svc.Send(cmd.Context(), runID, plan, fromMemberID, toMemberID, content); err != nil {
 				return err
 			}
 			return printJSON(map[string]any{

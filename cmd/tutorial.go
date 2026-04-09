@@ -56,12 +56,12 @@ Step 4. Give the team a job
   creates a PR, and the reviewer iterates on it until approved.
   The tech-lead writes a final report on the PR.
 
-Step 5. Watch them work
+Step 5. Watch them work from the current workspace
 
   clier run attach <run-id>        Watch agents in real time
   clier run view <run-id>          Check progress notes and messages
 
-Step 6. When done, stop the run
+Step 6. When done, stop the run from the current workspace
 
   clier run stop <run-id>
 

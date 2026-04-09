@@ -55,7 +55,7 @@ clier run list
 clier run tell --to <member-id> <<'EOF'      # stdin: safe from shell escaping
 message with `backticks` and --flags
 EOF
-clier run stop <run-id>
+clier run stop <run-id>                        # from the current workspace
 ```
 
 ### Tutorial Walkthrough

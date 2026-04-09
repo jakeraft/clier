@@ -2,7 +2,6 @@ package terminal
 
 import (
 	"errors"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -49,9 +48,8 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 		{TeamMemberID: 2, MemberName: "worker", Terminal: domain.TerminalPlan{}, Workspace: domain.WorkspacePlan{Memberspace: "/tmp/worker"}},
 	}
 	plan := apprun.NewPlan("s-1", "my-team", members)
-	planPath := filepath.Join(t.TempDir(), "s-1.json")
 
-	if err := tm.Launch("s-1", planPath, plan, members); err != nil {
+	if err := tm.Launch(plan, members); err != nil {
 		t.Fatalf("Launch: %v", err)
 	}
 
@@ -67,69 +65,68 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	if countCalls(runner.calls, "rename-window") != 2 {
 		t.Errorf("expected 2 rename-window calls, got %d", countCalls(runner.calls, "rename-window"))
 	}
-	if !hasCall(runner.calls, "set-environment -g CLIER_RUN_my-team s-1") {
-		t.Error("expected session->run env registration")
-	}
-	if !hasCall(runner.calls, "set-environment -g CLIER_RUN_PLAN_s-1 "+planPath) {
-		t.Error("expected run->plan env registration")
-	}
 	if !hasCall(runner.calls, "send-keys") {
 		t.Error("expected send-keys call for member command")
 	}
 }
 
 func TestTmuxTerminal_Send(t *testing.T) {
-	planPath := writePlan(t, "s-1", "my-team-s-1", []apprun.MemberTerminal{{
-		TeamMemberID: 1,
-		Name:         "leader",
-		Window:       0,
-		Memberspace:  "/tmp/leader",
-		Cwd:          "/tmp/leader/project",
-		Command:      "echo hello",
-	}})
-	runner := &fakeRunner{output: map[string]string{
-		"show-environment -g CLIER_RUN_PLAN_s-1": "CLIER_RUN_PLAN_s-1=" + planPath,
-	}}
+	plan := &apprun.RunPlan{
+		RunID:   "s-1",
+		Session: "my-team-s-1",
+		Members: []apprun.MemberTerminal{{
+			TeamMemberID: 1,
+			Name:         "leader",
+			Window:       0,
+			Memberspace:  "/tmp/leader",
+			Cwd:          "/tmp/leader/project",
+			Command:      "echo hello",
+		}},
+	}
+	runner := &fakeRunner{}
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
-	if err := tm.Send("s-1", "1", "do the work"); err != nil {
+	if err := tm.Send(plan, 1, "do the work"); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
-	if len(runner.calls) != 4 {
-		t.Fatalf("expected 4 calls (show-env + copy-mode + send-keys text + send-keys Enter), got %d: %v", len(runner.calls), runner.calls)
+	if len(runner.calls) != 3 {
+		t.Fatalf("expected 3 calls (copy-mode + send-keys text + send-keys Enter), got %d: %v", len(runner.calls), runner.calls)
 	}
-	if !strings.Contains(runner.calls[1], "copy-mode") {
+	if !strings.Contains(runner.calls[0], "copy-mode") {
 		t.Errorf("copy-mode call missing, got: %v", runner.calls)
 	}
-	if !strings.Contains(runner.calls[2], "-l") || !strings.Contains(runner.calls[2], "do the work") {
-		t.Errorf("literal send-keys call missing, got: %s", runner.calls[2])
+	if !strings.Contains(runner.calls[1], "-l") || !strings.Contains(runner.calls[1], "do the work") {
+		t.Errorf("literal send-keys call missing, got: %s", runner.calls[1])
 	}
-	if !strings.Contains(runner.calls[3], "Enter") {
-		t.Errorf("Enter send-keys missing, got: %s", runner.calls[3])
+	if !strings.Contains(runner.calls[2], "Enter") {
+		t.Errorf("Enter send-keys missing, got: %s", runner.calls[2])
 	}
 }
 
 func TestTmuxTerminal_Terminate(t *testing.T) {
-	planPath := writePlan(t, "s-1", "my-team-s-1", []apprun.MemberTerminal{{
-		TeamMemberID: 1,
-		Name:         "leader",
-		Window:       0,
-	}, {
-		TeamMemberID: 2,
-		Name:         "worker",
-		Window:       1,
-	}, {
-		TeamMemberID: 3,
-		Name:         "reviewer",
-		Window:       2,
-	}})
+	plan := &apprun.RunPlan{
+		RunID:   "s-1",
+		Session: "my-team-s-1",
+		Members: []apprun.MemberTerminal{{
+			TeamMemberID: 1,
+			Name:         "leader",
+			Window:       0,
+		}, {
+			TeamMemberID: 2,
+			Name:         "worker",
+			Window:       1,
+		}, {
+			TeamMemberID: 3,
+			Name:         "reviewer",
+			Window:       2,
+		}},
+	}
 	runner := &fakeRunner{output: map[string]string{
-		"show-environment -g CLIER_RUN_PLAN_s-1": "CLIER_RUN_PLAN_s-1=" + planPath,
-		"list-windows":                           "0\n1\n2",
+		"list-windows": "0\n1\n2",
 	}}
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
-	if err := tm.Terminate("s-1"); err != nil {
+	if err := tm.Terminate(plan); err != nil {
 		t.Fatalf("Terminate: %v", err)
 	}
 	exitCount := 0
@@ -144,24 +141,19 @@ func TestTmuxTerminal_Terminate(t *testing.T) {
 	if !hasCall(runner.calls, "kill-session") {
 		t.Error("expected kill-session call")
 	}
-	if !hasCall(runner.calls, "set-environment -g -u CLIER_RUN_my-team-s-1") {
-		t.Error("expected session env cleanup")
-	}
-	if !hasCall(runner.calls, "set-environment -g -u CLIER_RUN_PLAN_s-1") {
-		t.Error("expected plan env cleanup")
-	}
 }
 
 func TestTmuxTerminal_Terminate_AlreadyDead(t *testing.T) {
-	planPath := writePlan(t, "s-1", "my-team-s-1", []apprun.MemberTerminal{{
-		TeamMemberID: 1,
-		Name:         "leader",
-		Window:       0,
-	}})
+	plan := &apprun.RunPlan{
+		RunID:   "s-1",
+		Session: "my-team-s-1",
+		Members: []apprun.MemberTerminal{{
+			TeamMemberID: 1,
+			Name:         "leader",
+			Window:       0,
+		}},
+	}
 	runner := &fakeRunner{
-		output: map[string]string{
-			"show-environment -g CLIER_RUN_PLAN_s-1": "CLIER_RUN_PLAN_s-1=" + planPath,
-		},
 		errByPrefix: map[string]error{
 			"list-windows": errors.New("session not found"),
 			"kill-session": errors.New("session not found"),
@@ -169,61 +161,31 @@ func TestTmuxTerminal_Terminate_AlreadyDead(t *testing.T) {
 	}
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
-	if err := tm.Terminate("s-1"); err != nil {
+	if err := tm.Terminate(plan); err != nil {
 		t.Fatalf("Terminate (already dead): %v", err)
-	}
-	if !hasCall(runner.calls, "set-environment -g -u CLIER_RUN_my-team-s-1") {
-		t.Error("expected session env cleanup")
-	}
-	if !hasCall(runner.calls, "set-environment -g -u CLIER_RUN_PLAN_s-1") {
-		t.Error("expected plan env cleanup")
-	}
-}
-
-func TestTmuxTerminal_Terminate_FailsWhenPlanLookupMissing(t *testing.T) {
-	runner := &fakeRunner{errByPrefix: map[string]error{
-		"show-environment": errors.New("not found"),
-	}}
-	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
-
-	err := tm.Terminate("s-1")
-	if err == nil {
-		t.Fatal("expected error when run plan lookup is missing")
-	}
-	if hasCall(runner.calls, "kill-session") {
-		t.Fatal("kill-session should not run without runtime state")
 	}
 }
 
 func TestTmuxTerminal_Attach(t *testing.T) {
-	planPath := writePlan(t, "s-1", "my-team-s-1", []apprun.MemberTerminal{{
-		TeamMemberID: 1,
-		Name:         "leader",
-		Window:       1,
-	}, {
-		TeamMemberID: 2,
-		Name:         "worker",
-		Window:       2,
-	}})
-
-	t.Run("session not found", func(t *testing.T) {
-		runner := &fakeRunner{errByPrefix: map[string]error{
-			"show-environment": errors.New("not found"),
-		}}
-		tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
-		err := tm.Attach("unknown", nil)
-		if err == nil {
-			t.Fatal("expected error for unknown session")
-		}
-	})
+	plan := &apprun.RunPlan{
+		RunID:   "s-1",
+		Session: "my-team-s-1",
+		Members: []apprun.MemberTerminal{{
+			TeamMemberID: 1,
+			Name:         "leader",
+			Window:       1,
+		}, {
+			TeamMemberID: 2,
+			Name:         "worker",
+			Window:       2,
+		}},
+	}
 
 	t.Run("with member selects window", func(t *testing.T) {
-		runner := &fakeRunner{output: map[string]string{
-			"show-environment -g CLIER_RUN_PLAN_s-1": "CLIER_RUN_PLAN_s-1=" + planPath,
-		}}
+		runner := &fakeRunner{}
 		tm := &TmuxTerminal{runFn: runner.run, attachFn: func(string) error { return nil }, sleep: func(time.Duration) {}}
-		memberID := "2"
-		if err := tm.Attach("s-1", &memberID); err != nil {
+		memberID := int64(2)
+		if err := tm.Attach(plan, &memberID); err != nil {
 			t.Fatalf("Attach: %v", err)
 		}
 		if !hasCall(runner.calls, "select-window") {
@@ -237,11 +199,9 @@ func TestTmuxTerminal_Attach(t *testing.T) {
 	})
 
 	t.Run("without member skips select-window", func(t *testing.T) {
-		runner := &fakeRunner{output: map[string]string{
-			"show-environment -g CLIER_RUN_PLAN_s-1": "CLIER_RUN_PLAN_s-1=" + planPath,
-		}}
+		runner := &fakeRunner{}
 		tm := &TmuxTerminal{runFn: runner.run, attachFn: func(string) error { return nil }, sleep: func(time.Duration) {}}
-		if err := tm.Attach("s-1", nil); err != nil {
+		if err := tm.Attach(plan, nil); err != nil {
 			t.Fatalf("Attach: %v", err)
 		}
 		if hasCall(runner.calls, "select-window") {
@@ -284,20 +244,6 @@ func TestTmuxTerminal_WaitReady_Timeout(t *testing.T) {
 	if !strings.Contains(err.Error(), "not ready") {
 		t.Errorf("unexpected error: %v", err)
 	}
-}
-
-func writePlan(t *testing.T, runID, session string, members []apprun.MemberTerminal) string {
-	t.Helper()
-	base := t.TempDir()
-	plan := &apprun.RunPlan{
-		RunID:   runID,
-		Session: session,
-		Members: members,
-	}
-	if err := apprun.SavePlan(base, runID, plan); err != nil {
-		t.Fatalf("SavePlan: %v", err)
-	}
-	return apprun.PlanPath(base, runID)
 }
 
 func hasCall(calls []string, substr string) bool {

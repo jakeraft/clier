@@ -30,9 +30,9 @@ type MemberTerminal struct {
 	Command      string `json:"command"`
 }
 
-// Launcher starts a run using a persisted RunPlan.
+// Launcher starts a run from a persisted RunPlan.
 type Launcher interface {
-	Launch(runID, planPath string, plan *RunPlan, members []domain.MemberPlan) error
+	Launch(plan *RunPlan, members []domain.MemberPlan) error
 }
 
 // Runner handles RunPlan creation and execution.
@@ -49,13 +49,12 @@ func NewRunner(launcher Launcher) *Runner {
 // {workspaceBase}/.clier/{runID}.json, and launches via tmux.
 func (r *Runner) Run(workspaceBase, runID, sessionName string, plans []domain.MemberPlan) (*RunPlan, error) {
 	plan := NewPlan(runID, sessionName, plans)
-	planPath := PlanPath(workspaceBase, runID)
 
 	if err := SavePlan(workspaceBase, runID, plan); err != nil {
 		return nil, fmt.Errorf("save plan: %w", err)
 	}
 
-	if err := r.launcher.Launch(runID, planPath, plan, plans); err != nil {
+	if err := r.launcher.Launch(plan, plans); err != nil {
 		return nil, fmt.Errorf("launch: %w", err)
 	}
 

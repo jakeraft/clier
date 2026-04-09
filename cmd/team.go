@@ -164,9 +164,7 @@ func newTeamForkCmd() *cobra.Command {
 }
 
 func newTeamWorkspaceCmd() *cobra.Command {
-	var dir string
-
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "workspace <[owner/]name>",
 		Short: "Create workspaces for all team members",
 		Args:  cobra.ExactArgs(1),
@@ -174,10 +172,9 @@ func newTeamWorkspaceCmd() *cobra.Command {
 			client := newAPIClient()
 			owner, name := parseOwnerName(args[0])
 			writer := appws.NewWriter(client, owner)
-
-			base := dir
-			if base == "" {
-				base = "."
+			base, err := resolveWorkspaceBase()
+			if err != nil {
+				return err
 			}
 
 			if err := writer.PrepareTeam(base, name); err != nil {
@@ -190,14 +187,10 @@ func newTeamWorkspaceCmd() *cobra.Command {
 			})
 		},
 	}
-	cmd.Flags().StringVar(&dir, "dir", "", "Base directory for workspaces (default: current directory)")
-	return cmd
 }
 
 func newTeamRunCmd() *cobra.Command {
-	var dir string
-
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "run <[owner/]name>",
 		Short: "Create workspaces and run the team",
 		Long: `Create workspaces (idempotent) for all team members and start a run.
@@ -208,13 +201,9 @@ Each member gets its own tmux window within a single session.`,
 			owner, name := parseOwnerName(args[0])
 			_ = requireLogin()
 
-			base := dir
-			if base == "" {
-				base = "."
-			}
-			absBase, err := filepath.Abs(base)
+			absBase, err := resolveWorkspaceBase()
 			if err != nil {
-				return fmt.Errorf("resolve base path: %w", err)
+				return err
 			}
 
 			team, err := client.GetTeam(owner, name)
@@ -279,6 +268,4 @@ Each member gets its own tmux window within a single session.`,
 			})
 		},
 	}
-	cmd.Flags().StringVar(&dir, "dir", "", "Base directory for workspaces (default: current directory)")
-	return cmd
 }
