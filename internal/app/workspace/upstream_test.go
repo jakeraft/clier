@@ -1,10 +1,15 @@
 package workspace
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/jakeraft/clier/internal/adapter/api"
 )
 
 func TestPreservedUpstreamState_KeepsFetchedSnapshotForSameUpstream(t *testing.T) {
@@ -58,5 +63,75 @@ func TestRenderProjectionDiff_ReturnsUnifiedDiff(t *testing.T) {
 	}
 	if !strings.Contains(diff, "local") || !strings.Contains(diff, "upstream") {
 		t.Fatalf("expected diff output to mention changed content, got %q", diff)
+	}
+}
+
+func TestFetchUpstreamMemberProjection_PreservesResourceNameWhenSnapshotOmitsIt(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/orgs/origin/members/reviewer/versions/7" {
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"version": 7,
+			"content": map[string]any{
+				"agent_type": "codex",
+				"command":    "codex",
+			},
+		})
+	}))
+	defer server.Close()
+
+	svc := NewService(api.NewClient(server.URL, ""))
+	version, projection, err := svc.fetchUpstreamMemberProjection("origin", "reviewer", 7)
+	if err != nil {
+		t.Fatalf("fetchUpstreamMemberProjection: %v", err)
+	}
+	if version != 7 {
+		t.Fatalf("version = %d, want 7", version)
+	}
+	if projection.Name != "reviewer" {
+		t.Fatalf("projection.Name = %q, want reviewer", projection.Name)
+	}
+}
+
+func TestFetchUpstreamTeamProjection_PreservesResourceNameWhenSnapshotOmitsIt(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/orgs/origin/teams/dev-squad/versions/11" {
+			t.Fatalf("unexpected request path: %s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"version": 11,
+			"content": map[string]any{
+				"root_team_member_id": 101,
+				"team_members": []map[string]any{
+					{
+						"id":   101,
+						"name": "lead",
+						"member": map[string]any{
+							"owner":   "origin",
+							"name":    "lead-member",
+							"version": 3,
+						},
+					},
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	svc := NewService(api.NewClient(server.URL, ""))
+	version, projection, err := svc.fetchUpstreamTeamProjection("origin", "dev-squad", 11)
+	if err != nil {
+		t.Fatalf("fetchUpstreamTeamProjection: %v", err)
+	}
+	if version != 11 {
+		t.Fatalf("version = %d, want 11", version)
+	}
+	if projection.Name != "dev-squad" {
+		t.Fatalf("projection.Name = %q, want dev-squad", projection.Name)
 	}
 }

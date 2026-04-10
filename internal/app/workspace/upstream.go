@@ -211,10 +211,14 @@ func (s *Service) fetchUpstreamMemberProjection(owner, name string, version int)
 	if err := json.Unmarshal(snapshot.Content, &projection); err != nil {
 		return 0, nil, fmt.Errorf("unmarshal upstream member projection: %w", err)
 	}
+	if projection.Name == "" {
+		projection.Name = name
+	}
 	return snapshot.Version, &projection, nil
 }
 
 type teamSnapshotProjection struct {
+	Name             string                   `json:"name,omitempty"`
 	RootTeamMemberID *int64                   `json:"root_team_member_id,omitempty"`
 	TeamMembers      []teamMemberProjection   `json:"team_members"`
 	Relations        []TeamRelationProjection `json:"relations,omitempty"`
@@ -237,8 +241,12 @@ func (s *Service) fetchUpstreamTeamProjection(owner, name string, version int) (
 	}
 
 	projection := &TeamProjection{
+		Name:      raw.Name,
 		Members:   make([]TeamMemberProjection, 0, len(raw.TeamMembers)),
 		Relations: append([]TeamRelationProjection(nil), raw.Relations...),
+	}
+	if projection.Name == "" {
+		projection.Name = name
 	}
 	if raw.RootTeamMemberID != nil {
 		projection.RootTeamMemberID = *raw.RootTeamMemberID

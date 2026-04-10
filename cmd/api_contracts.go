@@ -62,6 +62,9 @@ func parseTeamMemberSpecs(specs []string) ([]api.TeamMemberRequest, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid member ref in %q: %w", spec, err)
 		}
+		if memberRef == nil {
+			return nil, fmt.Errorf("invalid --member %q, member ref must not be empty", spec)
+		}
 		name := strings.TrimSpace(parts[1])
 		if name == "" {
 			return nil, fmt.Errorf("invalid --member %q, name must not be empty", spec)
