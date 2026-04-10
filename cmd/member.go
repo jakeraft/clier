@@ -36,7 +36,7 @@ Workflow:
 }
 
 func newMemberCreateCmd() *cobra.Command {
-	var name, agentType, command, claudeMd, claudeSettings, repo string
+	var name, agentType, command, claudeMd, claudeSettings, repo, summary string
 	var skills []string
 
 	cmd := &cobra.Command{
@@ -73,6 +73,7 @@ func newMemberCreateCmd() *cobra.Command {
 				ClaudeMd:       claudeMdRef,
 				ClaudeSettings: claudeSettingsRef,
 				Skills:         skillRefs,
+				Summary:        summary,
 			}
 
 			resp, err := client.CreateMember(owner, body)
@@ -89,6 +90,7 @@ func newMemberCreateCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "Skill refs as <id>@<version>")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "Claude settings resource ref as <id>@<version>")
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repo URL")
+	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("agent-type")
 	_ = cmd.MarkFlagRequired("command")
@@ -96,7 +98,7 @@ func newMemberCreateCmd() *cobra.Command {
 }
 
 func newMemberEditCmd() *cobra.Command {
-	var name, agentType, command, claudeMd, claudeSettings, repo string
+	var name, agentType, command, claudeMd, claudeSettings, repo, summary string
 	var skills []string
 
 	cmd := &cobra.Command{
@@ -107,39 +109,35 @@ func newMemberEditCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			current, err := client.GetMember(owner, args[0])
-			if err != nil {
-				return err
-			}
-			body := api.MemberWriteRequest{
-				Name:           current.Name,
-				AgentType:      current.AgentType,
-				Command:        current.Command,
-				GitRepoURL:     current.GitRepoURL,
-				ClaudeMd:       nil,
-				ClaudeSettings: nil,
-				Skills:         resourceRefRequests(current.Skills),
-			}
-			if current.ClaudeMd != nil {
-				body.ClaudeMd = &api.ResourceRefRequest{ID: current.ClaudeMd.ID, Version: current.ClaudeMd.Version}
-			}
-			if current.ClaudeSettings != nil {
-				body.ClaudeSettings = &api.ResourceRefRequest{ID: current.ClaudeSettings.ID, Version: current.ClaudeSettings.Version}
-			}
+			body := api.MemberPatchRequest{}
 			if cmd.Flags().Changed("name") {
-				body.Name = name
+				body.Name = &name
 			}
 			if cmd.Flags().Changed("agent-type") {
-				body.AgentType = agentType
+				body.AgentType = &agentType
 			}
 			if cmd.Flags().Changed("command") {
-				body.Command = command
+				body.Command = &command
+			}
+			if cmd.Flags().Changed("repo") {
+				body.GitRepoURL = &repo
+			}
+			if cmd.Flags().Changed("summary") {
+				body.Summary = &summary
 			}
 			if cmd.Flags().Changed("claude-md") {
-				body.ClaudeMd, err = parseOptionalResourceRefRequest(claudeMd)
+				ref, err := parseOptionalResourceRefRequest(claudeMd)
 				if err != nil {
 					return fmt.Errorf("parse --claude-md: %w", err)
 				}
+				body.ClaudeMd = ref
+			}
+			if cmd.Flags().Changed("claude-settings") {
+				ref, err := parseOptionalResourceRefRequest(claudeSettings)
+				if err != nil {
+					return fmt.Errorf("parse --claude-settings: %w", err)
+				}
+				body.ClaudeSettings = ref
 			}
 			if cmd.Flags().Changed("skills") {
 				body.Skills = make([]api.ResourceRefRequest, 0, len(skills))
@@ -154,17 +152,8 @@ func newMemberEditCmd() *cobra.Command {
 					body.Skills = append(body.Skills, *ref)
 				}
 			}
-			if cmd.Flags().Changed("claude-settings") {
-				body.ClaudeSettings, err = parseOptionalResourceRefRequest(claudeSettings)
-				if err != nil {
-					return fmt.Errorf("parse --claude-settings: %w", err)
-				}
-			}
-			if cmd.Flags().Changed("repo") {
-				body.GitRepoURL = repo
-			}
 
-			resp, err := client.UpdateMember(owner, args[0], body)
+			resp, err := client.PatchMember(owner, args[0], &body)
 			if err != nil {
 				return err
 			}
@@ -178,6 +167,7 @@ func newMemberEditCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill refs as <id>@<version>")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "New Claude settings resource ref as <id>@<version>")
 	cmd.Flags().StringVar(&repo, "repo", "", "New git repo URL")
+	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
 	return cmd
 }
 
