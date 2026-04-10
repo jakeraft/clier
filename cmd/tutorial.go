@@ -9,9 +9,10 @@ func init() {
 }
 
 func newTutorialCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "tutorial",
-		Short: "Learn to harness your first agent team",
+	cmd := &cobra.Command{
+		Use:     "tutorial",
+		Short:   "Learn to harness your first agent team",
+		GroupID: rootGroupDiscovery,
 		Long: `Learn to harness your first agent team.
 
 The "todo-team" is a team of AI agents that implements a feature
@@ -36,18 +37,32 @@ Step 2. Explore the pre-loaded todo-team
 
   The "jakeraft/todo-team" is already available.
 
-Step 3. Fork, clone, and start the team
+Step 3. Fork the team to your namespace
 
   clier fork jakeraft/todo-team
+
+  This creates your own copy. Now you can customize it.
+
+Step 4. Customize your fork
+
+  Check your forked team and give it a summary:
+
+    clier explore team <your-login>/todo-team
+    clier team edit todo-team --summary "My first agent team"
+
+  Use --help on any command to see all available flags.
+
+Step 5. Clone and start the team
+
   clier clone todo-team
   cd <your-login>/todo-team
   clier run start
 
-  This forks the team to your namespace, clones it under
-  ./<your-login>/todo-team/, and launches all agents in tmux.
+  This clones your team under ./<your-login>/todo-team/
+  and launches all agents in tmux.
   Copy the run ID from the output.
 
-Step 4. Give the team a job
+Step 6. Give the team a job
 
   clier run tell --run <run-id> --to <root-member-id> \
     "Add a list --done flag to filter completed todos."
@@ -56,7 +71,7 @@ Step 4. Give the team a job
   creates a PR, and the reviewer iterates on it until approved.
   The tech-lead writes a final report on the PR.
 
-Step 5. Watch them work from the current local clone
+Step 7. Watch them work from the current local clone
 
   clier run attach <run-id>        Watch agents in real time
   clier run view <run-id>          Check progress notes and messages
@@ -64,15 +79,19 @@ Step 5. Watch them work from the current local clone
   Note: run attach is intended for a normal user terminal.
   It is not supported when clier is running inside an agent.
 
-Step 6. When done, stop the run from the current local clone
+Step 8. When done, stop the run from the current local clone
 
   clier run stop <run-id>
 
-Step 7. See the result
+Step 9. See the result
 
   gh pr list -R jakeraft/clier_todo
   gh pr view <number> -R jakeraft/clier_todo --web
 
 Tip: Use "clier <command> --help" for details on each command.`,
 	}
+	cmd.RunE = func(c *cobra.Command, args []string) error {
+		return c.Help()
+	}
+	return cmd
 }

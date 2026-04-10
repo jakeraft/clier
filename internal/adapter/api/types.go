@@ -28,23 +28,27 @@ type MemberRef struct {
 	Command   string `json:"command"`
 }
 
-type ClaudeMdMutationRequest struct {
+type ClaudeMdWriteRequest struct {
 	Name    string `json:"name"`
+	Summary string `json:"summary,omitempty"`
 	Content string `json:"content"`
 }
 
-type ClaudeSettingsMutationRequest struct {
+type ClaudeSettingsWriteRequest struct {
 	Name    string `json:"name"`
+	Summary string `json:"summary,omitempty"`
 	Content string `json:"content"`
 }
 
-type SkillMutationRequest struct {
+type SkillWriteRequest struct {
 	Name    string `json:"name"`
+	Summary string `json:"summary,omitempty"`
 	Content string `json:"content"`
 }
 
-type MemberMutationRequest struct {
+type MemberWriteRequest struct {
 	Name           string               `json:"name"`
+	Summary        string               `json:"summary,omitempty"`
 	AgentType      string               `json:"agent_type"`
 	Command        string               `json:"command"`
 	GitRepoURL     string               `json:"git_repo_url"`
@@ -63,11 +67,49 @@ type TeamRelationRequest struct {
 	ToIndex   int `json:"to_index"`
 }
 
-type TeamMutationRequest struct {
+type TeamWriteRequest struct {
 	Name        string                `json:"name"`
+	Summary     string                `json:"summary,omitempty"`
 	TeamMembers []TeamMemberRequest   `json:"team_members"`
 	Relations   []TeamRelationRequest `json:"relations"`
 	RootIndex   *int                  `json:"root_index"`
+}
+
+type ClaudeMdPatchRequest struct {
+	Name    *string `json:"name,omitempty"`
+	Content *string `json:"content,omitempty"`
+	Summary *string `json:"summary,omitempty"`
+}
+
+type ClaudeSettingsPatchRequest struct {
+	Name    *string `json:"name,omitempty"`
+	Content *string `json:"content,omitempty"`
+	Summary *string `json:"summary,omitempty"`
+}
+
+type SkillPatchRequest struct {
+	Name    *string `json:"name,omitempty"`
+	Content *string `json:"content,omitempty"`
+	Summary *string `json:"summary,omitempty"`
+}
+
+type MemberPatchRequest struct {
+	Name           *string              `json:"name,omitempty"`
+	AgentType      *string              `json:"agent_type,omitempty"`
+	Command        *string              `json:"command,omitempty"`
+	GitRepoURL     *string              `json:"git_repo_url,omitempty"`
+	ClaudeMd       *ResourceRefRequest  `json:"claude_md,omitempty"`
+	ClaudeSettings *ResourceRefRequest  `json:"claude_settings,omitempty"`
+	Skills         []ResourceRefRequest `json:"skills,omitempty"`
+	Summary        *string              `json:"summary,omitempty"`
+}
+
+type TeamPatchRequest struct {
+	Name        *string               `json:"name,omitempty"`
+	TeamMembers []TeamMemberRequest   `json:"team_members,omitempty"`
+	Relations   []TeamRelationRequest `json:"relations,omitempty"`
+	RootIndex   *int                  `json:"root_index,omitempty"`
+	Summary     *string               `json:"summary,omitempty"`
 }
 
 // commonFields are shared by all SaaS resources (not embedded, just documented):

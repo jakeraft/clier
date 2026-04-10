@@ -26,6 +26,7 @@ type TeamResponse struct {
 	ID               int64                  `json:"id"`
 	OwnerID          int64                  `json:"owner_id"`
 	Name             string                 `json:"name"`
+	Summary          string                 `json:"summary"`
 	AgentTypes       []string               `json:"agent_types"`
 	RootTeamMemberID *int64                 `json:"root_team_member_id,omitempty"`
 	TeamMembers      []TeamMemberResponse   `json:"team_members"`
@@ -81,6 +82,11 @@ func (c *Client) ListTeams(owner string) ([]TeamResponse, error) {
 func (c *Client) UpdateTeam(owner, name string, body any) (*TeamResponse, error) {
 	var r TeamResponse
 	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/teams/%s", owner, name), body, &r)
+}
+
+func (c *Client) PatchTeam(owner, name string, body *TeamPatchRequest) (*TeamResponse, error) {
+	var r TeamResponse
+	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/teams/%s", owner, name), body, &r)
 }
 
 func (c *Client) DeleteTeam(owner, name string) error {

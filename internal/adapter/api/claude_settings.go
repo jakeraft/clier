@@ -11,6 +11,7 @@ type ClaudeSettingsResponse struct {
 	ID             int64     `json:"id"`
 	OwnerID        int64     `json:"owner_id"`
 	Name           string    `json:"name"`
+	Summary        string    `json:"summary"`
 	Content        string    `json:"content"`
 	Visibility     int       `json:"visibility"`
 	IsFork         bool      `json:"is_fork"`
@@ -63,6 +64,11 @@ func (c *Client) ListClaudeSettings(owner string) ([]ClaudeSettingsResponse, err
 func (c *Client) UpdateClaudeSettings(owner, name string, body any) (*ClaudeSettingsResponse, error) {
 	var r ClaudeSettingsResponse
 	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/claude-settings/%s", owner, name), body, &r)
+}
+
+func (c *Client) PatchClaudeSettings(owner, name string, body *ClaudeSettingsPatchRequest) (*ClaudeSettingsResponse, error) {
+	var r ClaudeSettingsResponse
+	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/claude-settings/%s", owner, name), body, &r)
 }
 
 func (c *Client) DeleteClaudeSettings(owner, name string) error {

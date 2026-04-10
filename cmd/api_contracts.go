@@ -40,17 +40,6 @@ func parseOptionalResourceRefRequest(raw string) (*api.ResourceRefRequest, error
 	return &api.ResourceRefRequest{ID: id, Version: version}, nil
 }
 
-func resourceRefRequests(refs []api.ResourceRef) []api.ResourceRefRequest {
-	if len(refs) == 0 {
-		return nil
-	}
-	requests := make([]api.ResourceRefRequest, 0, len(refs))
-	for _, ref := range refs {
-		requests = append(requests, api.ResourceRefRequest{ID: ref.ID, Version: ref.Version})
-	}
-	return requests
-}
-
 func parseTeamMemberSpecs(specs []string) ([]api.TeamMemberRequest, error) {
 	members := make([]api.TeamMemberRequest, 0, len(specs))
 	for _, spec := range specs {
@@ -103,49 +92,3 @@ func parseTeamRelationSpecs(specs []string) ([]api.TeamRelationRequest, error) {
 	return relations, nil
 }
 
-func teamMutationRequestFromResponse(team *api.TeamResponse) (*api.TeamMutationRequest, error) {
-	memberIndexByID := make(map[int64]int, len(team.TeamMembers))
-	members := make([]api.TeamMemberRequest, 0, len(team.TeamMembers))
-	for i, tm := range team.TeamMembers {
-		memberIndexByID[tm.ID] = i
-		members = append(members, api.TeamMemberRequest{
-			Member: api.MemberRefRequest{
-				ID:      tm.Member.ID,
-				Version: tm.Member.Version,
-			},
-			Name: tm.Name,
-		})
-	}
-
-	relations := make([]api.TeamRelationRequest, 0, len(team.Relations))
-	for _, rel := range team.Relations {
-		fromIndex, ok := memberIndexByID[rel.FromTeamMemberID]
-		if !ok {
-			return nil, fmt.Errorf("team relation references unknown from_team_member_id %d", rel.FromTeamMemberID)
-		}
-		toIndex, ok := memberIndexByID[rel.ToTeamMemberID]
-		if !ok {
-			return nil, fmt.Errorf("team relation references unknown to_team_member_id %d", rel.ToTeamMemberID)
-		}
-		relations = append(relations, api.TeamRelationRequest{
-			FromIndex: fromIndex,
-			ToIndex:   toIndex,
-		})
-	}
-
-	var rootIndex *int
-	if team.RootTeamMemberID != nil {
-		idx, ok := memberIndexByID[*team.RootTeamMemberID]
-		if !ok {
-			return nil, fmt.Errorf("root_team_member_id %d not found in team_members", *team.RootTeamMemberID)
-		}
-		rootIndex = &idx
-	}
-
-	return &api.TeamMutationRequest{
-		Name:        team.Name,
-		TeamMembers: members,
-		Relations:   relations,
-		RootIndex:   rootIndex,
-	}, nil
-}

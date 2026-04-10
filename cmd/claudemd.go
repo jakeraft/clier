@@ -12,12 +12,9 @@ func init() {
 func newClaudeMdCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "claude-md",
-		Short:   "Manage CLAUDE.md files",
+		Short:   "Manage CLAUDE.md resources",
 		GroupID: rootGroupServer,
-		Long: `Manage CLAUDE.md files on the server.
-
-Use create, edit, and delete to manage your own files.
-Use explore to inspect shared files before you fork or reference them.`,
+		Long:    `Create, edit, and delete CLAUDE.md resources on the server.`,
 	}
 	cmd.AddCommand(newClaudeMdCreateCmd())
 	cmd.AddCommand(newClaudeMdEditCmd())
@@ -26,7 +23,7 @@ Use explore to inspect shared files before you fork or reference them.`,
 }
 
 func newClaudeMdCreateCmd() *cobra.Command {
-	var name, content string
+	var name, content, summary string
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -34,9 +31,10 @@ func newClaudeMdCreateCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			resp, err := client.CreateClaudeMd(owner, api.ClaudeMdMutationRequest{
+			resp, err := client.CreateClaudeMd(owner, api.ClaudeMdWriteRequest{
 				Name:    name,
 				Content: content,
+				Summary: summary,
 			})
 			if err != nil {
 				return err
@@ -46,13 +44,14 @@ func newClaudeMdCreateCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Claude md name")
 	cmd.Flags().StringVar(&content, "content", "", "Claude md content")
+	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("content")
 	return cmd
 }
 
 func newClaudeMdEditCmd() *cobra.Command {
-	var name, content string
+	var name, content, summary string
 
 	cmd := &cobra.Command{
 		Use:   "edit <name>",
@@ -61,22 +60,17 @@ func newClaudeMdEditCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			current, err := client.GetClaudeMd(owner, args[0])
-			if err != nil {
-				return err
-			}
-			body := api.ClaudeMdMutationRequest{
-				Name:    current.Name,
-				Content: current.Content,
-			}
+			body := api.ClaudeMdPatchRequest{}
 			if cmd.Flags().Changed("name") {
-				body.Name = name
+				body.Name = &name
 			}
 			if cmd.Flags().Changed("content") {
-				body.Content = content
+				body.Content = &content
 			}
-
-			resp, err := client.UpdateClaudeMd(owner, args[0], body)
+			if cmd.Flags().Changed("summary") {
+				body.Summary = &summary
+			}
+			resp, err := client.PatchClaudeMd(owner, args[0], &body)
 			if err != nil {
 				return err
 			}
@@ -85,6 +79,7 @@ func newClaudeMdEditCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New claude md name")
 	cmd.Flags().StringVar(&content, "content", "", "New claude md content")
+	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
 	return cmd
 }
 

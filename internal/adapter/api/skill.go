@@ -11,6 +11,7 @@ type SkillResponse struct {
 	ID             int64     `json:"id"`
 	OwnerID        int64     `json:"owner_id"`
 	Name           string    `json:"name"`
+	Summary        string    `json:"summary"`
 	Content        string    `json:"content"`
 	Visibility     int       `json:"visibility"`
 	IsFork         bool      `json:"is_fork"`
@@ -63,6 +64,11 @@ func (c *Client) ListSkills(owner string) ([]SkillResponse, error) {
 func (c *Client) UpdateSkill(owner, name string, body any) (*SkillResponse, error) {
 	var r SkillResponse
 	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/skills/%s", owner, name), body, &r)
+}
+
+func (c *Client) PatchSkill(owner, name string, body *SkillPatchRequest) (*SkillResponse, error) {
+	var r SkillResponse
+	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/skills/%s", owner, name), body, &r)
 }
 
 func (c *Client) DeleteSkill(owner, name string) error {

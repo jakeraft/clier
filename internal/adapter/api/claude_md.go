@@ -11,6 +11,7 @@ type ClaudeMdResponse struct {
 	ID             int64     `json:"id"`
 	OwnerID        int64     `json:"owner_id"`
 	Name           string    `json:"name"`
+	Summary        string    `json:"summary"`
 	Content        string    `json:"content"`
 	Visibility     int       `json:"visibility"`
 	IsFork         bool      `json:"is_fork"`
@@ -63,6 +64,11 @@ func (c *Client) ListClaudeMds(owner string) ([]ClaudeMdResponse, error) {
 func (c *Client) UpdateClaudeMd(owner, name string, body any) (*ClaudeMdResponse, error) {
 	var r ClaudeMdResponse
 	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/claude-mds/%s", owner, name), body, &r)
+}
+
+func (c *Client) PatchClaudeMd(owner, name string, body *ClaudeMdPatchRequest) (*ClaudeMdResponse, error) {
+	var r ClaudeMdResponse
+	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/claude-mds/%s", owner, name), body, &r)
 }
 
 func (c *Client) DeleteClaudeMd(owner, name string) error {

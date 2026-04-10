@@ -11,6 +11,7 @@ type MemberResponse struct {
 	ID                    int64         `json:"id"`
 	OwnerID               int64         `json:"owner_id"`
 	Name                  string        `json:"name"`
+	Summary               string        `json:"summary"`
 	AgentType             string        `json:"agent_type"`
 	Command               string        `json:"command"`
 	GitRepoURL            string        `json:"git_repo_url"`
@@ -72,6 +73,11 @@ func (c *Client) ListMembers(owner string) ([]MemberResponse, error) {
 func (c *Client) UpdateMember(owner, name string, body any) (*MemberResponse, error) {
 	var r MemberResponse
 	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/members/%s", owner, name), body, &r)
+}
+
+func (c *Client) PatchMember(owner, name string, body *MemberPatchRequest) (*MemberResponse, error) {
+	var r MemberResponse
+	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/members/%s", owner, name), body, &r)
 }
 
 func (c *Client) DeleteMember(owner, name string) error {
