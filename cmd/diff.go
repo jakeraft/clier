@@ -30,7 +30,9 @@ func newDiffUpstreamCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			copyRoot, _, err := appworkspace.FindManifestAbove(newFileMaterializer(), base)
+			fs := newFileMaterializer()
+			git := newGitRepo()
+			copyRoot, _, err := appworkspace.FindManifestAbove(fs, base)
 			if err != nil {
 				if os.IsNotExist(err) {
 					return errNotInWorkingCopy()
@@ -38,7 +40,7 @@ func newDiffUpstreamCmd() *cobra.Command {
 				return err
 			}
 
-			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
+			svc := appworkspace.NewService(newAPIClient(), fs, git)
 			result, err := svc.DiffFetchedUpstream(copyRoot)
 			if err != nil {
 				return err
