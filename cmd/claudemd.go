@@ -14,54 +14,15 @@ func newClaudeMdCmd() *cobra.Command {
 		Use:     "claude-md",
 		Short:   "Manage CLAUDE.md files",
 		GroupID: rootGroupServer,
+		Long: `Manage CLAUDE.md files on the server.
+
+Use create, edit, and delete to manage your own files.
+Use explore to inspect shared files before you fork or reference them.`,
 	}
-	cmd.AddCommand(newClaudeMdListCmd())
-	cmd.AddCommand(newClaudeMdViewCmd())
 	cmd.AddCommand(newClaudeMdCreateCmd())
 	cmd.AddCommand(newClaudeMdEditCmd())
 	cmd.AddCommand(newClaudeMdDeleteCmd())
-	cmd.AddCommand(newClaudeMdForkCmd())
 	return cmd
-}
-
-func newClaudeMdListCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "list [owner]",
-		Short: "List your CLAUDE.md files",
-		Long:  "List your CLAUDE.md files, or another user's if [owner] is given.",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			var owner string
-			if len(args) == 1 {
-				owner = args[0]
-			} else {
-				owner = requireLogin()
-			}
-			items, err := client.ListClaudeMds(owner)
-			if err != nil {
-				return err
-			}
-			return printJSON(items)
-		},
-	}
-}
-
-func newClaudeMdViewCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "view <[owner/]name>",
-		Short: "Show CLAUDE.md details",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			owner, name := parseOwnerName(args[0])
-			item, err := client.GetClaudeMd(owner, name)
-			if err != nil {
-				return err
-			}
-			return printJSON(item)
-		},
-	}
 }
 
 func newClaudeMdCreateCmd() *cobra.Command {
@@ -139,24 +100,6 @@ func newClaudeMdDeleteCmd() *cobra.Command {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})
-		},
-	}
-}
-
-func newClaudeMdForkCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "fork <owner/name>",
-		Short: "Copy a public CLAUDE.md to your namespace",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			_ = requireLogin()
-			owner, name := parseOwnerName(args[0])
-			resp, err := client.ForkClaudeMd(owner, name)
-			if err != nil {
-				return err
-			}
-			return printJSON(resp)
 		},
 	}
 }

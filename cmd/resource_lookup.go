@@ -16,16 +16,43 @@ func resolveServerResourceKind(client *api.Client, owner, name string) (string, 
 	if err != nil {
 		return "", err
 	}
+	skillExists, err := skillExistsOnServer(client, owner, name)
+	if err != nil {
+		return "", err
+	}
+	claudeMdExists, err := claudeMdExistsOnServer(client, owner, name)
+	if err != nil {
+		return "", err
+	}
+	claudeSettingsExists, err := claudeSettingsExistsOnServer(client, owner, name)
+	if err != nil {
+		return "", err
+	}
 
-	switch {
-	case teamExists && memberExists:
-		return "", fmt.Errorf("resource %s/%s is ambiguous across team and member definitions", owner, name)
-	case teamExists:
-		return resourceKindTeam, nil
-	case memberExists:
-		return resourceKindMember, nil
-	default:
+	matches := make([]string, 0, 5)
+	if teamExists {
+		matches = append(matches, resourceKindTeam)
+	}
+	if memberExists {
+		matches = append(matches, resourceKindMember)
+	}
+	if skillExists {
+		matches = append(matches, resourceKindSkill)
+	}
+	if claudeMdExists {
+		matches = append(matches, resourceKindClaudeMd)
+	}
+	if claudeSettingsExists {
+		matches = append(matches, resourceKindClaudeSettings)
+	}
+
+	switch len(matches) {
+	case 0:
 		return "", fmt.Errorf("resource %s/%s was not found", owner, name)
+	case 1:
+		return matches[0], nil
+	default:
+		return "", fmt.Errorf("resource %s/%s is ambiguous across %v", owner, name, matches)
 	}
 }
 
@@ -42,6 +69,39 @@ func teamExistsOnServer(client *api.Client, owner, name string) (bool, error) {
 
 func memberExistsOnServer(client *api.Client, owner, name string) (bool, error) {
 	_, err := client.GetMember(owner, name)
+	if err == nil {
+		return true, nil
+	}
+	if isNotFound(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+func skillExistsOnServer(client *api.Client, owner, name string) (bool, error) {
+	_, err := client.GetSkill(owner, name)
+	if err == nil {
+		return true, nil
+	}
+	if isNotFound(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+func claudeMdExistsOnServer(client *api.Client, owner, name string) (bool, error) {
+	_, err := client.GetClaudeMd(owner, name)
+	if err == nil {
+		return true, nil
+	}
+	if isNotFound(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+func claudeSettingsExistsOnServer(client *api.Client, owner, name string) (bool, error) {
+	_, err := client.GetClaudeSettings(owner, name)
 	if err == nil {
 		return true, nil
 	}

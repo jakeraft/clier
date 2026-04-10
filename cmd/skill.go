@@ -14,54 +14,15 @@ func newSkillCmd() *cobra.Command {
 		Use:     "skill",
 		Short:   "Manage reusable agent skills",
 		GroupID: rootGroupServer,
+		Long: `Manage reusable agent skills on the server.
+
+Use create, edit, and delete to manage your own skills.
+Use explore to inspect shared skills before you fork or reference them.`,
 	}
-	cmd.AddCommand(newSkillListCmd())
-	cmd.AddCommand(newSkillViewCmd())
 	cmd.AddCommand(newSkillCreateCmd())
 	cmd.AddCommand(newSkillEditCmd())
 	cmd.AddCommand(newSkillDeleteCmd())
-	cmd.AddCommand(newSkillForkCmd())
 	return cmd
-}
-
-func newSkillListCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "list [owner]",
-		Short: "List your skills",
-		Long:  "List your skills, or another user's skills if [owner] is given.",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			var owner string
-			if len(args) == 1 {
-				owner = args[0]
-			} else {
-				owner = requireLogin()
-			}
-			items, err := client.ListSkills(owner)
-			if err != nil {
-				return err
-			}
-			return printJSON(items)
-		},
-	}
-}
-
-func newSkillViewCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "view <[owner/]name>",
-		Short: "Show skill details",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			owner, name := parseOwnerName(args[0])
-			item, err := client.GetSkill(owner, name)
-			if err != nil {
-				return err
-			}
-			return printJSON(item)
-		},
-	}
 }
 
 func newSkillCreateCmd() *cobra.Command {
@@ -139,24 +100,6 @@ func newSkillDeleteCmd() *cobra.Command {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})
-		},
-	}
-}
-
-func newSkillForkCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "fork <owner/name>",
-		Short: "Copy a public skill to your namespace",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			_ = requireLogin()
-			owner, name := parseOwnerName(args[0])
-			resp, err := client.ForkSkill(owner, name)
-			if err != nil {
-				return err
-			}
-			return printJSON(resp)
 		},
 	}
 }

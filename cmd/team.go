@@ -18,63 +18,21 @@ func newTeamCmd() *cobra.Command {
 		GroupID: rootGroupServer,
 		Long: `Compose agent teams on the server.
 
-Use list, view, create, edit, and delete to manage your
-team definitions.
+Use create, edit, and delete to manage your
+own team definitions.
 
 Workflow:
   clier team create        Define a new team
-  clier clone <name>       Clone it to your machine
+  clier explore team <owner/name>
+                           Inspect an existing team
+  clier clone <name>       Clone your team to your machine
   clier run start          Start the current local clone`,
 	}
 	cmd.AddGroup(&cobra.Group{ID: subGroupServer, Title: "Define"})
-	cmd.AddCommand(newTeamListCmd())
-	cmd.AddCommand(newTeamViewCmd())
 	cmd.AddCommand(newTeamCreateCmd())
 	cmd.AddCommand(newTeamEditCmd())
 	cmd.AddCommand(newTeamDeleteCmd())
 	return cmd
-}
-
-func newTeamListCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "list [owner]",
-		Short:   "List your teams",
-		Long:    "List your teams, or another user's teams if [owner] is given.",
-		GroupID: subGroupServer,
-		Args:    cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			var owner string
-			if len(args) == 1 {
-				owner = args[0]
-			} else {
-				owner = requireLogin()
-			}
-			teams, err := client.ListTeams(owner)
-			if err != nil {
-				return err
-			}
-			return printJSON(teams)
-		},
-	}
-}
-
-func newTeamViewCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "view <[owner/]name>",
-		Short:   "Show team details",
-		GroupID: subGroupServer,
-		Args:    cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			owner, name := parseOwnerName(args[0])
-			team, err := client.GetTeam(owner, name)
-			if err != nil {
-				return err
-			}
-			return printJSON(team)
-		},
-	}
 }
 
 func newTeamCreateCmd() *cobra.Command {

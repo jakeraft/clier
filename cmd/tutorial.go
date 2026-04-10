@@ -31,8 +31,8 @@ Step 1. Log in
 
 Step 2. Explore the pre-loaded todo-team
 
-  clier explore teams
-  clier team view jakeraft/todo-team
+  clier explore team list
+  clier explore team jakeraft/todo-team
 
   The "jakeraft/todo-team" is already available.
 

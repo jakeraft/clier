@@ -50,6 +50,11 @@ func (c *Client) GetClaudeMdVersion(owner, name string, version int) (*ClaudeMdV
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/claude-mds/%s/versions/%d", owner, name, version), &r)
 }
 
+func (c *Client) ListClaudeMdVersions(owner, name string) ([]ClaudeMdVersionResponse, error) {
+	var r []ClaudeMdVersionResponse
+	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/claude-mds/%s/versions", owner, name), &r)
+}
+
 func (c *Client) ListClaudeMds(owner string) ([]ClaudeMdResponse, error) {
 	var r []ClaudeMdResponse
 	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/claude-mds", owner), &r)

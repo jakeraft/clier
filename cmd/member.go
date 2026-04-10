@@ -18,63 +18,21 @@ func newMemberCmd() *cobra.Command {
 		GroupID: rootGroupServer,
 		Long: `Define individual agents on the server.
 
-Use list, view, create, edit, and delete to manage your
-agent definitions.
+Use create, edit, and delete to manage your
+own agent definitions.
 
 Workflow:
   clier member create        Define a new agent
-  clier clone <name>         Clone it to your machine
+  clier explore member <owner/name>
+                             Inspect an existing agent
+  clier clone <name>         Clone your agent to your machine
   clier run start            Start the current local clone`,
 	}
 	cmd.AddGroup(&cobra.Group{ID: subGroupServer, Title: "Define"})
-	cmd.AddCommand(newMemberListCmd())
-	cmd.AddCommand(newMemberViewCmd())
 	cmd.AddCommand(newMemberCreateCmd())
 	cmd.AddCommand(newMemberEditCmd())
 	cmd.AddCommand(newMemberDeleteCmd())
 	return cmd
-}
-
-func newMemberListCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "list [owner]",
-		Short:   "List your members",
-		Long:    "List your members, or another user's members if [owner] is given.",
-		GroupID: subGroupServer,
-		Args:    cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			var owner string
-			if len(args) == 1 {
-				owner = args[0]
-			} else {
-				owner = requireLogin()
-			}
-			members, err := client.ListMembers(owner)
-			if err != nil {
-				return err
-			}
-			return printJSON(members)
-		},
-	}
-}
-
-func newMemberViewCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "view <[owner/]name>",
-		Short:   "Show member details",
-		GroupID: subGroupServer,
-		Args:    cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			owner, name := parseOwnerName(args[0])
-			member, err := client.GetMember(owner, name)
-			if err != nil {
-				return err
-			}
-			return printJSON(member)
-		},
-	}
 }
 
 func newMemberCreateCmd() *cobra.Command {

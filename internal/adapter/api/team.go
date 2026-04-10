@@ -68,6 +68,11 @@ func (c *Client) GetTeamVersion(owner, name string, version int) (*TeamVersionRe
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/teams/%s/versions/%d", owner, name, version), &r)
 }
 
+func (c *Client) ListTeamVersions(owner, name string) ([]TeamVersionResponse, error) {
+	var r []TeamVersionResponse
+	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/teams/%s/versions", owner, name), &r)
+}
+
 func (c *Client) ListTeams(owner string) ([]TeamResponse, error) {
 	var r []TeamResponse
 	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/teams", owner), &r)

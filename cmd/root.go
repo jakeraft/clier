@@ -105,7 +105,7 @@ You watch, steer, and intervene in real time.
 
 Get started:
   clier tutorial             Walk through an example team
-  clier explore teams        Browse what others have built
+  clier explore team list    Browse what others have built
 
 Core workflow:
   clier member               Define individual agents

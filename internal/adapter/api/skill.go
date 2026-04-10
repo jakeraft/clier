@@ -50,6 +50,11 @@ func (c *Client) GetSkillVersion(owner, name string, version int) (*SkillVersion
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/skills/%s/versions/%d", owner, name, version), &r)
 }
 
+func (c *Client) ListSkillVersions(owner, name string) ([]SkillVersionResponse, error) {
+	var r []SkillVersionResponse
+	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/skills/%s/versions", owner, name), &r)
+}
+
 func (c *Client) ListSkills(owner string) ([]SkillResponse, error) {
 	var r []SkillResponse
 	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/skills", owner), &r)

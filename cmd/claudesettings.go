@@ -14,54 +14,15 @@ func newClaudeSettingsCmd() *cobra.Command {
 		Use:     "claude-settings",
 		Short:   "Manage Claude settings files",
 		GroupID: rootGroupServer,
+		Long: `Manage Claude settings files on the server.
+
+Use create, edit, and delete to manage your own files.
+Use explore to inspect shared files before you fork or reference them.`,
 	}
-	cmd.AddCommand(newClaudeSettingsListCmd())
-	cmd.AddCommand(newClaudeSettingsViewCmd())
 	cmd.AddCommand(newClaudeSettingsCreateCmd())
 	cmd.AddCommand(newClaudeSettingsEditCmd())
 	cmd.AddCommand(newClaudeSettingsDeleteCmd())
-	cmd.AddCommand(newClaudeSettingsForkCmd())
 	return cmd
-}
-
-func newClaudeSettingsListCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "list [owner]",
-		Short: "List your settings files",
-		Long:  "List your settings files, or another user's if [owner] is given.",
-		Args:  cobra.MaximumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			var owner string
-			if len(args) == 1 {
-				owner = args[0]
-			} else {
-				owner = requireLogin()
-			}
-			items, err := client.ListClaudeSettings(owner)
-			if err != nil {
-				return err
-			}
-			return printJSON(items)
-		},
-	}
-}
-
-func newClaudeSettingsViewCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "view <[owner/]name>",
-		Short: "Show settings file details",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			owner, name := parseOwnerName(args[0])
-			item, err := client.GetClaudeSettings(owner, name)
-			if err != nil {
-				return err
-			}
-			return printJSON(item)
-		},
-	}
 }
 
 func newClaudeSettingsCreateCmd() *cobra.Command {
@@ -139,24 +100,6 @@ func newClaudeSettingsDeleteCmd() *cobra.Command {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})
-		},
-	}
-}
-
-func newClaudeSettingsForkCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "fork <owner/name>",
-		Short: "Copy a public settings file to your namespace",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			_ = requireLogin()
-			owner, name := parseOwnerName(args[0])
-			resp, err := client.ForkClaudeSettings(owner, name)
-			if err != nil {
-				return err
-			}
-			return printJSON(resp)
 		},
 	}
 }

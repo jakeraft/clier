@@ -50,6 +50,11 @@ func (c *Client) GetClaudeSettingsVersion(owner, name string, version int) (*Cla
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/claude-settings/%s/versions/%d", owner, name, version), &r)
 }
 
+func (c *Client) ListClaudeSettingsVersions(owner, name string) ([]ClaudeSettingsVersionResponse, error) {
+	var r []ClaudeSettingsVersionResponse
+	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/claude-settings/%s/versions", owner, name), &r)
+}
+
 func (c *Client) ListClaudeSettings(owner string) ([]ClaudeSettingsResponse, error) {
 	var r []ClaudeSettingsResponse
 	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/claude-settings", owner), &r)

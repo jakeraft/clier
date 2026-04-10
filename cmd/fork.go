@@ -37,6 +37,24 @@ func newForkCmd() *cobra.Command {
 					return err
 				}
 				return printJSON(resp)
+			case resourceKindSkill:
+				resp, err := client.ForkSkill(owner, name)
+				if err != nil {
+					return err
+				}
+				return printJSON(resp)
+			case resourceKindClaudeMd:
+				resp, err := client.ForkClaudeMd(owner, name)
+				if err != nil {
+					return err
+				}
+				return printJSON(resp)
+			case resourceKindClaudeSettings:
+				resp, err := client.ForkClaudeSettings(owner, name)
+				if err != nil {
+					return err
+				}
+				return printJSON(resp)
 			default:
 				return errUnsupportedResourceKind(kind)
 			}

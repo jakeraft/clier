@@ -59,6 +59,11 @@ func (c *Client) GetMemberVersion(owner, name string, version int) (*MemberVersi
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/members/%s/versions/%d", owner, name, version), &r)
 }
 
+func (c *Client) ListMemberVersions(owner, name string) ([]MemberVersionResponse, error) {
+	var r []MemberVersionResponse
+	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/members/%s/versions", owner, name), &r)
+}
+
 func (c *Client) ListMembers(owner string) ([]MemberResponse, error) {
 	var r []MemberResponse
 	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/members", owner), &r)
