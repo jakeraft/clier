@@ -75,6 +75,43 @@ type TeamWriteRequest struct {
 	RootIndex   *int                  `json:"root_index"`
 }
 
+type ClaudeMdPatchRequest struct {
+	Name    *string `json:"name,omitempty"`
+	Content *string `json:"content,omitempty"`
+	Summary *string `json:"summary,omitempty"`
+}
+
+type ClaudeSettingsPatchRequest struct {
+	Name    *string `json:"name,omitempty"`
+	Content *string `json:"content,omitempty"`
+	Summary *string `json:"summary,omitempty"`
+}
+
+type SkillPatchRequest struct {
+	Name    *string `json:"name,omitempty"`
+	Content *string `json:"content,omitempty"`
+	Summary *string `json:"summary,omitempty"`
+}
+
+type MemberPatchRequest struct {
+	Name           *string              `json:"name,omitempty"`
+	AgentType      *string              `json:"agent_type,omitempty"`
+	Command        *string              `json:"command,omitempty"`
+	GitRepoURL     *string              `json:"git_repo_url,omitempty"`
+	ClaudeMd       *ResourceRefRequest  `json:"claude_md,omitempty"`
+	ClaudeSettings *ResourceRefRequest  `json:"claude_settings,omitempty"`
+	Skills         []ResourceRefRequest `json:"skills,omitempty"`
+	Summary        *string              `json:"summary,omitempty"`
+}
+
+type TeamPatchRequest struct {
+	Name        *string               `json:"name,omitempty"`
+	TeamMembers []TeamMemberRequest   `json:"team_members,omitempty"`
+	Relations   []TeamRelationRequest `json:"relations,omitempty"`
+	RootIndex   *int                  `json:"root_index,omitempty"`
+	Summary     *string               `json:"summary,omitempty"`
+}
+
 // commonFields are shared by all SaaS resources (not embedded, just documented):
 // id, owner_id, name, visibility, is_fork, fork_id, fork_count, latest_version,
 // created_at, updated_at, owner_login, owner_avatar_url, fork_name, fork_owner_login

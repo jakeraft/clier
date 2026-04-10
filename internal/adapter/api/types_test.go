@@ -44,3 +44,25 @@ func TestClaudeMdWriteRequest_SummaryOmittedWhenEmpty(t *testing.T) {
 		t.Fatal("expected summary to be omitted when empty")
 	}
 }
+
+func TestClaudeMdPatchRequest_OmitsUnsetFields(t *testing.T) {
+	t.Parallel()
+
+	summary := "new summary"
+	req := ClaudeMdPatchRequest{Summary: &summary}
+	b, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var m map[string]any
+	_ = json.Unmarshal(b, &m)
+	if _, ok := m["name"]; ok {
+		t.Fatal("expected name to be omitted")
+	}
+	if _, ok := m["content"]; ok {
+		t.Fatal("expected content to be omitted")
+	}
+	if m["summary"] != "new summary" {
+		t.Fatalf("summary = %v, want %q", m["summary"], "new summary")
+	}
+}

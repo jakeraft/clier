@@ -75,6 +75,11 @@ func (c *Client) UpdateMember(owner, name string, body any) (*MemberResponse, er
 	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/members/%s", owner, name), body, &r)
 }
 
+func (c *Client) PatchMember(owner, name string, body *MemberPatchRequest) (*MemberResponse, error) {
+	var r MemberResponse
+	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/members/%s", owner, name), body, &r)
+}
+
 func (c *Client) DeleteMember(owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/members/%s", owner, name))
 }

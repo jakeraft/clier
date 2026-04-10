@@ -84,6 +84,11 @@ func (c *Client) UpdateTeam(owner, name string, body any) (*TeamResponse, error)
 	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/teams/%s", owner, name), body, &r)
 }
 
+func (c *Client) PatchTeam(owner, name string, body *TeamPatchRequest) (*TeamResponse, error) {
+	var r TeamResponse
+	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/teams/%s", owner, name), body, &r)
+}
+
 func (c *Client) DeleteTeam(owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/teams/%s", owner, name))
 }

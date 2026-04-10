@@ -66,6 +66,11 @@ func (c *Client) UpdateClaudeSettings(owner, name string, body any) (*ClaudeSett
 	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/claude-settings/%s", owner, name), body, &r)
 }
 
+func (c *Client) PatchClaudeSettings(owner, name string, body *ClaudeSettingsPatchRequest) (*ClaudeSettingsResponse, error) {
+	var r ClaudeSettingsResponse
+	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/claude-settings/%s", owner, name), body, &r)
+}
+
 func (c *Client) DeleteClaudeSettings(owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/claude-settings/%s", owner, name))
 }

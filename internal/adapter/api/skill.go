@@ -66,6 +66,11 @@ func (c *Client) UpdateSkill(owner, name string, body any) (*SkillResponse, erro
 	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/skills/%s", owner, name), body, &r)
 }
 
+func (c *Client) PatchSkill(owner, name string, body *SkillPatchRequest) (*SkillResponse, error) {
+	var r SkillResponse
+	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/skills/%s", owner, name), body, &r)
+}
+
 func (c *Client) DeleteSkill(owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/skills/%s", owner, name))
 }

@@ -66,6 +66,11 @@ func (c *Client) UpdateClaudeMd(owner, name string, body any) (*ClaudeMdResponse
 	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/claude-mds/%s", owner, name), body, &r)
 }
 
+func (c *Client) PatchClaudeMd(owner, name string, body *ClaudeMdPatchRequest) (*ClaudeMdResponse, error) {
+	var r ClaudeMdResponse
+	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/claude-mds/%s", owner, name), body, &r)
+}
+
 func (c *Client) DeleteClaudeMd(owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/claude-mds/%s", owner, name))
 }
