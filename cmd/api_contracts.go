@@ -20,15 +20,35 @@ func parseOptionalInt64(raw string) (*int64, error) {
 	return &v, nil
 }
 
-func resourceIDs(refs []api.ResourceRef) []int64 {
+func parseOptionalResourceRefRequest(raw string) (*api.ResourceRefRequest, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil, nil
+	}
+	parts := strings.SplitN(raw, "@", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid resource ref %q: want <id>@<version>", raw)
+	}
+	id, err := strconv.ParseInt(strings.TrimSpace(parts[0]), 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid resource id in %q: %w", raw, err)
+	}
+	version, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err != nil {
+		return nil, fmt.Errorf("invalid resource version in %q: %w", raw, err)
+	}
+	return &api.ResourceRefRequest{ID: id, Version: version}, nil
+}
+
+func resourceRefRequests(refs []api.ResourceRef) []api.ResourceRefRequest {
 	if len(refs) == 0 {
 		return nil
 	}
-	ids := make([]int64, 0, len(refs))
+	requests := make([]api.ResourceRefRequest, 0, len(refs))
 	for _, ref := range refs {
-		ids = append(ids, ref.ID)
+		requests = append(requests, api.ResourceRefRequest{ID: ref.ID, Version: ref.Version})
 	}
-	return ids
+	return requests
 }
 
 func parseTeamMemberSpecs(specs []string) ([]api.TeamMemberRequest, error) {
@@ -36,19 +56,22 @@ func parseTeamMemberSpecs(specs []string) ([]api.TeamMemberRequest, error) {
 	for _, spec := range specs {
 		parts := strings.SplitN(spec, ":", 2)
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid --member %q, want <member-id>:<name>", spec)
+			return nil, fmt.Errorf("invalid --member %q, want <member-id>@<version>:<name>", spec)
 		}
-		memberID, err := strconv.ParseInt(strings.TrimSpace(parts[0]), 10, 64)
+		memberRef, err := parseOptionalResourceRefRequest(parts[0])
 		if err != nil {
-			return nil, fmt.Errorf("invalid member id in %q: %w", spec, err)
+			return nil, fmt.Errorf("invalid member ref in %q: %w", spec, err)
 		}
 		name := strings.TrimSpace(parts[1])
 		if name == "" {
 			return nil, fmt.Errorf("invalid --member %q, name must not be empty", spec)
 		}
 		members = append(members, api.TeamMemberRequest{
-			MemberID: memberID,
-			Name:     name,
+			Member: api.MemberRefRequest{
+				ID:      memberRef.ID,
+				Version: memberRef.Version,
+			},
+			Name: name,
 		})
 	}
 	return members, nil
@@ -83,8 +106,11 @@ func teamMutationRequestFromResponse(team *api.TeamResponse) (*api.TeamMutationR
 	for i, tm := range team.TeamMembers {
 		memberIndexByID[tm.ID] = i
 		members = append(members, api.TeamMemberRequest{
-			MemberID: tm.Member.ID,
-			Name:     tm.Name,
+			Member: api.MemberRefRequest{
+				ID:      tm.Member.ID,
+				Version: tm.Member.Version,
+			},
+			Name: tm.Name,
 		})
 	}
 

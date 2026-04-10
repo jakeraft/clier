@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -42,6 +43,16 @@ type TeamResponse struct {
 	OwnerAvatarURL   *string                `json:"owner_avatar_url,omitempty"`
 }
 
+type TeamVersionResponse struct {
+	ID             int64           `json:"id"`
+	TeamID         int64           `json:"team_id"`
+	Version        int             `json:"version"`
+	Content        json.RawMessage `json:"content"`
+	CreatedAt      time.Time       `json:"created_at"`
+	OwnerLogin     string          `json:"owner_login"`
+	OwnerAvatarURL *string         `json:"owner_avatar_url,omitempty"`
+}
+
 func (c *Client) CreateTeam(owner string, body any) (*TeamResponse, error) {
 	var r TeamResponse
 	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/teams", owner), body, &r)
@@ -50,6 +61,11 @@ func (c *Client) CreateTeam(owner string, body any) (*TeamResponse, error) {
 func (c *Client) GetTeam(owner, name string) (*TeamResponse, error) {
 	var r TeamResponse
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/teams/%s", owner, name), &r)
+}
+
+func (c *Client) GetTeamVersion(owner, name string, version int) (*TeamVersionResponse, error) {
+	var r TeamVersionResponse
+	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/teams/%s/versions/%d", owner, name, version), &r)
 }
 
 func (c *Client) ListTeams(owner string) ([]TeamResponse, error) {

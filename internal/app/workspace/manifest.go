@@ -8,86 +8,110 @@ import (
 	"time"
 )
 
-const (
-	WorkspaceMetadataFile = "workspace.json"
-	ManifestFile          = WorkspaceMetadataFile
-)
+const ManifestFile = "manifest.json"
 
 type Manifest struct {
-	Kind          string             `json:"kind"`
-	Owner         string             `json:"owner"`
-	Name          string             `json:"name"`
-	Materializer  string             `json:"materializer,omitempty"`
-	GitRepoURL    string             `json:"git_repo_url,omitempty"`
-	RepoDir       string             `json:"repo_dir,omitempty"`
-	LatestVersion *int               `json:"latest_version,omitempty"`
-	Resources     []ResourceManifest `json:"resources,omitempty"`
-	DownloadedAt  time.Time          `json:"downloaded_at"`
-	Workspace     *WorkspaceMetadata `json:"workspace,omitempty"`
+	Kind             string            `json:"kind"`
+	Owner            string            `json:"owner"`
+	Name             string            `json:"name"`
+	ClonedAt         time.Time         `json:"cloned_at"`
+	Upstream         *UpstreamMetadata `json:"upstream,omitempty"`
+	RootResource     TrackedResource   `json:"root_resource"`
+	TrackedResources []TrackedResource `json:"tracked_resources,omitempty"`
+	GeneratedFiles   []string          `json:"generated_files,omitempty"`
+	Runtime          *RuntimeMetadata  `json:"runtime,omitempty"`
 }
 
-type ResourceManifest struct {
+type UpstreamMetadata struct {
+	Kind           string     `json:"kind"`
+	Owner          string     `json:"owner"`
+	Name           string     `json:"name"`
+	FetchedVersion *int       `json:"fetched_version,omitempty"`
+	FetchedAt      *time.Time `json:"fetched_at,omitempty"`
+}
+
+type TrackedResource struct {
 	Kind          string `json:"kind"`
 	Owner         string `json:"owner"`
 	Name          string `json:"name"`
-	GitRepoURL    string `json:"git_repo_url,omitempty"`
 	LocalPath     string `json:"local_path"`
-	RepoDir       string `json:"repo_dir,omitempty"`
-	LatestVersion *int   `json:"latest_version,omitempty"`
+	RemoteVersion *int   `json:"remote_version,omitempty"`
+	BaseHash      string `json:"base_hash,omitempty"`
+	Editable      bool   `json:"editable"`
 }
 
-type WorkspaceMetadata struct {
-	Member *MemberWorkspaceMetadata `json:"member,omitempty"`
-	Team   *TeamWorkspaceMetadata   `json:"team,omitempty"`
+type RuntimeMetadata struct {
+	Member *MemberRuntimeMetadata `json:"member,omitempty"`
+	Team   *TeamRuntimeMetadata   `json:"team,omitempty"`
 }
 
-type MemberWorkspaceMetadata struct {
+type MemberRuntimeMetadata struct {
 	ID         int64  `json:"id"`
 	Name       string `json:"name"`
 	Command    string `json:"command"`
 	GitRepoURL string `json:"git_repo_url,omitempty"`
 }
 
-type TeamWorkspaceMetadata struct {
-	ID      int64                         `json:"id"`
-	Name    string                        `json:"name"`
-	Members []TeamMemberWorkspaceMetadata `json:"members"`
+type TeamRuntimeMetadata struct {
+	ID      int64                       `json:"id"`
+	Name    string                      `json:"name"`
+	Members []TeamMemberRuntimeMetadata `json:"members"`
 }
 
-type TeamMemberWorkspaceMetadata struct {
+type TeamMemberRuntimeMetadata struct {
 	TeamMemberID int64  `json:"team_member_id"`
 	Name         string `json:"name"`
 	Command      string `json:"command"`
 	GitRepoURL   string `json:"git_repo_url,omitempty"`
 }
 
-func MetadataPath(base string) string {
-	return filepath.Join(base, ".clier", WorkspaceMetadataFile)
+func ManifestPath(base string) string {
+	return filepath.Join(base, ".clier", ManifestFile)
 }
 
 func FindManifestPath(base string) (string, error) {
-	path := MetadataPath(base)
+	path := ManifestPath(base)
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
 	} else if err != nil && !os.IsNotExist(err) {
-		return "", fmt.Errorf("stat workspace metadata: %w", err)
+		return "", fmt.Errorf("stat working-copy manifest: %w", err)
 	}
 	return "", os.ErrNotExist
 }
 
-func SaveManifest(base string, meta *Manifest) error {
+func FindManifestAbove(start string) (string, *Manifest, error) {
+	base, err := filepath.Abs(start)
+	if err != nil {
+		return "", nil, fmt.Errorf("resolve working-copy base: %w", err)
+	}
+	for dir := base; ; dir = filepath.Dir(dir) {
+		if _, err := FindManifestPath(dir); err == nil {
+			manifest, loadErr := LoadManifest(dir)
+			if loadErr != nil {
+				return "", nil, loadErr
+			}
+			return dir, manifest, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+	}
+	return "", nil, os.ErrNotExist
+}
+
+func SaveManifest(base string, manifest *Manifest) error {
 	dir := filepath.Join(base, ".clier")
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("create workspace metadata dir: %w", err)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create manifest dir: %w", err)
 	}
 
-	data, err := json.MarshalIndent(meta, "", "  ")
+	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
-		return fmt.Errorf("marshal workspace metadata: %w", err)
+		return fmt.Errorf("marshal manifest: %w", err)
 	}
-	path := MetadataPath(base)
-	if err := os.WriteFile(path, data, 0644); err != nil {
-		return fmt.Errorf("write workspace metadata: %w", err)
+	if err := os.WriteFile(ManifestPath(base), data, 0o644); err != nil {
+		return fmt.Errorf("write manifest: %w", err)
 	}
 	return nil
 }
@@ -96,18 +120,28 @@ func LoadManifest(base string) (*Manifest, error) {
 	path, err := FindManifestPath(base)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("read workspace metadata: %w", err)
+			return nil, fmt.Errorf("read manifest: %w", err)
 		}
 		return nil, err
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("read workspace metadata: %w", err)
+		return nil, fmt.Errorf("read manifest: %w", err)
 	}
 
-	var meta Manifest
-	if err := json.Unmarshal(data, &meta); err != nil {
-		return nil, fmt.Errorf("unmarshal workspace metadata: %w", err)
+	var manifest Manifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, fmt.Errorf("unmarshal manifest: %w", err)
 	}
-	return &meta, nil
+	return &manifest, nil
+}
+
+func (m *Manifest) FindTrackedResource(localPath string) (*TrackedResource, bool) {
+	clean := filepath.ToSlash(filepath.Clean(localPath))
+	for i := range m.TrackedResources {
+		if filepath.ToSlash(filepath.Clean(m.TrackedResources[i].LocalPath)) == clean {
+			return &m.TrackedResources[i], true
+		}
+	}
+	return nil, false
 }

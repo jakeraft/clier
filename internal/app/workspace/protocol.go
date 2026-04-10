@@ -105,7 +105,7 @@ func BuildAgentFacingWorkLogProtocol() string {
 }
 
 // BuildAgentFacingTeamProtocol generates the team-specific agent-facing
-// protocol content imported by a member workspace's CLAUDE.md.
+// protocol content imported by a member local clone's CLAUDE.md.
 // Written to {teamRoot}/{member}/.clier/{member}-team-protocol.md and imported by
 // each member's root CLAUDE.md.
 func BuildAgentFacingTeamProtocol(teamName, memberName string, relations domain.MemberRelations, membersByID map[int64]ProtocolMember) string {

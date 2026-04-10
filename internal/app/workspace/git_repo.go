@@ -50,7 +50,7 @@ func ensureRepoDir(repoURL, repoDir string) error {
 	return fmt.Errorf("repo dir %s already exists and is not a git repo", repoDir)
 }
 
-func IsPreparedRoot(repoURL, root string) (bool, error) {
+func IsMaterializedRoot(repoURL, root string) (bool, error) {
 	info, err := os.Stat(root)
 	if err != nil {
 		if os.IsNotExist(err) {

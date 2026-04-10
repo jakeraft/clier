@@ -1,0 +1,49 @@
+package cmd
+
+import (
+	"os"
+
+	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
+	"github.com/spf13/cobra"
+)
+
+func init() {
+	rootCmd.AddCommand(newDiffCmd())
+}
+
+func newDiffCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "diff",
+		Short:   "Show differences against fetched snapshots",
+		GroupID: rootGroupRuntime,
+	}
+	cmd.AddCommand(newDiffUpstreamCmd())
+	return cmd
+}
+
+func newDiffUpstreamCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "upstream",
+		Short: "Diff the root projection against the fetched upstream snapshot",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			base, err := resolveCurrentDir()
+			if err != nil {
+				return err
+			}
+			copyRoot, _, err := appworkspace.FindManifestAbove(base)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return errNotInWorkingCopy()
+				}
+				return err
+			}
+
+			svc := appworkspace.NewService(newAPIClient())
+			result, err := svc.DiffFetchedUpstream(copyRoot)
+			if err != nil {
+				return err
+			}
+			return printJSON(result)
+		},
+	}
+}

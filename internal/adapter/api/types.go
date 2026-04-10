@@ -7,6 +7,17 @@ type ResourceRef struct {
 	Owner     string  `json:"owner"`
 	AvatarURL *string `json:"avatar_url,omitempty"`
 	Name      string  `json:"name"`
+	Version   int     `json:"version"`
+}
+
+type ResourceRefRequest struct {
+	ID      int64 `json:"id"`
+	Version int   `json:"version"`
+}
+
+type MemberRefRequest struct {
+	ID      int64 `json:"id"`
+	Version int   `json:"version"`
 }
 
 // MemberRef is a lightweight reference to a Member resource,
@@ -33,18 +44,18 @@ type SkillMutationRequest struct {
 }
 
 type MemberMutationRequest struct {
-	Name             string  `json:"name"`
-	AgentType        string  `json:"agent_type"`
-	Command          string  `json:"command"`
-	GitRepoURL       string  `json:"git_repo_url"`
-	ClaudeMdID       *int64  `json:"claude_md_id"`
-	ClaudeSettingsID *int64  `json:"claude_settings_id"`
-	SkillIDs         []int64 `json:"skill_ids"`
+	Name           string               `json:"name"`
+	AgentType      string               `json:"agent_type"`
+	Command        string               `json:"command"`
+	GitRepoURL     string               `json:"git_repo_url"`
+	ClaudeMd       *ResourceRefRequest  `json:"claude_md,omitempty"`
+	ClaudeSettings *ResourceRefRequest  `json:"claude_settings,omitempty"`
+	Skills         []ResourceRefRequest `json:"skills"`
 }
 
 type TeamMemberRequest struct {
-	MemberID int64  `json:"member_id"`
-	Name     string `json:"name"`
+	Member MemberRefRequest `json:"member"`
+	Name   string           `json:"name"`
 }
 
 type TeamRelationRequest struct {

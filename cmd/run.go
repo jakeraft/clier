@@ -26,10 +26,11 @@ func newRunCmd() *cobra.Command {
 		GroupID: rootGroupRuntime,
 		Long: `Observe and control running agents.
 
-These commands work inside any downloaded workspace. Run them from
-anywhere within a workspace — the nearest ` + "`.clier/workspace.json`" + ` is
+These commands work inside any local clone. Run them from
+anywhere within a local clone — the nearest ` + "`.clier/manifest.json`" + ` is
 used automatically.`,
 	}
+	cmd.AddCommand(newRunStartCmd())
 	cmd.AddCommand(newRunListCmd())
 	cmd.AddCommand(newRunViewCmd())
 	cmd.AddCommand(newRunStopCmd())
@@ -72,6 +73,90 @@ func newRunListCmd() *cobra.Command {
 				return b.StartedAt.Compare(a.StartedAt)
 			})
 			return printJSON(runs)
+		},
+	}
+}
+
+func newRunStartCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "start",
+		Short: "Start the current local clone in tmux",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			base, err := resolveCurrentDir()
+			if err != nil {
+				return err
+			}
+			copyRoot, manifest, err := appworkspace.FindManifestAbove(base)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return errNotInWorkingCopy()
+				}
+				return err
+			}
+			if err := validateWorkingCopy(copyRoot, manifest); err != nil {
+				return err
+			}
+
+			runID, err := newRunID()
+			if err != nil {
+				return err
+			}
+
+			switch manifest.Kind {
+			case resourceKindMember:
+				memberProjection, err := appworkspace.LoadMemberProjection(appworkspace.MemberProjectionPath(copyRoot))
+				if err != nil {
+					return err
+				}
+				member := manifest.Runtime.Member
+				runName := apprun.SessionName(member.Name, runID)
+				envVars := buildMemberEnv(runID, member.ID, nil, member.Name)
+				fullCommand := buildFullCommand(envVars, memberProjection.Command, copyRoot)
+				terminalPlans := []apprun.MemberTerminal{{
+					TeamMemberID: member.ID,
+					Name:         member.Name,
+					Window:       0,
+					Memberspace:  copyRoot,
+					Cwd:          copyRoot,
+					Command:      fullCommand,
+				}}
+				runner := apprun.NewRunner(newTerminal())
+				plan, err := runner.Run(copyRoot, runID, runName, terminalPlans)
+				if err != nil {
+					return err
+				}
+				return printJSON(map[string]any{"run_id": runID, "session": plan.Session})
+			case resourceKindTeam:
+				team := manifest.Runtime.Team
+				runName := apprun.SessionName(team.Name, runID)
+				var terminalPlans []apprun.MemberTerminal
+				for i, member := range team.Members {
+					memberProjection, err := appworkspace.LoadMemberProjection(appworkspace.TeamMemberProjectionPath(copyRoot, member.Name))
+					if err != nil {
+						return err
+					}
+					memberBase := filepath.Join(copyRoot, member.Name)
+					envVars := buildMemberEnv(runID, member.TeamMemberID, &team.ID, member.Name)
+					fullCommand := buildFullCommand(envVars, memberProjection.Command, memberBase)
+					terminalPlans = append(terminalPlans, apprun.MemberTerminal{
+						TeamMemberID: member.TeamMemberID,
+						Name:         member.Name,
+						Window:       i,
+						Memberspace:  memberBase,
+						Cwd:          memberBase,
+						Command:      fullCommand,
+					})
+				}
+				runner := apprun.NewRunner(newTerminal())
+				plan, err := runner.Run(copyRoot, runID, runName, terminalPlans)
+				if err != nil {
+					return err
+				}
+				return printJSON(map[string]any{"run_id": runID, "session": plan.Session})
+			default:
+				return fmt.Errorf("unsupported working-copy kind %q", manifest.Kind)
+			}
 		},
 	}
 }
@@ -124,7 +209,7 @@ func newRunAttachCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "attach <run-id>",
 		Short: "Watch agents in real time",
-		Long: `Attach to the tmux session for a running workspace.
+		Long: `Attach to the tmux session for an active run.
 
 This command is intended for use from a normal user terminal.
 It is not supported when clier itself is running inside an agent

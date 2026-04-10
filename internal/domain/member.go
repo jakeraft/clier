@@ -13,7 +13,7 @@ type Member struct {
 	Name             string    `json:"name"`
 	AgentType        string    `json:"agent_type"`
 	Command          string    `json:"command"`
-	ClaudeMdID       *int64    `json:"claude_md_id"`       // nil = not set (nullable FK)
+	ClaudeMdID       *int64    `json:"claude_md_id"` // nil = not set (nullable FK)
 	SkillIDs         []int64   `json:"skill_ids"`
 	ClaudeSettingsID *int64    `json:"claude_settings_id"` // nil = not set (nullable FK)
 	GitRepoURL       string    `json:"git_repo_url"`       // empty string = no repo

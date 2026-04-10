@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -24,6 +25,16 @@ type ClaudeSettingsResponse struct {
 	OwnerAvatarURL *string   `json:"owner_avatar_url,omitempty"`
 }
 
+type ClaudeSettingsVersionResponse struct {
+	ID               int64           `json:"id"`
+	ClaudeSettingsID int64           `json:"claude_settings_id"`
+	Version          int             `json:"version"`
+	Content          json.RawMessage `json:"content"`
+	CreatedAt        time.Time       `json:"created_at"`
+	OwnerLogin       string          `json:"owner_login"`
+	OwnerAvatarURL   *string         `json:"owner_avatar_url,omitempty"`
+}
+
 func (c *Client) CreateClaudeSettings(owner string, body any) (*ClaudeSettingsResponse, error) {
 	var r ClaudeSettingsResponse
 	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/claude-settings", owner), body, &r)
@@ -32,6 +43,11 @@ func (c *Client) CreateClaudeSettings(owner string, body any) (*ClaudeSettingsRe
 func (c *Client) GetClaudeSettings(owner, name string) (*ClaudeSettingsResponse, error) {
 	var r ClaudeSettingsResponse
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/claude-settings/%s", owner, name), &r)
+}
+
+func (c *Client) GetClaudeSettingsVersion(owner, name string, version int) (*ClaudeSettingsVersionResponse, error) {
+	var r ClaudeSettingsVersionResponse
+	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/claude-settings/%s/versions/%d", owner, name, version), &r)
 }
 
 func (c *Client) ListClaudeSettings(owner string) ([]ClaudeSettingsResponse, error) {

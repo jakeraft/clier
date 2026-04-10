@@ -110,8 +110,10 @@ Get started:
 Core workflow:
   clier member               Define individual agents
   clier team                 Compose agents into teams
-  clier team download <name> Pull a team to your machine
-  clier team run             Launch the team in tmux
+  clier fork <owner/name>    Fork a public resource to your namespace
+  clier clone <owner/name>   Clone a resource to your machine
+  clier fetch upstream       Review upstream changes before you adopt them
+  clier run start            Launch the current local clone in tmux
   clier run                  Observe and control running agents`,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
@@ -169,6 +171,14 @@ func parseOwnerName(s string) (owner, name string) {
 		return parts[0], parts[1]
 	}
 	return requireLogin(), s
+}
+
+func parseExplicitOwnerName(s string) (owner, name string, err error) {
+	parts := strings.SplitN(strings.TrimSpace(s), "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", fmt.Errorf("invalid resource %q: want <owner/name>", s)
+	}
+	return parts[0], parts[1], nil
 }
 
 func newAgentRootCmd(teamScoped bool) *cobra.Command {

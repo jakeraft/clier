@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -24,6 +25,16 @@ type ClaudeMdResponse struct {
 	OwnerAvatarURL *string   `json:"owner_avatar_url,omitempty"`
 }
 
+type ClaudeMdVersionResponse struct {
+	ID             int64           `json:"id"`
+	ClaudeMdID     int64           `json:"claude_md_id"`
+	Version        int             `json:"version"`
+	Content        json.RawMessage `json:"content"`
+	CreatedAt      time.Time       `json:"created_at"`
+	OwnerLogin     string          `json:"owner_login"`
+	OwnerAvatarURL *string         `json:"owner_avatar_url,omitempty"`
+}
+
 func (c *Client) CreateClaudeMd(owner string, body any) (*ClaudeMdResponse, error) {
 	var r ClaudeMdResponse
 	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/claude-mds", owner), body, &r)
@@ -32,6 +43,11 @@ func (c *Client) CreateClaudeMd(owner string, body any) (*ClaudeMdResponse, erro
 func (c *Client) GetClaudeMd(owner, name string) (*ClaudeMdResponse, error) {
 	var r ClaudeMdResponse
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/claude-mds/%s", owner, name), &r)
+}
+
+func (c *Client) GetClaudeMdVersion(owner, name string, version int) (*ClaudeMdVersionResponse, error) {
+	var r ClaudeMdVersionResponse
+	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/claude-mds/%s/versions/%d", owner, name, version), &r)
 }
 
 func (c *Client) ListClaudeMds(owner string) ([]ClaudeMdResponse, error) {

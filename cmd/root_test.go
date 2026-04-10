@@ -47,14 +47,30 @@ func TestNewAgentRootCmd_TeamScope(t *testing.T) {
 
 	run := root.Commands()[0]
 	if !strings.Contains(run.Long, "Use `tell` to message another team member.") {
-		t.Fatalf("team run help should mention tell:\n%s", run.Long)
+		t.Fatalf("team-scoped run help should mention tell:\n%s", run.Long)
 	}
 	if !strings.Contains(run.Long, "Use `note` to record a work log entry.") {
-		t.Fatalf("team run help should mention note:\n%s", run.Long)
+		t.Fatalf("team-scoped run help should mention note:\n%s", run.Long)
 	}
 	got := strings.Join(commandNames(run.Commands()), ",")
 	if got != "note,tell" && got != "tell,note" {
-		t.Fatalf("team run commands = %v, want [tell note]", commandNames(run.Commands()))
+		t.Fatalf("team-scoped run commands = %v, want [tell note]", commandNames(run.Commands()))
+	}
+}
+
+func TestParseExplicitOwnerName(t *testing.T) {
+	t.Parallel()
+
+	owner, name, err := parseExplicitOwnerName("jakeraft/todo-team")
+	if err != nil {
+		t.Fatalf("parseExplicitOwnerName: %v", err)
+	}
+	if owner != "jakeraft" || name != "todo-team" {
+		t.Fatalf("got %q/%q", owner, name)
+	}
+
+	if _, _, err := parseExplicitOwnerName("todo-team"); err == nil {
+		t.Fatal("expected missing owner to fail")
 	}
 }
 

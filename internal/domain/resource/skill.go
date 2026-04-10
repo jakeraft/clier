@@ -7,7 +7,8 @@ import (
 	"time"
 )
 
-// Skill is a Claude Code skill that gets written to {workspace}/.claude/skills/{name}/SKILL.md.
+// Skill is a Claude Code skill that gets written to a local clone at
+// {root}/.claude/skills/{name}/SKILL.md.
 // Maps 1:1 to the Claude Code skill system.
 // Name is used as the folder name, so it must be a valid directory name
 // (lowercase, hyphens, no spaces or special chars).

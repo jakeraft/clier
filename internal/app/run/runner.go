@@ -68,16 +68,16 @@ func NewRunner(launcher Launcher) *Runner {
 }
 
 // Run creates a RunPlan from the given member plans, saves it to
-// {workspaceBase}/.clier/{runID}.json, and launches via tmux.
-func (r *Runner) Run(workspaceBase, runID, sessionName string, plans []MemberTerminal) (*RunPlan, error) {
+// {copyRoot}/.clier/{runID}.json, and launches via tmux.
+func (r *Runner) Run(copyRoot, runID, sessionName string, plans []MemberTerminal) (*RunPlan, error) {
 	plan := NewPlan(runID, sessionName, plans)
 
-	if err := SavePlan(workspaceBase, runID, plan); err != nil {
+	if err := SavePlan(copyRoot, runID, plan); err != nil {
 		return nil, fmt.Errorf("save plan: %w", err)
 	}
 
 	if err := r.launcher.Launch(plan); err != nil {
-		_ = os.Remove(PlanPath(workspaceBase, runID))
+		_ = os.Remove(PlanPath(copyRoot, runID))
 		return nil, fmt.Errorf("launch: %w", err)
 	}
 
@@ -97,14 +97,14 @@ func NewPlan(runID, sessionName string, plans []MemberTerminal) *RunPlan {
 	}
 }
 
-// SavePlan writes the RunPlan to {workspaceBase}/.clier/{runID}.json.
-func SavePlan(workspaceBase, runID string, plan *RunPlan) error {
-	dir := filepath.Join(workspaceBase, ".clier")
+// SavePlan writes the RunPlan to {copyRoot}/.clier/{runID}.json.
+func SavePlan(copyRoot, runID string, plan *RunPlan) error {
+	dir := filepath.Join(copyRoot, ".clier")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("create plan dir: %w", err)
 	}
 
-	path := PlanPath(workspaceBase, runID)
+	path := PlanPath(copyRoot, runID)
 	data, err := json.MarshalIndent(plan, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal plan: %w", err)
@@ -112,14 +112,14 @@ func SavePlan(workspaceBase, runID string, plan *RunPlan) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-// PlanPath returns the absolute path of a run plan file under a workspace.
-func PlanPath(workspaceBase, runID string) string {
-	return filepath.Join(workspaceBase, ".clier", runID+".json")
+// PlanPath returns the absolute path of a run plan file under a local clone.
+func PlanPath(copyRoot, runID string) string {
+	return filepath.Join(copyRoot, ".clier", runID+".json")
 }
 
-// LoadPlan reads a saved RunPlan from {workspaceBase}/.clier/{runID}.json.
-func LoadPlan(workspaceBase, runID string) (*RunPlan, error) {
-	path := PlanPath(workspaceBase, runID)
+// LoadPlan reads a saved RunPlan from {copyRoot}/.clier/{runID}.json.
+func LoadPlan(copyRoot, runID string) (*RunPlan, error) {
+	path := PlanPath(copyRoot, runID)
 	return LoadPlanFromPath(path)
 }
 

@@ -2,11 +2,8 @@ package cmd
 
 import (
 	"errors"
-	"path/filepath"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
-	apprun "github.com/jakeraft/clier/internal/app/run"
-	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -17,30 +14,24 @@ func init() {
 func newTeamCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "team",
-		Short:   "Compose and run agent teams",
+		Short:   "Compose agent teams",
 		GroupID: rootGroupServer,
-		Long: `Compose and run agent teams.
+		Long: `Compose agent teams on the server.
 
-Use list, view, create, edit, delete, and fork to manage your
-team definitions. Use download and run to bring them to life locally.
+Use list, view, create, edit, and delete to manage your
+team definitions.
 
 Workflow:
-  clier team create          Define a new team
-  clier team download <name> Pull it to your machine
-  clier team run             Start all agents in tmux`,
+  clier team create        Define a new team
+  clier clone <name>       Clone it to your machine
+  clier run start          Start the current local clone`,
 	}
-	cmd.AddGroup(
-		&cobra.Group{ID: subGroupServer, Title: "Define"},
-		&cobra.Group{ID: subGroupRuntime, Title: "Run"},
-	)
+	cmd.AddGroup(&cobra.Group{ID: subGroupServer, Title: "Define"})
 	cmd.AddCommand(newTeamListCmd())
 	cmd.AddCommand(newTeamViewCmd())
 	cmd.AddCommand(newTeamCreateCmd())
 	cmd.AddCommand(newTeamEditCmd())
 	cmd.AddCommand(newTeamDeleteCmd())
-	cmd.AddCommand(newTeamForkCmd())
-	cmd.AddCommand(newTeamDownloadCmd())
-	cmd.AddCommand(newTeamRunCmd())
 	return cmd
 }
 
@@ -123,7 +114,7 @@ func newTeamCreateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Team name")
-	cmd.Flags().StringSliceVar(&teamMembers, "member", nil, "Team member as <member-id>:<name>; repeat for each member")
+	cmd.Flags().StringSliceVar(&teamMembers, "member", nil, "Team member as <member-id>@<version>:<name>; repeat for each member")
 	cmd.Flags().StringSliceVar(&relations, "relation", nil, "Relation as <from-index>:<to-index> using zero-based --member indices; repeat for each edge")
 	cmd.Flags().IntVar(&rootIndex, "root-index", -1, "Root member index in the zero-based --member list")
 	_ = cmd.MarkFlagRequired("name")
@@ -208,126 +199,6 @@ func newTeamDeleteCmd() *cobra.Command {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})
-		},
-	}
-}
-
-func newTeamForkCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "fork <owner/name>",
-		Short:   "Copy a public team to your namespace",
-		GroupID: subGroupServer,
-		Args:    cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			_ = requireLogin()
-			owner, name := parseOwnerName(args[0])
-			resp, err := client.ForkTeam(owner, name)
-			if err != nil {
-				return err
-			}
-			return printJSON(resp)
-		},
-	}
-}
-
-func newTeamDownloadCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "download <[owner/]name>",
-		Aliases: []string{"workspace"},
-		Short:   "Download a team to a local directory",
-		GroupID: subGroupRuntime,
-		Args:    cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			owner, name := parseOwnerName(args[0])
-			writer := appworkspace.NewWriter(client, owner)
-			teamBase, err := resolveWorkspaceCreateBase(workspaceTarget{
-				Kind:  resourceKindTeam,
-				Owner: owner,
-				Name:  name,
-			})
-			if err != nil {
-				return err
-			}
-
-			if err := writer.PrepareTeam(teamBase, name); err != nil {
-				return err
-			}
-			meta, err := buildTeamManifest(client, owner, name)
-			if err != nil {
-				return err
-			}
-			if err := appworkspace.SaveManifest(teamBase, meta); err != nil {
-				return err
-			}
-			return printJSON(map[string]string{
-				"status": "downloaded",
-				"team":   name,
-				"dir":    teamBase,
-			})
-		},
-	}
-}
-
-func newTeamRunCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "run",
-		Short:   "Start all agents in tmux",
-		GroupID: subGroupRuntime,
-		Long: `Start all team agents in a tmux session.
-
-Run this from the workspace directory created by ` + "`team download`" + `.
-The current directory must contain ` + "`.clier/workspace.json`" + `.
-Each agent gets its own tmux window within a single session.
-
-To refresh a workspace, download it again.`,
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			teamBase, meta, err := requireCurrentWorkspaceRootKind(resourceKindTeam, "`clier team run`")
-			if err != nil {
-				return err
-			}
-			if err := validateDownloadedWorkspace(teamBase, meta); err != nil {
-				return err
-			}
-			team := meta.Workspace.Team
-
-			runID, err := newRunID()
-			if err != nil {
-				return err
-			}
-			runName := apprun.SessionName(team.Name, runID)
-
-			var terminalPlans []apprun.MemberTerminal
-
-			for i, tm := range team.Members {
-				memberBase := filepath.Join(teamBase, tm.Name)
-				repoPath := memberBase
-
-				envVars := buildMemberEnv(runID, tm.TeamMemberID, &team.ID, tm.Name)
-				fullCommand := buildFullCommand(envVars, tm.Command, repoPath)
-
-				terminalPlans = append(terminalPlans, apprun.MemberTerminal{
-					TeamMemberID: tm.TeamMemberID,
-					Name:         tm.Name,
-					Window:       i,
-					Memberspace:  memberBase,
-					Cwd:          repoPath,
-					Command:      fullCommand,
-				})
-			}
-
-			runner := apprun.NewRunner(newTerminal())
-			plan, err := runner.Run(teamBase, runID, runName, terminalPlans)
-			if err != nil {
-				return err
-			}
-
-			return printJSON(map[string]any{
-				"run_id":  runID,
-				"session": plan.Session,
-			})
 		},
 	}
 }

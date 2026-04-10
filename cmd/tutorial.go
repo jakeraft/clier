@@ -23,8 +23,6 @@ PR-based code review:
 
 Follow the steps below to try it out.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 Step 1. Log in
 
   clier auth login
@@ -38,18 +36,16 @@ Step 2. Explore the pre-loaded todo-team
 
   The "jakeraft/todo-team" is already available.
 
-Step 3. Fork and run the team
+Step 3. Fork, clone, and start the team
 
-  clier team fork jakeraft/todo-team
-  clier team download todo-team
-  cd todo-team
-  clier team run
+  clier fork jakeraft/todo-team
+  clier clone todo-team
+  cd <your-login>/todo-team
+  clier run start
 
-  This forks the team to your namespace, downloads a local workspace
-  under ./<your-login>/todo-team/, and launches all agents in tmux.
+  This forks the team to your namespace, clones it under
+  ./<your-login>/todo-team/, and launches all agents in tmux.
   Copy the run ID from the output.
-
-  To refresh a workspace later, download it again.
 
 Step 4. Give the team a job
 
@@ -60,7 +56,7 @@ Step 4. Give the team a job
   creates a PR, and the reviewer iterates on it until approved.
   The tech-lead writes a final report on the PR.
 
-Step 5. Watch them work from the current workspace
+Step 5. Watch them work from the current local clone
 
   clier run attach <run-id>        Watch agents in real time
   clier run view <run-id>          Check progress notes and messages
@@ -68,7 +64,7 @@ Step 5. Watch them work from the current workspace
   Note: run attach is intended for a normal user terminal.
   It is not supported when clier is running inside an agent.
 
-Step 6. When done, stop the run from the current workspace
+Step 6. When done, stop the run from the current local clone
 
   clier run stop <run-id>
 
@@ -76,8 +72,6 @@ Step 7. See the result
 
   gh pr list -R jakeraft/clier_todo
   gh pr view <number> -R jakeraft/clier_todo --web
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Tip: Use "clier <command> --help" for details on each command.`,
 	}

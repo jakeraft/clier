@@ -124,10 +124,10 @@ func NewNote(runID int64, teamMemberID *int64, content string) (*Note, error) {
 // Relations are NOT stored — they are in Team.Relations and baked into the prompt.
 // All paths in MemberPlan are absolute and concrete, built at Start() time.
 type MemberPlan struct {
-	TeamMemberID int64         `json:"team_member_id"`
-	MemberName   string        `json:"member_name"`
-	Terminal     TerminalPlan  `json:"terminal"`
-	Workspace    WorkspacePlan `json:"workspace"`
+	TeamMemberID int64          `json:"team_member_id"`
+	MemberName   string         `json:"member_name"`
+	Terminal     TerminalPlan   `json:"terminal"`
+	Filesystem   FilesystemPlan `json:"filesystem"`
 }
 
 // TerminalPlan holds the shell command that launches the member agent.
@@ -135,15 +135,15 @@ type TerminalPlan struct {
 	Command string `json:"command"`
 }
 
-// WorkspacePlan holds the filesystem setup for a member's isolated environment.
-type WorkspacePlan struct {
+// FilesystemPlan holds the filesystem setup for a member's isolated environment.
+type FilesystemPlan struct {
 	Memberspace string      `json:"memberspace"`
 	RepoDir     string      `json:"repo_dir,omitempty"`
 	Files       []FileEntry `json:"files"`
 	GitRepoURL  string      `json:"git_repo_url"`
 }
 
-// FileEntry is a config file to write to a member's workspace.
+// FileEntry is a config file to write inside a member's memberspace.
 type FileEntry struct {
 	Path    string `json:"path"` // relative to memberspace
 	Content string `json:"content"`

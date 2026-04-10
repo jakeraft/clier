@@ -29,14 +29,14 @@ func TestParseOptionalInt64(t *testing.T) {
 func TestParseTeamMemberSpecs(t *testing.T) {
 	t.Parallel()
 
-	got, err := parseTeamMemberSpecs([]string{"101:lead", "202:worker"})
+	got, err := parseTeamMemberSpecs([]string{"101@3:lead", "202@5:worker"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(got) != 2 {
 		t.Fatalf("len = %d, want 2", len(got))
 	}
-	if got[0].MemberID != 101 || got[0].Name != "lead" {
+	if got[0].Member.ID != 101 || got[0].Member.Version != 3 || got[0].Name != "lead" {
 		t.Fatalf("first member = %+v", got[0])
 	}
 }
@@ -64,8 +64,8 @@ func TestTeamMutationRequestFromResponse(t *testing.T) {
 		Name:             "dev-squad",
 		RootTeamMemberID: &rootID,
 		TeamMembers: []api.TeamMemberResponse{
-			{ID: 11, Name: "lead", Member: api.MemberRef{ResourceRef: api.ResourceRef{ID: 101}}},
-			{ID: 22, Name: "worker", Member: api.MemberRef{ResourceRef: api.ResourceRef{ID: 202}}},
+			{ID: 11, Name: "lead", Member: api.MemberRef{ResourceRef: api.ResourceRef{ID: 101, Version: 3}}},
+			{ID: 22, Name: "worker", Member: api.MemberRef{ResourceRef: api.ResourceRef{ID: 202, Version: 5}}},
 		},
 		Relations: []api.TeamRelationResponse{
 			{FromTeamMemberID: 11, ToTeamMemberID: 22},
@@ -82,7 +82,7 @@ func TestTeamMutationRequestFromResponse(t *testing.T) {
 	if got.RootIndex == nil || *got.RootIndex != 0 {
 		t.Fatalf("RootIndex = %v, want 0", got.RootIndex)
 	}
-	if len(got.TeamMembers) != 2 || got.TeamMembers[1].MemberID != 202 {
+	if len(got.TeamMembers) != 2 || got.TeamMembers[1].Member.ID != 202 || got.TeamMembers[1].Member.Version != 5 {
 		t.Fatalf("TeamMembers = %+v", got.TeamMembers)
 	}
 	if len(got.Relations) != 1 || got.Relations[0].FromIndex != 0 || got.Relations[0].ToIndex != 1 {

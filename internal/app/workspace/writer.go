@@ -11,8 +11,11 @@ import (
 )
 
 // Writer fetches member/team definitions from the server and writes
-// the corresponding workspace files (CLAUDE.md, generated protocols, settings.json, settings.local.json, skills)
-// to a local directory. It is a thin layer: fetch -> write.
+// the corresponding local-clone files (CLAUDE.md, generated protocols,
+// settings.json, settings.local.json, skills) to a local directory.
+// Referenced resources are materialized from the pinned versions recorded
+// in the member or team definition.
+// It is a thin layer: fetch -> write.
 type Writer struct {
 	client *api.Client
 	owner  string
@@ -27,7 +30,7 @@ func NewWriter(client *api.Client, owner string) *Writer {
 	return &Writer{client: client, owner: owner}
 }
 
-// PrepareMember creates a workspace for a single member (by name).
+// MaterializeMemberFiles writes the local-clone files for a single member.
 // Layout:
 //
 //	{base}/CLAUDE.md              <- generated import wrapper + ClaudeMd
@@ -35,18 +38,18 @@ func NewWriter(client *api.Client, owner string) *Writer {
 //	{base}/.claude/settings.json  <- ClaudeSettings
 //	{base}/.claude/settings.local.json <- clier-generated local isolation overlay
 //	{base}/.claude/skills/{name}/SKILL.md <- Skills
-func (w *Writer) PrepareMember(base, memberName string) error {
+func (w *Writer) MaterializeMemberFiles(base, memberName string) error {
 	member, err := w.client.GetMember(w.owner, memberName)
 	if err != nil {
 		return fmt.Errorf("get member %s: %w", memberName, err)
 	}
-	return w.prepareMemberFromResponse(base, member, memberWriteOptions{})
+	return w.materializeMemberFilesFromResponse(base, member, memberWriteOptions{})
 }
 
-// prepareMemberFromResponse creates workspace files from a MemberResponse.
-func (w *Writer) prepareMemberFromResponse(base string, member *api.MemberResponse, opts memberWriteOptions) error {
+// materializeMemberFilesFromResponse writes local-clone files from a MemberResponse.
+func (w *Writer) materializeMemberFilesFromResponse(base string, member *api.MemberResponse, opts memberWriteOptions) error {
 	if err := ensureRepoDir(member.GitRepoURL, base); err != nil {
-		return fmt.Errorf("prepare repo dir: %w", err)
+		return fmt.Errorf("materialize repo dir: %w", err)
 	}
 	if err := writeWorkLogProtocol(base); err != nil {
 		return fmt.Errorf("write work log protocol: %w", err)
@@ -54,11 +57,14 @@ func (w *Writer) prepareMemberFromResponse(base string, member *api.MemberRespon
 
 	// Write ClaudeMd if referenced
 	if member.ClaudeMd != nil {
-		claudeMd, err := w.client.GetClaudeMd(member.ClaudeMd.Owner, member.ClaudeMd.Name)
+		claudeMd, err := w.client.GetClaudeMdVersion(member.ClaudeMd.Owner, member.ClaudeMd.Name, member.ClaudeMd.Version)
 		if err != nil {
 			return fmt.Errorf("get claude md %s/%s: %w", member.ClaudeMd.Owner, member.ClaudeMd.Name, err)
 		}
-		content := claudeMd.Content
+		content, err := loadVersionedContent(claudeMd.Content)
+		if err != nil {
+			return fmt.Errorf("decode claude md %s/%s@%d: %w", member.ClaudeMd.Owner, member.ClaudeMd.Name, member.ClaudeMd.Version, err)
+		}
 		if opts.TeamMemberName != "" {
 			content = ComposeTeamClaudeMd(opts.TeamMemberName, content)
 		} else {
@@ -79,11 +85,15 @@ func (w *Writer) prepareMemberFromResponse(base string, member *api.MemberRespon
 
 	// Write ClaudeSettings if referenced
 	if member.ClaudeSettings != nil {
-		cs, err := w.client.GetClaudeSettings(member.ClaudeSettings.Owner, member.ClaudeSettings.Name)
+		cs, err := w.client.GetClaudeSettingsVersion(member.ClaudeSettings.Owner, member.ClaudeSettings.Name, member.ClaudeSettings.Version)
 		if err != nil {
 			return fmt.Errorf("get claude settings %s/%s: %w", member.ClaudeSettings.Owner, member.ClaudeSettings.Name, err)
 		}
-		if err := writeFile(filepath.Join(base, ".claude", "settings.json"), cs.Content); err != nil {
+		content, err := loadVersionedContent(cs.Content)
+		if err != nil {
+			return fmt.Errorf("decode claude settings %s/%s@%d: %w", member.ClaudeSettings.Owner, member.ClaudeSettings.Name, member.ClaudeSettings.Version, err)
+		}
+		if err := writeFile(filepath.Join(base, ".claude", "settings.json"), content); err != nil {
 			return fmt.Errorf("write settings.json: %w", err)
 		}
 	}
@@ -93,25 +103,29 @@ func (w *Writer) prepareMemberFromResponse(base string, member *api.MemberRespon
 
 	// Write Skills
 	for _, skillRef := range member.Skills {
-		skill, err := w.client.GetSkill(skillRef.Owner, skillRef.Name)
+		skill, err := w.client.GetSkillVersion(skillRef.Owner, skillRef.Name, skillRef.Version)
 		if err != nil {
 			return fmt.Errorf("get skill %s/%s: %w", skillRef.Owner, skillRef.Name, err)
 		}
-		skillPath := filepath.Join(base, ".claude", "skills", skill.Name, "SKILL.md")
-		if err := writeFile(skillPath, skill.Content); err != nil {
-			return fmt.Errorf("write skill %s: %w", skill.Name, err)
+		content, err := loadVersionedContent(skill.Content)
+		if err != nil {
+			return fmt.Errorf("decode skill %s/%s@%d: %w", skillRef.Owner, skillRef.Name, skillRef.Version, err)
+		}
+		skillPath := filepath.Join(base, ".claude", "skills", skillRef.Name, "SKILL.md")
+		if err := writeFile(skillPath, content); err != nil {
+			return fmt.Errorf("write skill %s: %w", skillRef.Name, err)
 		}
 	}
 
 	return nil
 }
 
-// PrepareTeam creates workspaces for all team members.
+// MaterializeTeamFiles writes local-clone files for all team members.
 // Each member gets a subdirectory named after the team member name.
-// The team workspace owns a single root .clier directory for runtime metadata,
+// The team local clone owns a single root .clier directory for runtime metadata,
 // while each member owns a generated-only .clier directory for imported
 // protocol files inside its own working tree.
-func (w *Writer) PrepareTeam(base, teamName string) error {
+func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
 	team, err := w.client.GetTeam(w.owner, teamName)
 	if err != nil {
 		return fmt.Errorf("get team %s: %w", teamName, err)
@@ -144,15 +158,14 @@ func (w *Writer) PrepareTeam(base, teamName string) error {
 	for _, tm := range team.TeamMembers {
 		memberBase := filepath.Join(base, tm.Name)
 
-		// Fetch member and prepare workspace using ResourceRef.
-		member, err := w.client.GetMember(tm.Member.Owner, tm.Member.Name)
+		member, err := w.loadPinnedMemberResponse(tm.Member.Owner, tm.Member.Name, tm.Member.Version)
 		if err != nil {
 			return fmt.Errorf("get member %s: %w", tm.Name, err)
 		}
-		if err := w.prepareMemberFromResponse(memberBase, member, memberWriteOptions{
+		if err := w.materializeMemberFilesFromResponse(memberBase, member, memberWriteOptions{
 			TeamMemberName: tm.Name,
 		}); err != nil {
-			return fmt.Errorf("prepare member %s: %w", tm.Name, err)
+			return fmt.Errorf("materialize member %s: %w", tm.Name, err)
 		}
 		protocol := BuildAgentFacingTeamProtocol(team.Name, tm.Name, relMap[tm.ID], membersByID)
 		protocolPath := filepath.Join(memberBase, ".clier", TeamProtocolFileName(tm.Name))
@@ -162,6 +175,18 @@ func (w *Writer) PrepareTeam(base, teamName string) error {
 	}
 
 	return nil
+}
+
+func (w *Writer) loadPinnedMemberResponse(owner, name string, version int) (*api.MemberResponse, error) {
+	memberVersion, err := w.client.GetMemberVersion(owner, name, version)
+	if err != nil {
+		return nil, err
+	}
+	snapshot, err := loadMemberSnapshot(memberVersion.Content)
+	if err != nil {
+		return nil, fmt.Errorf("decode member %s/%s@%d: %w", owner, name, version, err)
+	}
+	return memberResponseFromSnapshot(owner, name, version, snapshot), nil
 }
 
 func writeFile(path, content string) error {

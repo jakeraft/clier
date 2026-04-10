@@ -8,7 +8,7 @@ import (
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
 
-func TestValidateDownloadedWorkspace_Member(t *testing.T) {
+func TestValidateWorkingCopy_Member(t *testing.T) {
 	base := t.TempDir()
 	required := []string{
 		filepath.Join(base, "CLAUDE.md"),
@@ -26,32 +26,32 @@ func TestValidateDownloadedWorkspace_Member(t *testing.T) {
 
 	meta := &appworkspace.Manifest{
 		Kind: resourceKindMember,
-		Workspace: &appworkspace.WorkspaceMetadata{
-			Member: &appworkspace.MemberWorkspaceMetadata{
+		Runtime: &appworkspace.RuntimeMetadata{
+			Member: &appworkspace.MemberRuntimeMetadata{
 				ID:      1,
 				Name:    "reviewer",
 				Command: "codex",
 			},
 		},
 	}
-	if err := validateDownloadedWorkspace(base, meta); err != nil {
-		t.Fatalf("validateDownloadedWorkspace: %v", err)
+	if err := validateWorkingCopy(base, meta); err != nil {
+		t.Fatalf("validateWorkingCopy: %v", err)
 	}
 }
 
-func TestValidateDownloadedWorkspace_MissingFileFails(t *testing.T) {
+func TestValidateWorkingCopy_MissingFileFails(t *testing.T) {
 	base := t.TempDir()
 	meta := &appworkspace.Manifest{
 		Kind: resourceKindMember,
-		Workspace: &appworkspace.WorkspaceMetadata{
-			Member: &appworkspace.MemberWorkspaceMetadata{
+		Runtime: &appworkspace.RuntimeMetadata{
+			Member: &appworkspace.MemberRuntimeMetadata{
 				ID:      1,
 				Name:    "reviewer",
 				Command: "codex",
 			},
 		},
 	}
-	if err := validateDownloadedWorkspace(base, meta); err == nil {
-		t.Fatalf("expected validation error for incomplete workspace")
+	if err := validateWorkingCopy(base, meta); err == nil {
+		t.Fatalf("expected validation error for incomplete local clone")
 	}
 }

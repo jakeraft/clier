@@ -18,7 +18,7 @@ import (
 
 // buildMemberEnv returns the environment variables for a member agent.
 // runID is a locally generated run ID; teamMemberID is the int64 member ID.
-// teamID is set only for agents launched as part of a team run.
+// teamID is set only for agents launched from a team local clone.
 func buildMemberEnv(runID string, teamMemberID int64, teamID *int64, memberName string) map[string]string {
 	env := map[string]string{
 		envClierRunID:         runID,
@@ -51,7 +51,7 @@ func shellQuote(v string) string {
 	return "'" + strings.ReplaceAll(v, "'", `'"'"'`) + "'"
 }
 
-func resolveWorkspaceBase() (string, error) {
+func resolveCurrentDir() (string, error) {
 	base, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("resolve current directory: %w", err)
@@ -80,10 +80,10 @@ func saveRunPlan(runID string, plan *apprun.RunPlan) error {
 		return err
 	}
 	if runtimeDir == "" {
-		return errors.New("runtime dir not found in current workspace")
+		return errors.New("runtime dir not found in current local clone")
 	}
-	workspaceBase := filepath.Dir(runtimeDir)
-	return apprun.SavePlan(workspaceBase, runID, plan)
+	copyRoot := filepath.Dir(runtimeDir)
+	return apprun.SavePlan(copyRoot, runID, plan)
 }
 
 func resolveRunPlanPath(runID string) (string, error) {
@@ -92,39 +92,29 @@ func resolveRunPlanPath(runID string) (string, error) {
 		return "", err
 	}
 	if runtimeDir == "" {
-		return "", errors.New("runtime dir not found in current workspace")
+		return "", errors.New("runtime dir not found in current local clone")
 	}
 	planPath := filepath.Join(runtimeDir, runID+".json")
 	if _, err := os.Stat(planPath); err == nil {
 		return planPath, nil
 	}
-	return "", fmt.Errorf("run plan %s not found in current workspace", runID)
+	return "", fmt.Errorf("run plan %s not found in current local clone", runID)
 }
 
 func resolveRuntimeDir() (string, error) {
-	base, err := resolveWorkspaceBase()
+	base, err := resolveCurrentDir()
 	if err != nil {
 		return "", err
 	}
-	for dir := base; ; dir = filepath.Dir(dir) {
-		runtimeDir := filepath.Join(dir, ".clier")
-		if stat, err := os.Stat(runtimeDir); err == nil && stat.IsDir() {
-			if _, err := appworkspace.FindManifestPath(dir); err == nil {
-				return runtimeDir, nil
-			}
-		} else if err != nil && !os.IsNotExist(err) {
-			return "", fmt.Errorf("stat runtime dir: %w", err)
-		}
-		if _, err := appworkspace.FindManifestPath(dir); err == nil {
-			return runtimeDir, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-	}
 
-	return "", nil
+	copyRoot, _, err := appworkspace.FindManifestAbove(base)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return filepath.Join(copyRoot, ".clier"), nil
 }
 
 func newRunID() (string, error) {

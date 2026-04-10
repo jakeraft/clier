@@ -1,34 +1,47 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
 
 // MemberResponse is the server's JSON representation of a Member resource.
 type MemberResponse struct {
-	ID               int64         `json:"id"`
-	OwnerID          int64         `json:"owner_id"`
-	Name             string        `json:"name"`
-	AgentType        string        `json:"agent_type"`
-	Command          string        `json:"command"`
-	GitRepoURL       string        `json:"git_repo_url"`
-	ClaudeMdID       *int64        `json:"claude_md_id,omitempty"`
-	ClaudeSettingsID *int64        `json:"claude_settings_id,omitempty"`
-	Visibility       int           `json:"visibility"`
-	IsFork           bool          `json:"is_fork"`
-	ForkID           *int64        `json:"fork_id,omitempty"`
-	ForkName         string        `json:"fork_name"`
-	ForkOwnerLogin   string        `json:"fork_owner_login"`
-	ForkCount        int           `json:"fork_count"`
-	LatestVersion    *int          `json:"latest_version,omitempty"`
-	CreatedAt        time.Time     `json:"created_at"`
-	UpdatedAt        time.Time     `json:"updated_at"`
-	OwnerLogin       string        `json:"owner_login"`
-	OwnerAvatarURL   *string       `json:"owner_avatar_url,omitempty"`
-	ClaudeMd         *ResourceRef  `json:"claude_md,omitempty"`
-	ClaudeSettings   *ResourceRef  `json:"claude_settings,omitempty"`
-	Skills           []ResourceRef `json:"skills"`
+	ID                    int64         `json:"id"`
+	OwnerID               int64         `json:"owner_id"`
+	Name                  string        `json:"name"`
+	AgentType             string        `json:"agent_type"`
+	Command               string        `json:"command"`
+	GitRepoURL            string        `json:"git_repo_url"`
+	ClaudeMdID            *int64        `json:"claude_md_id,omitempty"`
+	ClaudeMdVersion       *int          `json:"claude_md_version,omitempty"`
+	ClaudeSettingsID      *int64        `json:"claude_settings_id,omitempty"`
+	ClaudeSettingsVersion *int          `json:"claude_settings_version,omitempty"`
+	Visibility            int           `json:"visibility"`
+	IsFork                bool          `json:"is_fork"`
+	ForkID                *int64        `json:"fork_id,omitempty"`
+	ForkName              string        `json:"fork_name"`
+	ForkOwnerLogin        string        `json:"fork_owner_login"`
+	ForkCount             int           `json:"fork_count"`
+	LatestVersion         *int          `json:"latest_version,omitempty"`
+	CreatedAt             time.Time     `json:"created_at"`
+	UpdatedAt             time.Time     `json:"updated_at"`
+	OwnerLogin            string        `json:"owner_login"`
+	OwnerAvatarURL        *string       `json:"owner_avatar_url,omitempty"`
+	ClaudeMd              *ResourceRef  `json:"claude_md,omitempty"`
+	ClaudeSettings        *ResourceRef  `json:"claude_settings,omitempty"`
+	Skills                []ResourceRef `json:"skills"`
+}
+
+type MemberVersionResponse struct {
+	ID             int64           `json:"id"`
+	MemberID       int64           `json:"member_id"`
+	Version        int             `json:"version"`
+	Content        json.RawMessage `json:"content"`
+	CreatedAt      time.Time       `json:"created_at"`
+	OwnerLogin     string          `json:"owner_login"`
+	OwnerAvatarURL *string         `json:"owner_avatar_url,omitempty"`
 }
 
 func (c *Client) CreateMember(owner string, body any) (*MemberResponse, error) {
@@ -39,6 +52,11 @@ func (c *Client) CreateMember(owner string, body any) (*MemberResponse, error) {
 func (c *Client) GetMember(owner, name string) (*MemberResponse, error) {
 	var r MemberResponse
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/members/%s", owner, name), &r)
+}
+
+func (c *Client) GetMemberVersion(owner, name string, version int) (*MemberVersionResponse, error) {
+	var r MemberVersionResponse
+	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/members/%s/versions/%d", owner, name, version), &r)
 }
 
 func (c *Client) ListMembers(owner string) ([]MemberResponse, error) {

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -24,6 +25,16 @@ type SkillResponse struct {
 	OwnerAvatarURL *string   `json:"owner_avatar_url,omitempty"`
 }
 
+type SkillVersionResponse struct {
+	ID             int64           `json:"id"`
+	SkillID        int64           `json:"skill_id"`
+	Version        int             `json:"version"`
+	Content        json.RawMessage `json:"content"`
+	CreatedAt      time.Time       `json:"created_at"`
+	OwnerLogin     string          `json:"owner_login"`
+	OwnerAvatarURL *string         `json:"owner_avatar_url,omitempty"`
+}
+
 func (c *Client) CreateSkill(owner string, body any) (*SkillResponse, error) {
 	var r SkillResponse
 	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/skills", owner), body, &r)
@@ -32,6 +43,11 @@ func (c *Client) CreateSkill(owner string, body any) (*SkillResponse, error) {
 func (c *Client) GetSkill(owner, name string) (*SkillResponse, error) {
 	var r SkillResponse
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/skills/%s", owner, name), &r)
+}
+
+func (c *Client) GetSkillVersion(owner, name string, version int) (*SkillVersionResponse, error) {
+	var r SkillVersionResponse
+	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/skills/%s/versions/%d", owner, name, version), &r)
 }
 
 func (c *Client) ListSkills(owner string) ([]SkillResponse, error) {
