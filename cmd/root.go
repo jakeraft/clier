@@ -19,8 +19,6 @@ const (
 	rootGroupRuntime   = "runtime"
 	rootGroupDiscovery = "discovery"
 	rootGroupLocal     = "local"
-
-	subGroupServer = "server"
 )
 
 // newAPIClient creates an API client.
@@ -103,17 +101,16 @@ Each agent gets its own terminal, git repo, and system prompt.
 You watch, steer, and intervene in real time.
 
 Get started:
-  clier tutorial             Walk through an example team
-  clier explore team list    Browse what others have built
+  clier tutorial               Walk through an example team
+  clier explore team list      Browse what others have built
 
 Core workflow:
-  clier member               Define individual agents
-  clier team                 Compose agents into teams
-  clier fork <owner/name>    Fork a public resource to your namespace
-  clier clone <owner/name>   Clone a resource to your machine
-  clier fetch upstream       Review upstream changes before you adopt them
-  clier run start            Launch the current local clone in tmux
-  clier run                  Observe and control running agents`,
+  clier member create          Define an agent
+  clier team create            Compose agents into a team
+  clier fork <owner/name>      Fork a resource to your namespace
+  clier clone <name>           Clone a resource to your machine
+  clier run start              Launch agents in tmux
+  clier run attach <run-id>    Watch agents in real time`,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},

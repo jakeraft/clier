@@ -12,12 +12,9 @@ func init() {
 func newClaudeMdCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "claude-md",
-		Short:   "Manage CLAUDE.md files",
+		Short:   "Manage CLAUDE.md resources",
 		GroupID: rootGroupServer,
-		Long: `Manage CLAUDE.md files on the server.
-
-Use create, edit, and delete to manage your own files.
-Use explore to inspect shared files before you fork or reference them.`,
+		Long:    `Create, edit, and delete CLAUDE.md resources on the server.`,
 	}
 	cmd.AddCommand(newClaudeMdCreateCmd())
 	cmd.AddCommand(newClaudeMdEditCmd())

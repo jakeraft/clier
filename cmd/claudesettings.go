@@ -12,12 +12,9 @@ func init() {
 func newClaudeSettingsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "claude-settings",
-		Short:   "Manage Claude settings files",
+		Short:   "Manage Claude settings resources",
 		GroupID: rootGroupServer,
-		Long: `Manage Claude settings files on the server.
-
-Use create, edit, and delete to manage your own files.
-Use explore to inspect shared files before you fork or reference them.`,
+		Long:    `Create, edit, and delete Claude settings resources on the server.`,
 	}
 	cmd.AddCommand(newClaudeSettingsCreateCmd())
 	cmd.AddCommand(newClaudeSettingsEditCmd())

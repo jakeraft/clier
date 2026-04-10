@@ -24,11 +24,7 @@ func newRunCmd() *cobra.Command {
 		Use:     "run",
 		Short:   "Observe and control running agents",
 		GroupID: rootGroupRuntime,
-		Long: `Observe and control running agents.
-
-These commands work inside any local clone. Run them from
-anywhere within a local clone — the nearest ` + "`.clier/manifest.json`" + ` is
-used automatically.`,
+		Long:    `Start, stop, and interact with agents running in tmux.`,
 	}
 	cmd.AddCommand(newRunStartCmd())
 	cmd.AddCommand(newRunListCmd())

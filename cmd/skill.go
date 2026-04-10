@@ -12,12 +12,9 @@ func init() {
 func newSkillCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "skill",
-		Short:   "Manage reusable agent skills",
+		Short:   "Manage agent skills",
 		GroupID: rootGroupServer,
-		Long: `Manage reusable agent skills on the server.
-
-Use create, edit, and delete to manage your own skills.
-Use explore to inspect shared skills before you fork or reference them.`,
+		Long:    `Create, edit, and delete reusable agent skills on the server.`,
 	}
 	cmd.AddCommand(newSkillCreateCmd())
 	cmd.AddCommand(newSkillEditCmd())

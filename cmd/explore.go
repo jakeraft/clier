@@ -23,12 +23,9 @@ func init() {
 func newExploreCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "explore",
-		Short:   "Browse server resources",
+		Short:   "Browse and inspect resources",
 		GroupID: rootGroupDiscovery,
-		Long: `Browse server resources without changing them.
-
-Use these commands to inspect public resources or a specific owner's
-resources before you fork or clone them.`,
+		Long:    `Browse public resources or inspect a specific owner's resources.`,
 	}
 
 	for _, spec := range exploreResourceSpecs() {

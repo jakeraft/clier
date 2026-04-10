@@ -14,21 +14,10 @@ func init() {
 func newMemberCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "member",
-		Short:   "Define individual agents",
+		Short:   "Manage agent definitions",
 		GroupID: rootGroupServer,
-		Long: `Define individual agents on the server.
-
-Use create, edit, and delete to manage your
-own agent definitions.
-
-Workflow:
-  clier member create        Define a new agent
-  clier explore member <owner/name>
-                             Inspect an existing agent
-  clier clone <name>         Clone your agent to your machine
-  clier run start            Start the current local clone`,
+		Long:    `Create, edit, and delete individual agent definitions on the server.`,
 	}
-	cmd.AddGroup(&cobra.Group{ID: subGroupServer, Title: "Define"})
 	cmd.AddCommand(newMemberCreateCmd())
 	cmd.AddCommand(newMemberEditCmd())
 	cmd.AddCommand(newMemberDeleteCmd())
@@ -42,7 +31,7 @@ func newMemberCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "create",
 		Short:   "Create a new member",
-		GroupID: subGroupServer,
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
@@ -104,7 +93,7 @@ func newMemberEditCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "edit <name>",
 		Short:   "Update a member",
-		GroupID: subGroupServer,
+
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -175,7 +164,7 @@ func newMemberDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "delete <name>",
 		Short:   "Delete a member",
-		GroupID: subGroupServer,
+
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()

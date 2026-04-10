@@ -14,21 +14,10 @@ func init() {
 func newTeamCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "team",
-		Short:   "Compose agent teams",
+		Short:   "Manage agent teams",
 		GroupID: rootGroupServer,
-		Long: `Compose agent teams on the server.
-
-Use create, edit, and delete to manage your
-own team definitions.
-
-Workflow:
-  clier team create        Define a new team
-  clier explore team <owner/name>
-                           Inspect an existing team
-  clier clone <name>       Clone your team to your machine
-  clier run start          Start the current local clone`,
+		Long:    `Create, edit, and delete agent team compositions on the server.`,
 	}
-	cmd.AddGroup(&cobra.Group{ID: subGroupServer, Title: "Define"})
 	cmd.AddCommand(newTeamCreateCmd())
 	cmd.AddCommand(newTeamEditCmd())
 	cmd.AddCommand(newTeamDeleteCmd())
@@ -43,7 +32,7 @@ func newTeamCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "create",
 		Short:   "Create a new team",
-		GroupID: subGroupServer,
+
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
@@ -91,7 +80,7 @@ func newTeamEditCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "edit <name>",
 		Short:   "Update a team",
-		GroupID: subGroupServer,
+
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
@@ -149,7 +138,7 @@ func newTeamDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "delete <name>",
 		Short:   "Delete a team",
-		GroupID: subGroupServer,
+
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
