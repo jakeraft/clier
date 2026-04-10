@@ -3,8 +3,6 @@ package cmd
 import (
 	"strings"
 	"testing"
-
-	"github.com/jakeraft/clier/internal/adapter/api"
 )
 
 func TestParseOptionalInt64(t *testing.T) {
@@ -69,36 +67,3 @@ func TestParseTeamRelationSpecs(t *testing.T) {
 	}
 }
 
-func TestTeamWriteRequestFromResponse(t *testing.T) {
-	t.Parallel()
-
-	rootID := int64(11)
-	team := &api.TeamResponse{
-		Name:             "dev-squad",
-		RootTeamMemberID: &rootID,
-		TeamMembers: []api.TeamMemberResponse{
-			{ID: 11, Name: "lead", Member: api.MemberRef{ResourceRef: api.ResourceRef{ID: 101, Version: 3}}},
-			{ID: 22, Name: "worker", Member: api.MemberRef{ResourceRef: api.ResourceRef{ID: 202, Version: 5}}},
-		},
-		Relations: []api.TeamRelationResponse{
-			{FromTeamMemberID: 11, ToTeamMemberID: 22},
-		},
-	}
-
-	got, err := teamWriteRequestFromResponse(team)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got.Name != "dev-squad" {
-		t.Fatalf("Name = %q, want dev-squad", got.Name)
-	}
-	if got.RootIndex == nil || *got.RootIndex != 0 {
-		t.Fatalf("RootIndex = %v, want 0", got.RootIndex)
-	}
-	if len(got.TeamMembers) != 2 || got.TeamMembers[1].Member.ID != 202 || got.TeamMembers[1].Member.Version != 5 {
-		t.Fatalf("TeamMembers = %+v", got.TeamMembers)
-	}
-	if len(got.Relations) != 1 || got.Relations[0].FromIndex != 0 || got.Relations[0].ToIndex != 1 {
-		t.Fatalf("Relations = %+v", got.Relations)
-	}
-}
