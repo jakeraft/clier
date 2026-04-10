@@ -26,6 +26,7 @@ type TeamResponse struct {
 	ID               int64                  `json:"id"`
 	OwnerID          int64                  `json:"owner_id"`
 	Name             string                 `json:"name"`
+	Summary          string                 `json:"summary"`
 	AgentTypes       []string               `json:"agent_types"`
 	RootTeamMemberID *int64                 `json:"root_team_member_id,omitempty"`
 	TeamMembers      []TeamMemberResponse   `json:"team_members"`

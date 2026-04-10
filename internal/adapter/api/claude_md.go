@@ -11,6 +11,7 @@ type ClaudeMdResponse struct {
 	ID             int64     `json:"id"`
 	OwnerID        int64     `json:"owner_id"`
 	Name           string    `json:"name"`
+	Summary        string    `json:"summary"`
 	Content        string    `json:"content"`
 	Visibility     int       `json:"visibility"`
 	IsFork         bool      `json:"is_fork"`

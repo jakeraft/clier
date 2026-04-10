@@ -30,21 +30,25 @@ type MemberRef struct {
 
 type ClaudeMdWriteRequest struct {
 	Name    string `json:"name"`
+	Summary string `json:"summary,omitempty"`
 	Content string `json:"content"`
 }
 
 type ClaudeSettingsWriteRequest struct {
 	Name    string `json:"name"`
+	Summary string `json:"summary,omitempty"`
 	Content string `json:"content"`
 }
 
 type SkillWriteRequest struct {
 	Name    string `json:"name"`
+	Summary string `json:"summary,omitempty"`
 	Content string `json:"content"`
 }
 
 type MemberWriteRequest struct {
 	Name           string               `json:"name"`
+	Summary        string               `json:"summary,omitempty"`
 	AgentType      string               `json:"agent_type"`
 	Command        string               `json:"command"`
 	GitRepoURL     string               `json:"git_repo_url"`
@@ -65,6 +69,7 @@ type TeamRelationRequest struct {
 
 type TeamWriteRequest struct {
 	Name        string                `json:"name"`
+	Summary     string                `json:"summary,omitempty"`
 	TeamMembers []TeamMemberRequest   `json:"team_members"`
 	Relations   []TeamRelationRequest `json:"relations"`
 	RootIndex   *int                  `json:"root_index"`
