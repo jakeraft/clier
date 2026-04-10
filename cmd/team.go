@@ -58,7 +58,7 @@ func newTeamCreateCmd() *cobra.Command {
 			if rootIndex < 0 {
 				return errors.New("--root-index must be set to a non-negative team_members index")
 			}
-			body := api.TeamMutationRequest{
+			body := api.TeamWriteRequest{
 				Name:        name,
 				TeamMembers: members,
 				Relations:   parsedRelations,
@@ -98,7 +98,7 @@ func newTeamEditCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			body, err := teamMutationRequestFromResponse(current)
+			body, err := teamWriteRequestFromResponse(current)
 			if err != nil {
 				return err
 			}

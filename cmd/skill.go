@@ -34,7 +34,7 @@ func newSkillCreateCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			resp, err := client.CreateSkill(owner, api.SkillMutationRequest{
+			resp, err := client.CreateSkill(owner, api.SkillWriteRequest{
 				Name:    name,
 				Content: content,
 			})
@@ -65,7 +65,7 @@ func newSkillEditCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			body := api.SkillMutationRequest{
+			body := api.SkillWriteRequest{
 				Name:    current.Name,
 				Content: current.Content,
 			}

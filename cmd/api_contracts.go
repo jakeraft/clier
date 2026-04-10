@@ -103,7 +103,7 @@ func parseTeamRelationSpecs(specs []string) ([]api.TeamRelationRequest, error) {
 	return relations, nil
 }
 
-func teamMutationRequestFromResponse(team *api.TeamResponse) (*api.TeamMutationRequest, error) {
+func teamWriteRequestFromResponse(team *api.TeamResponse) (*api.TeamWriteRequest, error) {
 	memberIndexByID := make(map[int64]int, len(team.TeamMembers))
 	members := make([]api.TeamMemberRequest, 0, len(team.TeamMembers))
 	for i, tm := range team.TeamMembers {
@@ -142,7 +142,7 @@ func teamMutationRequestFromResponse(team *api.TeamResponse) (*api.TeamMutationR
 		rootIndex = &idx
 	}
 
-	return &api.TeamMutationRequest{
+	return &api.TeamWriteRequest{
 		Name:        team.Name,
 		TeamMembers: members,
 		Relations:   relations,

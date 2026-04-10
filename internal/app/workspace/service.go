@@ -257,7 +257,7 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 			if !versionsMatch(resource.RemoteVersion, current.LatestVersion) {
 				return nil, fmt.Errorf("remote claude-md %s/%s changed; pull before pushing", resource.Owner, resource.Name)
 			}
-			if _, err := s.client.UpdateClaudeMd(resource.Owner, resource.Name, api.ClaudeMdMutationRequest{
+			if _, err := s.client.UpdateClaudeMd(resource.Owner, resource.Name, api.ClaudeMdWriteRequest{
 				Name:    resource.Name,
 				Content: content,
 			}); err != nil {
@@ -275,7 +275,7 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 			if !versionsMatch(resource.RemoteVersion, current.LatestVersion) {
 				return nil, fmt.Errorf("remote claude-settings %s/%s changed; pull before pushing", resource.Owner, resource.Name)
 			}
-			if _, err := s.client.UpdateClaudeSettings(resource.Owner, resource.Name, api.ClaudeSettingsMutationRequest{
+			if _, err := s.client.UpdateClaudeSettings(resource.Owner, resource.Name, api.ClaudeSettingsWriteRequest{
 				Name:    resource.Name,
 				Content: string(content),
 			}); err != nil {
@@ -293,7 +293,7 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 			if !versionsMatch(resource.RemoteVersion, current.LatestVersion) {
 				return nil, fmt.Errorf("remote skill %s/%s changed; pull before pushing", resource.Owner, resource.Name)
 			}
-			if _, err := s.client.UpdateSkill(resource.Owner, resource.Name, api.SkillMutationRequest{
+			if _, err := s.client.UpdateSkill(resource.Owner, resource.Name, api.SkillWriteRequest{
 				Name:    resource.Name,
 				Content: string(content),
 			}); err != nil {
@@ -591,7 +591,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 	return manifest, nil
 }
 
-func (s *Service) memberMutationFromProjection(projection *MemberProjection) (*api.MemberMutationRequest, error) {
+func (s *Service) memberMutationFromProjection(projection *MemberProjection) (*api.MemberWriteRequest, error) {
 	var claudeMdRef *api.ResourceRefRequest
 	if projection.ClaudeMd != nil {
 		claudeMd, err := s.client.GetClaudeMd(projection.ClaudeMd.Owner, projection.ClaudeMd.Name)
@@ -619,7 +619,7 @@ func (s *Service) memberMutationFromProjection(projection *MemberProjection) (*a
 		skillRefs = append(skillRefs, api.ResourceRefRequest{ID: skill.ID, Version: skillRef.Version})
 	}
 
-	return &api.MemberMutationRequest{
+	return &api.MemberWriteRequest{
 		Name:           projection.Name,
 		AgentType:      projection.AgentType,
 		Command:        projection.Command,
@@ -630,7 +630,7 @@ func (s *Service) memberMutationFromProjection(projection *MemberProjection) (*a
 	}, nil
 }
 
-func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.TeamMutationRequest, error) {
+func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.TeamWriteRequest, error) {
 	members := make([]api.TeamMemberRequest, 0, len(projection.Members))
 	indicesByTeamMemberID := make(map[int64]int, len(projection.Members))
 	rootIndex := -1
@@ -671,7 +671,7 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 		})
 	}
 
-	return &api.TeamMutationRequest{
+	return &api.TeamWriteRequest{
 		Name:        projection.Name,
 		TeamMembers: members,
 		Relations:   relations,

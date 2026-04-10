@@ -28,22 +28,22 @@ type MemberRef struct {
 	Command   string `json:"command"`
 }
 
-type ClaudeMdMutationRequest struct {
+type ClaudeMdWriteRequest struct {
 	Name    string `json:"name"`
 	Content string `json:"content"`
 }
 
-type ClaudeSettingsMutationRequest struct {
+type ClaudeSettingsWriteRequest struct {
 	Name    string `json:"name"`
 	Content string `json:"content"`
 }
 
-type SkillMutationRequest struct {
+type SkillWriteRequest struct {
 	Name    string `json:"name"`
 	Content string `json:"content"`
 }
 
-type MemberMutationRequest struct {
+type MemberWriteRequest struct {
 	Name           string               `json:"name"`
 	AgentType      string               `json:"agent_type"`
 	Command        string               `json:"command"`
@@ -63,7 +63,7 @@ type TeamRelationRequest struct {
 	ToIndex   int `json:"to_index"`
 }
 
-type TeamMutationRequest struct {
+type TeamWriteRequest struct {
 	Name        string                `json:"name"`
 	TeamMembers []TeamMemberRequest   `json:"team_members"`
 	Relations   []TeamRelationRequest `json:"relations"`

@@ -34,7 +34,7 @@ func newClaudeMdCreateCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			resp, err := client.CreateClaudeMd(owner, api.ClaudeMdMutationRequest{
+			resp, err := client.CreateClaudeMd(owner, api.ClaudeMdWriteRequest{
 				Name:    name,
 				Content: content,
 			})
@@ -65,7 +65,7 @@ func newClaudeMdEditCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			body := api.ClaudeMdMutationRequest{
+			body := api.ClaudeMdWriteRequest{
 				Name:    current.Name,
 				Content: current.Content,
 			}

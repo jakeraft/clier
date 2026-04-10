@@ -65,7 +65,7 @@ func newMemberCreateCmd() *cobra.Command {
 				}
 				skillRefs = append(skillRefs, *ref)
 			}
-			body := api.MemberMutationRequest{
+			body := api.MemberWriteRequest{
 				Name:           name,
 				AgentType:      agentType,
 				Command:        command,
@@ -111,7 +111,7 @@ func newMemberEditCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			body := api.MemberMutationRequest{
+			body := api.MemberWriteRequest{
 				Name:           current.Name,
 				AgentType:      current.AgentType,
 				Command:        current.Command,

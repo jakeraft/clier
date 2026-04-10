@@ -69,7 +69,7 @@ func TestParseTeamRelationSpecs(t *testing.T) {
 	}
 }
 
-func TestTeamMutationRequestFromResponse(t *testing.T) {
+func TestTeamWriteRequestFromResponse(t *testing.T) {
 	t.Parallel()
 
 	rootID := int64(11)
@@ -85,7 +85,7 @@ func TestTeamMutationRequestFromResponse(t *testing.T) {
 		},
 	}
 
-	got, err := teamMutationRequestFromResponse(team)
+	got, err := teamWriteRequestFromResponse(team)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
