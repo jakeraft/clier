@@ -20,8 +20,7 @@ const (
 	rootGroupDiscovery = "discovery"
 	rootGroupLocal     = "local"
 
-	subGroupServer  = "server"
-	subGroupRuntime = "runtime"
+	subGroupServer = "server"
 )
 
 // newAPIClient creates an API client.
@@ -141,6 +140,7 @@ func configureCommandGroups() {
 		&cobra.Group{ID: rootGroupDiscovery, Title: "Getting Started"},
 		&cobra.Group{ID: rootGroupLocal, Title: "Settings"},
 	)
+	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true, GroupID: rootGroupLocal})
 }
 
 // filterUserCommands removes agent-only subcommands from "run" in user context.
