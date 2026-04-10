@@ -26,7 +26,7 @@ Use explore to inspect shared skills before you fork or reference them.`,
 }
 
 func newSkillCreateCmd() *cobra.Command {
-	var name, content string
+	var name, content, summary string
 
 	cmd := &cobra.Command{
 		Use:   "create",
@@ -37,6 +37,7 @@ func newSkillCreateCmd() *cobra.Command {
 			resp, err := client.CreateSkill(owner, api.SkillWriteRequest{
 				Name:    name,
 				Content: content,
+				Summary: summary,
 			})
 			if err != nil {
 				return err
@@ -46,13 +47,14 @@ func newSkillCreateCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Skill name (lowercase with hyphens)")
 	cmd.Flags().StringVar(&content, "content", "", "Skill content")
+	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("content")
 	return cmd
 }
 
 func newSkillEditCmd() *cobra.Command {
-	var name, content string
+	var name, content, summary string
 
 	cmd := &cobra.Command{
 		Use:   "edit <name>",
@@ -61,22 +63,17 @@ func newSkillEditCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			current, err := client.GetSkill(owner, args[0])
-			if err != nil {
-				return err
-			}
-			body := api.SkillWriteRequest{
-				Name:    current.Name,
-				Content: current.Content,
-			}
+			body := api.SkillPatchRequest{}
 			if cmd.Flags().Changed("name") {
-				body.Name = name
+				body.Name = &name
 			}
 			if cmd.Flags().Changed("content") {
-				body.Content = content
+				body.Content = &content
 			}
-
-			resp, err := client.UpdateSkill(owner, args[0], body)
+			if cmd.Flags().Changed("summary") {
+				body.Summary = &summary
+			}
+			resp, err := client.PatchSkill(owner, args[0], &body)
 			if err != nil {
 				return err
 			}
@@ -85,6 +82,7 @@ func newSkillEditCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New skill name")
 	cmd.Flags().StringVar(&content, "content", "", "New skill content")
+	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
 	return cmd
 }
 
