@@ -54,7 +54,7 @@ func validateMemberCopy(base string, member *appworkspace.MemberRuntimeMetadata,
 	if member.ID == 0 || member.Name == "" || member.Command == "" {
 		return fmt.Errorf("manifest in %s is incomplete; pull the local clone again", manifestPathLabel())
 	}
-	materialized, err := appworkspace.IsMaterializedRoot(member.GitRepoURL, base)
+	materialized, err := appworkspace.IsMaterializedRoot(newFileMaterializer(), newGitRepo(), member.GitRepoURL, base)
 	if err != nil {
 		return err
 	}

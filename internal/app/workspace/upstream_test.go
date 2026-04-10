@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/internal/adapter/filesystem"
+	adaptergit "github.com/jakeraft/clier/internal/adapter/git"
 )
 
 func TestPreservedUpstreamState_KeepsFetchedSnapshotForSameUpstream(t *testing.T) {
@@ -54,7 +56,8 @@ func TestRenderProjectionDiff_ReturnsUnifiedDiff(t *testing.T) {
 		t.Fatalf("write upstream projection: %v", err)
 	}
 
-	diff, hasChanges, err := renderProjectionDiff(localPath, upstreamPath)
+	svcForDiff := NewService(api.NewClient("", ""), filesystem.New(), adaptergit.New())
+	diff, hasChanges, err := svcForDiff.renderProjectionDiff(localPath, upstreamPath)
 	if err != nil {
 		t.Fatalf("renderProjectionDiff: %v", err)
 	}
@@ -83,7 +86,7 @@ func TestFetchUpstreamMemberProjection_PreservesResourceNameWhenSnapshotOmitsIt(
 	}))
 	defer server.Close()
 
-	svc := NewService(api.NewClient(server.URL, ""))
+	svc := NewService(api.NewClient(server.URL, ""), filesystem.New(), adaptergit.New())
 	version, projection, err := svc.fetchUpstreamMemberProjection("origin", "reviewer", 7)
 	if err != nil {
 		t.Fatalf("fetchUpstreamMemberProjection: %v", err)
@@ -123,7 +126,7 @@ func TestFetchUpstreamTeamProjection_PreservesResourceNameWhenSnapshotOmitsIt(t 
 	}))
 	defer server.Close()
 
-	svc := NewService(api.NewClient(server.URL, ""))
+	svc := NewService(api.NewClient(server.URL, ""), filesystem.New(), adaptergit.New())
 	version, projection, err := svc.fetchUpstreamTeamProjection("origin", "dev-squad", 11)
 	if err != nil {
 		t.Fatalf("fetchUpstreamTeamProjection: %v", err)

@@ -19,7 +19,7 @@ func resolveCloneBase(target resourceTarget) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if copyRoot, _, err := appworkspace.FindManifestAbove(base); err == nil {
+	if copyRoot, _, err := appworkspace.FindManifestAbove(newFileMaterializer(), base); err == nil {
 		return "", fmt.Errorf("clone must be run outside an existing local clone; found %s", copyRoot)
 	}
 
@@ -52,7 +52,7 @@ func requireCurrentCopyRootKind(expectedKind, action string) (string, *appworksp
 		return "", nil, err
 	}
 
-	copyRoot, manifest, err := appworkspace.FindManifestAbove(base)
+	copyRoot, manifest, err := appworkspace.FindManifestAbove(newFileMaterializer(), base)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", nil, fmt.Errorf("%s must be run from a local clone that owns %s", action, manifestPathLabel())

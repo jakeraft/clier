@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/internal/adapter/filesystem"
+	adaptergit "github.com/jakeraft/clier/internal/adapter/git"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/auth"
 	"github.com/jakeraft/clier/internal/config"
@@ -74,6 +76,14 @@ func configPath() string {
 		os.Exit(1)
 	}
 	return path
+}
+
+func newFileMaterializer() *filesystem.LocalFS {
+	return filesystem.New()
+}
+
+func newGitRepo() *adaptergit.ExecGit {
+	return adaptergit.New()
 }
 
 func newTerminal() *terminal.TmuxTerminal {

@@ -30,7 +30,7 @@ func newFetchUpstreamCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			copyRoot, _, err := appworkspace.FindManifestAbove(base)
+			copyRoot, _, err := appworkspace.FindManifestAbove(newFileMaterializer(), base)
 			if err != nil {
 				if os.IsNotExist(err) {
 					return errNotInWorkingCopy()
@@ -38,7 +38,7 @@ func newFetchUpstreamCmd() *cobra.Command {
 				return err
 			}
 
-			svc := appworkspace.NewService(newAPIClient())
+			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
 			result, err := svc.FetchUpstream(copyRoot)
 			if err != nil {
 				return err

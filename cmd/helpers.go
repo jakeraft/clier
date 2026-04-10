@@ -107,7 +107,7 @@ func resolveRuntimeDir() (string, error) {
 		return "", err
 	}
 
-	copyRoot, _, err := appworkspace.FindManifestAbove(base)
+	copyRoot, _, err := appworkspace.FindManifestAbove(newFileMaterializer(), base)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", nil

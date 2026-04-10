@@ -23,7 +23,7 @@ func newPullCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			copyRoot, _, err := appworkspace.FindManifestAbove(base)
+			copyRoot, _, err := appworkspace.FindManifestAbove(newFileMaterializer(), base)
 			if err != nil {
 				if os.IsNotExist(err) {
 					return errNotInWorkingCopy()
@@ -31,7 +31,7 @@ func newPullCmd() *cobra.Command {
 				return err
 			}
 
-			svc := appworkspace.NewService(newAPIClient())
+			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
 			manifest, err := svc.Pull(copyRoot, force)
 			if err != nil {
 				return err

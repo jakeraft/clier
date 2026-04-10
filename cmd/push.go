@@ -21,7 +21,7 @@ func newPushCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			copyRoot, _, err := appworkspace.FindManifestAbove(base)
+			copyRoot, _, err := appworkspace.FindManifestAbove(newFileMaterializer(), base)
 			if err != nil {
 				if os.IsNotExist(err) {
 					return errNotInWorkingCopy()
@@ -30,7 +30,7 @@ func newPushCmd() *cobra.Command {
 			}
 
 			login := requireLogin()
-			svc := appworkspace.NewService(newAPIClient())
+			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
 			result, err := svc.Push(copyRoot, login)
 			if err != nil {
 				return err

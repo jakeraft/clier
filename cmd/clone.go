@@ -32,7 +32,7 @@ func newCloneCmd() *cobra.Command {
 				return err
 			}
 
-			svc := appworkspace.NewService(client)
+			svc := appworkspace.NewService(client, newFileMaterializer(), newGitRepo())
 			manifest, err := cloneResolvedResource(svc, base, kind, owner, name)
 			if err != nil {
 				return err

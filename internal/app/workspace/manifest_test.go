@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/jakeraft/clier/internal/adapter/filesystem"
 )
 
 func TestSaveManifest(t *testing.T) {
@@ -39,7 +41,7 @@ func TestSaveManifest(t *testing.T) {
 		}},
 	}
 
-	if err := SaveManifest(base, meta); err != nil {
+	if err := SaveManifest(filesystem.New(), base, meta); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 
@@ -48,7 +50,7 @@ func TestSaveManifest(t *testing.T) {
 		t.Fatalf("stat manifest file: %v", err)
 	}
 
-	loaded, err := LoadManifest(base)
+	loaded, err := LoadManifest(filesystem.New(), base)
 	if err != nil {
 		t.Fatalf("LoadManifest: %v", err)
 	}
@@ -73,7 +75,7 @@ func TestLoadManifest_RequiresManifestPath(t *testing.T) {
 	t.Parallel()
 
 	base := t.TempDir()
-	if _, err := LoadManifest(base); err == nil {
+	if _, err := LoadManifest(filesystem.New(), base); err == nil {
 		t.Fatalf("expected manifest lookup to fail without manifest.json")
 	}
 }

@@ -21,7 +21,7 @@ func newStatusCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			copyRoot, _, err := appworkspace.FindManifestAbove(base)
+			copyRoot, _, err := appworkspace.FindManifestAbove(newFileMaterializer(), base)
 			if err != nil {
 				if os.IsNotExist(err) {
 					return errNotInWorkingCopy()
@@ -29,7 +29,7 @@ func newStatusCmd() *cobra.Command {
 				return err
 			}
 
-			svc := appworkspace.NewService(newAPIClient())
+			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
 			status, err := svc.Status(copyRoot)
 			if err != nil {
 				return err

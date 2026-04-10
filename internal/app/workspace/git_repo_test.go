@@ -6,13 +6,16 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/jakeraft/clier/internal/adapter/filesystem"
+	adaptergit "github.com/jakeraft/clier/internal/adapter/git"
 )
 
 func TestEnsureRepoDir_WithoutRepoURLCreatesDirectory(t *testing.T) {
 	t.Parallel()
 
 	repoDir := filepath.Join(t.TempDir(), "clier_todo")
-	if err := ensureRepoDir("", repoDir); err != nil {
+	if err := ensureRepoDir(filesystem.New(), adaptergit.New(), "", repoDir); err != nil {
 		t.Fatalf("ensureRepoDir: %v", err)
 	}
 
@@ -31,14 +34,14 @@ func TestEnsureRepoDir_ClonesRepoAndReusesSameOrigin(t *testing.T) {
 	repoURL := newTestRepo(t)
 	repoDir := filepath.Join(t.TempDir(), "clier_todo")
 
-	if err := ensureRepoDir(repoURL, repoDir); err != nil {
+	if err := ensureRepoDir(filesystem.New(), adaptergit.New(), repoURL, repoDir); err != nil {
 		t.Fatalf("ensureRepoDir initial checkout: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(repoDir, ".git")); err != nil {
 		t.Fatalf("stat .git: %v", err)
 	}
 
-	if err := ensureRepoDir(repoURL, repoDir); err != nil {
+	if err := ensureRepoDir(filesystem.New(), adaptergit.New(), repoURL, repoDir); err != nil {
 		t.Fatalf("ensureRepoDir second checkout: %v", err)
 	}
 }
@@ -50,10 +53,10 @@ func TestEnsureRepoDir_RejectsDifferentOrigin(t *testing.T) {
 	secondRepoURL := newTestRepo(t)
 	repoDir := filepath.Join(t.TempDir(), "clier_todo")
 
-	if err := ensureRepoDir(firstRepoURL, repoDir); err != nil {
+	if err := ensureRepoDir(filesystem.New(), adaptergit.New(), firstRepoURL, repoDir); err != nil {
 		t.Fatalf("ensureRepoDir initial checkout: %v", err)
 	}
-	if err := ensureRepoDir(secondRepoURL, repoDir); err == nil {
+	if err := ensureRepoDir(filesystem.New(), adaptergit.New(), secondRepoURL, repoDir); err == nil {
 		t.Fatalf("ensureRepoDir should reject a different origin")
 	}
 }
@@ -70,7 +73,7 @@ func TestEnsureRepoDir_RejectsNonGitDirectory(t *testing.T) {
 		t.Fatalf("write README: %v", err)
 	}
 
-	if err := ensureRepoDir(repoURL, repoDir); err == nil {
+	if err := ensureRepoDir(filesystem.New(), adaptergit.New(), repoURL, repoDir); err == nil {
 		t.Fatalf("ensureRepoDir should reject a non-git directory")
 	}
 }
@@ -89,7 +92,7 @@ func TestEnsureRepoDir_DoesNotTreatParentRepositoryAsTargetRepository(t *testing
 		t.Fatalf("mkdir target: %v", err)
 	}
 
-	err := ensureRepoDir(repoURL, target)
+	err := ensureRepoDir(filesystem.New(), adaptergit.New(), repoURL, target)
 	if err == nil {
 		t.Fatalf("ensureRepoDir should reject a non-git child directory inside another repository")
 	}

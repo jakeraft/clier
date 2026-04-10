@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jakeraft/clier/internal/adapter/filesystem"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
 
@@ -80,7 +81,7 @@ func TestResolveCloneBase_FailsWhenTargetAlreadyExists(t *testing.T) {
 
 func TestResolveCloneBase_FailsInsideExistingWorkingCopy(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "jakeraft", "reviewer")
-	if err := appworkspace.SaveManifest(base, &appworkspace.Manifest{
+	if err := appworkspace.SaveManifest(filesystem.New(), base, &appworkspace.Manifest{
 		Kind:  resourceKindMember,
 		Owner: "jakeraft",
 		Name:  "reviewer",
@@ -106,7 +107,7 @@ func TestResolveCloneBase_FailsInsideExistingWorkingCopy(t *testing.T) {
 
 func TestResolveCloneBase_FailsAtExistingTargetWorkingCopy(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "jakeraft", "reviewer")
-	if err := appworkspace.SaveManifest(base, &appworkspace.Manifest{
+	if err := appworkspace.SaveManifest(filesystem.New(), base, &appworkspace.Manifest{
 		Kind:  resourceKindMember,
 		Owner: "jakeraft",
 		Name:  "reviewer",
@@ -132,7 +133,7 @@ func TestResolveCloneBase_FailsAtExistingTargetWorkingCopy(t *testing.T) {
 
 func TestRequireCurrentCopyRoot_RequiresDirectOwner(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "jakeraft", "reviewer")
-	if err := appworkspace.SaveManifest(base, &appworkspace.Manifest{
+	if err := appworkspace.SaveManifest(filesystem.New(), base, &appworkspace.Manifest{
 		Kind:  resourceKindMember,
 		Owner: "jakeraft",
 		Name:  "reviewer",
@@ -162,7 +163,7 @@ func TestRequireCurrentCopyRoot_RequiresDirectOwner(t *testing.T) {
 
 func TestRequireCurrentCopyRoot_LoadsCurrentManifest(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "jakeraft", "reviewer")
-	if err := appworkspace.SaveManifest(base, &appworkspace.Manifest{
+	if err := appworkspace.SaveManifest(filesystem.New(), base, &appworkspace.Manifest{
 		Kind:  resourceKindMember,
 		Owner: "jakeraft",
 		Name:  "reviewer",
