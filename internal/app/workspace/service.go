@@ -462,6 +462,7 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 			Member: &MemberRuntimeMetadata{
 				ID:         member.ID,
 				Name:       member.Name,
+				AgentType:  member.AgentType,
 				Command:    member.Command,
 				GitRepoURL: member.GitRepoURL,
 			},
@@ -527,6 +528,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		metadata.Team.Members = append(metadata.Team.Members, TeamMemberRuntimeMetadata{
 			TeamMemberID: tm.ID,
 			Name:         tm.Name,
+			AgentType:    memberSnapshot.AgentType,
 			Command:      memberSnapshot.Command,
 			GitRepoURL:   memberSnapshot.GitRepoURL,
 		})

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 func TestLocalSettingsContent_UsesHomeClaudePath(t *testing.T) {
@@ -15,7 +17,8 @@ func TestLocalSettingsContent_UsesHomeClaudePath(t *testing.T) {
 	}
 	defer func() { _ = os.Setenv("HOME", oldHome) }()
 
-	content, err := localSettingsContent()
+	profile := domain.ProfileFor("claude")
+	content, err := localSettingsContent(profile)
 	if err != nil {
 		t.Fatalf("localSettingsContent: %v", err)
 	}

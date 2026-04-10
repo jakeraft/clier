@@ -10,6 +10,7 @@ import (
 	"time"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 // TmuxTerminal manages agent terminals using tmux.
@@ -70,7 +71,7 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
 		if m.Command == "" {
 			continue
 		}
-		if err := t.waitReady(sess, strconv.Itoa(i), 60*time.Second); err != nil {
+		if err := t.waitReady(sess, strconv.Itoa(i), 60*time.Second, m.AgentType); err != nil {
 			return fmt.Errorf("wait ready %s: %w", m.Name, err)
 		}
 	}
@@ -90,7 +91,7 @@ func (t *TmuxTerminal) Send(plan *apprun.RunPlan, teamMemberID int64, text strin
 func (t *TmuxTerminal) Terminate(plan *apprun.RunPlan) error {
 	sess := plan.Session
 	// Gracefully exit each agent before killing the session.
-	t.exitAllWindows(sess)
+	t.exitAllWindows(sess, plan.Members)
 	_, _ = t.runFn("kill-session", "-t", sess)
 	return nil
 }
@@ -111,17 +112,14 @@ func (t *TmuxTerminal) Attach(plan *apprun.RunPlan, memberID *int64) error {
 	return t.attachFn(sess)
 }
 
-// exitAllWindows sends /exit to every window so agents shut down gracefully.
-func (t *TmuxTerminal) exitAllWindows(sess string) {
-	out, err := t.runFn("list-windows", "-t", sess, "-F", "#{window_index}")
-	if err != nil {
-		return
-	}
-	for win := range strings.SplitSeq(strings.TrimSpace(out), "\n") {
-		win = strings.TrimSpace(win)
-		if win != "" {
-			_ = t.sendKeys(sess, win, "/exit")
+// exitAllWindows sends the agent-specific exit command to every member window.
+func (t *TmuxTerminal) exitAllWindows(sess string, members []apprun.MemberTerminal) {
+	for _, m := range members {
+		profile := domain.ProfileFor(m.AgentType)
+		if profile.ExitCommand == "" {
+			continue
 		}
+		_ = t.sendKeys(sess, strconv.Itoa(m.Window), profile.ExitCommand)
 	}
 }
 
@@ -137,26 +135,22 @@ func (t *TmuxTerminal) setupMemberWindow(sess, win string, m apprun.MemberTermin
 	return nil
 }
 
-// waitReady polls the pane title until Claude Code's TUI marker appears.
-// Claude Code sets the pane title via OSC escape sequences:
-// - Braille characters (U+2800-U+28FF) while working/starting
-// - Done markers when idle
-func (t *TmuxTerminal) waitReady(sess, win string, timeout time.Duration) error {
+// waitReady polls the pane title until the agent's TUI marker appears.
+func (t *TmuxTerminal) waitReady(sess, win string, timeout time.Duration, agentType string) error {
+	profile := domain.ProfileFor(agentType)
+	if profile.ReadyMarker == "" {
+		return nil
+	}
 	target := sess + ":" + win
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		title, err := t.runFn("display-message", "-p", "-t", target, "#{pane_title}")
-		if err == nil && hasClaudeMarker(title) {
+		if err == nil && strings.Contains(title, profile.ReadyMarker) {
 			return nil
 		}
 		t.sleep(500 * time.Millisecond)
 	}
 	return fmt.Errorf("not ready after %v", timeout)
-}
-
-// hasClaudeMarker returns true if the pane title indicates Claude Code is running.
-func hasClaudeMarker(title string) bool {
-	return strings.Contains(title, "Claude")
 }
 
 // tmux command helpers

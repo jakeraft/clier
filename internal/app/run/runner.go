@@ -33,6 +33,7 @@ type RunPlan struct {
 type MemberTerminal struct {
 	TeamMemberID int64  `json:"team_member_id"`
 	Name         string `json:"name"`
+	AgentType    string `json:"agent_type"`
 	Window       int    `json:"window"`
 	Memberspace  string `json:"memberspace"`
 	Cwd          string `json:"cwd"`

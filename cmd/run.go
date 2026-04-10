@@ -112,6 +112,7 @@ func newRunStartCmd() *cobra.Command {
 				terminalPlans := []apprun.MemberTerminal{{
 					TeamMemberID: member.ID,
 					Name:         member.Name,
+					AgentType:    member.AgentType,
 					Window:       0,
 					Memberspace:  copyRoot,
 					Cwd:          copyRoot,
@@ -138,6 +139,7 @@ func newRunStartCmd() *cobra.Command {
 					terminalPlans = append(terminalPlans, apprun.MemberTerminal{
 						TeamMemberID: member.TeamMemberID,
 						Name:         member.Name,
+						AgentType:    member.AgentType,
 						Window:       i,
 						Memberspace:  memberBase,
 						Cwd:          memberBase,

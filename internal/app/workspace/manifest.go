@@ -48,6 +48,7 @@ type RuntimeMetadata struct {
 type MemberRuntimeMetadata struct {
 	ID         int64  `json:"id"`
 	Name       string `json:"name"`
+	AgentType  string `json:"agent_type"`
 	Command    string `json:"command"`
 	GitRepoURL string `json:"git_repo_url,omitempty"`
 }
@@ -61,6 +62,7 @@ type TeamRuntimeMetadata struct {
 type TeamMemberRuntimeMetadata struct {
 	TeamMemberID int64  `json:"team_member_id"`
 	Name         string `json:"name"`
+	AgentType    string `json:"agent_type"`
 	Command      string `json:"command"`
 	GitRepoURL   string `json:"git_repo_url,omitempty"`
 }

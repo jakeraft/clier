@@ -120,9 +120,7 @@ func TestTmuxTerminal_Terminate(t *testing.T) {
 			Window:       2,
 		}},
 	}
-	runner := &fakeRunner{output: map[string]string{
-		"list-windows": "0\n1\n2",
-	}}
+	runner := &fakeRunner{}
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
 	if err := tm.Terminate(plan); err != nil {
@@ -209,34 +207,13 @@ func TestTmuxTerminal_Attach(t *testing.T) {
 	})
 }
 
-func TestHasClaudeMarker(t *testing.T) {
-	tests := []struct {
-		name  string
-		title string
-		want  bool
-	}{
-		{"idle title", "✳ Claude Code", true},
-		{"working title", "⠋ Claude Code", true},
-		{"empty", "", false},
-		{"plain shell", "zsh", false},
-		{"version number", "2.1.92", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := hasClaudeMarker(tt.title); got != tt.want {
-				t.Errorf("hasClaudeMarker(%q) = %v, want %v", tt.title, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestTmuxTerminal_WaitReady_Timeout(t *testing.T) {
 	runner := &fakeRunner{output: map[string]string{
 		"display-message": "zsh",
 	}}
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
-	err := tm.waitReady("sess", "0", 10*time.Millisecond)
+	err := tm.waitReady("sess", "0", 10*time.Millisecond, "claude")
 	if err == nil {
 		t.Fatal("expected timeout error")
 	}
