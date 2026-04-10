@@ -36,6 +36,8 @@ func resolveAgentPaths(base string, profile domain.AgentProfile) agentPaths {
 type Writer struct {
 	client *api.Client
 	owner  string
+	fs     FileMaterializer
+	git    GitRepo
 }
 
 type memberWriteOptions struct {
@@ -43,8 +45,8 @@ type memberWriteOptions struct {
 }
 
 // NewWriter creates a Writer that uses the given API client and owner.
-func NewWriter(client *api.Client, owner string) *Writer {
-	return &Writer{client: client, owner: owner}
+func NewWriter(client *api.Client, owner string, fs FileMaterializer, git GitRepo) *Writer {
+	return &Writer{client: client, owner: owner, fs: fs, git: git}
 }
 
 // MaterializeMemberFiles writes the local-clone files for a single member.
@@ -68,10 +70,10 @@ func (w *Writer) materializeMemberFilesFromResponse(base string, member *api.Mem
 	profile := domain.ProfileFor(member.AgentType)
 	paths := resolveAgentPaths(base, profile)
 
-	if err := ensureRepoDir(member.GitRepoURL, base); err != nil {
+	if err := ensureRepoDir(w.fs, w.git, member.GitRepoURL, base); err != nil {
 		return fmt.Errorf("materialize repo dir: %w", err)
 	}
-	if err := writeWorkLogProtocol(base); err != nil {
+	if err := w.writeWorkLogProtocol(base); err != nil {
 		return fmt.Errorf("write work log protocol: %w", err)
 	}
 
@@ -90,7 +92,7 @@ func (w *Writer) materializeMemberFilesFromResponse(base string, member *api.Mem
 		} else {
 			content = ComposeMemberClaudeMd(content)
 		}
-		if err := writeFile(paths.instructionFile, content); err != nil {
+		if err := w.writeFile(paths.instructionFile, content); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
 	} else {
@@ -98,7 +100,7 @@ func (w *Writer) materializeMemberFilesFromResponse(base string, member *api.Mem
 		if opts.TeamMemberName != "" {
 			content = ComposeTeamClaudeMd(opts.TeamMemberName, "")
 		}
-		if err := writeFile(paths.instructionFile, content); err != nil {
+		if err := w.writeFile(paths.instructionFile, content); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
 	}
@@ -113,11 +115,11 @@ func (w *Writer) materializeMemberFilesFromResponse(base string, member *api.Mem
 		if err != nil {
 			return fmt.Errorf("decode claude settings %s/%s@%d: %w", member.ClaudeSettings.Owner, member.ClaudeSettings.Name, member.ClaudeSettings.Version, err)
 		}
-		if err := writeFile(paths.settingsFile, content); err != nil {
+		if err := w.writeFile(paths.settingsFile, content); err != nil {
 			return fmt.Errorf("write settings: %w", err)
 		}
 	}
-	if err := writeLocalSettings(base, profile); err != nil {
+	if err := w.writeLocalSettings(base, profile); err != nil {
 		return fmt.Errorf("write local settings: %w", err)
 	}
 
@@ -132,7 +134,7 @@ func (w *Writer) materializeMemberFilesFromResponse(base string, member *api.Mem
 			return fmt.Errorf("decode skill %s/%s@%d: %w", skillRef.Owner, skillRef.Name, skillRef.Version, err)
 		}
 		skillPath := filepath.Join(paths.skillsDir, skillRef.Name, "SKILL.md")
-		if err := writeFile(skillPath, content); err != nil {
+		if err := w.writeFile(skillPath, content); err != nil {
 			return fmt.Errorf("write skill %s: %w", skillRef.Name, err)
 		}
 	}
@@ -189,7 +191,7 @@ func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
 		}
 		protocol := BuildAgentFacingTeamProtocol(team.Name, tm.Name, relMap[tm.ID], membersByID)
 		protocolPath := filepath.Join(memberBase, ".clier", TeamProtocolFileName(tm.Name))
-		if err := writeFile(protocolPath, protocol); err != nil {
+		if err := w.writeFile(protocolPath, protocol); err != nil {
 			return fmt.Errorf("write protocol for %s: %w", tm.Name, err)
 		}
 	}
@@ -209,14 +211,11 @@ func (w *Writer) loadPinnedMemberResponse(owner, name string, version int) (*api
 	return memberResponseFromSnapshot(owner, name, version, snapshot), nil
 }
 
-func writeFile(path, content string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return err
-	}
-	return os.WriteFile(path, []byte(content), 0644)
+func (w *Writer) writeFile(path, content string) error {
+	return w.fs.WriteFile(path, []byte(content))
 }
 
-func writeLocalSettings(base string, profile domain.AgentProfile) error {
+func (w *Writer) writeLocalSettings(base string, profile domain.AgentProfile) error {
 	if profile.LocalSettingsFile == "" {
 		return nil
 	}
@@ -224,11 +223,11 @@ func writeLocalSettings(base string, profile domain.AgentProfile) error {
 	if err != nil {
 		return err
 	}
-	return writeFile(filepath.Join(base, profile.SettingsDir, profile.LocalSettingsFile), content)
+	return w.writeFile(filepath.Join(base, profile.SettingsDir, profile.LocalSettingsFile), content)
 }
 
-func writeWorkLogProtocol(base string) error {
-	return writeFile(filepath.Join(base, ".clier", workLogProtocolFileName), BuildAgentFacingWorkLogProtocol())
+func (w *Writer) writeWorkLogProtocol(base string) error {
+	return w.writeFile(filepath.Join(base, ".clier", workLogProtocolFileName), BuildAgentFacingWorkLogProtocol())
 }
 
 func localSettingsContent(profile domain.AgentProfile) (string, error) {

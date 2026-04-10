@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -60,7 +59,7 @@ func loadFetchedUpstreamVersion(manifest *Manifest) (int, error) {
 }
 
 func (s *Service) FetchUpstream(base string) (*FetchUpstreamResult, error) {
-	manifest, err := LoadManifest(base)
+	manifest, err := LoadManifest(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +75,7 @@ func (s *Service) FetchUpstream(base string) (*FetchUpstreamResult, error) {
 	now := time.Now().UTC()
 	manifest.Upstream.FetchedVersion = &latestVersion
 	manifest.Upstream.FetchedAt = &now
-	if err := SaveManifest(base, manifest); err != nil {
+	if err := SaveManifest(s.fs, base, manifest); err != nil {
 		return nil, err
 	}
 
@@ -91,7 +90,7 @@ func (s *Service) FetchUpstream(base string) (*FetchUpstreamResult, error) {
 }
 
 func (s *Service) DiffFetchedUpstream(base string) (*DiffUpstreamResult, error) {
-	manifest, err := LoadManifest(base)
+	manifest, err := LoadManifest(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +103,7 @@ func (s *Service) DiffFetchedUpstream(base string) (*DiffUpstreamResult, error) 
 	if err != nil {
 		return nil, err
 	}
-	diff, hasChanges, err := renderProjectionDiff(localPath, UpstreamProjectionPath(base))
+	diff, hasChanges, err := s.renderProjectionDiff(localPath, UpstreamProjectionPath(base))
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +119,7 @@ func (s *Service) DiffFetchedUpstream(base string) (*DiffUpstreamResult, error) 
 }
 
 func (s *Service) MergeFetchedUpstream(base string) (*MergeUpstreamResult, error) {
-	manifest, err := LoadManifest(base)
+	manifest, err := LoadManifest(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +128,7 @@ func (s *Service) MergeFetchedUpstream(base string) (*MergeUpstreamResult, error
 		return nil, err
 	}
 
-	modified, err := ModifiedTrackedResources(base)
+	modified, err := s.ModifiedTrackedResources(base)
 	if err != nil {
 		return nil, err
 	}
@@ -145,11 +144,11 @@ func (s *Service) MergeFetchedUpstream(base string) (*MergeUpstreamResult, error
 	if err != nil {
 		return nil, err
 	}
-	data, err := os.ReadFile(UpstreamProjectionPath(base))
+	data, err := s.fs.ReadFile(UpstreamProjectionPath(base))
 	if err != nil {
 		return nil, fmt.Errorf("read fetched upstream projection: %w", err)
 	}
-	if err := os.WriteFile(localPath, data, 0o644); err != nil {
+	if err := s.fs.WriteFile(localPath, data); err != nil {
 		return nil, fmt.Errorf("write merged projection: %w", err)
 	}
 
@@ -177,7 +176,7 @@ func (s *Service) writeFetchedUpstreamProjection(base string, manifest *Manifest
 		if err != nil {
 			return 0, err
 		}
-		if err := WriteMemberProjection(UpstreamProjectionPath(base), projection); err != nil {
+		if err := WriteMemberProjection(s.fs, UpstreamProjectionPath(base), projection); err != nil {
 			return 0, err
 		}
 		return version, nil
@@ -193,7 +192,7 @@ func (s *Service) writeFetchedUpstreamProjection(base string, manifest *Manifest
 		if err != nil {
 			return 0, err
 		}
-		if err := WriteTeamProjection(UpstreamProjectionPath(base), projection); err != nil {
+		if err := WriteTeamProjection(s.fs, UpstreamProjectionPath(base), projection); err != nil {
 			return 0, err
 		}
 		return version, nil
@@ -257,59 +256,37 @@ func (s *Service) fetchUpstreamTeamProjection(owner, name string, version int) (
 	return snapshot.Version, projection, nil
 }
 
-func renderProjectionDiff(localPath, upstreamPath string) (string, bool, error) {
-	if _, err := os.Stat(upstreamPath); err != nil {
+func (s *Service) renderProjectionDiff(localPath, upstreamPath string) (string, bool, error) {
+	if _, err := s.fs.Stat(upstreamPath); err != nil {
 		if os.IsNotExist(err) {
 			return "", false, errors.New("no fetched upstream snapshot; run `clier fetch upstream` first")
 		}
 		return "", false, fmt.Errorf("stat fetched upstream projection: %w", err)
 	}
 
-	tempDir, err := os.MkdirTemp("", "clier-upstream-diff-*")
+	tempDir, err := s.fs.MkdirTemp("clier-upstream-diff-*")
 	if err != nil {
 		return "", false, fmt.Errorf("create temp diff dir: %w", err)
 	}
-	defer func() {
-		_ = os.RemoveAll(tempDir)
-	}()
+	defer func() { _ = s.fs.RemoveAll(tempDir) }()
 
 	localTempPath := filepath.Join(tempDir, "local.json")
 	upstreamTempPath := filepath.Join(tempDir, "upstream.json")
 
-	if err := copyFile(localPath, localTempPath); err != nil {
-		return "", false, err
-	}
-	if err := copyFile(upstreamPath, upstreamTempPath); err != nil {
-		return "", false, err
-	}
-
-	cmd := exec.Command("git", "diff", "--no-index", "--no-color", "--", localTempPath, upstreamTempPath)
-	output, err := cmd.CombinedOutput()
-	switch {
-	case err == nil:
-		return string(output), false, nil
-	case diffCommandExitCode(err) == 1:
-		return string(output), true, nil
-	default:
-		return "", false, fmt.Errorf("render upstream diff: %w", err)
-	}
-}
-
-func copyFile(src, dst string) error {
-	data, err := os.ReadFile(src)
+	localData, err := s.fs.ReadFile(localPath)
 	if err != nil {
-		return fmt.Errorf("read file %s: %w", src, err)
+		return "", false, fmt.Errorf("read file %s: %w", localPath, err)
 	}
-	if err := os.WriteFile(dst, data, 0o644); err != nil {
-		return fmt.Errorf("write file %s: %w", dst, err)
+	if err := s.fs.WriteFile(localTempPath, localData); err != nil {
+		return "", false, fmt.Errorf("write file %s: %w", localTempPath, err)
 	}
-	return nil
-}
+	upstreamData, err := s.fs.ReadFile(upstreamPath)
+	if err != nil {
+		return "", false, fmt.Errorf("read file %s: %w", upstreamPath, err)
+	}
+	if err := s.fs.WriteFile(upstreamTempPath, upstreamData); err != nil {
+		return "", false, fmt.Errorf("write file %s: %w", upstreamTempPath, err)
+	}
 
-func diffCommandExitCode(err error) int {
-	var exitErr *exec.ExitError
-	if errors.As(err, &exitErr) {
-		return exitErr.ExitCode()
-	}
-	return -1
+	return s.git.Diff(localTempPath, upstreamTempPath)
 }

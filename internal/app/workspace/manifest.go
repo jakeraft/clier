@@ -71,9 +71,9 @@ func ManifestPath(base string) string {
 	return filepath.Join(base, ".clier", ManifestFile)
 }
 
-func FindManifestPath(base string) (string, error) {
+func FindManifestPath(fs FileMaterializer, base string) (string, error) {
 	path := ManifestPath(base)
-	if _, err := os.Stat(path); err == nil {
+	if _, err := fs.Stat(path); err == nil {
 		return path, nil
 	} else if err != nil && !os.IsNotExist(err) {
 		return "", fmt.Errorf("stat working-copy manifest: %w", err)
@@ -81,14 +81,14 @@ func FindManifestPath(base string) (string, error) {
 	return "", os.ErrNotExist
 }
 
-func FindManifestAbove(start string) (string, *Manifest, error) {
+func FindManifestAbove(fs FileMaterializer, start string) (string, *Manifest, error) {
 	base, err := filepath.Abs(start)
 	if err != nil {
 		return "", nil, fmt.Errorf("resolve working-copy base: %w", err)
 	}
 	for dir := base; ; dir = filepath.Dir(dir) {
-		if _, err := FindManifestPath(dir); err == nil {
-			manifest, loadErr := LoadManifest(dir)
+		if _, err := FindManifestPath(fs, dir); err == nil {
+			manifest, loadErr := LoadManifest(fs, dir)
 			if loadErr != nil {
 				return "", nil, loadErr
 			}
@@ -102,9 +102,9 @@ func FindManifestAbove(start string) (string, *Manifest, error) {
 	return "", nil, os.ErrNotExist
 }
 
-func SaveManifest(base string, manifest *Manifest) error {
+func SaveManifest(fs FileMaterializer, base string, manifest *Manifest) error {
 	dir := filepath.Join(base, ".clier")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := fs.MkdirAll(dir); err != nil {
 		return fmt.Errorf("create manifest dir: %w", err)
 	}
 
@@ -112,21 +112,21 @@ func SaveManifest(base string, manifest *Manifest) error {
 	if err != nil {
 		return fmt.Errorf("marshal manifest: %w", err)
 	}
-	if err := os.WriteFile(ManifestPath(base), data, 0o644); err != nil {
+	if err := fs.WriteFile(ManifestPath(base), data); err != nil {
 		return fmt.Errorf("write manifest: %w", err)
 	}
 	return nil
 }
 
-func LoadManifest(base string) (*Manifest, error) {
-	path, err := FindManifestPath(base)
+func LoadManifest(fs FileMaterializer, base string) (*Manifest, error) {
+	path, err := FindManifestPath(fs, base)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, fmt.Errorf("read manifest: %w", err)
 		}
 		return nil, err
 	}
-	data, err := os.ReadFile(path)
+	data, err := fs.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read manifest: %w", err)
 	}

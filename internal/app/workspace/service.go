@@ -16,6 +16,8 @@ import (
 
 type Service struct {
 	client *api.Client
+	fs     FileMaterializer
+	git    GitRepo
 }
 
 type Status struct {
@@ -90,8 +92,8 @@ func preservedUpstreamState(existing, current *UpstreamMetadata) *UpstreamMetada
 	return current
 }
 
-func NewService(client *api.Client) *Service {
-	return &Service{client: client}
+func NewService(client *api.Client, fs FileMaterializer, git GitRepo) *Service {
+	return &Service{client: client, fs: fs, git: git}
 }
 
 func (s *Service) CloneMember(base, owner, name string) (*Manifest, error) {
@@ -103,7 +105,7 @@ func (s *Service) CloneTeam(base, owner, name string) (*Manifest, error) {
 }
 
 func (s *Service) Pull(base string, force bool) (*Manifest, error) {
-	manifest, err := LoadManifest(base)
+	manifest, err := LoadManifest(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +114,7 @@ func (s *Service) Pull(base string, force bool) (*Manifest, error) {
 		return nil, err
 	}
 	pulled.Upstream = preservedUpstreamState(manifest.Upstream, pulled.Upstream)
-	if err := SaveManifest(base, pulled); err != nil {
+	if err := SaveManifest(s.fs, base, pulled); err != nil {
 		return nil, err
 	}
 	return pulled, nil
@@ -120,7 +122,7 @@ func (s *Service) Pull(base string, force bool) (*Manifest, error) {
 
 func (s *Service) pullTarget(base, kind, owner, name string, force bool) (*Manifest, error) {
 	if !force {
-		modified, err := ModifiedTrackedResources(base)
+		modified, err := s.ModifiedTrackedResources(base)
 		if err != nil {
 			return nil, err
 		}
@@ -145,15 +147,15 @@ func (s *Service) pullTarget(base, kind, owner, name string, force bool) (*Manif
 }
 
 func (s *Service) Status(base string) (*Status, error) {
-	manifest, err := LoadManifest(base)
+	manifest, err := LoadManifest(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
-	tracked, modifiedCount, err := trackedStatuses(base, manifest)
+	tracked, modifiedCount, err := s.trackedStatuses(base, manifest)
 	if err != nil {
 		return nil, err
 	}
-	runs, err := runSummary(base)
+	runs, err := s.runSummary(base)
 	if err != nil {
 		return nil, err
 	}
@@ -176,11 +178,11 @@ func (s *Service) Status(base string) (*Status, error) {
 }
 
 func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
-	manifest, err := LoadManifest(base)
+	manifest, err := LoadManifest(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
-	modified, err := ModifiedTrackedResources(base)
+	modified, err := s.ModifiedTrackedResources(base)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +202,7 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 
 		switch resource.Kind {
 		case "member":
-			projection, err := LoadMemberProjection(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
+			projection, err := LoadMemberProjection(s.fs, filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
 			if err != nil {
 				return nil, err
 			}
@@ -223,7 +225,7 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 				targetName = updated.Name
 			}
 		case "team":
-			projection, err := LoadTeamProjection(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
+			projection, err := LoadTeamProjection(s.fs, filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
 			if err != nil {
 				return nil, err
 			}
@@ -246,7 +248,7 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 				targetName = updated.Name
 			}
 		case "claude-md":
-			content, err := serverClaudeMdContent(base, manifest, resource)
+			content, err := s.serverClaudeMdContent(base, manifest, resource)
 			if err != nil {
 				return nil, err
 			}
@@ -264,7 +266,7 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 				return nil, err
 			}
 		case "claude-settings":
-			content, err := os.ReadFile(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
+			content, err := s.fs.ReadFile(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
 			if err != nil {
 				return nil, fmt.Errorf("read local resource %s: %w", resource.LocalPath, err)
 			}
@@ -282,7 +284,7 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 				return nil, err
 			}
 		case "skill":
-			content, err := os.ReadFile(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
+			content, err := s.fs.ReadFile(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
 			if err != nil {
 				return nil, fmt.Errorf("read local resource %s: %w", resource.LocalPath, err)
 			}
@@ -310,15 +312,15 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 	return &PushResult{Status: "pushed", Pushed: len(modified), PulledAfterPush: true}, nil
 }
 
-func ModifiedTrackedResources(base string) ([]TrackedResource, error) {
-	manifest, err := LoadManifest(base)
+func (s *Service) ModifiedTrackedResources(base string) ([]TrackedResource, error) {
+	manifest, err := LoadManifest(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
 
 	var modified []TrackedResource
 	for _, resource := range manifest.TrackedResources {
-		sum, err := fileHash(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
+		sum, err := s.fileHash(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
 		if err != nil {
 			return nil, err
 		}
@@ -329,11 +331,11 @@ func ModifiedTrackedResources(base string) ([]TrackedResource, error) {
 	return modified, nil
 }
 
-func trackedStatuses(base string, manifest *Manifest) ([]TrackedStatus, int, error) {
+func (s *Service) trackedStatuses(base string, manifest *Manifest) ([]TrackedStatus, int, error) {
 	statuses := make([]TrackedStatus, 0, len(manifest.TrackedResources))
 	modifiedCount := 0
 	for _, resource := range manifest.TrackedResources {
-		sum, err := fileHash(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
+		sum, err := s.fileHash(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
 		if err != nil {
 			return nil, 0, err
 		}
@@ -356,9 +358,9 @@ func trackedStatuses(base string, manifest *Manifest) ([]TrackedStatus, int, err
 	return statuses, modifiedCount, nil
 }
 
-func runSummary(base string) (RunStatusSummary, error) {
+func (s *Service) runSummary(base string) (RunStatusSummary, error) {
 	dir := filepath.Join(base, ".clier")
-	entries, err := os.ReadDir(dir)
+	entries, err := s.fs.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return RunStatusSummary{}, nil
@@ -386,7 +388,7 @@ func runSummary(base string) (RunStatusSummary, error) {
 }
 
 func (s *Service) materializeMember(base, owner, name string) (*Manifest, error) {
-	writer := NewWriter(s.client, owner)
+	writer := NewWriter(s.client, owner, s.fs, s.git)
 	if err := writer.MaterializeMemberFiles(base, name); err != nil {
 		return nil, err
 	}
@@ -396,7 +398,7 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 		return nil, fmt.Errorf("get member %s/%s: %w", owner, name, err)
 	}
 	projection := memberProjectionFromResponse(member)
-	if err := WriteMemberProjection(MemberProjectionPath(base), projection); err != nil {
+	if err := WriteMemberProjection(s.fs, MemberProjectionPath(base), projection); err != nil {
 		return nil, err
 	}
 
@@ -445,7 +447,7 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 			Editable:      true,
 		})
 	}
-	if err := populateBaseHashes(base, tracked); err != nil {
+	if err := s.populateBaseHashes(base, tracked); err != nil {
 		return nil, err
 	}
 
@@ -468,14 +470,14 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 			},
 		},
 	}
-	if err := SaveManifest(base, manifest); err != nil {
+	if err := SaveManifest(s.fs, base, manifest); err != nil {
 		return nil, err
 	}
 	return manifest, nil
 }
 
 func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
-	writer := NewWriter(s.client, owner)
+	writer := NewWriter(s.client, owner, s.fs, s.git)
 	if err := writer.MaterializeTeamFiles(base, name); err != nil {
 		return nil, err
 	}
@@ -484,7 +486,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get team %s/%s: %w", owner, name, err)
 	}
-	if err := WriteTeamProjection(TeamProjectionPath(base), teamProjectionFromResponse(team)); err != nil {
+	if err := WriteTeamProjection(s.fs, TeamProjectionPath(base), teamProjectionFromResponse(team)); err != nil {
 		return nil, err
 	}
 
@@ -514,7 +516,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 			return nil, fmt.Errorf("decode member %s/%s@%d: %w", tm.Member.Owner, tm.Member.Name, tm.Member.Version, err)
 		}
 		member := memberResponseFromSnapshot(tm.Member.Owner, tm.Member.Name, tm.Member.Version, memberSnapshot)
-		if err := WriteMemberProjection(TeamMemberProjectionPath(base, tm.Name), memberProjectionFromResponse(member)); err != nil {
+		if err := WriteMemberProjection(s.fs, TeamMemberProjectionPath(base, tm.Name), memberProjectionFromResponse(member)); err != nil {
 			return nil, err
 		}
 		tracked = append(tracked, TrackedResource{
@@ -573,7 +575,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		}
 	}
 
-	if err := populateBaseHashes(base, tracked); err != nil {
+	if err := s.populateBaseHashes(base, tracked); err != nil {
 		return nil, err
 	}
 	manifest := &Manifest{
@@ -587,7 +589,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		GeneratedFiles:   normalizePaths(generated),
 		Runtime:          metadata,
 	}
-	if err := SaveManifest(base, manifest); err != nil {
+	if err := SaveManifest(s.fs, base, manifest); err != nil {
 		return nil, err
 	}
 	return manifest, nil
@@ -730,9 +732,9 @@ func teamProjectionFromResponse(team *api.TeamResponse) *TeamProjection {
 	return projection
 }
 
-func populateBaseHashes(base string, tracked []TrackedResource) error {
+func (s *Service) populateBaseHashes(base string, tracked []TrackedResource) error {
 	for i := range tracked {
-		sum, err := fileHash(filepath.Join(base, filepath.FromSlash(tracked[i].LocalPath)))
+		sum, err := s.fileHash(filepath.Join(base, filepath.FromSlash(tracked[i].LocalPath)))
 		if err != nil {
 			return err
 		}
@@ -754,8 +756,8 @@ func normalizePaths(paths []string) []string {
 	return slices.Compact(out)
 }
 
-func fileHash(path string) (string, error) {
-	data, err := os.ReadFile(path)
+func (s *Service) fileHash(path string) (string, error) {
+	data, err := s.fs.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("read file %s: %w", path, err)
 	}
@@ -774,8 +776,8 @@ func versionsMatch(expected, actual *int) bool {
 	}
 }
 
-func serverClaudeMdContent(base string, manifest *Manifest, resource TrackedResource) (string, error) {
-	data, err := os.ReadFile(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
+func (s *Service) serverClaudeMdContent(base string, manifest *Manifest, resource TrackedResource) (string, error) {
+	data, err := s.fs.ReadFile(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
 	if err != nil {
 		return "", fmt.Errorf("read local resource %s: %w", resource.LocalPath, err)
 	}

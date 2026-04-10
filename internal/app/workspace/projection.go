@@ -3,7 +3,6 @@ package workspace
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 )
 
@@ -69,46 +68,43 @@ func UpstreamProjectionPath(base string) string {
 	return filepath.Join(base, ".clier", "upstream.json")
 }
 
-func WriteMemberProjection(path string, projection *MemberProjection) error {
-	return writeJSONProjection(path, projection)
+func WriteMemberProjection(fs FileMaterializer, path string, projection *MemberProjection) error {
+	return writeJSONProjection(fs, path, projection)
 }
 
-func WriteTeamProjection(path string, projection *TeamProjection) error {
-	return writeJSONProjection(path, projection)
+func WriteTeamProjection(fs FileMaterializer, path string, projection *TeamProjection) error {
+	return writeJSONProjection(fs, path, projection)
 }
 
-func LoadMemberProjection(path string) (*MemberProjection, error) {
+func LoadMemberProjection(fs FileMaterializer, path string) (*MemberProjection, error) {
 	var projection MemberProjection
-	if err := loadJSONProjection(path, &projection); err != nil {
+	if err := loadJSONProjection(fs, path, &projection); err != nil {
 		return nil, err
 	}
 	return &projection, nil
 }
 
-func LoadTeamProjection(path string) (*TeamProjection, error) {
+func LoadTeamProjection(fs FileMaterializer, path string) (*TeamProjection, error) {
 	var projection TeamProjection
-	if err := loadJSONProjection(path, &projection); err != nil {
+	if err := loadJSONProjection(fs, path, &projection); err != nil {
 		return nil, err
 	}
 	return &projection, nil
 }
 
-func writeJSONProjection(path string, payload any) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("create projection dir: %w", err)
-	}
+func writeJSONProjection(fs FileMaterializer, path string, payload any) error {
 	data, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal projection: %w", err)
 	}
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := fs.WriteFile(path, data); err != nil {
 		return fmt.Errorf("write projection: %w", err)
 	}
 	return nil
 }
 
-func loadJSONProjection(path string, payload any) error {
-	data, err := os.ReadFile(path)
+func loadJSONProjection(fs FileMaterializer, path string, payload any) error {
+	data, err := fs.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("read projection: %w", err)
 	}
