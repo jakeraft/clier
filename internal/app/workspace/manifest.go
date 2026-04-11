@@ -103,11 +103,6 @@ func FindManifestAbove(fs FileMaterializer, start string) (string, *Manifest, er
 }
 
 func SaveManifest(fs FileMaterializer, base string, manifest *Manifest) error {
-	dir := filepath.Join(base, ".clier")
-	if err := fs.MkdirAll(dir); err != nil {
-		return fmt.Errorf("create manifest dir: %w", err)
-	}
-
 	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal manifest: %w", err)
