@@ -97,7 +97,7 @@ func writeJSONProjection(fs FileMaterializer, path string, payload any) error {
 	if err != nil {
 		return fmt.Errorf("marshal projection: %w", err)
 	}
-	if err := fs.WriteFile(path, data); err != nil {
+	if err := fs.EnsureFile(path, data); err != nil {
 		return fmt.Errorf("write projection: %w", err)
 	}
 	return nil

@@ -212,7 +212,7 @@ func (w *Writer) loadPinnedMemberResponse(owner, name string, version int) (*api
 }
 
 func (w *Writer) writeFile(path, content string) error {
-	return w.fs.WriteFile(path, []byte(content))
+	return w.fs.EnsureFile(path, []byte(content))
 }
 
 func (w *Writer) writeLocalSettings(base string, profile domain.AgentProfile) error {

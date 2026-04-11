@@ -6,14 +6,14 @@ import (
 	"testing"
 )
 
-func TestLocalFS_WriteAndReadFile(t *testing.T) {
+func TestLocalFS_EnsureAndReadFile(t *testing.T) {
 	t.Parallel()
 	fs := New()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sub", "file.txt")
 
-	if err := fs.WriteFile(path, []byte("hello")); err != nil {
-		t.Fatalf("WriteFile: %v", err)
+	if err := fs.EnsureFile(path, []byte("hello")); err != nil {
+		t.Fatalf("EnsureFile: %v", err)
 	}
 	data, err := fs.ReadFile(path)
 	if err != nil {
@@ -24,14 +24,14 @@ func TestLocalFS_WriteAndReadFile(t *testing.T) {
 	}
 }
 
-func TestLocalFS_WriteFileCreatesParentDirs(t *testing.T) {
+func TestLocalFS_EnsureFileCreatesParentDirs(t *testing.T) {
 	t.Parallel()
 	fs := New()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "a", "b", "c", "file.txt")
 
-	if err := fs.WriteFile(path, []byte("nested")); err != nil {
-		t.Fatalf("WriteFile: %v", err)
+	if err := fs.EnsureFile(path, []byte("nested")); err != nil {
+		t.Fatalf("EnsureFile: %v", err)
 	}
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("file not created: %v", err)

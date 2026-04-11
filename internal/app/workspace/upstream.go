@@ -148,7 +148,7 @@ func (s *Service) MergeFetchedUpstream(base string) (*MergeUpstreamResult, error
 	if err != nil {
 		return nil, fmt.Errorf("read fetched upstream projection: %w", err)
 	}
-	if err := s.fs.WriteFile(localPath, data); err != nil {
+	if err := s.fs.EnsureFile(localPath, data); err != nil {
 		return nil, fmt.Errorf("write merged projection: %w", err)
 	}
 
@@ -277,14 +277,14 @@ func (s *Service) renderProjectionDiff(localPath, upstreamPath string) (string, 
 	if err != nil {
 		return "", false, fmt.Errorf("read file %s: %w", localPath, err)
 	}
-	if err := s.fs.WriteFile(localTempPath, localData); err != nil {
+	if err := s.fs.EnsureFile(localTempPath, localData); err != nil {
 		return "", false, fmt.Errorf("write file %s: %w", localTempPath, err)
 	}
 	upstreamData, err := s.fs.ReadFile(upstreamPath)
 	if err != nil {
 		return "", false, fmt.Errorf("read file %s: %w", upstreamPath, err)
 	}
-	if err := s.fs.WriteFile(upstreamTempPath, upstreamData); err != nil {
+	if err := s.fs.EnsureFile(upstreamTempPath, upstreamData); err != nil {
 		return "", false, fmt.Errorf("write file %s: %w", upstreamTempPath, err)
 	}
 

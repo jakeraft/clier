@@ -107,7 +107,7 @@ func SaveManifest(fs FileMaterializer, base string, manifest *Manifest) error {
 	if err != nil {
 		return fmt.Errorf("marshal manifest: %w", err)
 	}
-	if err := fs.WriteFile(ManifestPath(base), data); err != nil {
+	if err := fs.EnsureFile(ManifestPath(base), data); err != nil {
 		return fmt.Errorf("write manifest: %w", err)
 	}
 	return nil

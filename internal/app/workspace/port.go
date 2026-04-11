@@ -5,8 +5,8 @@ import "io/fs"
 // FileMaterializer abstracts local filesystem operations used during
 // clone, pull, push, and status workflows.
 type FileMaterializer interface {
-	// WriteFile creates parent directories as needed and writes content to path.
-	WriteFile(path string, content []byte) error
+	// EnsureFile creates parent directories as needed and writes content to path.
+	EnsureFile(path string, content []byte) error
 	ReadFile(path string) ([]byte, error)
 	MkdirAll(path string) error
 	Stat(path string) (fs.FileInfo, error)

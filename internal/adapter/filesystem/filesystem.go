@@ -12,7 +12,7 @@ func New() *LocalFS {
 	return &LocalFS{}
 }
 
-func (f *LocalFS) WriteFile(path string, content []byte) error {
+func (f *LocalFS) EnsureFile(path string, content []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
