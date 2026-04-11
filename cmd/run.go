@@ -83,7 +83,8 @@ func newRunStartCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			copyRoot, manifest, err := appworkspace.FindManifestAbove(newFileMaterializer(), base)
+			fs := newFileMaterializer()
+			copyRoot, manifest, err := appworkspace.FindManifestAbove(fs, base)
 			if err != nil {
 				if os.IsNotExist(err) {
 					return errNotInWorkingCopy()
@@ -101,7 +102,7 @@ func newRunStartCmd() *cobra.Command {
 
 			switch manifest.Kind {
 			case resourceKindMember:
-				memberProjection, err := appworkspace.LoadMemberProjection(newFileMaterializer(), appworkspace.MemberProjectionPath(copyRoot))
+				memberProjection, err := appworkspace.LoadMemberProjection(fs, appworkspace.MemberProjectionPath(copyRoot))
 				if err != nil {
 					return err
 				}
@@ -129,7 +130,7 @@ func newRunStartCmd() *cobra.Command {
 				runName := apprun.SessionName(team.Name, runID)
 				var terminalPlans []apprun.MemberTerminal
 				for i, member := range team.Members {
-					memberProjection, err := appworkspace.LoadMemberProjection(newFileMaterializer(), appworkspace.TeamMemberProjectionPath(copyRoot, member.Name))
+					memberProjection, err := appworkspace.LoadMemberProjection(fs, appworkspace.TeamMemberProjectionPath(copyRoot, member.Name))
 					if err != nil {
 						return err
 					}
