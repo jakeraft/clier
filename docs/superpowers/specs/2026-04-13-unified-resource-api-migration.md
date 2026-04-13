@@ -15,6 +15,8 @@ clier-server underwent a major API overhaul:
 5. Resource names are flat-unique per owner (kind-agnostic)
 6. `agent_type` removed from write requests (server-derived)
 7. Team `root_index` removed
+8. Team relations use member resource IDs (not indices) — `from`/`to` match `refs[].target_id`
+9. `spec` field formally typed as `oneOf [MemberSpec, TeamSpec, ContentSpec]`
 
 This is a big-bang migration: all layers (API adapter, domain, workspace, cmd) change together. The migration also resolves accumulated structural debt.
 
@@ -125,10 +127,10 @@ type TeamSpec struct {
 }
 
 // TeamRelation — relation in team spec response.
-// Uses positional indices (from/to), not IDs.
+// from/to are member resource IDs (match refs[].target_id).
 type TeamRelation struct {
-    From int `json:"from"`
-    To   int `json:"to"`
+    From int64 `json:"from"`
+    To   int64 `json:"to"`
 }
 
 // DecodeSpec extracts a typed spec from ResourceResponse.
@@ -210,10 +212,11 @@ type TeamMemberRequest struct {
     MemberVersion int   `json:"member_version"`
 }
 
-// TeamRelationRequest — index-based relation in a team write.
+// TeamRelationRequest — relation in a team write.
+// from/to are member resource IDs (same as TeamRelation in response).
 type TeamRelationRequest struct {
-    FromIndex int `json:"from_index"`
-    ToIndex   int `json:"to_index"`
+    From int64 `json:"from"`
+    To   int64 `json:"to"`
 }
 ```
 
@@ -230,6 +233,7 @@ type UpstreamStatusResponse struct {
 
 type RefUpstreamStatusResponse struct {
     RelType       string `json:"rel_type"`
+    TargetID      int64  `json:"target_id"`
     TargetName    string `json:"target_name"`
     TargetOwner   string `json:"target_owner"`
     TargetVersion int    `json:"target_version"`
@@ -518,7 +522,7 @@ Existing 95-line switch-case over 5 kinds replaced with generic flow:
 - `MemberProjection`: `AgentType` field removed
 - `TeamProjection`: `RootTeamMemberID` field removed
 - `TeamMemberProjection`: `TeamMemberID` removed, `MemberID` + `MemberVersion` added
-- `TeamRelationProjection`: `FromTeamMemberID`/`ToTeamMemberID` → `FromIndex`/`ToIndex`
+- `TeamRelationProjection`: `FromTeamMemberID`/`ToTeamMemberID` → `From`/`To` (member resource IDs)
 
 ### Snapshot deserialization — unified
 
@@ -544,7 +548,7 @@ Both member and team snapshots use the same decode path.
 Minimal changes due to clean hexagonal separation:
 
 - **Member**: Remove `AgentType` field and `agentType` parameter from `NewMember()`
-- **Team**: Remove `RootTeamMemberID` field. `Relation` fields change from `FromTeamMemberID`/`ToTeamMemberID` to `FromIndex`/`ToIndex`
+- **Team**: Remove `RootTeamMemberID` field. `Relation` fields change from `FromTeamMemberID`/`ToTeamMemberID` to `From`/`To` (member resource IDs)
 - **Run**: `AgentProfile` lookup changes from agent-type-based to command-based
 - **resource/**: ClaudeMd, ClaudeSettings, Skill — no changes
 
