@@ -14,7 +14,6 @@ type ResourceRefProjection struct {
 
 type MemberProjection struct {
 	Name           string                  `json:"name"`
-	AgentType      string                  `json:"agent_type"`
 	Command        string                  `json:"command"`
 	GitRepoURL     string                  `json:"git_repo_url,omitempty"`
 	ClaudeMd       *ResourceRefProjection  `json:"claude_md,omitempty"`
@@ -23,21 +22,21 @@ type MemberProjection struct {
 }
 
 type TeamProjection struct {
-	Name             string                   `json:"name"`
-	RootTeamMemberID int64                    `json:"root_team_member_id"`
-	Members          []TeamMemberProjection   `json:"members"`
-	Relations        []TeamRelationProjection `json:"relations,omitempty"`
+	Name      string                   `json:"name"`
+	Members   []TeamMemberProjection   `json:"members"`
+	Relations []TeamRelationProjection `json:"relations,omitempty"`
 }
 
 type TeamMemberProjection struct {
-	TeamMemberID int64                 `json:"team_member_id"`
-	Name         string                `json:"name"`
-	Member       ResourceRefProjection `json:"member"`
+	MemberID      int64                 `json:"member_id"`
+	MemberVersion int                   `json:"member_version"`
+	Name          string                `json:"name"`
+	Member        ResourceRefProjection `json:"member"`
 }
 
 type TeamRelationProjection struct {
-	FromTeamMemberID int64 `json:"from_team_member_id"`
-	ToTeamMemberID   int64 `json:"to_team_member_id"`
+	From int64 `json:"from"`
+	To   int64 `json:"to"`
 }
 
 func MemberProjectionPath(base string) string {
