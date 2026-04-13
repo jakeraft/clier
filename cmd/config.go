@@ -16,7 +16,7 @@ func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "config",
 		Short:   "Manage clier settings",
-		GroupID: rootGroupLocal,
+		GroupID: rootGroupSettings,
 	}
 	cmd.AddCommand(newConfigViewCmd())
 	cmd.AddCommand(newConfigSetCmd())

@@ -12,7 +12,7 @@ func newTutorialCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "tutorial",
 		Short:   "Learn to harness your first agent team",
-		GroupID: rootGroupDiscovery,
+		GroupID: rootGroupSettings,
 		Long: `Learn to harness your first agent team.
 
 The "todo-team" is a team of AI agents that implements a feature

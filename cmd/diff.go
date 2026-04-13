@@ -15,7 +15,7 @@ func newDiffCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "diff",
 		Short:   "Show differences against fetched snapshots",
-		GroupID: rootGroupRuntime,
+		GroupID: rootGroupWorkspace,
 	}
 	cmd.AddCommand(newDiffUpstreamCmd())
 	return cmd

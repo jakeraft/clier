@@ -15,7 +15,7 @@ func newStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "status",
 		Short:   "Show the current local clone status",
-		GroupID: rootGroupRuntime,
+		GroupID: rootGroupWorkspace,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()
 			if err != nil {

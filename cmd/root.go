@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	rootGroupServer    = "server"
+	rootGroupResources = "resources"
 	rootGroupRuntime   = "runtime"
-	rootGroupDiscovery = "discovery"
-	rootGroupLocal     = "local"
+	rootGroupWorkspace = "workspace"
+	rootGroupSettings  = "settings"
 )
 
 // newAPIClient creates an API client.
@@ -112,11 +112,11 @@ You watch, steer, and intervene in real time.
 
 Get started:
   clier tutorial               Walk through an example team
-  clier explore team list      Browse what others have built
+  clier list --kind team       Browse what others have built
 
 Core workflow:
-  clier member create          Define an agent
-  clier team create            Compose agents into a team
+  clier create member          Define an agent
+  clier create team            Compose agents into a team
   clier fork <owner/name>      Fork a resource to your namespace
   clier clone <name>           Clone a resource to your machine
   clier run start              Launch agents in tmux
@@ -142,12 +142,12 @@ func Execute() {
 
 func configureCommandGroups() {
 	rootCmd.AddGroup(
-		&cobra.Group{ID: rootGroupServer, Title: "Resources"},
+		&cobra.Group{ID: rootGroupResources, Title: "Resources"},
 		&cobra.Group{ID: rootGroupRuntime, Title: "Runtime"},
-		&cobra.Group{ID: rootGroupDiscovery, Title: "Getting Started"},
-		&cobra.Group{ID: rootGroupLocal, Title: "Settings"},
+		&cobra.Group{ID: rootGroupWorkspace, Title: "Workspace"},
+		&cobra.Group{ID: rootGroupSettings, Title: "Settings"},
 	)
-	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true, GroupID: rootGroupLocal})
+	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true, GroupID: rootGroupSettings})
 }
 
 // filterUserCommands removes agent-only subcommands from "run" in user context.

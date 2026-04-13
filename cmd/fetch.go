@@ -15,7 +15,7 @@ func newFetchCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "fetch",
 		Short:   "Fetch external updates without changing the local clone",
-		GroupID: rootGroupRuntime,
+		GroupID: rootGroupWorkspace,
 	}
 	cmd.AddCommand(newFetchUpstreamCmd())
 	return cmd

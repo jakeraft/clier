@@ -17,7 +17,7 @@ func newPullCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "pull",
 		Short:   "Pull the current local clone from the server",
-		GroupID: rootGroupRuntime,
+		GroupID: rootGroupWorkspace,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()
 			if err != nil {

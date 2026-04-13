@@ -15,7 +15,7 @@ func newPushCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "push",
 		Short:   "Push tracked local changes to the server",
-		GroupID: rootGroupRuntime,
+		GroupID: rootGroupWorkspace,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()
 			if err != nil {

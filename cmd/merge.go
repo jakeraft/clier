@@ -15,7 +15,7 @@ func newMergeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "merge",
 		Short:   "Merge fetched snapshots into the local clone",
-		GroupID: rootGroupRuntime,
+		GroupID: rootGroupWorkspace,
 	}
 	cmd.AddCommand(newMergeUpstreamCmd())
 	return cmd
