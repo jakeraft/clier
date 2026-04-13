@@ -160,26 +160,6 @@ type TeamRelationRequest struct {
 	To   int64 `json:"to"`
 }
 
-// --- Upstream Types ---
-
-type UpstreamStatusResponse struct {
-	Status                string `json:"status"`
-	ForkVersion           int    `json:"fork_version"`
-	UpstreamName          string `json:"upstream_name,omitempty"`
-	UpstreamOwner         string `json:"upstream_owner,omitempty"`
-	UpstreamLatestVersion *int   `json:"upstream_latest_version,omitempty"`
-}
-
-type RefUpstreamStatusResponse struct {
-	RelType       string `json:"rel_type"`
-	TargetID      int64  `json:"target_id"`
-	TargetName    string `json:"target_name"`
-	TargetOwner   string `json:"target_owner"`
-	TargetVersion int    `json:"target_version"`
-	LatestVersion int    `json:"latest_version"`
-	Status        string `json:"status"`
-}
-
 // --- Org Types ---
 
 type CreateOrgRequest struct {
