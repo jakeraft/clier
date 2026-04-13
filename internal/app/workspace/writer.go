@@ -160,8 +160,8 @@ func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
 		return fmt.Errorf("decode team spec: %w", err)
 	}
 
-	// Build member lookup for protocol generation from team_member refs.
-	tmRefs := refsByRelType(team, "team_member")
+	// Build member lookup for protocol generation from member refs.
+	tmRefs := refsByRelType(team, "member")
 	membersByID := make(map[int64]ProtocolMember, len(tmRefs))
 	for _, ref := range tmRefs {
 		membersByID[ref.ID] = ProtocolMember{

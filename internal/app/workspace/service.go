@@ -429,7 +429,7 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 		filepath.ToSlash(filepath.Join(".claude", "settings.local.json")),
 	}
 
-	claudeMdRef := firstRefByRelType(member, "claude_md")
+	claudeMdRef := firstRefByRelType(member, "claude-md")
 	if claudeMdRef != nil {
 		tracked = append(tracked, TrackedResource{
 			Kind:          "claude-md",
@@ -443,7 +443,7 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 		generated = append(generated, filepath.ToSlash("CLAUDE.md"))
 	}
 
-	claudeSettingsRef := firstRefByRelType(member, "claude_settings")
+	claudeSettingsRef := firstRefByRelType(member, "claude-setting")
 	if claudeSettingsRef != nil {
 		tracked = append(tracked, TrackedResource{
 			Kind:          "claude-settings",
@@ -528,7 +528,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		},
 	}
 
-	for _, tm := range refsByRelType(team, "team_member") {
+	for _, tm := range refsByRelType(team, "member") {
 		memberVersion, err := s.client.GetResourceVersion(tm.OwnerName, tm.Name, tm.TargetVersion)
 		if err != nil {
 			return nil, fmt.Errorf("get member %s/%s: %w", tm.OwnerName, tm.Name, err)
@@ -722,10 +722,10 @@ func memberProjectionFromResource(r *api.ResourceResponse) *MemberProjection {
 		projection.GitRepoURL = spec.GitRepoURL
 	}
 
-	if ref := firstRefByRelType(r, "claude_md"); ref != nil {
+	if ref := firstRefByRelType(r, "claude-md"); ref != nil {
 		projection.ClaudeMd = &ResourceRefProjection{Owner: ref.OwnerName, Name: ref.Name, Version: ref.TargetVersion}
 	}
-	if ref := firstRefByRelType(r, "claude_settings"); ref != nil {
+	if ref := firstRefByRelType(r, "claude-setting"); ref != nil {
 		projection.ClaudeSettings = &ResourceRefProjection{Owner: ref.OwnerName, Name: ref.Name, Version: ref.TargetVersion}
 	}
 	for _, ref := range refsByRelType(r, "skill") {
@@ -772,7 +772,7 @@ func teamProjectionFromResource(r *api.ResourceResponse, spec *api.TeamSpec) *Te
 		Members:   make([]TeamMemberProjection, 0),
 		Relations: make([]TeamRelationProjection, 0),
 	}
-	for _, ref := range refsByRelType(r, "team_member") {
+	for _, ref := range refsByRelType(r, "member") {
 		projection.Members = append(projection.Members, TeamMemberProjection{
 			MemberID:      ref.TargetID,
 			MemberVersion: ref.TargetVersion,
