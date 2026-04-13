@@ -27,76 +27,6 @@ func resolveAgentPaths(base string, profile domain.AgentProfile) agentPaths {
 	}
 }
 
-// memberView is a local projection of member data the writer needs,
-// abstracting away whether the source was a live ResourceResponse or a
-// pinned version snapshot.
-type memberView struct {
-	AgentType      string
-	GitRepoURL     string
-	ClaudeMd       *refView
-	ClaudeSettings *refView
-	Skills         []refView
-}
-
-type refView struct {
-	Owner   string
-	Name    string
-	Version int
-}
-
-// memberViewFromResource extracts a memberView from a unified ResourceResponse.
-func memberViewFromResource(r *api.ResourceResponse) (*memberView, error) {
-	spec, err := api.DecodeSpec[api.MemberSpec](r)
-	if err != nil {
-		return nil, fmt.Errorf("decode member spec: %w", err)
-	}
-
-	agentType := spec.AgentType
-	if len(r.AgentTypes) > 0 {
-		agentType = r.AgentTypes[0]
-	}
-
-	view := &memberView{
-		AgentType:  agentType,
-		GitRepoURL: spec.GitRepoURL,
-	}
-	if ref := firstRefByRelType(r, "claude_md"); ref != nil {
-		view.ClaudeMd = &refView{Owner: ref.OwnerName, Name: ref.Name, Version: ref.TargetVersion}
-	}
-	if ref := firstRefByRelType(r, "claude_settings"); ref != nil {
-		view.ClaudeSettings = &refView{Owner: ref.OwnerName, Name: ref.Name, Version: ref.TargetVersion}
-	}
-	for _, ref := range refsByRelType(r, "skill") {
-		view.Skills = append(view.Skills, refView{Owner: ref.OwnerName, Name: ref.Name, Version: ref.TargetVersion})
-	}
-	return view, nil
-}
-
-// memberViewFromSnapshot extracts a memberView from a version snapshot.
-func memberViewFromSnapshot(snapshot json.RawMessage) (*memberView, error) {
-	spec, err := decodeSnapshot[api.MemberSpec](snapshot)
-	if err != nil {
-		return nil, fmt.Errorf("decode member spec from snapshot: %w", err)
-	}
-
-	// Decode embedded refs from snapshot.
-	type snapshotRefs struct {
-		ClaudeMd       *refView  `json:"claude_md,omitempty"`
-		ClaudeSettings *refView  `json:"claude_settings,omitempty"`
-		Skills         []refView `json:"skills,omitempty"`
-	}
-	var refs snapshotRefs
-	_ = decodeSnapshotInto(snapshot, &refs) // best-effort
-
-	return &memberView{
-		AgentType:      spec.AgentType,
-		GitRepoURL:     spec.GitRepoURL,
-		ClaudeMd:       refs.ClaudeMd,
-		ClaudeSettings: refs.ClaudeSettings,
-		Skills:         refs.Skills,
-	}, nil
-}
-
 // Writer fetches member/team definitions from the server and writes
 // the corresponding local-clone files (CLAUDE.md, generated protocols,
 // settings.json, settings.local.json, skills) to a local directory.
@@ -132,19 +62,17 @@ func (w *Writer) MaterializeMemberFiles(base, memberName string) error {
 	if err != nil {
 		return fmt.Errorf("get member %s: %w", memberName, err)
 	}
-	member, err := memberViewFromResource(res)
-	if err != nil {
-		return err
-	}
-	return w.materializeMemberFiles(base, member, memberWriteOptions{})
+	projection := memberProjectionFromResource(res)
+	agentType := agentTypeFromResource(res)
+	return w.materializeMemberFiles(base, projection, agentType, memberWriteOptions{})
 }
 
-// materializeMemberFiles writes local-clone files from a memberView.
-func (w *Writer) materializeMemberFiles(base string, member *memberView, opts memberWriteOptions) error {
-	profile := domain.ProfileFor(member.AgentType)
+// materializeMemberFiles writes local-clone files from a MemberProjection.
+func (w *Writer) materializeMemberFiles(base string, projection *MemberProjection, agentType string, opts memberWriteOptions) error {
+	profile := domain.ProfileFor(agentType)
 	paths := resolveAgentPaths(base, profile)
 
-	if err := ensureRepoDir(w.fs, w.git, member.GitRepoURL, base); err != nil {
+	if err := ensureRepoDir(w.fs, w.git, projection.GitRepoURL, base); err != nil {
 		return fmt.Errorf("materialize repo dir: %w", err)
 	}
 	if err := w.writeWorkLogProtocol(base); err != nil {
@@ -152,14 +80,14 @@ func (w *Writer) materializeMemberFiles(base string, member *memberView, opts me
 	}
 
 	// Write instruction file (CLAUDE.md / AGENTS.md / GEMINI.md)
-	if member.ClaudeMd != nil {
-		vr, err := w.client.GetResourceVersion(member.ClaudeMd.Owner, member.ClaudeMd.Name, member.ClaudeMd.Version)
+	if projection.ClaudeMd != nil {
+		vr, err := w.client.GetResourceVersion(projection.ClaudeMd.Owner, projection.ClaudeMd.Name, projection.ClaudeMd.Version)
 		if err != nil {
-			return fmt.Errorf("get claude md %s/%s: %w", member.ClaudeMd.Owner, member.ClaudeMd.Name, err)
+			return fmt.Errorf("get claude md %s/%s: %w", projection.ClaudeMd.Owner, projection.ClaudeMd.Name, err)
 		}
 		contentSpec, err := decodeSnapshot[api.ContentSpec](vr.Snapshot)
 		if err != nil {
-			return fmt.Errorf("decode claude md %s/%s@%d: %w", member.ClaudeMd.Owner, member.ClaudeMd.Name, member.ClaudeMd.Version, err)
+			return fmt.Errorf("decode claude md %s/%s@%d: %w", projection.ClaudeMd.Owner, projection.ClaudeMd.Name, projection.ClaudeMd.Version, err)
 		}
 		content := contentSpec.Content
 		if opts.TeamMemberName != "" {
@@ -181,14 +109,14 @@ func (w *Writer) materializeMemberFiles(base string, member *memberView, opts me
 	}
 
 	// Write agent settings if referenced
-	if member.ClaudeSettings != nil {
-		vr, err := w.client.GetResourceVersion(member.ClaudeSettings.Owner, member.ClaudeSettings.Name, member.ClaudeSettings.Version)
+	if projection.ClaudeSettings != nil {
+		vr, err := w.client.GetResourceVersion(projection.ClaudeSettings.Owner, projection.ClaudeSettings.Name, projection.ClaudeSettings.Version)
 		if err != nil {
-			return fmt.Errorf("get claude settings %s/%s: %w", member.ClaudeSettings.Owner, member.ClaudeSettings.Name, err)
+			return fmt.Errorf("get claude settings %s/%s: %w", projection.ClaudeSettings.Owner, projection.ClaudeSettings.Name, err)
 		}
 		contentSpec, err := decodeSnapshot[api.ContentSpec](vr.Snapshot)
 		if err != nil {
-			return fmt.Errorf("decode claude settings %s/%s@%d: %w", member.ClaudeSettings.Owner, member.ClaudeSettings.Name, member.ClaudeSettings.Version, err)
+			return fmt.Errorf("decode claude settings %s/%s@%d: %w", projection.ClaudeSettings.Owner, projection.ClaudeSettings.Name, projection.ClaudeSettings.Version, err)
 		}
 		if err := w.writeFile(paths.settingsFile, contentSpec.Content); err != nil {
 			return fmt.Errorf("write settings: %w", err)
@@ -199,7 +127,7 @@ func (w *Writer) materializeMemberFiles(base string, member *memberView, opts me
 	}
 
 	// Write Skills
-	for _, skillRef := range member.Skills {
+	for _, skillRef := range projection.Skills {
 		vr, err := w.client.GetResourceVersion(skillRef.Owner, skillRef.Name, skillRef.Version)
 		if err != nil {
 			return fmt.Errorf("get skill %s/%s: %w", skillRef.Owner, skillRef.Name, err)
@@ -260,11 +188,11 @@ func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
 	for _, tm := range tmRefs {
 		memberBase := filepath.Join(base, tm.Name)
 
-		member, err := w.loadPinnedMemberView(tm.OwnerName, tm.Name, tm.TargetVersion)
+		projection, agentType, err := w.loadPinnedMember(tm.OwnerName, tm.Name, tm.TargetVersion, tm.AgentType)
 		if err != nil {
 			return fmt.Errorf("get member %s: %w", tm.Name, err)
 		}
-		if err := w.materializeMemberFiles(memberBase, member, memberWriteOptions{
+		if err := w.materializeMemberFiles(memberBase, projection, agentType, memberWriteOptions{
 			TeamMemberName: tm.Name,
 		}); err != nil {
 			return fmt.Errorf("materialize member %s: %w", tm.Name, err)
@@ -279,16 +207,17 @@ func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
 	return nil
 }
 
-func (w *Writer) loadPinnedMemberView(owner, name string, version int) (*memberView, error) {
+// loadPinnedMember builds a MemberProjection and resolves agent type from a
+// pinned version snapshot. The refAgentType (from the team_member ref) takes
+// precedence over the snapshot's agent_type.
+func (w *Writer) loadPinnedMember(owner, name string, version int, refAgentType string) (*MemberProjection, string, error) {
 	vr, err := w.client.GetResourceVersion(owner, name, version)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	view, err := memberViewFromSnapshot(vr.Snapshot)
-	if err != nil {
-		return nil, fmt.Errorf("decode member %s/%s@%d: %w", owner, name, version, err)
-	}
-	return view, nil
+	projection := memberProjectionFromSnapshot(name, vr)
+	agentType := agentTypeFromSnapshot(vr.Snapshot, refAgentType)
+	return projection, agentType, nil
 }
 
 func (w *Writer) writeFile(path, content string) error {

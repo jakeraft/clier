@@ -210,6 +210,8 @@ func (s *Service) fetchUpstreamMemberProjection(owner, name string, version int)
 	return vr.Version, &projection, nil
 }
 
+// teamSnapshotProjection maps the snapshot JSON layout where members are
+// serialized as "team_members" instead of the projection's "members".
 type teamSnapshotProjection struct {
 	Name        string                   `json:"name,omitempty"`
 	TeamMembers []TeamMemberProjection   `json:"team_members"`
@@ -228,19 +230,11 @@ func (s *Service) fetchUpstreamTeamProjection(owner, name string, version int) (
 
 	projection := &TeamProjection{
 		Name:      raw.Name,
-		Members:   make([]TeamMemberProjection, 0, len(raw.TeamMembers)),
-		Relations: append([]TeamRelationProjection(nil), raw.Relations...),
+		Members:   raw.TeamMembers,
+		Relations: raw.Relations,
 	}
 	if projection.Name == "" {
 		projection.Name = name
-	}
-	for _, member := range raw.TeamMembers {
-		projection.Members = append(projection.Members, TeamMemberProjection{
-			MemberID:      member.MemberID,
-			MemberVersion: member.MemberVersion,
-			Name:          member.Name,
-			Member:        member.Member,
-		})
 	}
 	return vr.Version, projection, nil
 }

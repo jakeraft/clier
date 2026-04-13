@@ -3,6 +3,7 @@ package workspace
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -409,10 +410,6 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 	if err != nil {
 		return nil, fmt.Errorf("get member %s/%s: %w", owner, name, err)
 	}
-	memberSpec, err := api.DecodeSpec[api.MemberSpec](member)
-	if err != nil {
-		return nil, fmt.Errorf("decode member spec %s/%s: %w", owner, name, err)
-	}
 	projection := memberProjectionFromResource(member)
 	if err := WriteMemberProjection(s.fs, MemberProjectionPath(base), projection); err != nil {
 		return nil, err
@@ -472,12 +469,6 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 		return nil, err
 	}
 
-	// Determine agent type: use first from AgentTypes or fallback to spec.
-	agentType := memberSpec.AgentType
-	if len(member.AgentTypes) > 0 {
-		agentType = member.AgentTypes[0]
-	}
-
 	manifest := &Manifest{
 		Kind:     "member",
 		Owner:    member.Metadata.OwnerName,
@@ -491,9 +482,9 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 			Member: &MemberRuntimeMetadata{
 				ID:         member.Metadata.ID,
 				Name:       member.Metadata.Name,
-				AgentType:  agentType,
-				Command:    memberSpec.Command,
-				GitRepoURL: memberSpec.GitRepoURL,
+				AgentType:  agentTypeFromResource(member),
+				Command:    projection.Command,
+				GitRepoURL: projection.GitRepoURL,
 			},
 		},
 	}
@@ -542,10 +533,6 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		if err != nil {
 			return nil, fmt.Errorf("get member %s/%s: %w", tm.OwnerName, tm.Name, err)
 		}
-		memberSnapshot, err := decodeSnapshot[api.MemberSpec](memberVersion.Snapshot)
-		if err != nil {
-			return nil, fmt.Errorf("decode member %s/%s@%d: %w", tm.OwnerName, tm.Name, tm.TargetVersion, err)
-		}
 
 		// Build a MemberProjection from the snapshot + ref metadata.
 		memberProjection := memberProjectionFromSnapshot(tm.Name, memberVersion)
@@ -561,17 +548,12 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 			Editable:      true,
 		})
 
-		// Determine agent type from snapshot or ref.
-		agentType := memberSnapshot.AgentType
-		if tm.AgentType != "" {
-			agentType = tm.AgentType
-		}
 		metadata.Team.Members = append(metadata.Team.Members, TeamMemberRuntimeMetadata{
 			TeamMemberID: tm.ID,
 			Name:         tm.Name,
-			AgentType:    agentType,
-			Command:      memberSnapshot.Command,
-			GitRepoURL:   memberSnapshot.GitRepoURL,
+			AgentType:    agentTypeFromSnapshot(memberVersion.Snapshot, tm.AgentType),
+			Command:      memberProjection.Command,
+			GitRepoURL:   memberProjection.GitRepoURL,
 		})
 
 		memberBase := filepath.ToSlash(tm.Name)
@@ -581,49 +563,38 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 			filepath.ToSlash(filepath.Join(memberBase, ".claude", "settings.local.json")),
 		)
 
-		// Extract content refs from the member version snapshot.
-		// The snapshot has refs embedded; we decode them from the full snapshot.
-		type memberSnapshotRefs struct {
-			ClaudeMd       *ResourceRefProjection  `json:"claude_md,omitempty"`
-			ClaudeSettings *ResourceRefProjection  `json:"claude_settings,omitempty"`
-			Skills         []ResourceRefProjection `json:"skills,omitempty"`
-		}
-		var snapshotRefs memberSnapshotRefs
-		if err := decodeSnapshotInto(memberVersion.Snapshot, &snapshotRefs); err == nil {
-			if snapshotRefs.ClaudeMd != nil {
-				tracked = append(tracked, TrackedResource{
-					Kind:          "claude-md",
-					Owner:         snapshotRefs.ClaudeMd.Owner,
-					Name:          snapshotRefs.ClaudeMd.Name,
-					LocalPath:     filepath.ToSlash(filepath.Join(memberBase, "CLAUDE.md")),
-					RemoteVersion: intPtr(snapshotRefs.ClaudeMd.Version),
-					Editable:      true,
-				})
-			} else {
-				generated = append(generated, filepath.ToSlash(filepath.Join(memberBase, "CLAUDE.md")))
-			}
-			if snapshotRefs.ClaudeSettings != nil {
-				tracked = append(tracked, TrackedResource{
-					Kind:          "claude-settings",
-					Owner:         snapshotRefs.ClaudeSettings.Owner,
-					Name:          snapshotRefs.ClaudeSettings.Name,
-					LocalPath:     filepath.ToSlash(filepath.Join(memberBase, ".claude", "settings.json")),
-					RemoteVersion: intPtr(snapshotRefs.ClaudeSettings.Version),
-					Editable:      true,
-				})
-			}
-			for _, skillRef := range snapshotRefs.Skills {
-				tracked = append(tracked, TrackedResource{
-					Kind:          "skill",
-					Owner:         skillRef.Owner,
-					Name:          skillRef.Name,
-					LocalPath:     filepath.ToSlash(filepath.Join(memberBase, ".claude", "skills", skillRef.Name, "SKILL.md")),
-					RemoteVersion: intPtr(skillRef.Version),
-					Editable:      true,
-				})
-			}
+		// Use refs already decoded by memberProjectionFromSnapshot.
+		if memberProjection.ClaudeMd != nil {
+			tracked = append(tracked, TrackedResource{
+				Kind:          "claude-md",
+				Owner:         memberProjection.ClaudeMd.Owner,
+				Name:          memberProjection.ClaudeMd.Name,
+				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, "CLAUDE.md")),
+				RemoteVersion: intPtr(memberProjection.ClaudeMd.Version),
+				Editable:      true,
+			})
 		} else {
 			generated = append(generated, filepath.ToSlash(filepath.Join(memberBase, "CLAUDE.md")))
+		}
+		if memberProjection.ClaudeSettings != nil {
+			tracked = append(tracked, TrackedResource{
+				Kind:          "claude-settings",
+				Owner:         memberProjection.ClaudeSettings.Owner,
+				Name:          memberProjection.ClaudeSettings.Name,
+				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, ".claude", "settings.json")),
+				RemoteVersion: intPtr(memberProjection.ClaudeSettings.Version),
+				Editable:      true,
+			})
+		}
+		for _, skillRef := range memberProjection.Skills {
+			tracked = append(tracked, TrackedResource{
+				Kind:          "skill",
+				Owner:         skillRef.Owner,
+				Name:          skillRef.Name,
+				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, ".claude", "skills", skillRef.Name, "SKILL.md")),
+				RemoteVersion: intPtr(skillRef.Version),
+				Editable:      true,
+			})
 		}
 	}
 
@@ -711,6 +682,31 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 		TeamMembers: members,
 		Relations:   relations,
 	}, nil
+}
+
+// agentTypeFromResource resolves the agent type from a live ResourceResponse.
+// The top-level AgentTypes field takes precedence over the spec-level agent_type.
+func agentTypeFromResource(r *api.ResourceResponse) string {
+	if len(r.AgentTypes) > 0 {
+		return r.AgentTypes[0]
+	}
+	if spec, err := api.DecodeSpec[api.MemberSpec](r); err == nil {
+		return spec.AgentType
+	}
+	return ""
+}
+
+// agentTypeFromSnapshot resolves the agent type from a version snapshot.
+// The refAgentType (from the parent ref, e.g. team_member) takes precedence
+// over the snapshot's embedded agent_type.
+func agentTypeFromSnapshot(snapshot json.RawMessage, refAgentType string) string {
+	if refAgentType != "" {
+		return refAgentType
+	}
+	if spec, err := decodeSnapshot[api.MemberSpec](snapshot); err == nil {
+		return spec.AgentType
+	}
+	return ""
 }
 
 // memberProjectionFromResource builds a MemberProjection from a unified ResourceResponse.
