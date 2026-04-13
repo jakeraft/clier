@@ -5,10 +5,33 @@ import (
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 )
 
 func init() {
 	rootCmd.AddCommand(newEditCmd())
+}
+
+var kindAllowedFlags = map[api.ResourceKind]map[string]bool{
+	api.KindMember:         {"name": true, "summary": true, "command": true, "repo": true, "claude-md": true, "claude-settings": true, "skill": true},
+	api.KindTeam:           {"name": true, "summary": true, "member": true, "relation": true},
+	api.KindSkill:          {"name": true, "summary": true, "content": true},
+	api.KindClaudeMd:       {"name": true, "summary": true, "content": true},
+	api.KindClaudeSettings: {"name": true, "summary": true, "content": true},
+}
+
+func validateEditFlags(cmd *cobra.Command, kind api.ResourceKind) error {
+	allowed := kindAllowedFlags[kind]
+	var invalid []string
+	cmd.Flags().Visit(func(f *pflag.Flag) {
+		if !allowed[f.Name] {
+			invalid = append(invalid, "--"+f.Name)
+		}
+	})
+	if len(invalid) > 0 {
+		return fmt.Errorf("flags %v not applicable to resource kind %q", invalid, kind)
+	}
+	return nil
 }
 
 func newEditCmd() *cobra.Command {
@@ -33,6 +56,11 @@ via a GET request, and only the flags you provide are sent as changes.`,
 				return fmt.Errorf("look up resource %q: %w", args[0], err)
 			}
 			kind := api.ResourceKind(res.Kind)
+
+			// Validate that only kind-appropriate flags are used.
+			if err := validateEditFlags(cmd, kind); err != nil {
+				return err
+			}
 
 			switch kind {
 			case api.KindMember:
