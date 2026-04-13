@@ -32,8 +32,8 @@ Step 1. Log in
 
 Step 2. Explore the pre-loaded todo-team
 
-  clier explore team list
-  clier explore team jakeraft/todo-team
+  clier list --kind team
+  clier get jakeraft/todo-team
 
   The "jakeraft/todo-team" is already available.
 
@@ -47,8 +47,8 @@ Step 4. Customize your fork
 
   Check your forked team and give it a summary:
 
-    clier explore team <your-login>/todo-team
-    clier team edit todo-team --summary "My first agent team"
+    clier get <your-login>/todo-team
+    clier edit todo-team --summary "My first agent team"
 
   Use --help on any command to see all available flags.
 
