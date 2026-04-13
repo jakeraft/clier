@@ -95,37 +95,40 @@ type ResourceVersionResponse struct {
 }
 ```
 
-#### Spec Types (decoded from ResourceResponse.Spec per kind)
+#### Spec Types (formally typed via `oneOf` in OpenAPI schema)
+
+The server's `spec` field is a discriminated union (`oneOf`) keyed by `kind`:
+- `member` → `MemberSpec`
+- `team` → `TeamSpec`
+- `skill`, `claude_md`, `claude_setting` → `ContentSpec`
 
 ```go
 // ContentSpec — spec for claude-md, claude-settings, skill.
+// Contains only content (name lives in metadata).
 type ContentSpec struct {
-    Name    string `json:"name"`
     Content string `json:"content"`
 }
 
-// MemberSpec — spec for member.
+// MemberSpec — spec for member (read-only fields included).
+// agent_type is server-derived and returned in response, not sent in write requests.
 type MemberSpec struct {
-    Name       string `json:"name"`
+    AgentType  string `json:"agent_type"`
     Command    string `json:"command"`
-    GitRepoURL string `json:"git_repo_url,omitempty"`
+    GitRepoURL string `json:"git_repo_url"`
 }
 
 // TeamSpec — spec for team.
+// Team members are represented in refs (not in spec).
+// Only relations are stored in spec.
 type TeamSpec struct {
-    Name        string             `json:"name"`
-    TeamMembers []TeamMemberSpec   `json:"team_members"`
-    Relations   []TeamRelationSpec `json:"relations"`
+    Relations []TeamRelation `json:"relations"`
 }
 
-type TeamMemberSpec struct {
-    MemberID      int64 `json:"member_id"`
-    MemberVersion int   `json:"member_version"`
-}
-
-type TeamRelationSpec struct {
-    FromIndex int `json:"from_index"`
-    ToIndex   int `json:"to_index"`
+// TeamRelation — relation in team spec response.
+// Uses positional indices (from/to), not IDs.
+type TeamRelation struct {
+    From int `json:"from"`
+    To   int `json:"to"`
 }
 
 // DecodeSpec extracts a typed spec from ResourceResponse.
@@ -135,7 +138,10 @@ func DecodeSpec[T any](r *ResourceResponse) (*T, error) {
 }
 ```
 
-Note: exact `spec` shapes per kind are not formally typed in the server's OpenAPI schema (`spec: {}`). These types are derived from actual server responses. If the server adds formal discriminated union typing later, update accordingly.
+Key observations:
+- `name` is NOT in any spec — it lives in `metadata.name`
+- `agent_type` appears in `MemberSpec` (response) but not in `MemberWriteRequest` (server-derived)
+- Team members are resolved into `refs` array, not stored in `spec` — spec only holds `relations`
 
 #### Request Types
 
