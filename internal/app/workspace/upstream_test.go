@@ -73,12 +73,12 @@ func TestFetchUpstreamMemberProjection_PreservesResourceNameWhenSnapshotOmitsIt(
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/orgs/origin/members/reviewer/versions/7" {
+		if r.URL.Path != "/api/v1/orgs/origin/resources/reviewer/versions/7" {
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"version": 7,
-			"content": map[string]any{
+			"snapshot": map[string]any{
 				"agent_type": "codex",
 				"command":    "codex",
 			},
@@ -103,17 +103,17 @@ func TestFetchUpstreamTeamProjection_PreservesResourceNameWhenSnapshotOmitsIt(t 
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/orgs/origin/teams/dev-squad/versions/11" {
+		if r.URL.Path != "/api/v1/orgs/origin/resources/dev-squad/versions/11" {
 			t.Fatalf("unexpected request path: %s", r.URL.Path)
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"version": 11,
-			"content": map[string]any{
-				"root_team_member_id": 101,
+			"snapshot": map[string]any{
 				"team_members": []map[string]any{
 					{
-						"id":   101,
-						"name": "lead",
+						"member_id":      101,
+						"member_version": 3,
+						"name":           "lead",
 						"member": map[string]any{
 							"owner":   "origin",
 							"name":    "lead-member",

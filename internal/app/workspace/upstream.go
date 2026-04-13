@@ -163,16 +163,17 @@ func (s *Service) MergeFetchedUpstream(base string) (*MergeUpstreamResult, error
 }
 
 func (s *Service) writeFetchedUpstreamProjection(base string, manifest *Manifest) (int, error) {
+	upstream, err := s.client.GetResource(manifest.Upstream.Owner, manifest.Upstream.Name)
+	if err != nil {
+		return 0, err
+	}
+	if upstream.Metadata.LatestVersion == nil {
+		return 0, fmt.Errorf("upstream %s %s/%s has no latest version", manifest.Upstream.Kind, manifest.Upstream.Owner, manifest.Upstream.Name)
+	}
+
 	switch manifest.Upstream.Kind {
 	case "member":
-		upstream, err := s.client.GetMember(manifest.Upstream.Owner, manifest.Upstream.Name)
-		if err != nil {
-			return 0, err
-		}
-		if upstream.LatestVersion == nil {
-			return 0, fmt.Errorf("upstream member %s/%s has no latest version", manifest.Upstream.Owner, manifest.Upstream.Name)
-		}
-		version, projection, err := s.fetchUpstreamMemberProjection(manifest.Upstream.Owner, manifest.Upstream.Name, *upstream.LatestVersion)
+		version, projection, err := s.fetchUpstreamMemberProjection(manifest.Upstream.Owner, manifest.Upstream.Name, *upstream.Metadata.LatestVersion)
 		if err != nil {
 			return 0, err
 		}
@@ -181,14 +182,7 @@ func (s *Service) writeFetchedUpstreamProjection(base string, manifest *Manifest
 		}
 		return version, nil
 	case "team":
-		upstream, err := s.client.GetTeam(manifest.Upstream.Owner, manifest.Upstream.Name)
-		if err != nil {
-			return 0, err
-		}
-		if upstream.LatestVersion == nil {
-			return 0, fmt.Errorf("upstream team %s/%s has no latest version", manifest.Upstream.Owner, manifest.Upstream.Name)
-		}
-		version, projection, err := s.fetchUpstreamTeamProjection(manifest.Upstream.Owner, manifest.Upstream.Name, *upstream.LatestVersion)
+		version, projection, err := s.fetchUpstreamTeamProjection(manifest.Upstream.Owner, manifest.Upstream.Name, *upstream.Metadata.LatestVersion)
 		if err != nil {
 			return 0, err
 		}
@@ -202,40 +196,40 @@ func (s *Service) writeFetchedUpstreamProjection(base string, manifest *Manifest
 }
 
 func (s *Service) fetchUpstreamMemberProjection(owner, name string, version int) (int, *MemberProjection, error) {
-	snapshot, err := s.client.GetMemberVersion(owner, name, version)
+	vr, err := s.client.GetResourceVersion(owner, name, version)
 	if err != nil {
 		return 0, nil, err
 	}
 	var projection MemberProjection
-	if err := json.Unmarshal(snapshot.Content, &projection); err != nil {
+	if err := json.Unmarshal(vr.Snapshot, &projection); err != nil {
 		return 0, nil, fmt.Errorf("unmarshal upstream member projection: %w", err)
 	}
 	if projection.Name == "" {
 		projection.Name = name
 	}
-	return snapshot.Version, &projection, nil
+	return vr.Version, &projection, nil
 }
 
 type teamSnapshotProjection struct {
-	Name             string                   `json:"name,omitempty"`
-	RootTeamMemberID *int64                   `json:"root_team_member_id,omitempty"`
-	TeamMembers      []teamMemberProjection   `json:"team_members"`
-	Relations        []TeamRelationProjection `json:"relations,omitempty"`
+	Name        string                   `json:"name,omitempty"`
+	TeamMembers []teamMemberProjection   `json:"team_members"`
+	Relations   []TeamRelationProjection `json:"relations,omitempty"`
 }
 
 type teamMemberProjection struct {
-	TeamMemberID int64                 `json:"id"`
-	Name         string                `json:"name"`
-	Member       ResourceRefProjection `json:"member"`
+	MemberID      int64                 `json:"member_id"`
+	MemberVersion int                   `json:"member_version"`
+	Name          string                `json:"name"`
+	Member        ResourceRefProjection `json:"member"`
 }
 
 func (s *Service) fetchUpstreamTeamProjection(owner, name string, version int) (int, *TeamProjection, error) {
-	snapshot, err := s.client.GetTeamVersion(owner, name, version)
+	vr, err := s.client.GetResourceVersion(owner, name, version)
 	if err != nil {
 		return 0, nil, err
 	}
 	var raw teamSnapshotProjection
-	if err := json.Unmarshal(snapshot.Content, &raw); err != nil {
+	if err := json.Unmarshal(vr.Snapshot, &raw); err != nil {
 		return 0, nil, fmt.Errorf("unmarshal upstream team projection: %w", err)
 	}
 
@@ -247,13 +241,15 @@ func (s *Service) fetchUpstreamTeamProjection(owner, name string, version int) (
 	if projection.Name == "" {
 		projection.Name = name
 	}
-	if raw.RootTeamMemberID != nil {
-		projection.RootTeamMemberID = *raw.RootTeamMemberID
-	}
 	for _, member := range raw.TeamMembers {
-		projection.Members = append(projection.Members, TeamMemberProjection(member))
+		projection.Members = append(projection.Members, TeamMemberProjection{
+			MemberID:      member.MemberID,
+			MemberVersion: member.MemberVersion,
+			Name:          member.Name,
+			Member:        member.Member,
+		})
 	}
-	return snapshot.Version, projection, nil
+	return vr.Version, projection, nil
 }
 
 func (s *Service) renderProjectionDiff(localPath, upstreamPath string) (string, bool, error) {

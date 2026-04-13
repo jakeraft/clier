@@ -55,25 +55,37 @@ type PushResult struct {
 	PulledAfterPush bool   `json:"pulled_after_push"`
 }
 
-func currentUpstreamOfMember(member *api.MemberResponse) *UpstreamMetadata {
-	if !member.IsFork || member.ForkOwnerLogin == "" || member.ForkName == "" {
-		return nil
+// --- Resource helpers ---
+
+// refsByRelType filters ResolvedRef entries from a ResourceResponse by rel_type.
+func refsByRelType(r *api.ResourceResponse, relType string) []api.ResolvedRef {
+	var out []api.ResolvedRef
+	for _, ref := range r.Refs {
+		if ref.RelType == relType {
+			out = append(out, ref)
+		}
 	}
-	return &UpstreamMetadata{
-		Kind:  "member",
-		Owner: member.ForkOwnerLogin,
-		Name:  member.ForkName,
-	}
+	return out
 }
 
-func currentUpstreamOfTeam(team *api.TeamResponse) *UpstreamMetadata {
-	if !team.IsFork || team.ForkOwnerLogin == "" || team.ForkName == "" {
+// firstRefByRelType returns the first ResolvedRef matching relType, or nil.
+func firstRefByRelType(r *api.ResourceResponse, relType string) *api.ResolvedRef {
+	for i := range r.Refs {
+		if r.Refs[i].RelType == relType {
+			return &r.Refs[i]
+		}
+	}
+	return nil
+}
+
+func currentUpstreamOfResource(r *api.ResourceResponse, kind string) *UpstreamMetadata {
+	if !r.Metadata.IsFork || r.Metadata.ForkOwnerName == "" || r.Metadata.ForkName == "" {
 		return nil
 	}
 	return &UpstreamMetadata{
-		Kind:  "team",
-		Owner: team.ForkOwnerLogin,
-		Name:  team.ForkName,
+		Kind:  kind,
+		Owner: r.Metadata.ForkOwnerName,
+		Name:  r.Metadata.ForkName,
 	}
 }
 
@@ -206,60 +218,60 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 			if err != nil {
 				return nil, err
 			}
-			current, err := s.client.GetMember(resource.Owner, resource.Name)
+			current, err := s.client.GetResource(resource.Owner, resource.Name)
 			if err != nil {
 				return nil, err
 			}
-			if !versionsMatch(resource.RemoteVersion, current.LatestVersion) {
+			if !versionsMatch(resource.RemoteVersion, current.Metadata.LatestVersion) {
 				return nil, fmt.Errorf("remote member %s/%s changed; pull before pushing", resource.Owner, resource.Name)
 			}
 			body, err := s.memberMutationFromProjection(projection)
 			if err != nil {
 				return nil, err
 			}
-			updated, err := s.client.UpdateMember(resource.Owner, resource.Name, body)
+			updated, err := s.client.UpdateResource(api.KindMember, resource.Owner, resource.Name, body)
 			if err != nil {
 				return nil, err
 			}
 			if resource.LocalPath == manifest.RootResource.LocalPath {
-				targetName = updated.Name
+				targetName = updated.Metadata.Name
 			}
 		case "team":
 			projection, err := LoadTeamProjection(s.fs, filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
 			if err != nil {
 				return nil, err
 			}
-			current, err := s.client.GetTeam(resource.Owner, resource.Name)
+			current, err := s.client.GetResource(resource.Owner, resource.Name)
 			if err != nil {
 				return nil, err
 			}
-			if !versionsMatch(resource.RemoteVersion, current.LatestVersion) {
+			if !versionsMatch(resource.RemoteVersion, current.Metadata.LatestVersion) {
 				return nil, fmt.Errorf("remote team %s/%s changed; pull before pushing", resource.Owner, resource.Name)
 			}
 			body, err := s.teamMutationFromProjection(projection)
 			if err != nil {
 				return nil, err
 			}
-			updated, err := s.client.UpdateTeam(resource.Owner, resource.Name, body)
+			updated, err := s.client.UpdateResource(api.KindTeam, resource.Owner, resource.Name, body)
 			if err != nil {
 				return nil, err
 			}
 			if resource.LocalPath == manifest.RootResource.LocalPath {
-				targetName = updated.Name
+				targetName = updated.Metadata.Name
 			}
 		case "claude-md":
 			content, err := s.serverClaudeMdContent(base, manifest, resource)
 			if err != nil {
 				return nil, err
 			}
-			current, err := s.client.GetClaudeMd(resource.Owner, resource.Name)
+			current, err := s.client.GetResource(resource.Owner, resource.Name)
 			if err != nil {
 				return nil, err
 			}
-			if !versionsMatch(resource.RemoteVersion, current.LatestVersion) {
+			if !versionsMatch(resource.RemoteVersion, current.Metadata.LatestVersion) {
 				return nil, fmt.Errorf("remote claude-md %s/%s changed; pull before pushing", resource.Owner, resource.Name)
 			}
-			if _, err := s.client.UpdateClaudeMd(resource.Owner, resource.Name, api.ClaudeMdWriteRequest{
+			if _, err := s.client.UpdateResource(api.KindClaudeMd, resource.Owner, resource.Name, api.ContentWriteRequest{
 				Name:    resource.Name,
 				Content: content,
 			}); err != nil {
@@ -270,14 +282,14 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 			if err != nil {
 				return nil, fmt.Errorf("read local resource %s: %w", resource.LocalPath, err)
 			}
-			current, err := s.client.GetClaudeSettings(resource.Owner, resource.Name)
+			current, err := s.client.GetResource(resource.Owner, resource.Name)
 			if err != nil {
 				return nil, err
 			}
-			if !versionsMatch(resource.RemoteVersion, current.LatestVersion) {
+			if !versionsMatch(resource.RemoteVersion, current.Metadata.LatestVersion) {
 				return nil, fmt.Errorf("remote claude-settings %s/%s changed; pull before pushing", resource.Owner, resource.Name)
 			}
-			if _, err := s.client.UpdateClaudeSettings(resource.Owner, resource.Name, api.ClaudeSettingsWriteRequest{
+			if _, err := s.client.UpdateResource(api.KindClaudeSettings, resource.Owner, resource.Name, api.ContentWriteRequest{
 				Name:    resource.Name,
 				Content: string(content),
 			}); err != nil {
@@ -288,14 +300,14 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 			if err != nil {
 				return nil, fmt.Errorf("read local resource %s: %w", resource.LocalPath, err)
 			}
-			current, err := s.client.GetSkill(resource.Owner, resource.Name)
+			current, err := s.client.GetResource(resource.Owner, resource.Name)
 			if err != nil {
 				return nil, err
 			}
-			if !versionsMatch(resource.RemoteVersion, current.LatestVersion) {
+			if !versionsMatch(resource.RemoteVersion, current.Metadata.LatestVersion) {
 				return nil, fmt.Errorf("remote skill %s/%s changed; pull before pushing", resource.Owner, resource.Name)
 			}
-			if _, err := s.client.UpdateSkill(resource.Owner, resource.Name, api.SkillWriteRequest{
+			if _, err := s.client.UpdateResource(api.KindSkill, resource.Owner, resource.Name, api.ContentWriteRequest{
 				Name:    resource.Name,
 				Content: string(content),
 			}); err != nil {
@@ -393,21 +405,25 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 		return nil, err
 	}
 
-	member, err := s.client.GetMember(owner, name)
+	member, err := s.client.GetResource(owner, name)
 	if err != nil {
 		return nil, fmt.Errorf("get member %s/%s: %w", owner, name, err)
 	}
-	projection := memberProjectionFromResponse(member)
+	memberSpec, err := api.DecodeSpec[api.MemberSpec](member)
+	if err != nil {
+		return nil, fmt.Errorf("decode member spec %s/%s: %w", owner, name, err)
+	}
+	projection := memberProjectionFromResource(member)
 	if err := WriteMemberProjection(s.fs, MemberProjectionPath(base), projection); err != nil {
 		return nil, err
 	}
 
 	tracked := []TrackedResource{{
 		Kind:          "member",
-		Owner:         member.OwnerLogin,
-		Name:          member.Name,
+		Owner:         member.Metadata.OwnerName,
+		Name:          member.Metadata.Name,
 		LocalPath:     MemberProjectionLocalPath(),
-		RemoteVersion: member.LatestVersion,
+		RemoteVersion: member.Metadata.LatestVersion,
 		Editable:      true,
 	}}
 
@@ -415,35 +431,40 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 		filepath.ToSlash(filepath.Join(".clier", "work-log-protocol.md")),
 		filepath.ToSlash(filepath.Join(".claude", "settings.local.json")),
 	}
-	if member.ClaudeMd != nil {
+
+	claudeMdRef := firstRefByRelType(member, "claude_md")
+	if claudeMdRef != nil {
 		tracked = append(tracked, TrackedResource{
 			Kind:          "claude-md",
-			Owner:         member.ClaudeMd.Owner,
-			Name:          member.ClaudeMd.Name,
+			Owner:         claudeMdRef.OwnerName,
+			Name:          claudeMdRef.Name,
 			LocalPath:     filepath.ToSlash("CLAUDE.md"),
-			RemoteVersion: intPtr(member.ClaudeMd.Version),
+			RemoteVersion: intPtr(claudeMdRef.TargetVersion),
 			Editable:      true,
 		})
 	} else {
 		generated = append(generated, filepath.ToSlash("CLAUDE.md"))
 	}
-	if member.ClaudeSettings != nil {
+
+	claudeSettingsRef := firstRefByRelType(member, "claude_settings")
+	if claudeSettingsRef != nil {
 		tracked = append(tracked, TrackedResource{
 			Kind:          "claude-settings",
-			Owner:         member.ClaudeSettings.Owner,
-			Name:          member.ClaudeSettings.Name,
+			Owner:         claudeSettingsRef.OwnerName,
+			Name:          claudeSettingsRef.Name,
 			LocalPath:     filepath.ToSlash(filepath.Join(".claude", "settings.json")),
-			RemoteVersion: intPtr(member.ClaudeSettings.Version),
+			RemoteVersion: intPtr(claudeSettingsRef.TargetVersion),
 			Editable:      true,
 		})
 	}
-	for _, skillRef := range member.Skills {
+
+	for _, skillRef := range refsByRelType(member, "skill") {
 		tracked = append(tracked, TrackedResource{
 			Kind:          "skill",
-			Owner:         skillRef.Owner,
+			Owner:         skillRef.OwnerName,
 			Name:          skillRef.Name,
 			LocalPath:     filepath.ToSlash(filepath.Join(".claude", "skills", skillRef.Name, "SKILL.md")),
-			RemoteVersion: intPtr(skillRef.Version),
+			RemoteVersion: intPtr(skillRef.TargetVersion),
 			Editable:      true,
 		})
 	}
@@ -451,22 +472,28 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 		return nil, err
 	}
 
+	// Determine agent type: use first from AgentTypes or fallback to spec.
+	agentType := memberSpec.AgentType
+	if len(member.AgentTypes) > 0 {
+		agentType = member.AgentTypes[0]
+	}
+
 	manifest := &Manifest{
-		Kind:             "member",
-		Owner:            member.OwnerLogin,
-		Name:             member.Name,
-		ClonedAt:         time.Now().UTC(),
-		Upstream:         currentUpstreamOfMember(member),
+		Kind:     "member",
+		Owner:    member.Metadata.OwnerName,
+		Name:     member.Metadata.Name,
+		ClonedAt: time.Now().UTC(),
+		Upstream: currentUpstreamOfResource(member, "member"),
 		RootResource:     tracked[0],
 		TrackedResources: tracked,
 		GeneratedFiles:   normalizePaths(generated),
 		Runtime: &RuntimeMetadata{
 			Member: &MemberRuntimeMetadata{
-				ID:         member.ID,
-				Name:       member.Name,
-				AgentType:  member.AgentType,
-				Command:    member.Command,
-				GitRepoURL: member.GitRepoURL,
+				ID:         member.Metadata.ID,
+				Name:       member.Metadata.Name,
+				AgentType:  agentType,
+				Command:    memberSpec.Command,
+				GitRepoURL: memberSpec.GitRepoURL,
 			},
 		},
 	}
@@ -482,55 +509,67 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		return nil, err
 	}
 
-	team, err := s.client.GetTeam(owner, name)
+	team, err := s.client.GetResource(owner, name)
 	if err != nil {
 		return nil, fmt.Errorf("get team %s/%s: %w", owner, name, err)
 	}
-	if err := WriteTeamProjection(s.fs, TeamProjectionPath(base), teamProjectionFromResponse(team)); err != nil {
+	teamSpec, err := api.DecodeSpec[api.TeamSpec](team)
+	if err != nil {
+		return nil, fmt.Errorf("decode team spec %s/%s: %w", owner, name, err)
+	}
+	if err := WriteTeamProjection(s.fs, TeamProjectionPath(base), teamProjectionFromResource(team, teamSpec)); err != nil {
 		return nil, err
 	}
 
 	tracked := []TrackedResource{{
 		Kind:          "team",
-		Owner:         team.OwnerLogin,
-		Name:          team.Name,
+		Owner:         team.Metadata.OwnerName,
+		Name:          team.Metadata.Name,
 		LocalPath:     TeamProjectionLocalPath(),
-		RemoteVersion: team.LatestVersion,
+		RemoteVersion: team.Metadata.LatestVersion,
 		Editable:      true,
 	}}
 	generated := []string{}
 	metadata := &RuntimeMetadata{
 		Team: &TeamRuntimeMetadata{
-			ID:   team.ID,
-			Name: team.Name,
+			ID:   team.Metadata.ID,
+			Name: team.Metadata.Name,
 		},
 	}
 
-	for _, tm := range team.TeamMembers {
-		memberVersion, err := s.client.GetMemberVersion(tm.Member.Owner, tm.Member.Name, tm.Member.Version)
+	for _, tm := range refsByRelType(team, "team_member") {
+		memberVersion, err := s.client.GetResourceVersion(tm.OwnerName, tm.Name, tm.TargetVersion)
 		if err != nil {
-			return nil, fmt.Errorf("get member %s/%s: %w", tm.Member.Owner, tm.Member.Name, err)
+			return nil, fmt.Errorf("get member %s/%s: %w", tm.OwnerName, tm.Name, err)
 		}
-		memberSnapshot, err := loadMemberSnapshot(memberVersion.Content)
+		memberSnapshot, err := decodeSnapshot[api.MemberSpec](memberVersion.Snapshot)
 		if err != nil {
-			return nil, fmt.Errorf("decode member %s/%s@%d: %w", tm.Member.Owner, tm.Member.Name, tm.Member.Version, err)
+			return nil, fmt.Errorf("decode member %s/%s@%d: %w", tm.OwnerName, tm.Name, tm.TargetVersion, err)
 		}
-		member := memberResponseFromSnapshot(tm.Member.Owner, tm.Member.Name, tm.Member.Version, memberSnapshot)
-		if err := WriteMemberProjection(s.fs, TeamMemberProjectionPath(base, tm.Name), memberProjectionFromResponse(member)); err != nil {
+
+		// Build a MemberProjection from the snapshot + ref metadata.
+		memberProjection := memberProjectionFromSnapshot(tm.OwnerName, tm.Name, tm.TargetVersion, memberVersion)
+		if err := WriteMemberProjection(s.fs, TeamMemberProjectionPath(base, tm.Name), memberProjection); err != nil {
 			return nil, err
 		}
 		tracked = append(tracked, TrackedResource{
 			Kind:          "member",
-			Owner:         tm.Member.Owner,
-			Name:          tm.Member.Name,
+			Owner:         tm.OwnerName,
+			Name:          tm.Name,
 			LocalPath:     TeamMemberProjectionLocalPath(tm.Name),
-			RemoteVersion: intPtr(tm.Member.Version),
+			RemoteVersion: intPtr(tm.TargetVersion),
 			Editable:      true,
 		})
+
+		// Determine agent type from snapshot or ref.
+		agentType := memberSnapshot.AgentType
+		if tm.AgentType != "" {
+			agentType = tm.AgentType
+		}
 		metadata.Team.Members = append(metadata.Team.Members, TeamMemberRuntimeMetadata{
 			TeamMemberID: tm.ID,
 			Name:         tm.Name,
-			AgentType:    memberSnapshot.AgentType,
+			AgentType:    agentType,
 			Command:      memberSnapshot.Command,
 			GitRepoURL:   memberSnapshot.GitRepoURL,
 		})
@@ -541,37 +580,50 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 			filepath.ToSlash(filepath.Join(memberBase, ".clier", TeamProtocolFileName(tm.Name))),
 			filepath.ToSlash(filepath.Join(memberBase, ".claude", "settings.local.json")),
 		)
-		if memberSnapshot.ClaudeMd != nil {
-			tracked = append(tracked, TrackedResource{
-				Kind:          "claude-md",
-				Owner:         memberSnapshot.ClaudeMd.Owner,
-				Name:          memberSnapshot.ClaudeMd.Name,
-				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, "CLAUDE.md")),
-				RemoteVersion: intPtr(memberSnapshot.ClaudeMd.Version),
-				Editable:      true,
-			})
+
+		// Extract content refs from the member version snapshot.
+		// The snapshot has refs embedded; we decode them from the full snapshot.
+		type memberSnapshotRefs struct {
+			ClaudeMd       *ResourceRefProjection  `json:"claude_md,omitempty"`
+			ClaudeSettings *ResourceRefProjection  `json:"claude_settings,omitempty"`
+			Skills         []ResourceRefProjection `json:"skills,omitempty"`
+		}
+		var snapshotRefs memberSnapshotRefs
+		if err := decodeSnapshotInto(memberVersion.Snapshot, &snapshotRefs); err == nil {
+			if snapshotRefs.ClaudeMd != nil {
+				tracked = append(tracked, TrackedResource{
+					Kind:          "claude-md",
+					Owner:         snapshotRefs.ClaudeMd.Owner,
+					Name:          snapshotRefs.ClaudeMd.Name,
+					LocalPath:     filepath.ToSlash(filepath.Join(memberBase, "CLAUDE.md")),
+					RemoteVersion: intPtr(snapshotRefs.ClaudeMd.Version),
+					Editable:      true,
+				})
+			} else {
+				generated = append(generated, filepath.ToSlash(filepath.Join(memberBase, "CLAUDE.md")))
+			}
+			if snapshotRefs.ClaudeSettings != nil {
+				tracked = append(tracked, TrackedResource{
+					Kind:          "claude-settings",
+					Owner:         snapshotRefs.ClaudeSettings.Owner,
+					Name:          snapshotRefs.ClaudeSettings.Name,
+					LocalPath:     filepath.ToSlash(filepath.Join(memberBase, ".claude", "settings.json")),
+					RemoteVersion: intPtr(snapshotRefs.ClaudeSettings.Version),
+					Editable:      true,
+				})
+			}
+			for _, skillRef := range snapshotRefs.Skills {
+				tracked = append(tracked, TrackedResource{
+					Kind:          "skill",
+					Owner:         skillRef.Owner,
+					Name:          skillRef.Name,
+					LocalPath:     filepath.ToSlash(filepath.Join(memberBase, ".claude", "skills", skillRef.Name, "SKILL.md")),
+					RemoteVersion: intPtr(skillRef.Version),
+					Editable:      true,
+				})
+			}
 		} else {
 			generated = append(generated, filepath.ToSlash(filepath.Join(memberBase, "CLAUDE.md")))
-		}
-		if memberSnapshot.ClaudeSettings != nil {
-			tracked = append(tracked, TrackedResource{
-				Kind:          "claude-settings",
-				Owner:         memberSnapshot.ClaudeSettings.Owner,
-				Name:          memberSnapshot.ClaudeSettings.Name,
-				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, ".claude", "settings.json")),
-				RemoteVersion: intPtr(memberSnapshot.ClaudeSettings.Version),
-				Editable:      true,
-			})
-		}
-		for _, skillRef := range memberSnapshot.Skills {
-			tracked = append(tracked, TrackedResource{
-				Kind:          "skill",
-				Owner:         skillRef.Owner,
-				Name:          skillRef.Name,
-				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, ".claude", "skills", skillRef.Name, "SKILL.md")),
-				RemoteVersion: intPtr(skillRef.Version),
-				Editable:      true,
-			})
 		}
 	}
 
@@ -580,10 +632,10 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 	}
 	manifest := &Manifest{
 		Kind:             "team",
-		Owner:            team.OwnerLogin,
-		Name:             team.Name,
+		Owner:            team.Metadata.OwnerName,
+		Name:             team.Metadata.Name,
 		ClonedAt:         time.Now().UTC(),
-		Upstream:         currentUpstreamOfTeam(team),
+		Upstream:         currentUpstreamOfResource(team, "team"),
 		RootResource:     tracked[0],
 		TrackedResources: tracked,
 		GeneratedFiles:   normalizePaths(generated),
@@ -598,34 +650,33 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 func (s *Service) memberMutationFromProjection(projection *MemberProjection) (*api.MemberWriteRequest, error) {
 	var claudeMdRef *api.ResourceRefRequest
 	if projection.ClaudeMd != nil {
-		claudeMd, err := s.client.GetClaudeMd(projection.ClaudeMd.Owner, projection.ClaudeMd.Name)
+		claudeMd, err := s.client.GetResource(projection.ClaudeMd.Owner, projection.ClaudeMd.Name)
 		if err != nil {
 			return nil, err
 		}
-		claudeMdRef = &api.ResourceRefRequest{ID: claudeMd.ID, Version: projection.ClaudeMd.Version}
+		claudeMdRef = &api.ResourceRefRequest{ID: claudeMd.Metadata.ID, Version: projection.ClaudeMd.Version}
 	}
 
 	var claudeSettingsRef *api.ResourceRefRequest
 	if projection.ClaudeSettings != nil {
-		settings, err := s.client.GetClaudeSettings(projection.ClaudeSettings.Owner, projection.ClaudeSettings.Name)
+		settings, err := s.client.GetResource(projection.ClaudeSettings.Owner, projection.ClaudeSettings.Name)
 		if err != nil {
 			return nil, err
 		}
-		claudeSettingsRef = &api.ResourceRefRequest{ID: settings.ID, Version: projection.ClaudeSettings.Version}
+		claudeSettingsRef = &api.ResourceRefRequest{ID: settings.Metadata.ID, Version: projection.ClaudeSettings.Version}
 	}
 
 	skillRefs := make([]api.ResourceRefRequest, 0, len(projection.Skills))
 	for _, skillRef := range projection.Skills {
-		skill, err := s.client.GetSkill(skillRef.Owner, skillRef.Name)
+		skill, err := s.client.GetResource(skillRef.Owner, skillRef.Name)
 		if err != nil {
 			return nil, err
 		}
-		skillRefs = append(skillRefs, api.ResourceRefRequest{ID: skill.ID, Version: skillRef.Version})
+		skillRefs = append(skillRefs, api.ResourceRefRequest{ID: skill.Metadata.ID, Version: skillRef.Version})
 	}
 
 	return &api.MemberWriteRequest{
 		Name:           projection.Name,
-		AgentType:      projection.AgentType,
 		Command:        projection.Command,
 		GitRepoURL:     projection.GitRepoURL,
 		ClaudeMd:       claudeMdRef,
@@ -636,42 +687,22 @@ func (s *Service) memberMutationFromProjection(projection *MemberProjection) (*a
 
 func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.TeamWriteRequest, error) {
 	members := make([]api.TeamMemberRequest, 0, len(projection.Members))
-	indicesByTeamMemberID := make(map[int64]int, len(projection.Members))
-	rootIndex := -1
-	for i, member := range projection.Members {
-		resolved, err := s.client.GetMember(member.Member.Owner, member.Member.Name)
+	for _, member := range projection.Members {
+		resolved, err := s.client.GetResource(member.Member.Owner, member.Member.Name)
 		if err != nil {
 			return nil, err
 		}
 		members = append(members, api.TeamMemberRequest{
-			Member: api.MemberRefRequest{
-				ID:      resolved.ID,
-				Version: member.Member.Version,
-			},
-			Name: member.Name,
+			MemberID:      resolved.Metadata.ID,
+			MemberVersion: member.Member.Version,
 		})
-		indicesByTeamMemberID[member.TeamMemberID] = i
-		if member.TeamMemberID == projection.RootTeamMemberID {
-			rootIndex = i
-		}
-	}
-	if rootIndex < 0 {
-		return nil, fmt.Errorf("root team member id %d not found in team projection", projection.RootTeamMemberID)
 	}
 
 	relations := make([]api.TeamRelationRequest, 0, len(projection.Relations))
 	for _, relation := range projection.Relations {
-		fromIndex, ok := indicesByTeamMemberID[relation.FromTeamMemberID]
-		if !ok {
-			return nil, fmt.Errorf("relation source %d not found in team projection", relation.FromTeamMemberID)
-		}
-		toIndex, ok := indicesByTeamMemberID[relation.ToTeamMemberID]
-		if !ok {
-			return nil, fmt.Errorf("relation target %d not found in team projection", relation.ToTeamMemberID)
-		}
 		relations = append(relations, api.TeamRelationRequest{
-			FromIndex: fromIndex,
-			ToIndex:   toIndex,
+			From: relation.From,
+			To:   relation.To,
 		})
 	}
 
@@ -679,54 +710,88 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 		Name:        projection.Name,
 		TeamMembers: members,
 		Relations:   relations,
-		RootIndex:   &rootIndex,
 	}, nil
 }
 
-func memberProjectionFromResponse(member *api.MemberResponse) *MemberProjection {
+// memberProjectionFromResource builds a MemberProjection from a unified ResourceResponse.
+func memberProjectionFromResource(r *api.ResourceResponse) *MemberProjection {
 	projection := &MemberProjection{
-		Name:       member.Name,
-		AgentType:  member.AgentType,
-		Command:    member.Command,
-		GitRepoURL: member.GitRepoURL,
-		Skills:     make([]ResourceRefProjection, 0, len(member.Skills)),
+		Name:    r.Metadata.Name,
+		Skills:  make([]ResourceRefProjection, 0),
 	}
-	if member.ClaudeMd != nil {
-		projection.ClaudeMd = &ResourceRefProjection{Owner: member.ClaudeMd.Owner, Name: member.ClaudeMd.Name, Version: member.ClaudeMd.Version}
+
+	// Spec fields (Command, GitRepoURL) need to be decoded.
+	if spec, err := api.DecodeSpec[api.MemberSpec](r); err == nil {
+		projection.Command = spec.Command
+		projection.GitRepoURL = spec.GitRepoURL
 	}
-	if member.ClaudeSettings != nil {
-		projection.ClaudeSettings = &ResourceRefProjection{Owner: member.ClaudeSettings.Owner, Name: member.ClaudeSettings.Name, Version: member.ClaudeSettings.Version}
+
+	if ref := firstRefByRelType(r, "claude_md"); ref != nil {
+		projection.ClaudeMd = &ResourceRefProjection{Owner: ref.OwnerName, Name: ref.Name, Version: ref.TargetVersion}
 	}
-	for _, skill := range member.Skills {
-		projection.Skills = append(projection.Skills, ResourceRefProjection{Owner: skill.Owner, Name: skill.Name, Version: skill.Version})
+	if ref := firstRefByRelType(r, "claude_settings"); ref != nil {
+		projection.ClaudeSettings = &ResourceRefProjection{Owner: ref.OwnerName, Name: ref.Name, Version: ref.TargetVersion}
+	}
+	for _, ref := range refsByRelType(r, "skill") {
+		projection.Skills = append(projection.Skills, ResourceRefProjection{Owner: ref.OwnerName, Name: ref.Name, Version: ref.TargetVersion})
 	}
 	return projection
 }
 
-func teamProjectionFromResponse(team *api.TeamResponse) *TeamProjection {
+// memberProjectionFromSnapshot builds a MemberProjection from a version snapshot.
+func memberProjectionFromSnapshot(owner, name string, version int, vr *api.ResourceVersionResponse) *MemberProjection {
+	projection := &MemberProjection{
+		Name:   name,
+		Skills: make([]ResourceRefProjection, 0),
+	}
+
+	// Decode spec fields from snapshot.
+	if spec, err := decodeSnapshot[api.MemberSpec](vr.Snapshot); err == nil {
+		projection.Command = spec.Command
+		projection.GitRepoURL = spec.GitRepoURL
+	}
+
+	// Decode refs from snapshot (they are embedded in the snapshot JSON).
+	type snapshotRefs struct {
+		ClaudeMd       *ResourceRefProjection  `json:"claude_md,omitempty"`
+		ClaudeSettings *ResourceRefProjection  `json:"claude_settings,omitempty"`
+		Skills         []ResourceRefProjection `json:"skills,omitempty"`
+	}
+	var refs snapshotRefs
+	if err := decodeSnapshotInto(vr.Snapshot, &refs); err == nil {
+		projection.ClaudeMd = refs.ClaudeMd
+		projection.ClaudeSettings = refs.ClaudeSettings
+		if len(refs.Skills) > 0 {
+			projection.Skills = refs.Skills
+		}
+	}
+
+	return projection
+}
+
+// teamProjectionFromResource builds a TeamProjection from a unified ResourceResponse.
+func teamProjectionFromResource(r *api.ResourceResponse, spec *api.TeamSpec) *TeamProjection {
 	projection := &TeamProjection{
-		Name:      team.Name,
-		Members:   make([]TeamMemberProjection, 0, len(team.TeamMembers)),
-		Relations: make([]TeamRelationProjection, 0, len(team.Relations)),
+		Name:      r.Metadata.Name,
+		Members:   make([]TeamMemberProjection, 0),
+		Relations: make([]TeamRelationProjection, 0),
 	}
-	if team.RootTeamMemberID != nil {
-		projection.RootTeamMemberID = *team.RootTeamMemberID
-	}
-	for _, member := range team.TeamMembers {
+	for _, ref := range refsByRelType(r, "team_member") {
 		projection.Members = append(projection.Members, TeamMemberProjection{
-			TeamMemberID: member.ID,
-			Name:         member.Name,
+			MemberID:      ref.TargetID,
+			MemberVersion: ref.TargetVersion,
+			Name:          ref.Name,
 			Member: ResourceRefProjection{
-				Owner:   member.Member.Owner,
-				Name:    member.Member.Name,
-				Version: member.Member.Version,
+				Owner:   ref.OwnerName,
+				Name:    ref.Name,
+				Version: ref.TargetVersion,
 			},
 		})
 	}
-	for _, relation := range team.Relations {
+	for _, relation := range spec.Relations {
 		projection.Relations = append(projection.Relations, TeamRelationProjection{
-			FromTeamMemberID: relation.FromTeamMemberID,
-			ToTeamMemberID:   relation.ToTeamMemberID,
+			From: relation.From,
+			To:   relation.To,
 		})
 	}
 	return projection
