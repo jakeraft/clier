@@ -20,10 +20,6 @@ func WorkLogProtocolImportPath() string {
 	return filepath.ToSlash(filepath.Join(".clier", workLogProtocolFileName))
 }
 
-func TeamWorkLogProtocolImportPath() string {
-	return filepath.ToSlash(filepath.Join(".clier", workLogProtocolFileName))
-}
-
 func TeamProtocolFileName(memberName string) string {
 	return sanitizeRepoDirName(memberName) + "-team-protocol.md"
 }
@@ -41,7 +37,7 @@ func WorkLogProtocolImportLine() string {
 }
 
 func TeamWorkLogProtocolImportLine() string {
-	return "@" + TeamWorkLogProtocolImportPath()
+	return "@" + WorkLogProtocolImportPath()
 }
 
 func ComposeMemberClaudeMd(content string) string {

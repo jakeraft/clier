@@ -212,15 +212,8 @@ func (s *Service) fetchUpstreamMemberProjection(owner, name string, version int)
 
 type teamSnapshotProjection struct {
 	Name        string                   `json:"name,omitempty"`
-	TeamMembers []teamMemberProjection   `json:"team_members"`
+	TeamMembers []TeamMemberProjection   `json:"team_members"`
 	Relations   []TeamRelationProjection `json:"relations,omitempty"`
-}
-
-type teamMemberProjection struct {
-	MemberID      int64                 `json:"member_id"`
-	MemberVersion int                   `json:"member_version"`
-	Name          string                `json:"name"`
-	Member        ResourceRefProjection `json:"member"`
 }
 
 func (s *Service) fetchUpstreamTeamProjection(owner, name string, version int) (int, *TeamProjection, error) {

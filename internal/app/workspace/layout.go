@@ -2,8 +2,6 @@ package workspace
 
 import "strings"
 
-const LegacyRepoDirName = "project"
-
 func ResolveRepoDirName(repoURL, fallback string) string {
 	repoURL = strings.TrimSpace(repoURL)
 	if repoURL == "" {
