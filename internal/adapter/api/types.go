@@ -214,26 +214,13 @@ const (
 	KindMember         ResourceKind = "member"
 	KindTeam           ResourceKind = "team"
 	KindSkill          ResourceKind = "skill"
-	KindClaudeMd       ResourceKind = "claude_md"
-	KindClaudeSettings ResourceKind = "claude_setting"
+	KindClaudeMd       ResourceKind = "claude-md"
+	KindClaudeSettings ResourceKind = "claude-setting"
 )
 
-// urlPath returns the URL path segment for write endpoints.
+// urlPath returns the plural URL path segment for write endpoints.
 func (k ResourceKind) urlPath() string {
-	switch k {
-	case KindMember:
-		return "members"
-	case KindTeam:
-		return "teams"
-	case KindSkill:
-		return "skills"
-	case KindClaudeMd:
-		return "claude-mds"
-	case KindClaudeSettings:
-		return "claude-settings"
-	default:
-		return string(k)
-	}
+	return string(k) + "s"
 }
 
 type ListOptions struct {
