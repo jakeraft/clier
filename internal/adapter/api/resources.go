@@ -57,6 +57,18 @@ func (c *Client) ForkResource(kind ResourceKind, owner, name string) (*ResourceR
 	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/%s/%s/fork", owner, kind.urlPath(), name), nil, &r)
 }
 
+// --- Upstream ---
+
+func (c *Client) GetUpstreamStatus(owner, name string) (*UpstreamStatusResponse, error) {
+	var r UpstreamStatusResponse
+	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/resources/%s/upstream", owner, name), &r)
+}
+
+func (c *Client) GetRefsUpstreamStatus(owner, name string) ([]RefUpstreamStatusResponse, error) {
+	var r []RefUpstreamStatusResponse
+	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/resources/%s/refs-upstream", owner, name), &r)
+}
+
 // --- Helpers ---
 
 func buildListQuery(opts ListOptions) string {
