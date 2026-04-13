@@ -11,7 +11,6 @@ import (
 type Member struct {
 	ID               int64     `json:"id"`
 	Name             string    `json:"name"`
-	AgentType        string    `json:"agent_type"`
 	Command          string    `json:"command"`
 	ClaudeMdID       *int64    `json:"claude_md_id"` // nil = not set (nullable FK)
 	SkillIDs         []int64   `json:"skill_ids"`
@@ -21,7 +20,7 @@ type Member struct {
 	UpdatedAt        time.Time `json:"updated_at"`
 }
 
-func NewMember(name, agentType, command string,
+func NewMember(name, command string,
 	claudeMdID *int64, skillIDs []int64,
 	claudeSettingsID *int64,
 	gitRepoURL string) (*Member, error) {
@@ -41,7 +40,6 @@ func NewMember(name, agentType, command string,
 	now := time.Now()
 	return &Member{
 		Name:             name,
-		AgentType:        agentType,
 		Command:          command,
 		ClaudeMdID:       claudeMdID,
 		SkillIDs:         skillIDs,
@@ -52,7 +50,7 @@ func NewMember(name, agentType, command string,
 	}, nil
 }
 
-func (m *Member) Update(name, agentType, command *string,
+func (m *Member) Update(name, command *string,
 	claudeMdID **int64, skillIDs *[]int64,
 	claudeSettingsID **int64,
 	gitRepoURL *string) error {
@@ -63,9 +61,6 @@ func (m *Member) Update(name, agentType, command *string,
 			return errors.New("member name must not be empty")
 		}
 		m.Name = trimmed
-	}
-	if agentType != nil {
-		m.AgentType = *agentType
 	}
 	if command != nil {
 		trimmed := strings.TrimSpace(*command)
