@@ -31,7 +31,7 @@ func newClaudeMdCreateCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			resp, err := client.CreateClaudeMd(owner, api.ClaudeMdWriteRequest{
+			resp, err := client.CreateResource(api.KindClaudeMd, owner, api.ContentWriteRequest{
 				Name:    name,
 				Content: content,
 				Summary: summary,
@@ -60,7 +60,7 @@ func newClaudeMdEditCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			body := api.ClaudeMdPatchRequest{}
+			body := api.ContentPatchRequest{}
 			if cmd.Flags().Changed("name") {
 				body.Name = &name
 			}
@@ -70,7 +70,7 @@ func newClaudeMdEditCmd() *cobra.Command {
 			if cmd.Flags().Changed("summary") {
 				body.Summary = &summary
 			}
-			resp, err := client.PatchClaudeMd(owner, args[0], &body)
+			resp, err := client.PatchResource(api.KindClaudeMd, owner, args[0], &body)
 			if err != nil {
 				return err
 			}
@@ -91,7 +91,7 @@ func newClaudeMdDeleteCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			if err := client.DeleteClaudeMd(owner, args[0]); err != nil {
+			if err := client.DeleteResource(api.KindClaudeMd, owner, args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

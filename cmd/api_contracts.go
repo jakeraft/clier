@@ -43,27 +43,16 @@ func parseOptionalResourceRefRequest(raw string) (*api.ResourceRefRequest, error
 func parseTeamMemberSpecs(specs []string) ([]api.TeamMemberRequest, error) {
 	members := make([]api.TeamMemberRequest, 0, len(specs))
 	for _, spec := range specs {
-		parts := strings.SplitN(spec, ":", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid --member %q, want <member-id>@<version>:<name>", spec)
-		}
-		memberRef, err := parseOptionalResourceRefRequest(parts[0])
+		ref, err := parseOptionalResourceRefRequest(spec)
 		if err != nil {
-			return nil, fmt.Errorf("invalid member ref in %q: %w", spec, err)
+			return nil, fmt.Errorf("invalid --member %q: %w", spec, err)
 		}
-		if memberRef == nil {
+		if ref == nil {
 			return nil, fmt.Errorf("invalid --member %q, member ref must not be empty", spec)
 		}
-		name := strings.TrimSpace(parts[1])
-		if name == "" {
-			return nil, fmt.Errorf("invalid --member %q, name must not be empty", spec)
-		}
 		members = append(members, api.TeamMemberRequest{
-			Member: api.MemberRefRequest{
-				ID:      memberRef.ID,
-				Version: memberRef.Version,
-			},
-			Name: name,
+			MemberID:      ref.ID,
+			MemberVersion: ref.Version,
 		})
 	}
 	return members, nil
@@ -74,21 +63,20 @@ func parseTeamRelationSpecs(specs []string) ([]api.TeamRelationRequest, error) {
 	for _, spec := range specs {
 		parts := strings.SplitN(spec, ":", 2)
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid --relation %q, want <from-index>:<to-index>", spec)
+			return nil, fmt.Errorf("invalid --relation %q, want <from-member-id>:<to-member-id>", spec)
 		}
-		fromIndex, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+		from, err := strconv.ParseInt(strings.TrimSpace(parts[0]), 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("invalid from-index in %q: %w", spec, err)
+			return nil, fmt.Errorf("invalid from in %q: %w", spec, err)
 		}
-		toIndex, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+		to, err := strconv.ParseInt(strings.TrimSpace(parts[1]), 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("invalid to-index in %q: %w", spec, err)
+			return nil, fmt.Errorf("invalid to in %q: %w", spec, err)
 		}
 		relations = append(relations, api.TeamRelationRequest{
-			FromIndex: fromIndex,
-			ToIndex:   toIndex,
+			From: from,
+			To:   to,
 		})
 	}
 	return relations, nil
 }
-

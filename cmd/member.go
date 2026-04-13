@@ -25,7 +25,7 @@ func newMemberCmd() *cobra.Command {
 }
 
 func newMemberCreateCmd() *cobra.Command {
-	var name, agentType, command, claudeMd, claudeSettings, repo, summary string
+	var name, command, claudeMd, claudeSettings, repo, summary string
 	var skills []string
 
 	cmd := &cobra.Command{
@@ -56,7 +56,6 @@ func newMemberCreateCmd() *cobra.Command {
 			}
 			body := api.MemberWriteRequest{
 				Name:           name,
-				AgentType:      agentType,
 				Command:        command,
 				GitRepoURL:     repo,
 				ClaudeMd:       claudeMdRef,
@@ -65,7 +64,7 @@ func newMemberCreateCmd() *cobra.Command {
 				Summary:        summary,
 			}
 
-			resp, err := client.CreateMember(owner, body)
+			resp, err := client.CreateResource(api.KindMember, owner, body)
 			if err != nil {
 				return err
 			}
@@ -73,7 +72,6 @@ func newMemberCreateCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "Member name")
-	cmd.Flags().StringVar(&agentType, "agent-type", "", "Agent type (e.g. claude, codex)")
 	cmd.Flags().StringVar(&command, "command", "", "Command (binary + CLI flags)")
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "Claude md resource ref as <id>@<version>")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "Skill refs as <id>@<version>")
@@ -81,13 +79,12 @@ func newMemberCreateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repo URL")
 	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
 	_ = cmd.MarkFlagRequired("name")
-	_ = cmd.MarkFlagRequired("agent-type")
 	_ = cmd.MarkFlagRequired("command")
 	return cmd
 }
 
 func newMemberEditCmd() *cobra.Command {
-	var name, agentType, command, claudeMd, claudeSettings, repo, summary string
+	var name, command, claudeMd, claudeSettings, repo, summary string
 	var skills []string
 
 	cmd := &cobra.Command{
@@ -101,9 +98,6 @@ func newMemberEditCmd() *cobra.Command {
 			body := api.MemberPatchRequest{}
 			if cmd.Flags().Changed("name") {
 				body.Name = &name
-			}
-			if cmd.Flags().Changed("agent-type") {
-				body.AgentType = &agentType
 			}
 			if cmd.Flags().Changed("command") {
 				body.Command = &command
@@ -142,7 +136,7 @@ func newMemberEditCmd() *cobra.Command {
 				}
 			}
 
-			resp, err := client.PatchMember(owner, args[0], &body)
+			resp, err := client.PatchResource(api.KindMember, owner, args[0], &body)
 			if err != nil {
 				return err
 			}
@@ -150,7 +144,6 @@ func newMemberEditCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&name, "name", "", "New member name")
-	cmd.Flags().StringVar(&agentType, "agent-type", "", "New agent type")
 	cmd.Flags().StringVar(&command, "command", "", "New command")
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "New claude md resource ref as <id>@<version>")
 	cmd.Flags().StringSliceVar(&skills, "skills", nil, "New skill refs as <id>@<version>")
@@ -169,7 +162,7 @@ func newMemberDeleteCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			if err := client.DeleteMember(owner, args[0]); err != nil {
+			if err := client.DeleteResource(api.KindMember, owner, args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

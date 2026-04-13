@@ -31,7 +31,7 @@ func newSkillCreateCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			resp, err := client.CreateSkill(owner, api.SkillWriteRequest{
+			resp, err := client.CreateResource(api.KindSkill, owner, api.ContentWriteRequest{
 				Name:    name,
 				Content: content,
 				Summary: summary,
@@ -60,7 +60,7 @@ func newSkillEditCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			body := api.SkillPatchRequest{}
+			body := api.ContentPatchRequest{}
 			if cmd.Flags().Changed("name") {
 				body.Name = &name
 			}
@@ -70,7 +70,7 @@ func newSkillEditCmd() *cobra.Command {
 			if cmd.Flags().Changed("summary") {
 				body.Summary = &summary
 			}
-			resp, err := client.PatchSkill(owner, args[0], &body)
+			resp, err := client.PatchResource(api.KindSkill, owner, args[0], &body)
 			if err != nil {
 				return err
 			}
@@ -91,7 +91,7 @@ func newSkillDeleteCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner := requireLogin()
-			if err := client.DeleteSkill(owner, args[0]); err != nil {
+			if err := client.DeleteResource(api.KindSkill, owner, args[0]); err != nil {
 				return err
 			}
 			return printJSON(map[string]string{"deleted": args[0]})

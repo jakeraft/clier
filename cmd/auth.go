@@ -61,12 +61,12 @@ func newAuthLoginCmd() *cobra.Command {
 				if poll.AccessToken != "" && poll.User != nil {
 					creds := &auth.Credentials{
 						Token: poll.AccessToken,
-						Login: poll.User.Login,
+						Login: poll.User.Name,
 					}
 					if err := auth.Save(currentConfig().CredentialsPath, creds); err != nil {
 						return fmt.Errorf("failed to save credentials: %w", err)
 					}
-					fmt.Fprintf(os.Stderr, "Logged in as %s\n", poll.User.Login)
+					fmt.Fprintf(os.Stderr, "Logged in as %s\n", poll.User.Name)
 					return nil
 				}
 
@@ -85,6 +85,8 @@ func newAuthLogoutCmd() *cobra.Command {
 		Use:   "logout",
 		Short: "Log out",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newAPIClient()
+			_ = client.Logout() // best-effort server-side logout
 			if err := auth.Delete(currentConfig().CredentialsPath); err != nil {
 				return err
 			}
@@ -110,7 +112,7 @@ func newAuthStatusCmd() *cobra.Command {
 				return printAuthExpiredStatus(creds.Login)
 			}
 
-			fmt.Fprintf(os.Stderr, "Logged in as %s\n", user.Login)
+			fmt.Fprintf(os.Stderr, "Logged in as %s\n", user.Name)
 			return nil
 		},
 	}

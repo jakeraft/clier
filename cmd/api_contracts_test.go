@@ -28,14 +28,14 @@ func TestParseOptionalInt64(t *testing.T) {
 func TestParseTeamMemberSpecs(t *testing.T) {
 	t.Parallel()
 
-	got, err := parseTeamMemberSpecs([]string{"101@3:lead", "202@5:worker"})
+	got, err := parseTeamMemberSpecs([]string{"101@3", "202@5"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(got) != 2 {
 		t.Fatalf("len = %d, want 2", len(got))
 	}
-	if got[0].Member.ID != 101 || got[0].Member.Version != 3 || got[0].Name != "lead" {
+	if got[0].MemberID != 101 || got[0].MemberVersion != 3 {
 		t.Fatalf("first member = %+v", got[0])
 	}
 }
@@ -43,7 +43,7 @@ func TestParseTeamMemberSpecs(t *testing.T) {
 func TestParseTeamMemberSpecs_EmptyMemberRefReturnsError(t *testing.T) {
 	t.Parallel()
 
-	_, err := parseTeamMemberSpecs([]string{":lead"})
+	_, err := parseTeamMemberSpecs([]string{""})
 	if err == nil {
 		t.Fatal("expected error for empty member ref")
 	}
@@ -55,15 +55,14 @@ func TestParseTeamMemberSpecs_EmptyMemberRefReturnsError(t *testing.T) {
 func TestParseTeamRelationSpecs(t *testing.T) {
 	t.Parallel()
 
-	got, err := parseTeamRelationSpecs([]string{"0:1", "1:2"})
+	got, err := parseTeamRelationSpecs([]string{"100:200", "200:300"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(got) != 2 {
 		t.Fatalf("len = %d, want 2", len(got))
 	}
-	if got[1].FromIndex != 1 || got[1].ToIndex != 2 {
+	if got[1].From != 200 || got[1].To != 300 {
 		t.Fatalf("second relation = %+v", got[1])
 	}
 }
-

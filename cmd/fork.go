@@ -1,6 +1,9 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/spf13/cobra"
+)
 
 func init() {
 	rootCmd.AddCommand(newForkCmd())
@@ -24,40 +27,32 @@ func newForkCmd() *cobra.Command {
 				return err
 			}
 
-			switch kind {
-			case resourceKindMember:
-				resp, err := client.ForkMember(owner, name)
-				if err != nil {
-					return err
-				}
-				return printJSON(resp)
-			case resourceKindTeam:
-				resp, err := client.ForkTeam(owner, name)
-				if err != nil {
-					return err
-				}
-				return printJSON(resp)
-			case resourceKindSkill:
-				resp, err := client.ForkSkill(owner, name)
-				if err != nil {
-					return err
-				}
-				return printJSON(resp)
-			case resourceKindClaudeMd:
-				resp, err := client.ForkClaudeMd(owner, name)
-				if err != nil {
-					return err
-				}
-				return printJSON(resp)
-			case resourceKindClaudeSettings:
-				resp, err := client.ForkClaudeSettings(owner, name)
-				if err != nil {
-					return err
-				}
-				return printJSON(resp)
-			default:
-				return errUnsupportedResourceKind(kind)
+			apiKind, err := toAPIKind(kind)
+			if err != nil {
+				return err
 			}
+			resp, err := client.ForkResource(apiKind, owner, name)
+			if err != nil {
+				return err
+			}
+			return printJSON(resp)
 		},
+	}
+}
+
+func toAPIKind(kind string) (api.ResourceKind, error) {
+	switch kind {
+	case resourceKindMember:
+		return api.KindMember, nil
+	case resourceKindTeam:
+		return api.KindTeam, nil
+	case resourceKindSkill:
+		return api.KindSkill, nil
+	case resourceKindClaudeMd:
+		return api.KindClaudeMd, nil
+	case resourceKindClaudeSettings:
+		return api.KindClaudeSettings, nil
+	default:
+		return "", errUnsupportedResourceKind(kind)
 	}
 }
