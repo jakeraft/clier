@@ -22,10 +22,29 @@ type Service struct {
 }
 
 type Status struct {
-	WorkingCopy WorkingCopyStatus `json:"working_copy"`
-	Local       string            `json:"local"`
-	Tracked     []TrackedStatus   `json:"tracked"`
-	Runs        RunStatusSummary  `json:"runs"`
+	WorkingCopy WorkingCopyStatus  `json:"working_copy"`
+	Local       string             `json:"local"`
+	Tracked     []TrackedStatus    `json:"tracked"`
+	Upstream    *UpstreamStatus    `json:"upstream,omitempty"`
+	Refs        []RefUpstreamInfo  `json:"refs_upstream,omitempty"`
+	Runs        RunStatusSummary   `json:"runs"`
+}
+
+type UpstreamStatus struct {
+	Status        string `json:"status"`
+	ForkVersion   int    `json:"fork_version"`
+	UpstreamOwner string `json:"upstream_owner,omitempty"`
+	UpstreamName  string `json:"upstream_name,omitempty"`
+	LatestVersion *int   `json:"latest_version,omitempty"`
+}
+
+type RefUpstreamInfo struct {
+	RelType       string `json:"rel_type"`
+	TargetName    string `json:"target_name"`
+	TargetOwner   string `json:"target_owner"`
+	TargetVersion int    `json:"target_version"`
+	LatestVersion int    `json:"latest_version"`
+	Status        string `json:"status"`
 }
 
 type WorkingCopyStatus struct {
@@ -176,7 +195,7 @@ func (s *Service) Status(base string) (*Status, error) {
 	if modifiedCount > 0 {
 		local = "modified"
 	}
-	return &Status{
+	status := &Status{
 		WorkingCopy: WorkingCopyStatus{
 			Root:     base,
 			Kind:     manifest.Kind,
@@ -187,7 +206,35 @@ func (s *Service) Status(base string) (*Status, error) {
 		Local:   local,
 		Tracked: tracked,
 		Runs:    runs,
-	}, nil
+	}
+
+	// Check upstream status for forked resources.
+	res, err := s.client.GetResource(manifest.Owner, manifest.Name)
+	if err == nil && res.Metadata.IsFork {
+		if us, err := s.client.GetUpstreamStatus(manifest.Owner, manifest.Name); err == nil {
+			status.Upstream = &UpstreamStatus{
+				Status:        us.Status,
+				ForkVersion:   us.ForkVersion,
+				UpstreamOwner: us.UpstreamOwner,
+				UpstreamName:  us.UpstreamName,
+				LatestVersion: us.UpstreamLatestVersion,
+			}
+		}
+		if refs, err := s.client.GetRefsUpstreamStatus(manifest.Owner, manifest.Name); err == nil {
+			for _, r := range refs {
+				status.Refs = append(status.Refs, RefUpstreamInfo{
+					RelType:       r.RelType,
+					TargetName:    r.TargetName,
+					TargetOwner:   r.TargetOwner,
+					TargetVersion: r.TargetVersion,
+					LatestVersion: r.LatestVersion,
+					Status:        r.Status,
+				})
+			}
+		}
+	}
+
+	return status, nil
 }
 
 func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
