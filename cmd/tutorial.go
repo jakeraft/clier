@@ -88,6 +88,38 @@ Step 9. See the result
   gh pr list -R jakeraft/clier_todo
   gh pr view <number> -R jakeraft/clier_todo --web
 
+Step 10. Edit locally and push (git-like workflow)
+
+  Resources you clone are tracked locally, just like git.
+  Edit a member's prompt, then push the change to the server:
+
+    # Edit the coder's CLAUDE.md in your editor
+    vim coder/CLAUDE.md
+
+    # Check what changed
+    clier status
+
+    # Push local changes to the server
+    clier push
+
+Step 11. Check upstream status (fork tracking)
+
+  Since you forked the team, you can track upstream changes:
+
+    clier status
+
+  If the original team was updated, you'll see:
+
+    "upstream": { "status": "behind", ... }
+
+  Fetch and merge upstream changes:
+
+    clier fetch upstream
+    clier diff upstream
+    clier merge upstream
+
+  This works like git fetch/merge for your forked resources.
+
 Tip: Use "clier <command> --help" for details on each command.`,
 	}
 	cmd.RunE = func(c *cobra.Command, args []string) error {
