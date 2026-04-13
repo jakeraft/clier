@@ -17,7 +17,7 @@ func (c *Client) ListResources(owner string, opts ListOptions) (*ListResponse, e
 
 func (c *Client) ListPublicResources(opts ListOptions) (*ListResponse, error) {
 	var r ListResponse
-	path := fmt.Sprintf("/api/v1/resources?%s", buildListQuery(opts))
+	path := "/api/v1/resources?" + buildListQuery(opts)
 	return &r, c.get(path, &r)
 }
 

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"strconv"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/spf13/cobra"
@@ -114,7 +114,7 @@ func newOrgInviteCmd() *cobra.Command {
 				"status": "invited",
 				"org":    args[0],
 				"user":   args[1],
-				"role":   fmt.Sprintf("%d", role),
+				"role":   strconv.Itoa(role),
 			})
 		},
 	}

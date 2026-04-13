@@ -548,7 +548,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		}
 
 		// Build a MemberProjection from the snapshot + ref metadata.
-		memberProjection := memberProjectionFromSnapshot(tm.OwnerName, tm.Name, tm.TargetVersion, memberVersion)
+		memberProjection := memberProjectionFromSnapshot(tm.Name, memberVersion)
 		if err := WriteMemberProjection(s.fs, TeamMemberProjectionPath(base, tm.Name), memberProjection); err != nil {
 			return nil, err
 		}
@@ -739,7 +739,7 @@ func memberProjectionFromResource(r *api.ResourceResponse) *MemberProjection {
 }
 
 // memberProjectionFromSnapshot builds a MemberProjection from a version snapshot.
-func memberProjectionFromSnapshot(owner, name string, version int, vr *api.ResourceVersionResponse) *MemberProjection {
+func memberProjectionFromSnapshot(name string, vr *api.ResourceVersionResponse) *MemberProjection {
 	projection := &MemberProjection{
 		Name:   name,
 		Skills: make([]ResourceRefProjection, 0),

@@ -8,7 +8,7 @@ func (c *Client) CreateOrg(body CreateOrgRequest) (*OrgResponse, error) {
 }
 
 func (c *Client) DeleteOrg(owner string) error {
-	return c.delete(fmt.Sprintf("/api/v1/orgs/%s", owner))
+	return c.delete("/api/v1/orgs/" + owner)
 }
 
 func (c *Client) ListMyOrgs() ([]OrgResponse, error) {
