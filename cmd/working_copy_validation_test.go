@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jakeraft/clier/internal/adapter/api"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
 
@@ -25,7 +26,7 @@ func TestValidateWorkingCopy_Member(t *testing.T) {
 	}
 
 	meta := &appworkspace.Manifest{
-		Kind: resourceKindMember,
+		Kind: string(api.KindMember),
 		Runtime: &appworkspace.RuntimeMetadata{
 			Member: &appworkspace.MemberRuntimeMetadata{
 				ID:      1,
@@ -42,7 +43,7 @@ func TestValidateWorkingCopy_Member(t *testing.T) {
 func TestValidateWorkingCopy_MissingFileFails(t *testing.T) {
 	base := t.TempDir()
 	meta := &appworkspace.Manifest{
-		Kind: resourceKindMember,
+		Kind: string(api.KindMember),
 		Runtime: &appworkspace.RuntimeMetadata{
 			Member: &appworkspace.MemberRuntimeMetadata{
 				ID:      1,

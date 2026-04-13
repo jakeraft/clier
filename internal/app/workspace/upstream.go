@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/jakeraft/clier/internal/adapter/api"
 )
 
 type FetchUpstreamResult struct {
@@ -39,9 +41,9 @@ type MergeUpstreamResult struct {
 
 func rootProjectionPath(base, kind string) (string, error) {
 	switch kind {
-	case "member":
+	case string(api.KindMember):
 		return MemberProjectionPath(base), nil
-	case "team":
+	case string(api.KindTeam):
 		return TeamProjectionPath(base), nil
 	default:
 		return "", fmt.Errorf("unsupported working-copy kind %q", kind)
@@ -172,7 +174,7 @@ func (s *Service) writeFetchedUpstreamProjection(base string, manifest *Manifest
 	}
 
 	switch manifest.Upstream.Kind {
-	case "member":
+	case string(api.KindMember):
 		version, projection, err := s.fetchUpstreamMemberProjection(manifest.Upstream.Owner, manifest.Upstream.Name, *upstream.Metadata.LatestVersion)
 		if err != nil {
 			return 0, err
@@ -181,7 +183,7 @@ func (s *Service) writeFetchedUpstreamProjection(base string, manifest *Manifest
 			return 0, err
 		}
 		return version, nil
-	case "team":
+	case string(api.KindTeam):
 		version, projection, err := s.fetchUpstreamTeamProjection(manifest.Upstream.Owner, manifest.Upstream.Name, *upstream.Metadata.LatestVersion)
 		if err != nil {
 			return 0, err

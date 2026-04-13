@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
@@ -14,7 +15,7 @@ func TestDefaultCloneDir(t *testing.T) {
 
 	base := "/tmp/clier"
 	if got := defaultCloneDir(base, resourceTarget{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	}); got != filepath.Join(base, "jakeraft", "reviewer") {
@@ -22,7 +23,7 @@ func TestDefaultCloneDir(t *testing.T) {
 	}
 
 	if got := defaultCloneDir(base, resourceTarget{
-		Kind:  resourceKindTeam,
+		Kind:  string(api.KindTeam),
 		Owner: "jakeraft",
 		Name:  "todo-team",
 	}); got != filepath.Join(base, "jakeraft", "todo-team") {
@@ -34,12 +35,12 @@ func TestMatchesWorkingCopyTarget(t *testing.T) {
 	t.Parallel()
 
 	target := resourceTarget{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	}
 	meta := &appworkspace.Manifest{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	}
@@ -48,7 +49,7 @@ func TestMatchesWorkingCopyTarget(t *testing.T) {
 		t.Fatalf("expected matching working-copy root to be reused")
 	}
 	if matchesWorkingCopyTarget(target, "/tmp/clier/jakeraft/reviewer", &appworkspace.Manifest{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "other",
 		Name:  "reviewer",
 	}) {
@@ -70,7 +71,7 @@ func TestResolveCloneBase_FailsWhenTargetAlreadyExists(t *testing.T) {
 	defer func() { _ = os.Chdir(origWD) }()
 
 	_, err := resolveCloneBase(resourceTarget{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	})
@@ -82,7 +83,7 @@ func TestResolveCloneBase_FailsWhenTargetAlreadyExists(t *testing.T) {
 func TestResolveCloneBase_FailsInsideExistingWorkingCopy(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "jakeraft", "reviewer")
 	if err := appworkspace.SaveManifest(filesystem.New(), base, &appworkspace.Manifest{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	}); err != nil {
@@ -96,7 +97,7 @@ func TestResolveCloneBase_FailsInsideExistingWorkingCopy(t *testing.T) {
 	defer func() { _ = os.Chdir(origWD) }()
 
 	_, err := resolveCloneBase(resourceTarget{
-		Kind:  resourceKindTeam,
+		Kind:  string(api.KindTeam),
 		Owner: "jakeraft",
 		Name:  "todo-team",
 	})
@@ -108,7 +109,7 @@ func TestResolveCloneBase_FailsInsideExistingWorkingCopy(t *testing.T) {
 func TestResolveCloneBase_FailsAtExistingTargetWorkingCopy(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "jakeraft", "reviewer")
 	if err := appworkspace.SaveManifest(filesystem.New(), base, &appworkspace.Manifest{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	}); err != nil {
@@ -122,7 +123,7 @@ func TestResolveCloneBase_FailsAtExistingTargetWorkingCopy(t *testing.T) {
 	defer func() { _ = os.Chdir(origWD) }()
 
 	_, err := resolveCloneBase(resourceTarget{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	})
@@ -134,7 +135,7 @@ func TestResolveCloneBase_FailsAtExistingTargetWorkingCopy(t *testing.T) {
 func TestRequireCurrentCopyRoot_RequiresDirectOwner(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "jakeraft", "reviewer")
 	if err := appworkspace.SaveManifest(filesystem.New(), base, &appworkspace.Manifest{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	}); err != nil {
@@ -152,7 +153,7 @@ func TestRequireCurrentCopyRoot_RequiresDirectOwner(t *testing.T) {
 	defer func() { _ = os.Chdir(origWD) }()
 
 	_, _, err := requireCurrentCopyRoot(resourceTarget{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	}, "`clier run start`")
@@ -164,7 +165,7 @@ func TestRequireCurrentCopyRoot_RequiresDirectOwner(t *testing.T) {
 func TestRequireCurrentCopyRoot_LoadsCurrentManifest(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "jakeraft", "reviewer")
 	if err := appworkspace.SaveManifest(filesystem.New(), base, &appworkspace.Manifest{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	}); err != nil {
@@ -178,7 +179,7 @@ func TestRequireCurrentCopyRoot_LoadsCurrentManifest(t *testing.T) {
 	defer func() { _ = os.Chdir(origWD) }()
 
 	gotBase, meta, err := requireCurrentCopyRoot(resourceTarget{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 	}, "`clier run start`")
@@ -192,7 +193,7 @@ func TestRequireCurrentCopyRoot_LoadsCurrentManifest(t *testing.T) {
 	if gotBase != wantBase {
 		t.Fatalf("base = %q, want %q", gotBase, wantBase)
 	}
-	if meta.Kind != resourceKindMember || meta.Owner != "jakeraft" || meta.Name != "reviewer" {
+	if meta.Kind != string(api.KindMember) || meta.Owner != "jakeraft" || meta.Name != "reviewer" {
 		t.Fatalf("unexpected manifest: %+v", meta)
 	}
 }

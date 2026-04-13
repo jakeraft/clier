@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jakeraft/clier/internal/adapter/api"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
 
@@ -18,12 +19,12 @@ func validateWorkingCopy(base string, manifest *appworkspace.Manifest) error {
 		return errors.New("working-copy manifest is missing")
 	}
 	switch manifest.Kind {
-	case resourceKindMember:
+	case string(api.KindMember):
 		if manifest.Runtime == nil || manifest.Runtime.Member == nil {
 			return fmt.Errorf("manifest in %s is incomplete for member runs", manifestPathLabel())
 		}
 		return validateMemberCopy(base, manifest.Runtime.Member, "")
-	case resourceKindTeam:
+	case string(api.KindTeam):
 		if manifest.Runtime == nil || manifest.Runtime.Team == nil {
 			return fmt.Errorf("manifest in %s is incomplete for team runs", manifestPathLabel())
 		}

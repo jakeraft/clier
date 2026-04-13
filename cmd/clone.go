@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+
+	"github.com/jakeraft/clier/internal/adapter/api"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
@@ -51,11 +54,11 @@ func newCloneCmd() *cobra.Command {
 
 func cloneResolvedResource(svc *appworkspace.Service, base, kind, owner, name string) (*appworkspace.Manifest, error) {
 	switch kind {
-	case resourceKindMember:
+	case string(api.KindMember):
 		return svc.CloneMember(base, owner, name)
-	case resourceKindTeam:
+	case string(api.KindTeam):
 		return svc.CloneTeam(base, owner, name)
 	default:
-		return nil, errUnsupportedResourceKind(kind)
+		return nil, fmt.Errorf("unsupported resource kind %q", kind)
 	}
 }

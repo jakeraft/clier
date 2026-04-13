@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jakeraft/clier/internal/adapter/api"
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
@@ -101,7 +102,7 @@ func newRunStartCmd() *cobra.Command {
 			}
 
 			switch manifest.Kind {
-			case resourceKindMember:
+			case string(api.KindMember):
 				memberProjection, err := appworkspace.LoadMemberProjection(fs, appworkspace.MemberProjectionPath(copyRoot))
 				if err != nil {
 					return err
@@ -125,7 +126,7 @@ func newRunStartCmd() *cobra.Command {
 					return err
 				}
 				return printJSON(map[string]any{"run_id": runID, "session": plan.Session})
-			case resourceKindTeam:
+			case string(api.KindTeam):
 				team := manifest.Runtime.Team
 				runName := apprun.SessionName(team.Name, runID)
 				var terminalPlans []apprun.MemberTerminal

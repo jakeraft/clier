@@ -18,15 +18,15 @@ func resolveServerResourceKind(client *api.Client, owner, name string) (string, 
 
 	switch api.ResourceKind(r.Kind) {
 	case api.KindTeam:
-		return resourceKindTeam, nil
+		return string(api.KindTeam), nil
 	case api.KindMember:
-		return resourceKindMember, nil
+		return string(api.KindMember), nil
 	case api.KindSkill:
-		return resourceKindSkill, nil
+		return string(api.KindSkill), nil
 	case api.KindClaudeMd:
-		return resourceKindClaudeMd, nil
+		return string(api.KindClaudeMd), nil
 	case api.KindClaudeSettings:
-		return resourceKindClaudeSettings, nil
+		return string(api.KindClaudeSettings), nil
 	default:
 		return r.Kind, nil
 	}

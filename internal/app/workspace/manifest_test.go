@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
 )
 
@@ -17,12 +18,12 @@ func TestSaveManifest(t *testing.T) {
 	fetchedVersion := 7
 	fetchedAt := timeRef(t)
 	meta := &Manifest{
-		Kind:     "team",
+		Kind:     string(api.KindTeam),
 		Owner:    "jakeraft",
 		Name:     "dev-squad",
-		Upstream: &UpstreamMetadata{Kind: "team", Owner: "origin", Name: "dev-squad", FetchedVersion: &fetchedVersion, FetchedAt: fetchedAt},
+		Upstream: &UpstreamMetadata{Kind: string(api.KindTeam), Owner: "origin", Name: "dev-squad", FetchedVersion: &fetchedVersion, FetchedAt: fetchedAt},
 		RootResource: TrackedResource{
-			Kind:          "team",
+			Kind:          string(api.KindTeam),
 			Owner:         "jakeraft",
 			Name:          "dev-squad",
 			LocalPath:     ".clier/team.json",
@@ -31,7 +32,7 @@ func TestSaveManifest(t *testing.T) {
 			Editable:      true,
 		},
 		TrackedResources: []TrackedResource{{
-			Kind:          "skill",
+			Kind:          string(api.KindSkill),
 			Owner:         "jakeraft",
 			Name:          "reviewer",
 			LocalPath:     "lead/.claude/skills/reviewer/SKILL.md",

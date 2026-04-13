@@ -8,18 +8,6 @@ import (
 	"github.com/jakeraft/clier/internal/adapter/api"
 )
 
-func parseOptionalInt64(raw string) (*int64, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return nil, nil
-	}
-	v, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid int64 %q: %w", raw, err)
-	}
-	return &v, nil
-}
-
 func parseOptionalResourceRefRequest(raw string) (*api.ResourceRefRequest, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {

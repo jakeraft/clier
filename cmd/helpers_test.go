@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
@@ -20,7 +21,7 @@ func TestResolveRunPlanPath_SearchesCurrentWorkspaceAncestors(t *testing.T) {
 		t.Fatalf("SavePlan: %v", err)
 	}
 	if err := appworkspace.SaveManifest(filesystem.New(), base, &appworkspace.Manifest{
-		Kind:  resourceKindMember,
+		Kind:  string(api.KindMember),
 		Owner: "jakeraft",
 		Name:  "tech-lead",
 	}); err != nil {

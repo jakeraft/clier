@@ -5,26 +5,6 @@ import (
 	"testing"
 )
 
-func TestParseOptionalInt64(t *testing.T) {
-	t.Parallel()
-
-	got, err := parseOptionalInt64("")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got != nil {
-		t.Fatalf("got %v, want nil", *got)
-	}
-
-	got, err = parseOptionalInt64("42")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got == nil || *got != 42 {
-		t.Fatalf("got %v, want 42", got)
-	}
-}
-
 func TestParseTeamMemberSpecs(t *testing.T) {
 	t.Parallel()
 

@@ -161,7 +161,7 @@ func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
 	}
 
 	// Build member lookup for protocol generation from member refs.
-	tmRefs := refsByRelType(team, "member")
+	tmRefs := refsByRelType(team, string(api.KindMember))
 	membersByID := make(map[int64]ProtocolMember, len(tmRefs))
 	for _, ref := range tmRefs {
 		membersByID[ref.ID] = ProtocolMember{

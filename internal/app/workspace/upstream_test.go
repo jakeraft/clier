@@ -21,14 +21,14 @@ func TestPreservedUpstreamState_KeepsFetchedSnapshotForSameUpstream(t *testing.T
 	fetchedAt := timeRef(t)
 	preserved := preservedUpstreamState(
 		&UpstreamMetadata{
-			Kind:           "team",
+			Kind:           string(api.KindTeam),
 			Owner:          "origin",
 			Name:           "squad",
 			FetchedVersion: &fetchedVersion,
 			FetchedAt:      fetchedAt,
 		},
 		&UpstreamMetadata{
-			Kind:  "team",
+			Kind:  string(api.KindTeam),
 			Owner: "origin",
 			Name:  "squad",
 		},
