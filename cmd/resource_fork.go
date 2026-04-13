@@ -14,7 +14,10 @@ func init() {
 func newForkCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "fork <owner/name>",
-		Short:   "Fork a resource into your namespace",
+		Short: "Fork a resource into your namespace",
+		Long: `Fork a resource into your namespace. Creates your own copy that
+you can customize independently. Use status to track upstream
+changes, and fetch/merge to sync updates from the original.`,
 		GroupID: rootGroupResources,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

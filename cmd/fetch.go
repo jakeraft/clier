@@ -24,7 +24,7 @@ func newFetchCmd() *cobra.Command {
 func newFetchUpstreamCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "upstream",
-		Short: "Fetch the current fork's upstream snapshot",
+		Short: "Fetch the latest upstream version for comparison",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()
 			if err != nil {

@@ -24,7 +24,7 @@ func newDiffCmd() *cobra.Command {
 func newDiffUpstreamCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "upstream",
-		Short: "Diff the root projection against the fetched upstream snapshot",
+		Short: "Show differences between local and fetched upstream",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()
 			if err != nil {

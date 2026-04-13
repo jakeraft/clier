@@ -16,7 +16,10 @@ func newCloneCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "clone <[owner/]name>",
 		Short:   "Clone a resource into a local clone",
-		GroupID: rootGroupRuntime,
+		Long: `Clone a resource from the server into a local working copy.
+This creates a directory with editable projections and materialized files.
+Use push/pull to sync changes, and run start to launch agents.`,
+		GroupID: rootGroupWorkspace,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()

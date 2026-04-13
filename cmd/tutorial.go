@@ -88,37 +88,25 @@ Step 9. See the result
   gh pr list -R jakeraft/clier_todo
   gh pr view <number> -R jakeraft/clier_todo --web
 
-Step 10. Edit locally and push (git-like workflow)
+Step 10. Edit and push local changes
 
   Resources you clone are tracked locally, just like git.
   Edit a member's prompt, then push the change to the server:
 
-    # Edit the coder's CLAUDE.md in your editor
-    vim coder/CLAUDE.md
+    edit coder/CLAUDE.md        Open in your editor
+    clier status                Check what changed
+    clier push                  Push local changes to the server
 
-    # Check what changed
-    clier status
+Step 11. Track upstream changes
 
-    # Push local changes to the server
-    clier push
+  Since you forked the team, you can track upstream changes.
+  Run "clier status" to see whether the original has been updated.
 
-Step 11. Check upstream status (fork tracking)
+  If upstream has new changes, fetch, review, and merge them:
 
-  Since you forked the team, you can track upstream changes:
-
-    clier status
-
-  If the original team was updated, you'll see:
-
-    "upstream": { "status": "behind", ... }
-
-  Fetch and merge upstream changes:
-
-    clier fetch upstream
-    clier diff upstream
-    clier merge upstream
-
-  This works like git fetch/merge for your forked resources.
+    clier fetch upstream        Download the latest upstream version
+    clier diff upstream         Review what changed
+    clier merge upstream        Apply upstream changes locally
 
 Tip: Use "clier <command> --help" for details on each command.`,
 	}

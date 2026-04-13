@@ -17,9 +17,9 @@ func init() {
 func newAuthCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "auth",
-		Short:   "Authenticate with GitHub",
+		Short:   "Log in and manage credentials",
 		GroupID: rootGroupSettings,
-		Long:    `Authenticate with GitHub to access clier resources.`,
+		Long:    `Log in and manage credentials for accessing clier resources.`,
 	}
 	cmd.AddCommand(newAuthLoginCmd())
 	cmd.AddCommand(newAuthLogoutCmd())

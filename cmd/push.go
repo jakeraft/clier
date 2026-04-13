@@ -14,7 +14,10 @@ func init() {
 func newPushCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "push",
-		Short:   "Push tracked local changes to the server",
+		Short: "Push tracked local changes to the server",
+		Long: `Push locally modified resources to the server. Only resources
+that have changed since the last pull/clone are sent. Fails if
+the remote version has changed (pull first to resolve).`,
 		GroupID: rootGroupWorkspace,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()

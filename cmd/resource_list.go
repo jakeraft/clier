@@ -53,7 +53,7 @@ func newListCmd() *cobra.Command {
 			return printJSON(items)
 		},
 	}
-	cmd.Flags().StringVar(&kind, "kind", "", "Filter by resource kind (member, team, skill, claude-md, claude-settings)")
+	cmd.Flags().StringVar(&kind, "kind", "", "Filter by resource kind (member, team, skill, claude-md, claude-setting)")
 	cmd.Flags().StringVarP(&query, "query", "q", "", "Search query")
 	cmd.Flags().BoolVar(&mine, "mine", false, "List only my resources")
 	cmd.Flags().IntVar(&limit, "limit", 0, "Maximum number of results")

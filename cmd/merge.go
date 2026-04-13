@@ -24,7 +24,7 @@ func newMergeCmd() *cobra.Command {
 func newMergeUpstreamCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "upstream",
-		Short: "Merge the fetched upstream snapshot into the root projection",
+		Short: "Apply fetched upstream changes to the local copy",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()
 			if err != nil {
