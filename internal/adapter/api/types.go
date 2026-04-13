@@ -209,13 +209,32 @@ type InviteMemberRequest struct {
 
 type ResourceKind string
 
+// ResourceKind constants match the server's canonical kind values.
 const (
-	KindMember         ResourceKind = "members"
-	KindTeam           ResourceKind = "teams"
-	KindSkill          ResourceKind = "skills"
-	KindClaudeMd       ResourceKind = "claude-mds"
-	KindClaudeSettings ResourceKind = "claude-settings"
+	KindMember         ResourceKind = "member"
+	KindTeam           ResourceKind = "team"
+	KindSkill          ResourceKind = "skill"
+	KindClaudeMd       ResourceKind = "claude_md"
+	KindClaudeSettings ResourceKind = "claude_setting"
 )
+
+// urlPath returns the URL path segment for write endpoints.
+func (k ResourceKind) urlPath() string {
+	switch k {
+	case KindMember:
+		return "members"
+	case KindTeam:
+		return "teams"
+	case KindSkill:
+		return "skills"
+	case KindClaudeMd:
+		return "claude-mds"
+	case KindClaudeSettings:
+		return "claude-settings"
+	default:
+		return string(k)
+	}
+}
 
 type ListOptions struct {
 	Kind   string

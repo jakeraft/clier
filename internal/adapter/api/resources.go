@@ -35,26 +35,26 @@ func (c *Client) GetResourceVersion(owner, name string, version int) (*ResourceV
 
 func (c *Client) CreateResource(kind ResourceKind, owner string, body any) (*ResourceResponse, error) {
 	var r ResourceResponse
-	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/%s", owner, kind), body, &r)
+	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/%s", owner, kind.urlPath()), body, &r)
 }
 
 func (c *Client) UpdateResource(kind ResourceKind, owner, name string, body any) (*ResourceResponse, error) {
 	var r ResourceResponse
-	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/%s/%s", owner, kind, name), body, &r)
+	return &r, c.put(fmt.Sprintf("/api/v1/orgs/%s/%s/%s", owner, kind.urlPath(), name), body, &r)
 }
 
 func (c *Client) PatchResource(kind ResourceKind, owner, name string, body any) (*ResourceResponse, error) {
 	var r ResourceResponse
-	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/%s/%s", owner, kind, name), body, &r)
+	return &r, c.patch(fmt.Sprintf("/api/v1/orgs/%s/%s/%s", owner, kind.urlPath(), name), body, &r)
 }
 
 func (c *Client) DeleteResource(kind ResourceKind, owner, name string) error {
-	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/%s/%s", owner, kind, name))
+	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/%s/%s", owner, kind.urlPath(), name))
 }
 
 func (c *Client) ForkResource(kind ResourceKind, owner, name string) (*ResourceResponse, error) {
 	var r ResourceResponse
-	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/%s/%s/fork", owner, kind, name), nil, &r)
+	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/%s/%s/fork", owner, kind.urlPath(), name), nil, &r)
 }
 
 // --- Upstream ---
