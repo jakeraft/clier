@@ -31,26 +31,26 @@ type RunPlan struct {
 
 // MemberTerminal maps a member to its tmux window and launch command.
 type MemberTerminal struct {
-	TeamMemberID int64  `json:"team_member_id"`
-	Name         string `json:"name"`
-	AgentType    string `json:"agent_type"`
-	Window       int    `json:"window"`
-	Memberspace  string `json:"memberspace"`
-	Cwd          string `json:"cwd"`
-	Command      string `json:"command"`
+	MemberID    int64  `json:"member_id"`
+	Name        string `json:"name"`
+	AgentType   string `json:"agent_type"`
+	Window      int    `json:"window"`
+	Memberspace string `json:"memberspace"`
+	Cwd         string `json:"cwd"`
+	Command     string `json:"command"`
 }
 
 type RecordedMessage struct {
-	FromTeamMemberID *int64    `json:"from_team_member_id,omitempty"`
-	ToTeamMemberID   *int64    `json:"to_team_member_id,omitempty"`
-	Content          string    `json:"content"`
-	CreatedAt        time.Time `json:"created_at"`
+	FromMemberID *int64    `json:"from_member_id,omitempty"`
+	ToMemberID   *int64    `json:"to_member_id,omitempty"`
+	Content      string    `json:"content"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type RecordedNote struct {
-	TeamMemberID *int64    `json:"team_member_id,omitempty"`
-	Content      string    `json:"content"`
-	CreatedAt    time.Time `json:"created_at"`
+	MemberID  *int64    `json:"member_id,omitempty"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Launcher starts a run from a persisted RunPlan.
@@ -150,39 +150,39 @@ func SessionName(name, runID string) string {
 	return n + "-" + short
 }
 
-// FindMember finds the terminal slot for a team member in the run plan.
-func (p *RunPlan) FindMember(teamMemberID int64) (*MemberTerminal, bool) {
+// FindMember finds the terminal slot for a member in the run plan.
+func (p *RunPlan) FindMember(memberID int64) (*MemberTerminal, bool) {
 	for i := range p.Members {
-		if p.Members[i].TeamMemberID == teamMemberID {
+		if p.Members[i].MemberID == memberID {
 			return &p.Members[i], true
 		}
 	}
 	return nil, false
 }
 
-func (p *RunPlan) AddMessage(fromTeamMemberID, toTeamMemberID *int64, content string) error {
+func (p *RunPlan) AddMessage(fromMemberID, toMemberID *int64, content string) error {
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return errors.New("message content must not be empty")
 	}
 	p.Messages = append(p.Messages, RecordedMessage{
-		FromTeamMemberID: copyInt64Ptr(fromTeamMemberID),
-		ToTeamMemberID:   copyInt64Ptr(toTeamMemberID),
-		Content:          content,
-		CreatedAt:        time.Now(),
+		FromMemberID: copyInt64Ptr(fromMemberID),
+		ToMemberID:   copyInt64Ptr(toMemberID),
+		Content:      content,
+		CreatedAt:    time.Now(),
 	})
 	return nil
 }
 
-func (p *RunPlan) AddNote(teamMemberID *int64, content string) error {
+func (p *RunPlan) AddNote(memberID *int64, content string) error {
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return errors.New("note content must not be empty")
 	}
 	p.Notes = append(p.Notes, RecordedNote{
-		TeamMemberID: copyInt64Ptr(teamMemberID),
-		Content:      content,
-		CreatedAt:    time.Now(),
+		MemberID:  copyInt64Ptr(memberID),
+		Content:   content,
+		CreatedAt: time.Now(),
 	})
 	return nil
 }
@@ -193,11 +193,11 @@ func (p *RunPlan) MarkStopped() {
 	p.StoppedAt = &now
 }
 
-// ParseTeamMemberID converts a command-line member ID to int64.
-func ParseTeamMemberID(raw string) (int64, error) {
+// ParseMemberID converts a command-line member ID to int64.
+func ParseMemberID(raw string) (int64, error) {
 	id, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("invalid team member id %q: %w", raw, err)
+		return 0, fmt.Errorf("invalid member id %q: %w", raw, err)
 	}
 	return id, nil
 }

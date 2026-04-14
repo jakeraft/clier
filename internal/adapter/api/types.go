@@ -22,16 +22,11 @@ type ResourceMetadata struct {
 	Name           string    `json:"name"`
 	Summary        string    `json:"summary"`
 	Visibility     int       `json:"visibility"`
-	IsFork         bool      `json:"is_fork"`
-	ForkCount      int       `json:"fork_count"`
-	ForkID         *int64    `json:"fork_id,omitempty"`
-	ForkName       string    `json:"fork_name,omitempty"`
-	ForkOwnerName  string    `json:"fork_owner_name,omitempty"`
-	ForkVersion    *int64    `json:"fork_version,omitempty"`
+	RefCount       int       `json:"ref_count"`
 	OwnerName      string    `json:"owner_name"`
 	OwnerType      int       `json:"owner_type"`
 	OwnerAvatarURL string    `json:"owner_avatar_url,omitempty"`
-	LatestVersion  *int      `json:"latest_version,omitempty"`
+	LatestVersion  int       `json:"latest_version"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
@@ -116,8 +111,8 @@ type MemberWriteRequest struct {
 	Command        string               `json:"command"`
 	Skills         []ResourceRefRequest `json:"skills,omitempty"`
 	GitRepoURL     string               `json:"git_repo_url,omitempty"`
-	ClaudeMd       *ResourceRefRequest  `json:"claude_md,omitempty"`
-	ClaudeSettings *ResourceRefRequest  `json:"claude_settings,omitempty"`
+	ClaudeMd       *ResourceRefRequest  `json:"claude-md,omitempty"`
+	ClaudeSettings *ResourceRefRequest  `json:"claude-setting,omitempty"`
 	Summary        string               `json:"summary,omitempty"`
 }
 
@@ -126,8 +121,8 @@ type MemberPatchRequest struct {
 	Command        *string              `json:"command,omitempty"`
 	Skills         []ResourceRefRequest `json:"skills,omitempty"`
 	GitRepoURL     *string              `json:"git_repo_url,omitempty"`
-	ClaudeMd       *ResourceRefRequest  `json:"claude_md,omitempty"`
-	ClaudeSettings *ResourceRefRequest  `json:"claude_settings,omitempty"`
+	ClaudeMd       *ResourceRefRequest  `json:"claude-md,omitempty"`
+	ClaudeSettings *ResourceRefRequest  `json:"claude-setting,omitempty"`
 	Summary        *string              `json:"summary,omitempty"`
 }
 
@@ -158,26 +153,6 @@ type TeamMemberRequest struct {
 type TeamRelationRequest struct {
 	From int64 `json:"from"`
 	To   int64 `json:"to"`
-}
-
-// --- Upstream Types ---
-
-type UpstreamStatusResponse struct {
-	Status                string `json:"status"`
-	ForkVersion           int    `json:"fork_version"`
-	UpstreamName          string `json:"upstream_name,omitempty"`
-	UpstreamOwner         string `json:"upstream_owner,omitempty"`
-	UpstreamLatestVersion *int   `json:"upstream_latest_version,omitempty"`
-}
-
-type RefUpstreamStatusResponse struct {
-	RelType       string `json:"rel_type"`
-	TargetID      int64  `json:"target_id"`
-	TargetName    string `json:"target_name"`
-	TargetOwner   string `json:"target_owner"`
-	TargetVersion int    `json:"target_version"`
-	LatestVersion int    `json:"latest_version"`
-	Status        string `json:"status"`
 }
 
 // --- Org Types ---

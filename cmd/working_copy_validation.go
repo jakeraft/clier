@@ -34,7 +34,7 @@ func validateWorkingCopy(base string, manifest *appworkspace.Manifest) error {
 		for _, member := range manifest.Runtime.Team.Members {
 			memberBase := filepath.Join(base, member.Name)
 			if err := validateMemberCopy(memberBase, &appworkspace.MemberRuntimeMetadata{
-				ID:         member.TeamMemberID,
+				ID:         member.MemberID,
 				Name:       member.Name,
 				Command:    member.Command,
 				GitRepoURL: member.GitRepoURL,

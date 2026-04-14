@@ -63,10 +63,6 @@ func TeamMemberProjectionLocalPath(memberName string) string {
 	return filepath.ToSlash(filepath.Join(".clier", "members", sanitizeRepoDirName(memberName)+".json"))
 }
 
-func UpstreamProjectionPath(base string) string {
-	return filepath.Join(base, ".clier", "upstream.json")
-}
-
 func WriteMemberProjection(fs FileMaterializer, path string, projection *MemberProjection) error {
 	return writeJSONProjection(fs, path, projection)
 }

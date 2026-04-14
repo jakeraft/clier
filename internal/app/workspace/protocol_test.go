@@ -7,7 +7,7 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func TestBuildAgentFacingTeamProtocol_UsesTeamMemberIDsForTellCommands(t *testing.T) {
+func TestBuildAgentFacingTeamProtocol_UsesMemberIDsForTellCommands(t *testing.T) {
 	protocol := BuildAgentFacingTeamProtocol(
 		"alpha",
 		"leader",

@@ -43,8 +43,8 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
 	members := []apprun.MemberTerminal{
-		{TeamMemberID: 1, Name: "leader", Window: 0, Memberspace: "/tmp/leader", Cwd: "/tmp/leader", Command: "echo hello"},
-		{TeamMemberID: 2, Name: "worker", Window: 1, Memberspace: "/tmp/worker", Cwd: "/tmp/worker"},
+		{MemberID: 1, Name: "leader", Window: 0, Memberspace: "/tmp/leader", Cwd: "/tmp/leader", Command: "echo hello"},
+		{MemberID: 2, Name: "worker", Window: 1, Memberspace: "/tmp/worker", Cwd: "/tmp/worker"},
 	}
 	plan := apprun.NewPlan("s-1", "my-team", members)
 
@@ -74,7 +74,7 @@ func TestTmuxTerminal_Send(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Members: []apprun.MemberTerminal{{
-			TeamMemberID: 1,
+			MemberID: 1,
 			Name:         "leader",
 			Window:       0,
 			Memberspace:  "/tmp/leader",
@@ -107,15 +107,15 @@ func TestTmuxTerminal_Terminate(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Members: []apprun.MemberTerminal{{
-			TeamMemberID: 1,
+			MemberID: 1,
 			Name:         "leader",
 			Window:       0,
 		}, {
-			TeamMemberID: 2,
+			MemberID: 2,
 			Name:         "worker",
 			Window:       1,
 		}, {
-			TeamMemberID: 3,
+			MemberID: 3,
 			Name:         "reviewer",
 			Window:       2,
 		}},
@@ -145,7 +145,7 @@ func TestTmuxTerminal_Terminate_AlreadyDead(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Members: []apprun.MemberTerminal{{
-			TeamMemberID: 1,
+			MemberID: 1,
 			Name:         "leader",
 			Window:       0,
 		}},
@@ -168,11 +168,11 @@ func TestTmuxTerminal_Attach(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Members: []apprun.MemberTerminal{{
-			TeamMemberID: 1,
+			MemberID: 1,
 			Name:         "leader",
 			Window:       1,
 		}, {
-			TeamMemberID: 2,
+			MemberID: 2,
 			Name:         "worker",
 			Window:       2,
 		}},

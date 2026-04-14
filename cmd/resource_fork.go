@@ -8,16 +8,14 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(newForkCmd())
+	rootCmd.AddCommand(newCopyCmd())
 }
 
-func newForkCmd() *cobra.Command {
+func newCopyCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "fork <owner/name>",
-		Short: "Fork a resource into your namespace",
-		Long: `Fork a resource into your namespace. Creates your own copy that
-you can customize independently. Use status to track upstream
-changes, and fetch/merge to sync updates from the original.`,
+		Use:     "copy <owner/name>",
+		Short:   "Copy a resource into your namespace",
+		Long:    `Copy a resource into your namespace. Creates your own copy that you can customize independently.`,
 		GroupID: rootGroupResources,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -35,7 +33,7 @@ changes, and fetch/merge to sync updates from the original.`,
 			}
 			kind := api.ResourceKind(res.Kind)
 
-			resp, err := client.ForkResource(kind, owner, name)
+			resp, err := client.CopyResource(kind, owner, name)
 			if err != nil {
 				return err
 			}

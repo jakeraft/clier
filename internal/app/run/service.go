@@ -41,9 +41,9 @@ func (s *Service) Stop(plan *RunPlan) error {
 }
 
 // Send delivers a message to the recipient's terminal.
-func (s *Service) Send(plan *RunPlan, fromTeamMemberID, toTeamMemberID *int64, content string) error {
-	if toTeamMemberID == nil {
-		return errors.New("recipient team member id is required")
+func (s *Service) Send(plan *RunPlan, fromMemberID, toMemberID *int64, content string) error {
+	if toMemberID == nil {
+		return errors.New("recipient member id is required")
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
@@ -51,19 +51,19 @@ func (s *Service) Send(plan *RunPlan, fromTeamMemberID, toTeamMemberID *int64, c
 	}
 
 	text := content
-	if fromTeamMemberID != nil {
-		text = fmt.Sprintf("[Message from %s] %s", strconv.FormatInt(*fromTeamMemberID, 10), content)
+	if fromMemberID != nil {
+		text = fmt.Sprintf("[Message from %s] %s", strconv.FormatInt(*fromMemberID, 10), content)
 	}
 
-	if err := s.terminal.Send(plan, *toTeamMemberID, text); err != nil {
+	if err := s.terminal.Send(plan, *toMemberID, text); err != nil {
 		return fmt.Errorf("deliver message: %w", err)
 	}
 	return nil
 }
 
-// Note validates a progress entry posted by a team member.
-func (s *Service) Note(teamMemberID *int64, content string) error {
-	_ = teamMemberID
+// Note validates a progress entry posted by a member.
+func (s *Service) Note(memberID *int64, content string) error {
+	_ = memberID
 	if strings.TrimSpace(content) == "" {
 		return errors.New("note content must not be empty")
 	}

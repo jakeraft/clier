@@ -117,7 +117,7 @@ Get started:
 Core workflow:
   clier create member          Define an agent
   clier create team            Compose agents into a team
-  clier fork <owner/name>      Fork a resource to your namespace
+  clier copy <owner/name>      Copy a resource to your namespace
   clier clone <name>           Clone a resource to your machine
   clier run start              Launch agents in tmux
   clier run attach <run-id>    Watch agents in real time`,

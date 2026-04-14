@@ -52,21 +52,9 @@ func (c *Client) DeleteResource(kind ResourceKind, owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/%s/%s", owner, kind.urlPath(), name))
 }
 
-func (c *Client) ForkResource(kind ResourceKind, owner, name string) (*ResourceResponse, error) {
+func (c *Client) CopyResource(kind ResourceKind, owner, name string) (*ResourceResponse, error) {
 	var r ResourceResponse
-	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/%s/%s/fork", owner, kind.urlPath(), name), nil, &r)
-}
-
-// --- Upstream ---
-
-func (c *Client) GetUpstreamStatus(owner, name string) (*UpstreamStatusResponse, error) {
-	var r UpstreamStatusResponse
-	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/resources/%s/upstream", owner, name), &r)
-}
-
-func (c *Client) GetRefsUpstreamStatus(owner, name string) ([]RefUpstreamStatusResponse, error) {
-	var r []RefUpstreamStatusResponse
-	return r, c.get(fmt.Sprintf("/api/v1/orgs/%s/resources/%s/refs-upstream", owner, name), &r)
+	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/%s/%s/copy", owner, kind.urlPath(), name), nil, &r)
 }
 
 // --- Helpers ---

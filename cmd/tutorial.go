@@ -37,15 +37,15 @@ Step 2. Explore the pre-loaded todo-team
 
   The "jakeraft/todo-team" is already available.
 
-Step 3. Fork the team to your namespace
+Step 3. Copy the team to your namespace
 
-  clier fork jakeraft/todo-team
+  clier copy jakeraft/todo-team
 
   This creates your own copy. Now you can customize it.
 
-Step 4. Customize your fork
+Step 4. Customize your copy
 
-  Check your forked team and give it a summary:
+  Check your copied team and give it a summary:
 
     clier get <your-login>/todo-team
     clier edit todo-team --summary "My first agent team"
@@ -96,17 +96,6 @@ Step 10. Edit and push local changes
     edit coder/CLAUDE.md        Open in your editor
     clier status                Check what changed
     clier push                  Push local changes to the server
-
-Step 11. Track upstream changes
-
-  Since you forked the team, you can track upstream changes.
-  Run "clier status" to see whether the original has been updated.
-
-  If upstream has new changes, fetch, review, and merge them:
-
-    clier fetch upstream        Download the latest upstream version
-    clier diff upstream         Review what changed
-    clier merge upstream        Apply upstream changes locally
 
 Tip: Use "clier <command> --help" for details on each command.`,
 	}

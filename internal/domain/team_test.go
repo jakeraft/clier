@@ -160,7 +160,7 @@ func TestAddTeamMember_Validation(t *testing.T) {
 }
 
 func TestRemoveTeamMember(t *testing.T) {
-	t.Run("RemovesByTeamMemberID_AndCleansRelations", func(t *testing.T) {
+	t.Run("RemovesByMemberID_AndCleansRelations", func(t *testing.T) {
 		team, added := createTeamWithMembers(t, member(2, "Agent Two"))
 		tmID := added[0].ID
 		rootID := team.TeamMembers[0].ID
@@ -185,7 +185,7 @@ func TestRemoveTeamMember(t *testing.T) {
 	})
 }
 
-func TestAddRelation_UsesTeamMemberID(t *testing.T) {
+func TestAddRelation_UsesMemberID(t *testing.T) {
 	t.Run("ValidLeader_AddsRelation", func(t *testing.T) {
 		team, added := createTeamWithMembers(t, member(2, "Agent Two"))
 		rootID := team.TeamMembers[0].ID
@@ -286,7 +286,7 @@ func TestRemoveRelation(t *testing.T) {
 	})
 }
 
-func TestMemberRelations_UsesTeamMemberID(t *testing.T) {
+func TestMemberRelations_UsesMemberID(t *testing.T) {
 	t.Run("MultipleRelations_ReturnsLeadersWorkers", func(t *testing.T) {
 		team, added := createTeamWithMembers(t,
 			member(2, "Agent Two"),
@@ -372,7 +372,7 @@ func TestReplaceComposition(t *testing.T) {
 		}
 	})
 
-	t.Run("ZeroTeamMemberID_ReturnsError", func(t *testing.T) {
+	t.Run("ZeroMemberID_ReturnsError", func(t *testing.T) {
 		team, _ := createTeamWithMembers(t)
 		err := team.ReplaceComposition("team",
 			[]TeamMember{{ID: 0, MemberID: 10, Name: "A"}},

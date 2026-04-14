@@ -65,17 +65,17 @@ func (r *Run) Stop() {
 }
 
 // Message represents an inter-member message within a run.
-// FromTeamMemberID and ToTeamMemberID are nil when the sender/recipient is not a team member.
+// FromMemberID and ToMemberID are nil when the sender/recipient is not a team member.
 type Message struct {
-	ID               int64     `json:"id"`
-	RunID            int64     `json:"run_id"`
-	FromTeamMemberID *int64    `json:"from_team_member_id"`
-	ToTeamMemberID   *int64    `json:"to_team_member_id"`
-	Content          string    `json:"content"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID           int64     `json:"id"`
+	RunID        int64     `json:"run_id"`
+	FromMemberID *int64    `json:"from_member_id"`
+	ToMemberID   *int64    `json:"to_member_id"`
+	Content      string    `json:"content"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
-func NewMessage(runID int64, fromTeamMemberID, toTeamMemberID *int64, content string) (*Message, error) {
+func NewMessage(runID int64, fromMemberID, toMemberID *int64, content string) (*Message, error) {
 	if runID == 0 {
 		return nil, errors.New("message run id must not be empty")
 	}
@@ -85,24 +85,24 @@ func NewMessage(runID int64, fromTeamMemberID, toTeamMemberID *int64, content st
 	}
 
 	return &Message{
-		RunID:            runID,
-		FromTeamMemberID: fromTeamMemberID,
-		ToTeamMemberID:   toTeamMemberID,
-		Content:          content,
-		CreatedAt:        time.Now(),
+		RunID:        runID,
+		FromMemberID: fromMemberID,
+		ToMemberID:   toMemberID,
+		Content:      content,
+		CreatedAt:    time.Now(),
 	}, nil
 }
 
 // Note is a progress entry posted by a team member within a run.
 type Note struct {
-	ID           int64     `json:"id"`
-	RunID        int64     `json:"run_id"`
-	TeamMemberID *int64    `json:"team_member_id"`
-	Content      string    `json:"content"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID       int64     `json:"id"`
+	RunID    int64     `json:"run_id"`
+	MemberID *int64    `json:"member_id"`
+	Content  string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
-func NewNote(runID int64, teamMemberID *int64, content string) (*Note, error) {
+func NewNote(runID int64, memberID *int64, content string) (*Note, error) {
 	if runID == 0 {
 		return nil, errors.New("note run id must not be empty")
 	}
@@ -112,10 +112,10 @@ func NewNote(runID int64, teamMemberID *int64, content string) (*Note, error) {
 	}
 
 	return &Note{
-		RunID:        runID,
-		TeamMemberID: teamMemberID,
-		Content:      content,
-		CreatedAt:    time.Now(),
+		RunID:     runID,
+		MemberID:  memberID,
+		Content:   content,
+		CreatedAt: time.Now(),
 	}, nil
 }
 
@@ -124,10 +124,10 @@ func NewNote(runID int64, teamMemberID *int64, content string) (*Note, error) {
 // Relations are NOT stored — they are in Team.Relations and baked into the prompt.
 // All paths in MemberPlan are absolute and concrete, built at Start() time.
 type MemberPlan struct {
-	TeamMemberID int64          `json:"team_member_id"`
-	MemberName   string         `json:"member_name"`
-	Terminal     TerminalPlan   `json:"terminal"`
-	Filesystem   FilesystemPlan `json:"filesystem"`
+	MemberID   int64          `json:"member_id"`
+	MemberName string         `json:"member_name"`
+	Terminal   TerminalPlan   `json:"terminal"`
+	Filesystem FilesystemPlan `json:"filesystem"`
 }
 
 // TerminalPlan holds the shell command that launches the member agent.

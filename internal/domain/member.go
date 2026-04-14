@@ -88,7 +88,7 @@ func (m *Member) Update(name, command *string,
 // ResolvedMember is a Member spec with all referenced resources loaded.
 // Produced by the resolve phase; consumed by the build phase to create MemberPlan.
 type ResolvedMember struct {
-	TeamMemberID   int64
+	MemberID       int64
 	Name           string
 	Command        string
 	ClaudeMd       *resource.ClaudeMd

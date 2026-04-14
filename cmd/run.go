@@ -112,13 +112,13 @@ func newRunStartCmd() *cobra.Command {
 				envVars := buildMemberEnv(runID, member.ID, nil, member.Name)
 				fullCommand := buildFullCommand(envVars, memberProjection.Command, copyRoot)
 				terminalPlans := []apprun.MemberTerminal{{
-					TeamMemberID: member.ID,
-					Name:         member.Name,
-					AgentType:    member.AgentType,
-					Window:       0,
-					Memberspace:  copyRoot,
-					Cwd:          copyRoot,
-					Command:      fullCommand,
+					MemberID:    member.ID,
+					Name:        member.Name,
+					AgentType:   member.AgentType,
+					Window:      0,
+					Memberspace: copyRoot,
+					Cwd:         copyRoot,
+					Command:     fullCommand,
 				}}
 				runner := apprun.NewRunner(newTerminal())
 				plan, err := runner.Run(copyRoot, runID, runName, terminalPlans)
@@ -136,16 +136,16 @@ func newRunStartCmd() *cobra.Command {
 						return err
 					}
 					memberBase := filepath.Join(copyRoot, member.Name)
-					envVars := buildMemberEnv(runID, member.TeamMemberID, &team.ID, member.Name)
+					envVars := buildMemberEnv(runID, member.MemberID, &team.ID, member.Name)
 					fullCommand := buildFullCommand(envVars, memberProjection.Command, memberBase)
 					terminalPlans = append(terminalPlans, apprun.MemberTerminal{
-						TeamMemberID: member.TeamMemberID,
-						Name:         member.Name,
-						AgentType:    member.AgentType,
-						Window:       i,
-						Memberspace:  memberBase,
-						Cwd:          memberBase,
-						Command:      fullCommand,
+						MemberID:    member.MemberID,
+						Name:        member.Name,
+						AgentType:   member.AgentType,
+						Window:      i,
+						Memberspace: memberBase,
+						Cwd:         memberBase,
+						Command:     fullCommand,
 					})
 				}
 				runner := apprun.NewRunner(newTerminal())
@@ -378,7 +378,7 @@ func resolveRunContext(runFlag string) (runID string, memberID *int64, err error
 		return "", nil, fmt.Errorf("--run flag or %s must be set", envClierRunID)
 	}
 	if raw := os.Getenv(envClierMemberID); raw != "" {
-		v, parseErr := apprun.ParseTeamMemberID(raw)
+		v, parseErr := apprun.ParseMemberID(raw)
 		if parseErr != nil {
 			return "", nil, fmt.Errorf("%s is not a valid int64: %w", envClierMemberID, parseErr)
 		}

@@ -11,23 +11,14 @@ import (
 const ManifestFile = "manifest.json"
 
 type Manifest struct {
-	Kind             string            `json:"kind"`
-	Owner            string            `json:"owner"`
-	Name             string            `json:"name"`
-	ClonedAt         time.Time         `json:"cloned_at"`
-	Upstream         *UpstreamMetadata `json:"upstream,omitempty"`
-	RootResource     TrackedResource   `json:"root_resource"`
+	Kind             string          `json:"kind"`
+	Owner            string          `json:"owner"`
+	Name             string          `json:"name"`
+	ClonedAt         time.Time       `json:"cloned_at"`
+	RootResource     TrackedResource `json:"root_resource"`
 	TrackedResources []TrackedResource `json:"tracked_resources,omitempty"`
 	GeneratedFiles   []string          `json:"generated_files,omitempty"`
 	Runtime          *RuntimeMetadata  `json:"runtime,omitempty"`
-}
-
-type UpstreamMetadata struct {
-	Kind           string     `json:"kind"`
-	Owner          string     `json:"owner"`
-	Name           string     `json:"name"`
-	FetchedVersion *int       `json:"fetched_version,omitempty"`
-	FetchedAt      *time.Time `json:"fetched_at,omitempty"`
 }
 
 type TrackedResource struct {
@@ -60,11 +51,11 @@ type TeamRuntimeMetadata struct {
 }
 
 type TeamMemberRuntimeMetadata struct {
-	TeamMemberID int64  `json:"team_member_id"`
-	Name         string `json:"name"`
-	AgentType    string `json:"agent_type"`
-	Command      string `json:"command"`
-	GitRepoURL   string `json:"git_repo_url,omitempty"`
+	MemberID   int64  `json:"member_id"`
+	Name       string `json:"name"`
+	AgentType  string `json:"agent_type"`
+	Command    string `json:"command"`
+	GitRepoURL string `json:"git_repo_url,omitempty"`
 }
 
 func ManifestPath(base string) string {

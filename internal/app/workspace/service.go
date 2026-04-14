@@ -22,29 +22,10 @@ type Service struct {
 }
 
 type Status struct {
-	WorkingCopy WorkingCopyStatus  `json:"working_copy"`
-	Local       string             `json:"local"`
-	Tracked     []TrackedStatus    `json:"tracked"`
-	Upstream    *UpstreamStatus    `json:"upstream,omitempty"`
-	Refs        []RefUpstreamInfo  `json:"refs_upstream,omitempty"`
-	Runs        RunStatusSummary   `json:"runs"`
-}
-
-type UpstreamStatus struct {
-	Status        string `json:"status"`
-	ForkVersion   int    `json:"fork_version"`
-	UpstreamOwner string `json:"upstream_owner,omitempty"`
-	UpstreamName  string `json:"upstream_name,omitempty"`
-	LatestVersion *int   `json:"latest_version,omitempty"`
-}
-
-type RefUpstreamInfo struct {
-	RelType       string `json:"rel_type"`
-	TargetName    string `json:"target_name"`
-	TargetOwner   string `json:"target_owner"`
-	TargetVersion int    `json:"target_version"`
-	LatestVersion int    `json:"latest_version"`
-	Status        string `json:"status"`
+	WorkingCopy WorkingCopyStatus `json:"working_copy"`
+	Local       string            `json:"local"`
+	Tracked     []TrackedStatus   `json:"tracked"`
+	Runs        RunStatusSummary  `json:"runs"`
 }
 
 type WorkingCopyStatus struct {
@@ -98,32 +79,6 @@ func firstRefByRelType(r *api.ResourceResponse, relType string) *api.ResolvedRef
 	return nil
 }
 
-func currentUpstreamOfResource(r *api.ResourceResponse, kind string) *UpstreamMetadata {
-	if !r.Metadata.IsFork || r.Metadata.ForkOwnerName == "" || r.Metadata.ForkName == "" {
-		return nil
-	}
-	return &UpstreamMetadata{
-		Kind:  kind,
-		Owner: r.Metadata.ForkOwnerName,
-		Name:  r.Metadata.ForkName,
-	}
-}
-
-func preservedUpstreamState(existing, current *UpstreamMetadata) *UpstreamMetadata {
-	if current == nil {
-		return nil
-	}
-	if existing == nil {
-		return current
-	}
-	if existing.Kind != current.Kind || existing.Owner != current.Owner || existing.Name != current.Name {
-		return current
-	}
-	current.FetchedVersion = existing.FetchedVersion
-	current.FetchedAt = existing.FetchedAt
-	return current
-}
-
 func NewService(client *api.Client, fs FileMaterializer, git GitRepo) *Service {
 	return &Service{client: client, fs: fs, git: git}
 }
@@ -145,7 +100,6 @@ func (s *Service) Pull(base string, force bool) (*Manifest, error) {
 	if err != nil {
 		return nil, err
 	}
-	pulled.Upstream = preservedUpstreamState(manifest.Upstream, pulled.Upstream)
 	if err := SaveManifest(s.fs, base, pulled); err != nil {
 		return nil, err
 	}
@@ -206,32 +160,6 @@ func (s *Service) Status(base string) (*Status, error) {
 		Local:   local,
 		Tracked: tracked,
 		Runs:    runs,
-	}
-
-	// Check upstream status for forked resources.
-	res, err := s.client.GetResource(manifest.Owner, manifest.Name)
-	if err == nil && res.Metadata.IsFork {
-		if us, err := s.client.GetUpstreamStatus(manifest.Owner, manifest.Name); err == nil {
-			status.Upstream = &UpstreamStatus{
-				Status:        us.Status,
-				ForkVersion:   us.ForkVersion,
-				UpstreamOwner: us.UpstreamOwner,
-				UpstreamName:  us.UpstreamName,
-				LatestVersion: us.UpstreamLatestVersion,
-			}
-		}
-		if refs, err := s.client.GetRefsUpstreamStatus(manifest.Owner, manifest.Name); err == nil {
-			for _, r := range refs {
-				status.Refs = append(status.Refs, RefUpstreamInfo{
-					RelType:       r.RelType,
-					TargetName:    r.TargetName,
-					TargetOwner:   r.TargetOwner,
-					TargetVersion: r.TargetVersion,
-					LatestVersion: r.LatestVersion,
-					Status:        r.Status,
-				})
-			}
-		}
 	}
 
 	return status, nil
@@ -467,7 +395,7 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 		Owner:         member.Metadata.OwnerName,
 		Name:          member.Metadata.Name,
 		LocalPath:     MemberProjectionLocalPath(),
-		RemoteVersion: member.Metadata.LatestVersion,
+		RemoteVersion: intPtr(member.Metadata.LatestVersion),
 		Editable:      true,
 	}}
 
@@ -521,7 +449,6 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 		Owner:    member.Metadata.OwnerName,
 		Name:     member.Metadata.Name,
 		ClonedAt: time.Now().UTC(),
-		Upstream: currentUpstreamOfResource(member, string(api.KindMember)),
 		RootResource:     tracked[0],
 		TrackedResources: tracked,
 		GeneratedFiles:   normalizePaths(generated),
@@ -564,7 +491,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		Owner:         team.Metadata.OwnerName,
 		Name:          team.Metadata.Name,
 		LocalPath:     TeamProjectionLocalPath(),
-		RemoteVersion: team.Metadata.LatestVersion,
+		RemoteVersion: intPtr(team.Metadata.LatestVersion),
 		Editable:      true,
 	}}
 	generated := []string{}
@@ -596,11 +523,11 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		})
 
 		metadata.Team.Members = append(metadata.Team.Members, TeamMemberRuntimeMetadata{
-			TeamMemberID: tm.TargetID,
-			Name:         tm.Name,
-			AgentType:    agentTypeFromSnapshot(memberVersion.Snapshot, tm.AgentType),
-			Command:      memberProjection.Command,
-			GitRepoURL:   memberProjection.GitRepoURL,
+			MemberID:   tm.TargetID,
+			Name:       tm.Name,
+			AgentType:  agentTypeFromSnapshot(memberVersion.Snapshot, tm.AgentType),
+			Command:    memberProjection.Command,
+			GitRepoURL: memberProjection.GitRepoURL,
 		})
 
 		memberBase := filepath.ToSlash(tm.Name)
@@ -653,7 +580,6 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		Owner:            team.Metadata.OwnerName,
 		Name:             team.Metadata.Name,
 		ClonedAt:         time.Now().UTC(),
-		Upstream:         currentUpstreamOfResource(team, string(api.KindTeam)),
 		RootResource:     tracked[0],
 		TrackedResources: tracked,
 		GeneratedFiles:   normalizePaths(generated),
@@ -794,18 +720,34 @@ func memberProjectionFromSnapshot(name string, vr *api.ResourceVersionResponse) 
 		projection.GitRepoURL = spec.GitRepoURL
 	}
 
-	// Decode refs from snapshot (they are embedded in the snapshot JSON).
+	// Decode refs from snapshot. The server sends a "refs" array of objects
+	// with rel_type, target_id, target_name, target_owner, target_version.
+	type snapshotRef struct {
+		RelType      string `json:"rel_type"`
+		TargetID     int64  `json:"target_id"`
+		TargetName   string `json:"target_name"`
+		TargetOwner  string `json:"target_owner"`
+		TargetVersion int   `json:"target_version"`
+	}
 	type snapshotRefs struct {
-		ClaudeMd       *ResourceRefProjection  `json:"claude_md,omitempty"`
-		ClaudeSettings *ResourceRefProjection  `json:"claude_settings,omitempty"`
-		Skills         []ResourceRefProjection `json:"skills,omitempty"`
+		Refs []snapshotRef `json:"refs"`
 	}
 	var refs snapshotRefs
 	if err := decodeSnapshotInto(vr.Snapshot, &refs); err == nil {
-		projection.ClaudeMd = refs.ClaudeMd
-		projection.ClaudeSettings = refs.ClaudeSettings
-		if len(refs.Skills) > 0 {
-			projection.Skills = refs.Skills
+		for _, ref := range refs.Refs {
+			rp := ResourceRefProjection{
+				Owner:   ref.TargetOwner,
+				Name:    ref.TargetName,
+				Version: ref.TargetVersion,
+			}
+			switch ref.RelType {
+			case string(api.KindClaudeMd):
+				projection.ClaudeMd = &rp
+			case string(api.KindClaudeSettings):
+				projection.ClaudeSettings = &rp
+			case string(api.KindSkill):
+				projection.Skills = append(projection.Skills, rp)
+			}
 		}
 	}
 
@@ -873,15 +815,11 @@ func (s *Service) fileHash(path string) (string, error) {
 	return hex.EncodeToString(sum[:]), nil
 }
 
-func versionsMatch(expected, actual *int) bool {
-	switch {
-	case expected == nil && actual == nil:
-		return true
-	case expected == nil || actual == nil:
+func versionsMatch(expected *int, actual int) bool {
+	if expected == nil {
 		return false
-	default:
-		return *expected == *actual
 	}
+	return *expected == actual
 }
 
 func (s *Service) serverClaudeMdContent(base string, manifest *Manifest, resource TrackedResource) (string, error) {
