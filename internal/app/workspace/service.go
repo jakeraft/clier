@@ -596,7 +596,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		})
 
 		metadata.Team.Members = append(metadata.Team.Members, TeamMemberRuntimeMetadata{
-			TeamMemberID: tm.ID,
+			TeamMemberID: tm.TargetID,
 			Name:         tm.Name,
 			AgentType:    agentTypeFromSnapshot(memberVersion.Snapshot, tm.AgentType),
 			Command:      memberProjection.Command,

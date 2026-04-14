@@ -161,11 +161,12 @@ func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
 	}
 
 	// Build member lookup for protocol generation from member refs.
+	// Key by TargetID (member resource ID) — matches relation from/to values.
 	tmRefs := refsByRelType(team, string(api.KindMember))
 	membersByID := make(map[int64]ProtocolMember, len(tmRefs))
 	for _, ref := range tmRefs {
-		membersByID[ref.ID] = ProtocolMember{
-			ID:   ref.ID,
+		membersByID[ref.TargetID] = ProtocolMember{
+			ID:   ref.TargetID,
 			Name: ref.Name,
 		}
 	}
@@ -173,7 +174,7 @@ func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
 	// Build relations from team spec.
 	relMap := make(map[int64]domain.MemberRelations, len(tmRefs))
 	for _, ref := range tmRefs {
-		relMap[ref.ID] = domain.MemberRelations{Leaders: []int64{}, Workers: []int64{}}
+		relMap[ref.TargetID] = domain.MemberRelations{Leaders: []int64{}, Workers: []int64{}}
 	}
 	for _, r := range teamSpec.Relations {
 		from := relMap[r.From]
@@ -197,7 +198,7 @@ func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
 		}); err != nil {
 			return fmt.Errorf("materialize member %s: %w", tm.Name, err)
 		}
-		protocol := BuildAgentFacingTeamProtocol(team.Metadata.Name, tm.Name, relMap[tm.ID], membersByID)
+		protocol := BuildAgentFacingTeamProtocol(team.Metadata.Name, tm.Name, relMap[tm.TargetID], membersByID)
 		protocolPath := filepath.Join(memberBase, ".clier", TeamProtocolFileName(tm.Name))
 		if err := w.writeFile(protocolPath, protocol); err != nil {
 			return fmt.Errorf("write protocol for %s: %w", tm.Name, err)
