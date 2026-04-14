@@ -37,11 +37,14 @@ type WorkingCopyStatus struct {
 }
 
 type TrackedStatus struct {
-	Kind  string `json:"kind"`
-	Owner string `json:"owner"`
-	Name  string `json:"name"`
-	Path  string `json:"path"`
-	Local string `json:"local"`
+	Kind          string `json:"kind"`
+	Owner         string `json:"owner"`
+	Name          string `json:"name"`
+	Path          string `json:"path"`
+	Local         string `json:"local"`
+	PinnedVersion *int   `json:"pinned_version,omitempty"`
+	LatestVersion *int   `json:"latest_version,omitempty"`
+	Remote        string `json:"remote,omitempty"`
 }
 
 type RunStatusSummary struct {
@@ -149,6 +152,39 @@ func (s *Service) Status(base string) (*Status, error) {
 	if modifiedCount > 0 {
 		local = "modified"
 	}
+	// Check remote versions — deduplicate by owner/name to avoid redundant API calls.
+	type remoteVersion struct {
+		latest int
+		err    error
+	}
+	remoteCache := map[string]*remoteVersion{}
+	for i, tr := range manifest.TrackedResources {
+		if tr.RemoteVersion == nil {
+			continue
+		}
+		key := tr.Owner + "/" + tr.Name
+		if _, ok := remoteCache[key]; !ok {
+			res, err := s.client.GetResource(tr.Owner, tr.Name)
+			if err != nil {
+				remoteCache[key] = &remoteVersion{err: err}
+			} else {
+				remoteCache[key] = &remoteVersion{latest: res.Metadata.LatestVersion}
+			}
+		}
+		rv := remoteCache[key]
+		if rv.err != nil {
+			continue
+		}
+		pinned := *tr.RemoteVersion
+		tracked[i].PinnedVersion = &pinned
+		tracked[i].LatestVersion = &rv.latest
+		if pinned < rv.latest {
+			tracked[i].Remote = "behind"
+		} else {
+			tracked[i].Remote = "up-to-date"
+		}
+	}
+
 	status := &Status{
 		WorkingCopy: WorkingCopyStatus{
 			Root:     base,
@@ -842,3 +878,4 @@ func (s *Service) serverClaudeMdContent(base string, manifest *Manifest, resourc
 	}
 	return content, nil
 }
+
