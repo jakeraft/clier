@@ -99,7 +99,7 @@ func (s *Service) Pull(base string, force bool) (*Manifest, error) {
 	if err != nil {
 		return nil, err
 	}
-	pulled, err := s.pullTarget(base, manifest.Kind, manifest.Owner, manifest.Name, force)
+	pulled, err := s.pullTarget(base, manifest, force)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (s *Service) Pull(base string, force bool) (*Manifest, error) {
 	return pulled, nil
 }
 
-func (s *Service) pullTarget(base, kind, owner, name string, force bool) (*Manifest, error) {
+func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Manifest, error) {
 	if !force {
 		modified, err := s.ModifiedTrackedResources(base)
 		if err != nil {
@@ -125,14 +125,63 @@ func (s *Service) pullTarget(base, kind, owner, name string, force bool) (*Manif
 		}
 	}
 
-	switch kind {
-	case string(api.KindMember):
-		return s.materializeMember(base, owner, name)
-	case string(api.KindTeam):
-		return s.materializeTeam(base, owner, name)
-	default:
-		return nil, fmt.Errorf("unsupported working-copy kind %q", kind)
+	// Pull each tracked resource's latest version from server.
+	for i := range manifest.TrackedResources {
+		tr := &manifest.TrackedResources[i]
+		res, err := s.client.GetResource(tr.Owner, tr.Name)
+		if err != nil {
+			return nil, fmt.Errorf("pull %s %s/%s: %w", tr.Kind, tr.Owner, tr.Name, err)
+		}
+		localPath := filepath.Join(base, filepath.FromSlash(tr.LocalPath))
+		latest := res.Metadata.LatestVersion
+
+		switch api.ResourceKind(tr.Kind) {
+		case api.KindMember:
+			projection := memberProjectionFromResource(res)
+			if err := WriteMemberProjection(s.fs, localPath, projection); err != nil {
+				return nil, err
+			}
+		case api.KindTeam:
+			teamSpec, err := api.DecodeSpec[api.TeamSpec](res)
+			if err != nil {
+				return nil, fmt.Errorf("decode team spec: %w", err)
+			}
+			if err := WriteTeamProjection(s.fs, localPath, teamProjectionFromResource(res, teamSpec)); err != nil {
+				return nil, err
+			}
+		case api.KindClaudeMd, api.KindClaudeSettings, api.KindSkill:
+			spec, err := api.DecodeSpec[api.ContentSpec](res)
+			if err != nil {
+				return nil, fmt.Errorf("decode %s spec: %w", tr.Kind, err)
+			}
+			content := spec.Content
+			// CLAUDE.md files need prelude composition.
+			if api.ResourceKind(tr.Kind) == api.KindClaudeMd {
+				if manifest.Kind == string(api.KindTeam) {
+					// Find the team member name from the local path.
+					memberName := filepath.ToSlash(tr.LocalPath)
+					if idx := strings.Index(memberName, "/"); idx >= 0 {
+						memberName = memberName[:idx]
+					}
+					content = ComposeTeamClaudeMd(memberName, content)
+				} else {
+					content = ComposeMemberClaudeMd(content)
+				}
+			}
+			if err := s.fs.EnsureFile(localPath, []byte(content)); err != nil {
+				return nil, fmt.Errorf("write %s: %w", tr.LocalPath, err)
+			}
+		}
+
+		tr.RemoteVersion = &latest
 	}
+
+	// Recalculate base hashes after updating files.
+	if err := s.populateBaseHashes(base, manifest.TrackedResources); err != nil {
+		return nil, err
+	}
+
+	return manifest, nil
 }
 
 func (s *Service) Status(base string) (*Status, error) {
@@ -330,7 +379,9 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 		}
 	}
 
-	if _, err := s.pullTarget(base, manifest.Kind, manifest.Owner, targetName, true); err != nil {
+	// Update manifest name if root resource was renamed, then pull latest.
+	manifest.Name = targetName
+	if _, err := s.pullTarget(base, manifest, true); err != nil {
 		return nil, err
 	}
 	return &PushResult{Status: "pushed", Pushed: len(modified), PulledAfterPush: true}, nil
