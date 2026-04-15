@@ -164,9 +164,7 @@ func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Mani
 				if idx := strings.Index(memberName, "/"); idx >= 0 {
 					memberName = memberName[:idx]
 				}
-				agentType := s.resolveAgentTypeFromManifest(manifest, *tr)
-				teamProtocol := s.loadTeamProtocolForMember(base, memberName)
-				content = ComposeInstruction(agentType, memberName, content, teamProtocol)
+				content = ComposeInstruction(tr.AgentType, memberName, content)
 			}
 			if err := s.fs.EnsureFile(localPath, []byte(content)); err != nil {
 				return nil, fmt.Errorf("write %s: %w", tr.LocalPath, err)
@@ -305,7 +303,7 @@ func (s *Service) preparePushBody(base string, manifest *Manifest, r TrackedReso
 		if err != nil {
 			return "", nil, err
 		}
-		agentType := s.resolveAgentTypeFromManifest(manifest, r)
+		agentType := r.AgentType
 		body, err := s.memberMutationFromProjection(projection, agentType)
 		if err != nil {
 			return "", nil, err
@@ -512,6 +510,7 @@ func (s *Service) cloneMemberAsTeam(base, owner, name string) (*Manifest, error)
 	if projection.InstructionRef != nil {
 		tracked = append(tracked, TrackedResource{
 			Kind:          profile.InstructionKind,
+			AgentType:     agentType,
 			Owner:         projection.InstructionRef.Owner,
 			Name:          projection.InstructionRef.Name,
 			LocalPath:     filepath.ToSlash(filepath.Join(memberLocalBase, profile.InstructionFile)),
@@ -524,6 +523,7 @@ func (s *Service) cloneMemberAsTeam(base, owner, name string) (*Manifest, error)
 	if projection.SettingsRef != nil {
 		tracked = append(tracked, TrackedResource{
 			Kind:          profile.SettingsKind,
+			AgentType:     agentType,
 			Owner:         projection.SettingsRef.Owner,
 			Name:          projection.SettingsRef.Name,
 			LocalPath:     filepath.ToSlash(filepath.Join(memberLocalBase, profile.SettingsDir, profile.SettingsFile)),
@@ -534,6 +534,7 @@ func (s *Service) cloneMemberAsTeam(base, owner, name string) (*Manifest, error)
 	for _, skillRef := range projection.Skills {
 		tracked = append(tracked, TrackedResource{
 			Kind:          string(api.KindSkill),
+			AgentType:     agentType,
 			Owner:         skillRef.Owner,
 			Name:          skillRef.Name,
 			LocalPath:     filepath.ToSlash(filepath.Join(memberLocalBase, profile.SettingsDir, profile.SkillsDir, skillRef.Name, "SKILL.md")),
@@ -653,6 +654,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		if memberProjection.InstructionRef != nil {
 			tracked = append(tracked, TrackedResource{
 				Kind:          profile.InstructionKind,
+				AgentType:     agentType,
 				Owner:         memberProjection.InstructionRef.Owner,
 				Name:          memberProjection.InstructionRef.Name,
 				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, profile.InstructionFile)),
@@ -665,6 +667,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		if memberProjection.SettingsRef != nil {
 			tracked = append(tracked, TrackedResource{
 				Kind:          profile.SettingsKind,
+				AgentType:     agentType,
 				Owner:         memberProjection.SettingsRef.Owner,
 				Name:          memberProjection.SettingsRef.Name,
 				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, profile.SettingsDir, profile.SettingsFile)),
@@ -675,6 +678,7 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		for _, skillRef := range memberProjection.Skills {
 			tracked = append(tracked, TrackedResource{
 				Kind:          string(api.KindSkill),
+				AgentType:     agentType,
 				Owner:         skillRef.Owner,
 				Name:          skillRef.Name,
 				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, profile.SettingsDir, profile.SkillsDir, skillRef.Name, "SKILL.md")),
@@ -921,30 +925,6 @@ func intPtr(v int) *int {
 	return &v
 }
 
-// resolveAgentTypeFromManifest finds the agent type for a tracked resource
-// by checking which member's directory the resource's local path belongs to.
-func (s *Service) resolveAgentTypeFromManifest(manifest *Manifest, r TrackedResource) string {
-	if manifest.Runtime == nil || manifest.Runtime.Team == nil {
-		return ""
-	}
-	localPath := filepath.ToSlash(filepath.Clean(r.LocalPath))
-	for _, m := range manifest.Runtime.Team.Members {
-		prefix := m.Name + "/"
-		if strings.HasPrefix(localPath, prefix) {
-			return m.AgentType
-		}
-	}
-	return ""
-}
-
-func (s *Service) loadTeamProtocolForMember(base, memberName string) string {
-	protocolPath := filepath.Join(base, memberName, ".clier", TeamProtocolFileName(memberName))
-	data, err := s.fs.ReadFile(protocolPath)
-	if err != nil {
-		return ""
-	}
-	return string(data)
-}
 
 func normalizePaths(paths []string) []string {
 	out := make([]string, 0, len(paths))

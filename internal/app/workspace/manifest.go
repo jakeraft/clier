@@ -29,6 +29,7 @@ type Manifest struct {
 
 type TrackedResource struct {
 	Kind          string `json:"kind"`
+	AgentType     string `json:"agent_type,omitempty"`
 	Owner         string `json:"owner"`
 	Name          string `json:"name"`
 	LocalPath     string `json:"local_path"`

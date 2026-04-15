@@ -40,14 +40,14 @@ func TeamWorkLogProtocolImportLine() string {
 	return "@" + WorkLogProtocolImportPath()
 }
 
-const instructionPreludeEnd = "<!-- clier:prelude-end -->"
-
-// ComposeInstruction wraps instruction content with agent-specific protocol.
-// Claude: injects @import lines. Codex: inlines protocol content with marker.
-func ComposeInstruction(agentType, memberName, content, teamProtocol string) string {
+// ComposeInstruction wraps instruction content with agent-specific protocol references.
+// Claude: injects @import lines (native import syntax).
+// Codex: injects plain-text reference lines (agent reads files when needed).
+// Both agents use the same file structure; only the reference format differs.
+func ComposeInstruction(agentType, memberName, content string) string {
 	switch agentType {
 	case "codex":
-		return composeCodexInstruction(content, teamProtocol)
+		return composeCodexInstruction(memberName, content)
 	default:
 		return composeClaudeInstruction(memberName, content)
 	}
@@ -57,7 +57,7 @@ func ComposeInstruction(agentType, memberName, content, teamProtocol string) str
 func StripInstructionPrelude(agentType, memberName, content string) string {
 	switch agentType {
 	case "codex":
-		return stripCodexInstructionPrelude(content)
+		return stripCodexInstructionPrelude(memberName, content)
 	default:
 		return stripClaudeInstructionPrelude(memberName, content)
 	}
@@ -88,32 +88,39 @@ func stripClaudeInstructionPrelude(memberName, content string) string {
 	return content
 }
 
-func composeCodexInstruction(content, teamProtocol string) string {
-	content = strings.TrimLeft(content, "\n")
-	var b strings.Builder
-	b.WriteString(BuildAgentFacingWorkLogProtocol())
-	if teamProtocol != "" {
-		b.WriteString("\n")
-		b.WriteString(teamProtocol)
-	}
-	b.WriteString("\n")
-	b.WriteString(instructionPreludeEnd)
-	b.WriteString("\n")
-	if content != "" {
-		b.WriteString("\n")
-		b.WriteString(content)
-	}
-	return b.String()
+// CodexWorkLogReferenceLine returns the reference line for work log protocol in Codex instruction files.
+func CodexWorkLogReferenceLine() string {
+	return "Read " + WorkLogProtocolImportPath() + " for work logging conventions."
 }
 
-func stripCodexInstructionPrelude(content string) string {
-	marker := instructionPreludeEnd + "\n"
-	idx := strings.Index(content, marker)
-	if idx < 0 {
-		return content
+// CodexTeamProtocolReferenceLine returns the reference line for team protocol in Codex instruction files.
+func CodexTeamProtocolReferenceLine(memberName string) string {
+	return "Read " + TeamProtocolImportPath(memberName) + " for team coordination."
+}
+
+func composeCodexInstruction(memberName, content string) string {
+	content = strings.TrimLeft(content, "\n")
+	workLogLine := CodexWorkLogReferenceLine()
+	teamLine := CodexTeamProtocolReferenceLine(memberName)
+	if content == "" {
+		return workLogLine + "\n" + teamLine + "\n"
 	}
-	after := content[idx+len(marker):]
-	return strings.TrimLeft(after, "\n")
+	return workLogLine + "\n" + teamLine + "\n\n" + content
+}
+
+func stripCodexInstructionPrelude(memberName, content string) string {
+	prefixes := []string{
+		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine(memberName) + "\n\n",
+		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine(memberName) + "\n",
+		CodexTeamProtocolReferenceLine(memberName) + "\n\n",
+		CodexTeamProtocolReferenceLine(memberName) + "\n",
+	}
+	for _, prefix := range prefixes {
+		if stripped, ok := strings.CutPrefix(content, prefix); ok {
+			return strings.TrimLeft(stripped, "\n")
+		}
+	}
+	return content
 }
 
 func BuildAgentFacingWorkLogProtocol() string {

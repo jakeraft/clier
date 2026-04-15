@@ -42,7 +42,6 @@ type Writer struct {
 
 type memberWriteOptions struct {
 	TeamMemberName string
-	TeamProtocol   string
 }
 
 // NewWriter creates a Writer that uses the given API client and owner.
@@ -75,12 +74,12 @@ func (w *Writer) materializeMemberFiles(base string, projection *MemberProjectio
 		if err != nil {
 			return fmt.Errorf("decode instruction %s/%s@%d: %w", projection.InstructionRef.Owner, projection.InstructionRef.Name, projection.InstructionRef.Version, err)
 		}
-		content := ComposeInstruction(agentType, opts.TeamMemberName, contentSpec.Content, opts.TeamProtocol)
+		content := ComposeInstruction(agentType, opts.TeamMemberName, contentSpec.Content)
 		if err := w.writeFile(paths.instructionFile, content); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
 	} else {
-		content := ComposeInstruction(agentType, opts.TeamMemberName, "", opts.TeamProtocol)
+		content := ComposeInstruction(agentType, opts.TeamMemberName, "")
 		if err := w.writeFile(paths.instructionFile, content); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
@@ -176,7 +175,6 @@ func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
 
 		if err := w.materializeMemberFiles(memberBase, projection, agentType, memberWriteOptions{
 			TeamMemberName: tm.Name,
-			TeamProtocol:   protocol,
 		}); err != nil {
 			return fmt.Errorf("materialize member %s: %w", tm.Name, err)
 		}

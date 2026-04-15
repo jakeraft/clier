@@ -84,7 +84,7 @@ func TestBuildAgentFacingTeamProtocol_UsesProfessionalCommunicationTone(t *testi
 
 func TestComposeInstruction_Claude_InjectsImportLines(t *testing.T) {
 	content := "You are a reviewer.\n"
-	composed := ComposeInstruction("claude", "reviewer", content, "ignored team protocol")
+	composed := ComposeInstruction("claude", "reviewer", content)
 	if !strings.HasPrefix(composed, "@.clier/work-log-protocol.md\n@.clier/reviewer-team-protocol.md") {
 		t.Fatalf("claude compose should inject @import lines:\n%s", composed)
 	}
@@ -94,19 +94,18 @@ func TestComposeInstruction_Claude_InjectsImportLines(t *testing.T) {
 	}
 }
 
-func TestComposeInstruction_Codex_InlinesProtocol(t *testing.T) {
+func TestComposeInstruction_Codex_InjectsReferenceLines(t *testing.T) {
 	content := "You are a reviewer.\n"
-	teamProtocol := "# Team Protocol\n\nYou are **reviewer**.\n"
-	composed := ComposeInstruction("codex", "reviewer", content, teamProtocol)
+	composed := ComposeInstruction("codex", "reviewer", content)
 
-	if !strings.Contains(composed, "# Work Log Protocol") {
-		t.Fatalf("codex compose should inline work log protocol:\n%s", composed)
+	// Should contain reference lines (not inlined protocol content)
+	wantWorkLog := CodexWorkLogReferenceLine()
+	if !strings.Contains(composed, wantWorkLog) {
+		t.Fatalf("codex compose should contain work log reference line:\n%s", composed)
 	}
-	if !strings.Contains(composed, "# Team Protocol") {
-		t.Fatalf("codex compose should inline team protocol:\n%s", composed)
-	}
-	if !strings.Contains(composed, instructionPreludeEnd) {
-		t.Fatalf("codex compose should contain prelude end marker:\n%s", composed)
+	wantTeam := CodexTeamProtocolReferenceLine("reviewer")
+	if !strings.Contains(composed, wantTeam) {
+		t.Fatalf("codex compose should contain team protocol reference line:\n%s", composed)
 	}
 	if !strings.Contains(composed, content) {
 		t.Fatalf("codex compose should contain user content:\n%s", composed)
@@ -119,25 +118,12 @@ func TestComposeInstruction_Codex_InlinesProtocol(t *testing.T) {
 }
 
 func TestComposeInstruction_Codex_EmptyContent(t *testing.T) {
-	teamProtocol := "# Team Protocol\n"
-	composed := ComposeInstruction("codex", "reviewer", "", teamProtocol)
-	if !strings.Contains(composed, "# Work Log Protocol") {
-		t.Fatalf("codex compose with empty content should still have work log:\n%s", composed)
+	composed := ComposeInstruction("codex", "reviewer", "")
+	if !strings.Contains(composed, CodexWorkLogReferenceLine()) {
+		t.Fatalf("codex compose with empty content should still have reference lines:\n%s", composed)
 	}
 	stripped := StripInstructionPrelude("codex", "reviewer", composed)
 	if stripped != "" {
 		t.Fatalf("codex strip of empty content: got %q, want empty", stripped)
-	}
-}
-
-func TestComposeInstruction_Codex_EmptyTeamProtocol(t *testing.T) {
-	content := "You are solo.\n"
-	composed := ComposeInstruction("codex", "solo", content, "")
-	if !strings.Contains(composed, "# Work Log Protocol") {
-		t.Fatalf("codex compose should have work log even without team protocol:\n%s", composed)
-	}
-	stripped := StripInstructionPrelude("codex", "solo", composed)
-	if stripped != content {
-		t.Fatalf("codex strip: got %q, want %q", stripped, content)
 	}
 }
