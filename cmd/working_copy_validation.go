@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 func manifestPathLabel() string {
@@ -46,11 +47,18 @@ func validateMemberCopy(base string, member *appworkspace.TeamMemberRuntimeMetad
 	if !materialized {
 		return fmt.Errorf("local clone is incomplete at %s", base)
 	}
+	profile, err := domain.ProfileFor(member.AgentType)
+	if err != nil {
+		return fmt.Errorf("unknown agent type %q for member %s", member.AgentType, member.Name)
+	}
+
 	required := []string{
-		filepath.Join(base, "CLAUDE.md"),
+		filepath.Join(base, profile.InstructionFile),
 		filepath.Join(base, ".clier", "work-log-protocol.md"),
-		filepath.Join(base, ".claude", "settings.local.json"),
 		filepath.Join(base, ".clier", appworkspace.TeamProtocolFileName(teamMemberName)),
+	}
+	if profile.LocalSettingsFile != "" {
+		required = append(required, filepath.Join(base, profile.SettingsDir, profile.LocalSettingsFile))
 	}
 	for _, path := range required {
 		if err := requireCopyPath(path); err != nil {
