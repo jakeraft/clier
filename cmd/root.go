@@ -120,6 +120,7 @@ Core workflow:
   clier run tell --to <name>     Send instructions to an agent
   clier run attach <run-id>      Watch agents in real time
   clier open dashboard           Open the dashboard in a browser`,
+	SilenceErrors: true,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -146,7 +147,7 @@ func Execute() {
 	}
 	if err := cmd.Execute(); err != nil {
 		if !errors.Is(err, errSubcommandRequired) {
-			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		}
 		os.Exit(1)
 	}
@@ -215,6 +216,7 @@ func newAgentRootCmd(teamScoped bool) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "clier",
 		Short: "Commands for this run",
+		SilenceErrors: true,
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
 		},
