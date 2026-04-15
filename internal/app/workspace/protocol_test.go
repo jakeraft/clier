@@ -81,17 +81,3 @@ func TestBuildAgentFacingTeamProtocol_UsesProfessionalCommunicationTone(t *testi
 	}
 }
 
-func TestComposeAndStripMemberClaudeMdPrelude(t *testing.T) {
-	t.Parallel()
-
-	content := "You are a tech lead.\n"
-	composed := ComposeMemberClaudeMd(content)
-	if !strings.HasPrefix(composed, "@.clier/work-log-protocol.md") {
-		t.Fatalf("missing member import prelude:\n%s", composed)
-	}
-
-	stripped := StripMemberClaudeMdPrelude(composed)
-	if stripped != content {
-		t.Fatalf("stripped content = %q, want %q", stripped, content)
-	}
-}

@@ -49,24 +49,6 @@ func NewWriter(client *api.Client, owner string, fs FileMaterializer, git GitRep
 	return &Writer{client: client, owner: owner, fs: fs, git: git}
 }
 
-// MaterializeMemberFiles writes the local-clone files for a single member.
-// Layout:
-//
-//	{base}/CLAUDE.md              <- generated import wrapper + ClaudeMd
-//	{base}/.clier/work-log-protocol.md <- clier-generated work log protocol
-//	{base}/.claude/settings.json  <- ClaudeSettings
-//	{base}/.claude/settings.local.json <- clier-generated local isolation overlay
-//	{base}/.claude/skills/{name}/SKILL.md <- Skills
-func (w *Writer) MaterializeMemberFiles(base, memberName string) error {
-	res, err := w.client.GetResource(w.owner, memberName)
-	if err != nil {
-		return fmt.Errorf("get member %s: %w", memberName, err)
-	}
-	projection := memberProjectionFromResource(res)
-	agentType := agentTypeFromResource(res)
-	return w.materializeMemberFiles(base, projection, agentType, memberWriteOptions{})
-}
-
 // materializeMemberFiles writes local-clone files from a MemberProjection.
 func (w *Writer) materializeMemberFiles(base string, projection *MemberProjection, agentType string, opts memberWriteOptions) error {
 	profile, err := domain.ProfileFor(agentType)
@@ -92,20 +74,12 @@ func (w *Writer) materializeMemberFiles(base string, projection *MemberProjectio
 		if err != nil {
 			return fmt.Errorf("decode claude md %s/%s@%d: %w", projection.ClaudeMd.Owner, projection.ClaudeMd.Name, projection.ClaudeMd.Version, err)
 		}
-		content := contentSpec.Content
-		if opts.TeamMemberName != "" {
-			content = ComposeTeamClaudeMd(opts.TeamMemberName, content)
-		} else {
-			content = ComposeMemberClaudeMd(content)
-		}
+		content := ComposeTeamClaudeMd(opts.TeamMemberName, contentSpec.Content)
 		if err := w.writeFile(paths.instructionFile, content); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
 	} else {
-		content := ComposeMemberClaudeMd("")
-		if opts.TeamMemberName != "" {
-			content = ComposeTeamClaudeMd(opts.TeamMemberName, "")
-		}
+		content := ComposeTeamClaudeMd(opts.TeamMemberName, "")
 		if err := w.writeFile(paths.instructionFile, content); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}

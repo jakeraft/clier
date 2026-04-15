@@ -32,16 +32,7 @@ type TrackedResource struct {
 }
 
 type RuntimeMetadata struct {
-	Member *MemberRuntimeMetadata `json:"member,omitempty"`
-	Team   *TeamRuntimeMetadata   `json:"team,omitempty"`
-}
-
-type MemberRuntimeMetadata struct {
-	ID         int64  `json:"id"`
-	Name       string `json:"name"`
-	AgentType  string `json:"agent_type"`
-	Command    string `json:"command"`
-	GitRepoURL string `json:"git_repo_url,omitempty"`
+	Team *TeamRuntimeMetadata `json:"team,omitempty"`
 }
 
 type TeamRuntimeMetadata struct {

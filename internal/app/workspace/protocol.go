@@ -40,27 +40,6 @@ func TeamWorkLogProtocolImportLine() string {
 	return "@" + WorkLogProtocolImportPath()
 }
 
-func ComposeMemberClaudeMd(content string) string {
-	content = strings.TrimLeft(content, "\n")
-	importLine := WorkLogProtocolImportLine()
-	if content == "" {
-		return importLine + "\n"
-	}
-	return importLine + "\n\n" + content
-}
-
-func StripMemberClaudeMdPrelude(content string) string {
-	importLine := WorkLogProtocolImportLine()
-	switch {
-	case strings.HasPrefix(content, importLine+"\n\n"):
-		return strings.TrimLeft(strings.TrimPrefix(content, importLine+"\n\n"), "\n")
-	case strings.HasPrefix(content, importLine+"\n"):
-		return strings.TrimLeft(strings.TrimPrefix(content, importLine+"\n"), "\n")
-	default:
-		return content
-	}
-}
-
 func ComposeTeamClaudeMd(memberName, content string) string {
 	content = strings.TrimLeft(content, "\n")
 	workLogLine := TeamWorkLogProtocolImportLine()
