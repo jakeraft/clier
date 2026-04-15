@@ -65,6 +65,68 @@ func TestSaveManifest(t *testing.T) {
 	}
 }
 
+func TestManifest_MemberCloneUsesTeamRuntime(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	resourceVersion := 1
+	meta := &Manifest{
+		Kind:  string(api.KindMember),
+		Owner: "jakeraft",
+		Name:  "reviewer",
+		RootResource: TrackedResource{
+			Kind:      string(api.KindMember),
+			Owner:     "jakeraft",
+			Name:      "reviewer",
+			LocalPath: TeamMemberProjectionLocalPath("reviewer"),
+			Editable:  true,
+		},
+		TrackedResources: []TrackedResource{{
+			Kind:          string(api.KindMember),
+			Owner:         "jakeraft",
+			Name:          "reviewer",
+			LocalPath:     TeamMemberProjectionLocalPath("reviewer"),
+			RemoteVersion: &resourceVersion,
+			Editable:      true,
+		}},
+		Runtime: &RuntimeMetadata{
+			Team: &TeamRuntimeMetadata{
+				ID:   0,
+				Name: "reviewer",
+				Members: []TeamMemberRuntimeMetadata{{
+					MemberID:  42,
+					Name:      "reviewer",
+					AgentType: "claude",
+					Command:   "claude",
+				}},
+			},
+		},
+	}
+
+	if err := SaveManifest(filesystem.New(), base, meta); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
+	}
+	loaded, err := LoadManifest(filesystem.New(), base)
+	if err != nil {
+		t.Fatalf("LoadManifest: %v", err)
+	}
+	if loaded.Kind != string(api.KindMember) {
+		t.Fatalf("Kind = %q, want %q", loaded.Kind, string(api.KindMember))
+	}
+	if loaded.Runtime == nil || loaded.Runtime.Team == nil {
+		t.Fatal("expected Team runtime metadata")
+	}
+	if len(loaded.Runtime.Team.Members) != 1 {
+		t.Fatalf("expected 1 member, got %d", len(loaded.Runtime.Team.Members))
+	}
+	if loaded.Runtime.Team.Members[0].Name != "reviewer" {
+		t.Fatalf("member name = %q, want %q", loaded.Runtime.Team.Members[0].Name, "reviewer")
+	}
+	if loaded.Runtime.Team.ID != 0 {
+		t.Fatalf("team ID = %d, want 0 for member clone", loaded.Runtime.Team.ID)
+	}
+}
+
 func TestLoadManifest_RequiresManifestPath(t *testing.T) {
 	t.Parallel()
 
