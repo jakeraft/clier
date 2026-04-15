@@ -16,12 +16,12 @@ const ManifestFile = "manifest.json"
 const CurrentFormat = 1
 
 type Manifest struct {
-	Format           int             `json:"format"`
-	Kind             string          `json:"kind"`
-	Owner            string          `json:"owner"`
-	Name             string          `json:"name"`
-	ClonedAt         time.Time       `json:"cloned_at"`
-	RootResource     TrackedResource `json:"root_resource"`
+	Format           int               `json:"format"`
+	Kind             string            `json:"kind"`
+	Owner            string            `json:"owner"`
+	Name             string            `json:"name"`
+	ClonedAt         time.Time         `json:"cloned_at"`
+	RootResource     TrackedResource   `json:"root_resource"`
 	TrackedResources []TrackedResource `json:"tracked_resources,omitempty"`
 	GeneratedFiles   []string          `json:"generated_files,omitempty"`
 	Runtime          *RuntimeMetadata  `json:"runtime,omitempty"`

@@ -13,7 +13,7 @@ func init() {
 
 func newStatusCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "status",
+		Use:   "status",
 		Short: "Show the current local clone status",
 		Long: `Show the status of the current working copy. Displays which
 tracked resources have local modifications and active runs.`,

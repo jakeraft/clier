@@ -22,7 +22,7 @@ func TestRunnerRun_RemovesRunFileWhenLaunchFails(t *testing.T) {
 
 	_, err := runner.Run(base, "run-123", "alpha", []MemberTerminal{{
 		MemberID: 1,
-		Name:         "leader",
+		Name:     "leader",
 	}})
 	if err == nil {
 		t.Fatal("expected launch failure")

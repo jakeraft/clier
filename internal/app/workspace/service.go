@@ -545,10 +545,10 @@ func (s *Service) cloneMemberAsTeam(base, owner, name string) (*Manifest, error)
 	}
 
 	manifest := &Manifest{
-		Kind:     string(api.KindMember),
-		Owner:    member.Metadata.OwnerName,
-		Name:     member.Metadata.Name,
-		ClonedAt: time.Now().UTC(),
+		Kind:             string(api.KindMember),
+		Owner:            member.Metadata.OwnerName,
+		Name:             member.Metadata.Name,
+		ClonedAt:         time.Now().UTC(),
 		RootResource:     tracked[0],
 		TrackedResources: tracked,
 		GeneratedFiles:   normalizePaths(generated),
@@ -789,8 +789,8 @@ func agentTypeFromSnapshot(snapshot json.RawMessage, refAgentType string) string
 // memberProjectionFromResource builds a MemberProjection from a unified ResourceResponse.
 func memberProjectionFromResource(r *api.ResourceResponse) *MemberProjection {
 	projection := &MemberProjection{
-		Name:    r.Metadata.Name,
-		Skills:  make([]ResourceRefProjection, 0),
+		Name:   r.Metadata.Name,
+		Skills: make([]ResourceRefProjection, 0),
 	}
 
 	// Spec fields (Command, GitRepoURL) need to be decoded.
@@ -827,11 +827,11 @@ func memberProjectionFromSnapshot(name string, vr *api.ResourceVersionResponse) 
 	// Decode refs from snapshot. The server sends a "refs" array of objects
 	// with rel_type, target_id, target_name, target_owner, target_version.
 	type snapshotRef struct {
-		RelType      string `json:"rel_type"`
-		TargetID     int64  `json:"target_id"`
-		TargetName   string `json:"target_name"`
-		TargetOwner  string `json:"target_owner"`
-		TargetVersion int   `json:"target_version"`
+		RelType       string `json:"rel_type"`
+		TargetID      int64  `json:"target_id"`
+		TargetName    string `json:"target_name"`
+		TargetOwner   string `json:"target_owner"`
+		TargetVersion int    `json:"target_version"`
 	}
 	type snapshotRefs struct {
 		Refs []snapshotRef `json:"refs"`
@@ -943,4 +943,3 @@ func (s *Service) serverClaudeMdContent(base string, manifest *Manifest, resourc
 	}
 	return content, nil
 }
-

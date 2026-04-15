@@ -13,7 +13,7 @@ func init() {
 
 func newPushCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "push",
+		Use:   "push",
 		Short: "Push tracked local changes to the server",
 		Long: `Push locally modified resources to the server. Only resources
 that have changed since the last pull/clone are sent. Fails if

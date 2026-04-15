@@ -36,4 +36,3 @@ func (r *Runner) Run(copyRoot, runID, sessionName string, plans []MemberTerminal
 
 	return plan, nil
 }
-

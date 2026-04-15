@@ -11,8 +11,8 @@ func init() {
 
 func newCloneCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "clone <[owner/]name>",
-		Short:   "Clone a resource into a local clone",
+		Use:   "clone <[owner/]name>",
+		Short: "Clone a resource into a local clone",
 		Long: `Clone a resource from the server into a local working copy.
 This creates a directory with editable projections and materialized files.
 Use push/pull to sync changes, and run start to launch agents.`,

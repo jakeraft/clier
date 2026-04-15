@@ -96,4 +96,3 @@ func TestBuildAgentFacingTeamProtocol_UsesProfessionalCommunicationTone(t *testi
 		t.Fatalf("team protocol should prohibit non-clier coordination tools:\n%s", protocol)
 	}
 }
-

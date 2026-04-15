@@ -15,7 +15,7 @@ func newPullCmd() *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:     "pull",
+		Use:   "pull",
 		Short: "Pull the current local clone from the server",
 		Long: `Pull the latest version of tracked resources from the server,
 updating local projections and materialized files. Fails if you
