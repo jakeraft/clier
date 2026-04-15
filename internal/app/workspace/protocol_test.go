@@ -65,6 +65,22 @@ func TestComposeAndStripTeamClaudeMdPrelude(t *testing.T) {
 	}
 }
 
+func TestBuildAgentFacingTeamProtocol_SingleMemberTeam(t *testing.T) {
+	protocol := BuildAgentFacingTeamProtocol(
+		"reviewer",
+		"reviewer",
+		domain.MemberRelations{Leaders: []int64{}, Workers: []int64{}},
+		map[int64]ProtocolMember{42: {ID: 42, Name: "reviewer"}},
+	)
+
+	if !strings.Contains(protocol, "You are **reviewer**, operating as a member of team **reviewer**.") {
+		t.Fatalf("protocol should identify single member:\n%s", protocol)
+	}
+	if !strings.Contains(protocol, "- (none)") {
+		t.Fatalf("protocol should show no relations:\n%s", protocol)
+	}
+}
+
 func TestBuildAgentFacingTeamProtocol_UsesProfessionalCommunicationTone(t *testing.T) {
 	protocol := BuildAgentFacingTeamProtocol(
 		"alpha",
