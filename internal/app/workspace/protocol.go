@@ -40,7 +40,30 @@ func TeamWorkLogProtocolImportLine() string {
 	return "@" + WorkLogProtocolImportPath()
 }
 
-func ComposeTeamClaudeMd(memberName, content string) string {
+// ComposeInstruction wraps instruction content with agent-specific protocol references.
+// Claude: injects @import lines (native import syntax).
+// Codex: injects plain-text reference lines (agent reads files when needed).
+// Both agents use the same file structure; only the reference format differs.
+func ComposeInstruction(agentType, memberName, content string) string {
+	switch agentType {
+	case "codex":
+		return composeCodexInstruction(memberName, content)
+	default:
+		return composeClaudeInstruction(memberName, content)
+	}
+}
+
+// StripInstructionPrelude removes the agent-specific protocol prelude for push.
+func StripInstructionPrelude(agentType, memberName, content string) string {
+	switch agentType {
+	case "codex":
+		return stripCodexInstructionPrelude(memberName, content)
+	default:
+		return stripClaudeInstructionPrelude(memberName, content)
+	}
+}
+
+func composeClaudeInstruction(memberName, content string) string {
 	content = strings.TrimLeft(content, "\n")
 	workLogLine := TeamWorkLogProtocolImportLine()
 	teamLine := TeamProtocolImportLine(memberName)
@@ -50,12 +73,47 @@ func ComposeTeamClaudeMd(memberName, content string) string {
 	return workLogLine + "\n" + teamLine + "\n\n" + content
 }
 
-func StripTeamClaudeMdPrelude(memberName, content string) string {
+func stripClaudeInstructionPrelude(memberName, content string) string {
 	prefixes := []string{
 		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(memberName) + "\n\n",
 		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(memberName) + "\n",
 		TeamProtocolImportLine(memberName) + "\n\n",
 		TeamProtocolImportLine(memberName) + "\n",
+	}
+	for _, prefix := range prefixes {
+		if stripped, ok := strings.CutPrefix(content, prefix); ok {
+			return strings.TrimLeft(stripped, "\n")
+		}
+	}
+	return content
+}
+
+// CodexWorkLogReferenceLine returns the reference line for work log protocol in Codex instruction files.
+func CodexWorkLogReferenceLine() string {
+	return "Read " + WorkLogProtocolImportPath() + " for work logging conventions."
+}
+
+// CodexTeamProtocolReferenceLine returns the reference line for team protocol in Codex instruction files.
+func CodexTeamProtocolReferenceLine(memberName string) string {
+	return "Read " + TeamProtocolImportPath(memberName) + " for team coordination."
+}
+
+func composeCodexInstruction(memberName, content string) string {
+	content = strings.TrimLeft(content, "\n")
+	workLogLine := CodexWorkLogReferenceLine()
+	teamLine := CodexTeamProtocolReferenceLine(memberName)
+	if content == "" {
+		return workLogLine + "\n" + teamLine + "\n"
+	}
+	return workLogLine + "\n" + teamLine + "\n\n" + content
+}
+
+func stripCodexInstructionPrelude(memberName, content string) string {
+	prefixes := []string{
+		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine(memberName) + "\n\n",
+		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine(memberName) + "\n",
+		CodexTeamProtocolReferenceLine(memberName) + "\n\n",
+		CodexTeamProtocolReferenceLine(memberName) + "\n",
 	}
 	for _, prefix := range prefixes {
 		if stripped, ok := strings.CutPrefix(content, prefix); ok {
@@ -80,9 +138,8 @@ func BuildAgentFacingWorkLogProtocol() string {
 }
 
 // BuildAgentFacingTeamProtocol generates the team-specific agent-facing
-// protocol content imported by a member local clone's CLAUDE.md.
-// Written to {teamRoot}/{member}/.clier/{member}-team-protocol.md and imported by
-// each member's root CLAUDE.md.
+// protocol content for a member. Written to {teamRoot}/{member}/.clier/{member}-team-protocol.md.
+// Claude imports it via @-reference; Codex inlines it into AGENTS.md.
 func BuildAgentFacingTeamProtocol(teamName, memberName string, relations domain.MemberRelations, membersByID map[int64]ProtocolMember) string {
 	var b strings.Builder
 

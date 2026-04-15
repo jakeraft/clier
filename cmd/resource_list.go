@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/spf13/cobra"
@@ -34,7 +34,7 @@ func newListCmd() *cobra.Command {
 			if mine {
 				owner := currentLogin()
 				if owner == "" {
-					return fmt.Errorf("--mine requires login: run 'clier auth login'")
+					return errors.New("--mine requires login: run 'clier auth login'")
 				}
 				items, err := client.ListResources(owner, opts)
 				if err != nil {
@@ -58,7 +58,7 @@ func newListCmd() *cobra.Command {
 			return printJSON(items)
 		},
 	}
-	cmd.Flags().StringVar(&kind, "kind", "", "Filter by resource kind (member, team, skill, claude-md, claude-setting)")
+	cmd.Flags().StringVar(&kind, "kind", "", "Filter by resource kind (member, team, skill, claude-md, claude-setting, codex-md, codex-setting)")
 	cmd.Flags().StringVarP(&query, "query", "q", "", "Search query")
 	cmd.Flags().BoolVar(&mine, "mine", false, "List only my resources")
 	cmd.Flags().IntVar(&limit, "limit", 0, "Maximum number of results")
