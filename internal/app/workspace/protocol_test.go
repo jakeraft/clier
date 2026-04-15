@@ -50,7 +50,6 @@ func TestBuildAgentFacingWorkLogProtocol_ExplainsNotesAsCliAction(t *testing.T) 
 	}
 }
 
-
 func TestBuildAgentFacingTeamProtocol_SingleMemberTeam(t *testing.T) {
 	protocol := BuildAgentFacingTeamProtocol(
 		"reviewer",

@@ -9,6 +9,20 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
+func TestLocalSettingsContent_CodexReturnsEmpty(t *testing.T) {
+	profile, err := domain.ProfileFor("codex")
+	if err != nil {
+		t.Fatalf("ProfileFor: %v", err)
+	}
+	content, err := localSettingsContent(profile)
+	if err != nil {
+		t.Fatalf("localSettingsContent: %v", err)
+	}
+	if content != "{}" {
+		t.Fatalf("codex local settings = %q, want %q", content, "{}")
+	}
+}
+
 func TestLocalSettingsContent_UsesHomeClaudePath(t *testing.T) {
 	homeDir := t.TempDir()
 	oldHome := os.Getenv("HOME")
