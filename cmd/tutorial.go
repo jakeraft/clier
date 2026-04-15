@@ -37,13 +37,13 @@ Step 2. Explore the pre-loaded todo-team
 
   The "jakeraft/todo-team" is already available.
 
-Step 3. Copy the team to your namespace
+Step 3. Fork the team to your namespace
 
-  clier copy jakeraft/todo-team
+  clier fork jakeraft/todo-team
 
-  This creates your own copy. Now you can customize it.
+  This creates your own fork. Now you can customize it.
 
-Step 4. Customize your copy
+Step 4. Customize your fork
 
   Check your copied team and give it a summary:
 
@@ -54,13 +54,13 @@ Step 4. Customize your copy
 
 Step 5. Clone and start the team
 
-  clier clone todo-team
-  cd <your-login>/todo-team
+  clier clone <your-login>/todo-team
+  cd todo-team
   clier run start
 
-  This clones your team under ./<your-login>/todo-team/
+  This downloads a local working copy under ./todo-team/
   and launches all agents in tmux.
-  Copy the run ID from the output.
+  Note the run ID from the output.
 
 Step 6. Give the team a job
 

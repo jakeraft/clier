@@ -21,9 +21,10 @@ func init() {
 func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "run",
-		Short:   "Observe and control running agents",
+		Short:   "Manage running agent sessions",
 		GroupID: rootGroupRuntime,
 		Long:    `Start, stop, and interact with agents running in tmux.`,
+		RunE:    subcommandRequired,
 	}
 	cmd.AddCommand(newRunStartCmd())
 	cmd.AddCommand(newRunListCmd())
@@ -75,7 +76,9 @@ func newRunListCmd() *cobra.Command {
 func newRunStartCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "start",
-		Short: "Start the current local clone in tmux",
+		Short: "Launch the current working copy in tmux",
+		Long: `Start all agents in the current working copy. Works with both
+team clones (multiple agents) and member clones (single agent).`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()

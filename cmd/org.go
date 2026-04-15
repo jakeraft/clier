@@ -17,6 +17,7 @@ func newOrgCmd() *cobra.Command {
 		Short:   "Manage organizations",
 		GroupID: rootGroupSettings,
 		Long:    `Create, delete, and manage organization membership.`,
+		RunE:    subcommandRequired,
 	}
 	cmd.AddCommand(newOrgCreateCmd())
 	cmd.AddCommand(newOrgDeleteCmd())

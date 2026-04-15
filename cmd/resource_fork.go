@@ -8,14 +8,16 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(newCopyCmd())
+	rootCmd.AddCommand(newForkCmd())
 }
 
-func newCopyCmd() *cobra.Command {
+func newForkCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "copy <owner/name>",
-		Short:   "Copy a resource into your namespace",
-		Long:    `Copy a resource into your namespace. Creates your own copy that you can customize independently.`,
+		Use:   "fork <owner/name>",
+		Short: "Fork a resource to customize it",
+		Long: `Create a server-side fork of another owner's resource.
+The copy lives in your namespace and can be edited independently.
+Not required for running — use clone to run any resource directly.`,
 		GroupID: rootGroupResources,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

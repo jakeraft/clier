@@ -17,6 +17,7 @@ func newOpenCmd() *cobra.Command {
 		Use:     "open",
 		Short:   "Open clier resources in a browser",
 		GroupID: rootGroupSettings,
+		RunE:    subcommandRequired,
 	}
 	cmd.AddCommand(newOpenDashboardCmd())
 	return cmd

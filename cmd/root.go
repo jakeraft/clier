@@ -90,6 +90,11 @@ func newTerminal() *terminal.TmuxTerminal {
 	return terminal.NewTmuxTerminal()
 }
 
+// SetVersion sets the CLI version string shown by --version.
+func SetVersion(v string) {
+	rootCmd.Version = v
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "clier",
 	Short: "Harness AI agent teams",
@@ -99,21 +104,35 @@ Define agents, compose them into teams, and run them locally in tmux.
 Each agent gets its own terminal, git repo, and system prompt.
 You watch, steer, and intervene in real time.
 
+Teams and individual members can both be cloned and run.
+Cloning a member creates a runnable 1-member workspace.
+
 Get started:
   clier tutorial               Walk through an example team
   clier list --kind team       Browse what others have built
 
 Core workflow:
-  clier create member          Define an agent
-  clier create team            Compose agents into a team
-  clier copy <owner/name>      Copy a resource to your namespace
-  clier clone <name>           Clone a resource to your machine
-  clier run start              Launch agents in tmux
-  clier run attach <run-id>    Watch agents in real time
-  clier open dashboard         Open the dashboard in a browser`,
+  clier create member            Define an agent
+  clier create team              Compose agents into a team
+  clier fork <owner/name>        Fork a resource to customize it
+  clier clone <owner/name>       Download a local working copy
+  clier run start                Launch agents in tmux
+  clier run attach <run-id>      Watch agents in real time
+  clier open dashboard           Open the dashboard in a browser`,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
+}
+
+// errSubcommandRequired is returned by parent commands called without a subcommand.
+var errSubcommandRequired = errors.New("subcommand required")
+
+// subcommandRequired prints help and returns errSubcommandRequired (exit 1).
+func subcommandRequired(cmd *cobra.Command, _ []string) error {
+	cmd.SilenceErrors = true
+	cmd.SilenceUsage = true
+	_ = cmd.Help()
+	return errSubcommandRequired
 }
 
 func Execute() {
@@ -125,7 +144,9 @@ func Execute() {
 		filterUserCommands()
 	}
 	if err := cmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		if !errors.Is(err, errSubcommandRequired) {
+			fmt.Fprintln(os.Stderr, err)
+		}
 		os.Exit(1)
 	}
 }

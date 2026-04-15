@@ -17,6 +17,7 @@ func newCreateCmd() *cobra.Command {
 		Short:   "Create a new resource",
 		Long:    `Create a new resource. Kind is required as a subcommand: member, team, skill, claude-md, claude-settings, codex-md, codex-settings.`,
 		GroupID: rootGroupResources,
+		RunE:    subcommandRequired,
 	}
 	cmd.AddCommand(newCreateMemberCmd())
 	cmd.AddCommand(newCreateTeamCmd())

@@ -21,6 +21,7 @@ func newAuthCmd() *cobra.Command {
 		Short:   "Log in and manage credentials",
 		GroupID: rootGroupSettings,
 		Long:    `Log in and manage credentials for accessing clier resources.`,
+		RunE:    subcommandRequired,
 	}
 	cmd.AddCommand(newAuthLoginCmd())
 	cmd.AddCommand(newAuthLogoutCmd())

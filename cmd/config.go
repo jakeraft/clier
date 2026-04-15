@@ -17,6 +17,7 @@ func newConfigCmd() *cobra.Command {
 		Use:     "config",
 		Short:   "Manage clier settings",
 		GroupID: rootGroupSettings,
+		RunE:    subcommandRequired,
 	}
 	cmd.AddCommand(newConfigViewCmd())
 	cmd.AddCommand(newConfigSetCmd())
@@ -41,6 +42,7 @@ func newConfigSetCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "set",
 		Short: "Set a config value",
+		RunE:  subcommandRequired,
 	}
 	cmd.AddCommand(newConfigSetServerURLCmd())
 	cmd.AddCommand(newConfigSetDashboardURLCmd())

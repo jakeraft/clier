@@ -11,10 +11,12 @@ func init() {
 
 func newCloneCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "clone <[owner/]name>",
-		Short: "Clone a resource into a local clone",
-		Long: `Clone a resource from the server into a local working copy.
-This creates a directory with editable projections and materialized files.
+		Use:   "clone <owner/name>",
+		Short: "Download a local working copy",
+		Long: `Download a resource from the server into a local working copy.
+Works with both teams and individual members — cloning a member
+automatically creates a runnable 1-member workspace.
+
 Use push/pull to sync changes, and run start to launch agents.`,
 		GroupID: rootGroupWorkspace,
 		Args:    cobra.ExactArgs(1),
