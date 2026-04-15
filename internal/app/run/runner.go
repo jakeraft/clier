@@ -3,8 +3,6 @@ package run
 import (
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 )
 
 // Launcher starts a run from a persisted RunPlan.
@@ -39,24 +37,3 @@ func (r *Runner) Run(copyRoot, runID, sessionName string, plans []MemberTerminal
 	return plan, nil
 }
 
-// SessionName generates a tmux-safe session name from a name and run ID.
-func SessionName(name, runID string) string {
-	n := strings.NewReplacer(".", "-", ":", "-", " ", "-", "/", "-").Replace(name)
-	if runes := []rune(n); len(runes) > 20 {
-		n = string(runes[:20])
-	}
-	short := runID
-	if len(short) > 8 {
-		short = short[:8]
-	}
-	return n + "-" + short
-}
-
-// ParseMemberID converts a command-line member ID to int64.
-func ParseMemberID(raw string) (int64, error) {
-	id, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("invalid member id %q: %w", raw, err)
-	}
-	return id, nil
-}

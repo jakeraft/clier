@@ -16,6 +16,28 @@ import (
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
 
+// sessionName generates a tmux-safe session name from a name and run ID.
+func sessionName(name, runID string) string {
+	n := strings.NewReplacer(".", "-", ":", "-", " ", "-", "/", "-").Replace(name)
+	if runes := []rune(n); len(runes) > 20 {
+		n = string(runes[:20])
+	}
+	short := runID
+	if len(short) > 8 {
+		short = short[:8]
+	}
+	return n + "-" + short
+}
+
+// parseMemberID converts a command-line member ID to int64.
+func parseMemberID(raw string) (int64, error) {
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid member id %q: %w", raw, err)
+	}
+	return id, nil
+}
+
 // buildMemberEnv returns the environment variables for a member agent.
 // runID is a locally generated run ID; teamMemberID is the int64 member ID.
 // teamID is set only for agents launched from a team local clone.
