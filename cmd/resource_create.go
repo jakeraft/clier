@@ -15,7 +15,7 @@ func newCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "create <kind>",
 		Short:   "Create a new resource",
-		Long:    `Create a new resource. Kind is required as a subcommand: member, team, skill, claude-md, claude-settings.`,
+		Long:    `Create a new resource. Kind is required as a subcommand: member, team, skill, claude-md, claude-settings, codex-md, codex-settings.`,
 		GroupID: rootGroupResources,
 	}
 	cmd.AddCommand(newCreateMemberCmd())
@@ -23,11 +23,13 @@ func newCreateCmd() *cobra.Command {
 	cmd.AddCommand(newCreateSkillCmd())
 	cmd.AddCommand(newCreateClaudeMdCmd())
 	cmd.AddCommand(newCreateClaudeSettingsCmd())
+	cmd.AddCommand(newCreateCodexMdCmd())
+	cmd.AddCommand(newCreateCodexSettingsCmd())
 	return cmd
 }
 
 func newCreateMemberCmd() *cobra.Command {
-	var ownerFlag, name, command, claudeMd, claudeSettings, repo, summary string
+	var ownerFlag, name, command, claudeMd, claudeSettings, codexMd, codexSettings, repo, summary string
 	var skills []string
 
 	cmd := &cobra.Command{
@@ -47,6 +49,14 @@ func newCreateMemberCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("parse --claude-settings: %w", err)
 			}
+			codexMdRef, err := parseOptionalResourceRefRequest(codexMd)
+			if err != nil {
+				return fmt.Errorf("parse --codex-md: %w", err)
+			}
+			codexSettingsRef, err := parseOptionalResourceRefRequest(codexSettings)
+			if err != nil {
+				return fmt.Errorf("parse --codex-settings: %w", err)
+			}
 			skillRefs := make([]api.ResourceRefRequest, 0, len(skills))
 			for _, raw := range skills {
 				ref, err := parseOptionalResourceRefRequest(raw)
@@ -64,6 +74,8 @@ func newCreateMemberCmd() *cobra.Command {
 				GitRepoURL:     repo,
 				ClaudeMd:       claudeMdRef,
 				ClaudeSettings: claudeSettingsRef,
+				CodexMd:        codexMdRef,
+				CodexSettings:  codexSettingsRef,
 				Skills:         skillRefs,
 				Summary:        summary,
 			}
@@ -80,6 +92,8 @@ func newCreateMemberCmd() *cobra.Command {
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "Claude md resource ref as <id>@<version>")
 	cmd.Flags().StringSliceVar(&skills, "skill", nil, "Skill ref as <id>@<version>; repeat for each skill")
 	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "Claude settings resource ref as <id>@<version>")
+	cmd.Flags().StringVar(&codexMd, "codex-md", "", "Codex instruction resource ref as <id>@<version>")
+	cmd.Flags().StringVar(&codexSettings, "codex-settings", "", "Codex settings resource ref as <id>@<version>")
 	cmd.Flags().StringVar(&repo, "repo", "", "Git repo URL")
 	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
 	_ = cmd.MarkFlagRequired("name")
@@ -221,6 +235,64 @@ func newCreateClaudeSettingsCmd() *cobra.Command {
 	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
 	cmd.Flags().StringVar(&name, "name", "", "Settings name")
 	cmd.Flags().StringVar(&content, "content", "", "Settings JSON content")
+	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
+	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("content")
+	return cmd
+}
+
+func newCreateCodexMdCmd() *cobra.Command {
+	var ownerFlag, name, content, summary string
+	cmd := &cobra.Command{
+		Use:   "codex-md",
+		Short: "Create a new Codex instruction resource",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newAPIClient()
+			owner, err := resolveOwner(ownerFlag)
+			if err != nil {
+				return err
+			}
+			resp, err := client.CreateResource(api.KindCodexMd, owner, api.ContentWriteRequest{
+				Name: name, Content: content, Summary: summary,
+			})
+			if err != nil {
+				return err
+			}
+			return printJSON(resp)
+		},
+	}
+	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
+	cmd.Flags().StringVar(&name, "name", "", "Codex instruction name")
+	cmd.Flags().StringVar(&content, "content", "", "Codex instruction content")
+	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
+	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("content")
+	return cmd
+}
+
+func newCreateCodexSettingsCmd() *cobra.Command {
+	var ownerFlag, name, content, summary string
+	cmd := &cobra.Command{
+		Use:   "codex-settings",
+		Short: "Create a new Codex settings resource",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := newAPIClient()
+			owner, err := resolveOwner(ownerFlag)
+			if err != nil {
+				return err
+			}
+			resp, err := client.CreateResource(api.KindCodexSettings, owner, api.ContentWriteRequest{
+				Name: name, Content: content, Summary: summary,
+			})
+			if err != nil {
+				return err
+			}
+			return printJSON(resp)
+		},
+	}
+	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
+	cmd.Flags().StringVar(&name, "name", "", "Settings name")
+	cmd.Flags().StringVar(&content, "content", "", "Settings TOML content")
 	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("content")

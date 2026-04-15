@@ -27,6 +27,10 @@ func resolveServerResourceKind(client *api.Client, owner, name string) (string, 
 		return string(api.KindClaudeMd), nil
 	case api.KindClaudeSettings:
 		return string(api.KindClaudeSettings), nil
+	case api.KindCodexMd:
+		return string(api.KindCodexMd), nil
+	case api.KindCodexSettings:
+		return string(api.KindCodexSettings), nil
 	default:
 		return r.Kind, nil
 	}
