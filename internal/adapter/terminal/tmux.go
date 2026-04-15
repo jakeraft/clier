@@ -80,10 +80,10 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
 	return nil
 }
 
-func (t *TmuxTerminal) Send(plan *apprun.RunPlan, teamMemberID int64, text string) error {
-	member, ok := plan.FindMember(teamMemberID)
+func (t *TmuxTerminal) Send(plan *apprun.RunPlan, memberName string, text string) error {
+	member, ok := plan.FindMember(memberName)
 	if !ok {
-		return fmt.Errorf("member %d not found in run plan", teamMemberID)
+		return fmt.Errorf("member %q not found in run plan", memberName)
 	}
 	return t.sendKeys(plan.Session, strconv.Itoa(member.Window), text)
 }
@@ -96,13 +96,13 @@ func (t *TmuxTerminal) Terminate(plan *apprun.RunPlan) error {
 	return nil
 }
 
-func (t *TmuxTerminal) Attach(plan *apprun.RunPlan, memberID *int64) error {
+func (t *TmuxTerminal) Attach(plan *apprun.RunPlan, memberName *string) error {
 	sess := plan.Session
 
-	if memberID != nil {
-		member, ok := plan.FindMember(*memberID)
+	if memberName != nil {
+		member, ok := plan.FindMember(*memberName)
 		if !ok {
-			return fmt.Errorf("member %d not found in run plan", *memberID)
+			return fmt.Errorf("member %q not found in run plan", *memberName)
 		}
 		if _, err := t.runFn("select-window", "-t", sess+":"+strconv.Itoa(member.Window)); err != nil {
 			return fmt.Errorf("select window: %w", err)

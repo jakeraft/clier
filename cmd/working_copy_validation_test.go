@@ -32,12 +32,11 @@ func TestValidateWorkingCopy_Member(t *testing.T) {
 		Kind: string(api.KindMember),
 		Runtime: &appworkspace.RuntimeMetadata{
 			Team: &appworkspace.TeamRuntimeMetadata{
-				ID:   0,
 				Name: memberName,
 				Members: []appworkspace.TeamMemberRuntimeMetadata{{
-					MemberID: 1,
-					Name:     memberName,
-					Command:  "codex",
+					Name:    memberName,
+					Owner:   "jakeraft",
+					Command: "codex",
 				}},
 			},
 		},
@@ -69,11 +68,10 @@ func TestValidateWorkingCopy_CodexMember(t *testing.T) {
 		Kind: string(api.KindMember),
 		Runtime: &appworkspace.RuntimeMetadata{
 			Team: &appworkspace.TeamRuntimeMetadata{
-				ID:   0,
 				Name: memberName,
 				Members: []appworkspace.TeamMemberRuntimeMetadata{{
-					MemberID:  1,
 					Name:      memberName,
+					Owner:     "jakeraft",
 					AgentType: "codex",
 					Command:   "codex",
 				}},
@@ -91,12 +89,11 @@ func TestValidateWorkingCopy_MissingFileFails(t *testing.T) {
 		Kind: string(api.KindMember),
 		Runtime: &appworkspace.RuntimeMetadata{
 			Team: &appworkspace.TeamRuntimeMetadata{
-				ID:   0,
 				Name: "reviewer",
 				Members: []appworkspace.TeamMemberRuntimeMetadata{{
-					MemberID: 1,
-					Name:     "reviewer",
-					Command:  "codex",
+					Name:    "reviewer",
+					Owner:   "jakeraft",
+					Command: "codex",
 				}},
 			},
 		},

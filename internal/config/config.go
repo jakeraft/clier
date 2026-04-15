@@ -11,10 +11,12 @@ import (
 
 const dotDir = ".clier"
 const DefaultServerURL = "http://localhost:8080"
+const DefaultDashboardURL = "http://localhost:5173"
 
 // File stores user-configurable CLI settings.
 type File struct {
 	ServerURL       string `json:"server_url,omitempty"`
+	DashboardURL    string `json:"dashboard_url,omitempty"`
 	CredentialsPath string `json:"credentials_path,omitempty"`
 }
 
@@ -44,6 +46,7 @@ func Resolve(cfg *File) (*File, error) {
 
 	out := &File{
 		ServerURL:       DefaultServerURL,
+		DashboardURL:    DefaultDashboardURL,
 		CredentialsPath: filepath.Join(base, "credentials.json"),
 	}
 	if cfg == nil {
@@ -52,6 +55,9 @@ func Resolve(cfg *File) (*File, error) {
 
 	if cfg.ServerURL != "" {
 		out.ServerURL = normalizeServerURL(cfg.ServerURL)
+	}
+	if cfg.DashboardURL != "" {
+		out.DashboardURL = normalizeServerURL(cfg.DashboardURL)
 	}
 	if cfg.CredentialsPath != "" {
 		out.CredentialsPath = expandTilde(homeDir, cfg.CredentialsPath)

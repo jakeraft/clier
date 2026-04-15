@@ -3,7 +3,6 @@ package run
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -11,7 +10,7 @@ import (
 // Terminal launches and terminates member processes.
 type Terminal interface {
 	Terminate(plan *RunPlan) error
-	Send(plan *RunPlan, teamMemberID int64, text string) error
+	Send(plan *RunPlan, memberName string, text string) error
 }
 
 // PlanStore persists and retrieves run plans.
@@ -52,9 +51,9 @@ func (s *Service) Stop(plan *RunPlan) error {
 }
 
 // Send delivers a message to the recipient's terminal and records it in the plan.
-func (s *Service) Send(plan *RunPlan, fromMemberID, toMemberID *int64, content string) error {
-	if toMemberID == nil {
-		return errors.New("recipient member id is required")
+func (s *Service) Send(plan *RunPlan, fromMember, toMember *string, content string) error {
+	if toMember == nil {
+		return errors.New("recipient member name is required")
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
@@ -62,15 +61,15 @@ func (s *Service) Send(plan *RunPlan, fromMemberID, toMemberID *int64, content s
 	}
 
 	text := content
-	if fromMemberID != nil {
-		text = fmt.Sprintf("[Message from %s] %s", strconv.FormatInt(*fromMemberID, 10), content)
+	if fromMember != nil {
+		text = fmt.Sprintf("[Message from %s] %s", *fromMember, content)
 	}
 
-	if err := s.terminal.Send(plan, *toMemberID, text); err != nil {
+	if err := s.terminal.Send(plan, *toMember, text); err != nil {
 		return fmt.Errorf("deliver message: %w", err)
 	}
 
-	if err := plan.AddMessage(fromMemberID, toMemberID, content); err != nil {
+	if err := plan.AddMessage(fromMember, toMember, content); err != nil {
 		return fmt.Errorf("record message: %w", err)
 	}
 	if err := s.store.Save(plan); err != nil {
@@ -80,12 +79,12 @@ func (s *Service) Send(plan *RunPlan, fromMemberID, toMemberID *int64, content s
 }
 
 // Note records a progress entry posted by a member.
-func (s *Service) Note(plan *RunPlan, memberID *int64, content string) error {
+func (s *Service) Note(plan *RunPlan, member *string, content string) error {
 	if strings.TrimSpace(content) == "" {
 		return errors.New("note content must not be empty")
 	}
 
-	if err := plan.AddNote(memberID, content); err != nil {
+	if err := plan.AddNote(member, content); err != nil {
 		return fmt.Errorf("record note: %w", err)
 	}
 	if err := s.store.Save(plan); err != nil {

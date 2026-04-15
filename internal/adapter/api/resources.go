@@ -61,6 +61,16 @@ func (c *Client) CopyResource(kind ResourceKind, owner, name string) (*ResourceR
 	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/%s/%s/copy", owner, kind.urlPath(), name), nil, &r)
 }
 
+// --- Stars ---
+
+func (c *Client) StarResource(owner, name string) error {
+	return c.do("PUT", fmt.Sprintf("/api/v1/orgs/%s/resources/%s/star", owner, name), nil, nil)
+}
+
+func (c *Client) UnstarResource(owner, name string) error {
+	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/resources/%s/star", owner, name))
+}
+
 // --- Helpers ---
 
 func buildListQuery(opts ListOptions) string {
@@ -71,11 +81,23 @@ func buildListQuery(opts ListOptions) string {
 	if opts.Query != "" {
 		v.Set("q", opts.Query)
 	}
+	if opts.Uses != "" {
+		v.Set("uses", opts.Uses)
+	}
+	if opts.Starred != nil {
+		v.Set("starred", strconv.FormatBool(*opts.Starred))
+	}
 	if opts.Limit > 0 {
 		v.Set("limit", strconv.Itoa(opts.Limit))
 	}
 	if opts.Offset > 0 {
 		v.Set("offset", strconv.Itoa(opts.Offset))
+	}
+	if opts.Sort != "" {
+		v.Set("sort", opts.Sort)
+	}
+	if opts.Order != "" {
+		v.Set("order", opts.Order)
 	}
 	return v.Encode()
 }

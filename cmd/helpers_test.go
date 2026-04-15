@@ -3,7 +3,6 @@ package cmd
 import (
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -52,26 +51,25 @@ func TestResolveRunPlanPath_SearchesCurrentWorkspaceAncestors(t *testing.T) {
 	}
 }
 
-func TestBuildMemberEnv_OmitsTeamIDForStandaloneRuns(t *testing.T) {
-	env := buildMemberEnv("run-1", 11, nil, "tech-lead")
+func TestBuildMemberEnv_OmitsTeamNameForStandaloneRuns(t *testing.T) {
+	env := buildMemberEnv("run-1", "tech-lead", "")
 
-	if env["CLIER_TEAM_ID"] != "" {
-		t.Fatalf("CLIER_TEAM_ID should be omitted for standalone runs, got %q", env["CLIER_TEAM_ID"])
+	if env["CLIER_TEAM_NAME"] != "" {
+		t.Fatalf("CLIER_TEAM_NAME should be omitted for standalone runs, got %q", env["CLIER_TEAM_NAME"])
 	}
 	if env["CLIER_RUN_ID"] != "run-1" {
 		t.Fatalf("CLIER_RUN_ID = %q, want run-1", env["CLIER_RUN_ID"])
 	}
-	if env["CLIER_MEMBER_ID"] != "11" {
-		t.Fatalf("CLIER_MEMBER_ID = %q, want 11", env["CLIER_MEMBER_ID"])
+	if env["CLIER_MEMBER_NAME"] != "tech-lead" {
+		t.Fatalf("CLIER_MEMBER_NAME = %q, want tech-lead", env["CLIER_MEMBER_NAME"])
 	}
 }
 
-func TestBuildMemberEnv_SetsTeamIDForTeamRuns(t *testing.T) {
-	teamID := int64(22)
-	env := buildMemberEnv("run-1", 11, &teamID, "coder")
+func TestBuildMemberEnv_SetsTeamNameForTeamRuns(t *testing.T) {
+	env := buildMemberEnv("run-1", "coder", "my-team")
 
-	if env["CLIER_TEAM_ID"] != strconv.FormatInt(teamID, 10) {
-		t.Fatalf("CLIER_TEAM_ID = %q, want %d", env["CLIER_TEAM_ID"], teamID)
+	if env["CLIER_TEAM_NAME"] != "my-team" {
+		t.Fatalf("CLIER_TEAM_NAME = %q, want my-team", env["CLIER_TEAM_NAME"])
 	}
 }
 

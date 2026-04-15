@@ -26,7 +26,6 @@ type RunPlan struct {
 
 // MemberTerminal maps a member to its tmux window and launch command.
 type MemberTerminal struct {
-	MemberID    int64  `json:"member_id"`
 	Name        string `json:"name"`
 	AgentType   string `json:"agent_type"`
 	Window      int    `json:"window"`
@@ -36,14 +35,14 @@ type MemberTerminal struct {
 }
 
 type RecordedMessage struct {
-	FromMemberID *int64    `json:"from_member_id,omitempty"`
-	ToMemberID   *int64    `json:"to_member_id,omitempty"`
-	Content      string    `json:"content"`
-	CreatedAt    time.Time `json:"created_at"`
+	FromMember *string   `json:"from_member,omitempty"`
+	ToMember   *string   `json:"to_member,omitempty"`
+	Content    string    `json:"content"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type RecordedNote struct {
-	MemberID  *int64    `json:"member_id,omitempty"`
+	Member    *string   `json:"member,omitempty"`
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -61,37 +60,37 @@ func NewPlan(runID, sessionName string, plans []MemberTerminal) *RunPlan {
 	}
 }
 
-// FindMember finds the terminal slot for a member in the run plan.
-func (p *RunPlan) FindMember(memberID int64) (*MemberTerminal, bool) {
+// FindMember finds the terminal slot for a member by name in the run plan.
+func (p *RunPlan) FindMember(memberName string) (*MemberTerminal, bool) {
 	for i := range p.Members {
-		if p.Members[i].MemberID == memberID {
+		if p.Members[i].Name == memberName {
 			return &p.Members[i], true
 		}
 	}
 	return nil, false
 }
 
-func (p *RunPlan) AddMessage(fromMemberID, toMemberID *int64, content string) error {
+func (p *RunPlan) AddMessage(fromMember, toMember *string, content string) error {
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return errors.New("message content must not be empty")
 	}
 	p.Messages = append(p.Messages, RecordedMessage{
-		FromMemberID: copyInt64Ptr(fromMemberID),
-		ToMemberID:   copyInt64Ptr(toMemberID),
-		Content:      content,
-		CreatedAt:    time.Now(),
+		FromMember: copyStrPtr(fromMember),
+		ToMember:   copyStrPtr(toMember),
+		Content:    content,
+		CreatedAt:  time.Now(),
 	})
 	return nil
 }
 
-func (p *RunPlan) AddNote(memberID *int64, content string) error {
+func (p *RunPlan) AddNote(member *string, content string) error {
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return errors.New("note content must not be empty")
 	}
 	p.Notes = append(p.Notes, RecordedNote{
-		MemberID:  copyInt64Ptr(memberID),
+		Member:    copyStrPtr(member),
 		Content:   content,
 		CreatedAt: time.Now(),
 	})
@@ -104,7 +103,7 @@ func (p *RunPlan) MarkStopped() {
 	p.StoppedAt = &now
 }
 
-func copyInt64Ptr(v *int64) *int64 {
+func copyStrPtr(v *string) *string {
 	if v == nil {
 		return nil
 	}

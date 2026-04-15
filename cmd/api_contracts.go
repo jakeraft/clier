@@ -15,17 +15,17 @@ func parseOptionalResourceRefRequest(raw string) (*api.ResourceRefRequest, error
 	}
 	parts := strings.SplitN(raw, "@", 2)
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid resource ref %q: want <id>@<version>", raw)
+		return nil, fmt.Errorf("invalid resource ref %q: want <owner/name>@<version>", raw)
 	}
-	id, err := strconv.ParseInt(strings.TrimSpace(parts[0]), 10, 64)
+	owner, name, err := parseOwnerName(strings.TrimSpace(parts[0]))
 	if err != nil {
-		return nil, fmt.Errorf("invalid resource id in %q: %w", raw, err)
+		return nil, fmt.Errorf("invalid resource ref %q: %w", raw, err)
 	}
 	version, err := strconv.Atoi(strings.TrimSpace(parts[1]))
 	if err != nil {
 		return nil, fmt.Errorf("invalid resource version in %q: %w", raw, err)
 	}
-	return &api.ResourceRefRequest{ID: id, Version: version}, nil
+	return &api.ResourceRefRequest{Owner: owner, Name: name, Version: version}, nil
 }
 
 func parseTeamMemberSpecs(specs []string) ([]api.TeamMemberRequest, error) {
@@ -39,7 +39,8 @@ func parseTeamMemberSpecs(specs []string) ([]api.TeamMemberRequest, error) {
 			return nil, fmt.Errorf("invalid --member %q, member ref must not be empty", spec)
 		}
 		members = append(members, api.TeamMemberRequest{
-			MemberID:      ref.ID,
+			Owner:         ref.Owner,
+			Name:          ref.Name,
 			MemberVersion: ref.Version,
 		})
 	}
@@ -51,19 +52,19 @@ func parseTeamRelationSpecs(specs []string) ([]api.TeamRelationRequest, error) {
 	for _, spec := range specs {
 		parts := strings.SplitN(spec, ":", 2)
 		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid --relation %q, want <from-member-id>:<to-member-id>", spec)
+			return nil, fmt.Errorf("invalid --relation %q, want <owner/name>:<owner/name>", spec)
 		}
-		from, err := strconv.ParseInt(strings.TrimSpace(parts[0]), 10, 64)
+		fromOwner, fromName, err := parseOwnerName(strings.TrimSpace(parts[0]))
 		if err != nil {
 			return nil, fmt.Errorf("invalid from in %q: %w", spec, err)
 		}
-		to, err := strconv.ParseInt(strings.TrimSpace(parts[1]), 10, 64)
+		toOwner, toName, err := parseOwnerName(strings.TrimSpace(parts[1]))
 		if err != nil {
 			return nil, fmt.Errorf("invalid to in %q: %w", spec, err)
 		}
 		relations = append(relations, api.TeamRelationRequest{
-			From: from,
-			To:   to,
+			From: api.ResourceIdentifier{Owner: fromOwner, Name: fromName},
+			To:   api.ResourceIdentifier{Owner: toOwner, Name: toName},
 		})
 	}
 	return relations, nil

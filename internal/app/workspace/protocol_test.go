@@ -7,29 +7,26 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func TestBuildAgentFacingTeamProtocol_UsesMemberIDsForTellCommands(t *testing.T) {
+func TestBuildAgentFacingTeamProtocol_UsesMemberNamesForTellCommands(t *testing.T) {
 	protocol := BuildAgentFacingTeamProtocol(
 		"alpha",
 		"leader",
 		domain.MemberRelations{
-			Workers: []int64{12},
+			Workers: []string{"worker"},
 		},
-		map[int64]ProtocolMember{
-			12: {ID: 12, Name: "worker"},
+		map[string]ProtocolMember{
+			"worker": {Name: "worker"},
 		},
 	)
 
-	if !strings.Contains(protocol, "Workers: worker (12)") {
-		t.Fatalf("protocol should include worker id in team structure:\n%s", protocol)
+	if !strings.Contains(protocol, "Workers: worker") {
+		t.Fatalf("protocol should include worker name in team structure:\n%s", protocol)
 	}
-	if !strings.Contains(protocol, "Tell worker (team member 12):") {
-		t.Fatalf("protocol should label tell target with numeric team member id:\n%s", protocol)
+	if !strings.Contains(protocol, "Tell worker:") {
+		t.Fatalf("protocol should label tell target with member name:\n%s", protocol)
 	}
-	if !strings.Contains(protocol, "clier run tell --to 12") {
-		t.Fatalf("protocol should use numeric team member id in tell command:\n%s", protocol)
-	}
-	if strings.Contains(protocol, "clier run tell --to worker") {
-		t.Fatalf("protocol should not use member names as tell targets:\n%s", protocol)
+	if !strings.Contains(protocol, "clier run tell --to worker") {
+		t.Fatalf("protocol should use member name in tell command:\n%s", protocol)
 	}
 }
 
@@ -54,8 +51,8 @@ func TestBuildAgentFacingTeamProtocol_SingleMemberTeam(t *testing.T) {
 	protocol := BuildAgentFacingTeamProtocol(
 		"reviewer",
 		"reviewer",
-		domain.MemberRelations{Leaders: []int64{}, Workers: []int64{}},
-		map[int64]ProtocolMember{42: {ID: 42, Name: "reviewer"}},
+		domain.MemberRelations{Leaders: []string{}, Workers: []string{}},
+		map[string]ProtocolMember{"reviewer": {Name: "reviewer"}},
 	)
 
 	if !strings.Contains(protocol, "You are **reviewer**, operating as a member of team **reviewer**.") {
@@ -71,7 +68,7 @@ func TestBuildAgentFacingTeamProtocol_UsesProfessionalCommunicationTone(t *testi
 		"alpha",
 		"leader",
 		domain.MemberRelations{},
-		map[int64]ProtocolMember{},
+		map[string]ProtocolMember{},
 	)
 
 	if !strings.Contains(protocol, "Use `clier run tell` to message another team member.") {

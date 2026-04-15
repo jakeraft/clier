@@ -14,7 +14,7 @@ func newVersionsCmd() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner, name, err := parseExplicitOwnerName(args[0])
+			owner, name, err := parseOwnerName(args[0])
 			if err != nil {
 				return err
 			}

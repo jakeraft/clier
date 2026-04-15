@@ -7,10 +7,10 @@ func TestPlan_SaveLoadAndMutate(t *testing.T) {
 
 	base := t.TempDir()
 	plan := NewPlan("run-123", "team-run", nil)
-	if err := plan.AddMessage(int64Ptr(1), int64Ptr(2), "hello"); err != nil {
+	if err := plan.AddMessage(strPtr("leader"), strPtr("worker"), "hello"); err != nil {
 		t.Fatalf("add message: %v", err)
 	}
-	if err := plan.AddNote(int64Ptr(2), "working"); err != nil {
+	if err := plan.AddNote(strPtr("worker"), "working"); err != nil {
 		t.Fatalf("add note: %v", err)
 	}
 	plan.MarkStopped()

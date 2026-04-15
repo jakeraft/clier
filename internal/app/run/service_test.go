@@ -14,7 +14,7 @@ type stubTerminal struct {
 func (t *stubTerminal) Terminate(_ *RunPlan) error {
 	return t.stopErr
 }
-func (t *stubTerminal) Send(_ *RunPlan, _ int64, text string) error {
+func (t *stubTerminal) Send(_ *RunPlan, _ string, text string) error {
 	t.sent = append(t.sent, text)
 	return nil
 }
@@ -28,7 +28,7 @@ func (s *stubPlanStore) Save(plan *RunPlan) error {
 	return nil
 }
 
-func int64Ptr(v int64) *int64 { return &v }
+func strPtr(v string) *string { return &v }
 
 func TestService_Note(t *testing.T) {
 	store := &stubPlanStore{}
@@ -36,7 +36,7 @@ func TestService_Note(t *testing.T) {
 	plan := &RunPlan{RunID: "1", Session: "team-1"}
 
 	t.Run("success", func(t *testing.T) {
-		if err := svc.Note(plan, int64Ptr(7), "run done"); err != nil {
+		if err := svc.Note(plan, strPtr("worker"), "run done"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(plan.Notes) == 0 {
@@ -48,7 +48,7 @@ func TestService_Note(t *testing.T) {
 	})
 
 	t.Run("empty content", func(t *testing.T) {
-		err := svc.Note(plan, int64Ptr(7), "  ")
+		err := svc.Note(plan, strPtr("worker"), "  ")
 		if err == nil {
 			t.Fatal("expected error for empty content")
 		}
@@ -90,7 +90,7 @@ func TestService_Send(t *testing.T) {
 	plan := &RunPlan{
 		RunID:   "1",
 		Session: "team-1",
-		Members: []MemberTerminal{{MemberID: 2, Name: "worker", Window: 1}},
+		Members: []MemberTerminal{{Name: "worker", Window: 1}},
 	}
 
 	t.Run("agent message includes sender name and is recorded", func(t *testing.T) {
@@ -98,13 +98,13 @@ func TestService_Send(t *testing.T) {
 		store := &stubPlanStore{}
 		svc := New(term, store)
 
-		if err := svc.Send(plan, int64Ptr(1), int64Ptr(2), "hello"); err != nil {
+		if err := svc.Send(plan, strPtr("leader"), strPtr("worker"), "hello"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(term.sent) != 1 {
 			t.Fatalf("expected 1 sent, got %d", len(term.sent))
 		}
-		want := "[Message from 1] hello"
+		want := "[Message from leader] hello"
 		if term.sent[0] != want {
 			t.Errorf("sent = %q, want %q", term.sent[0], want)
 		}
@@ -120,7 +120,7 @@ func TestService_Send(t *testing.T) {
 		term := &stubTerminal{}
 		svc := New(term, &stubPlanStore{})
 
-		if err := svc.Send(plan, nil, int64Ptr(2), "do this"); err != nil {
+		if err := svc.Send(plan, nil, strPtr("worker"), "do this"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if term.sent[0] != "do this" {
@@ -132,7 +132,7 @@ func TestService_Send(t *testing.T) {
 		term := &failTerminal{}
 		svc := New(term, &stubPlanStore{})
 
-		err := svc.Send(plan, int64Ptr(1), int64Ptr(99), "hello")
+		err := svc.Send(plan, strPtr("leader"), strPtr("unknown"), "hello")
 		if err == nil {
 			t.Fatal("expected error for failed delivery")
 		}
@@ -142,6 +142,6 @@ func TestService_Send(t *testing.T) {
 type failTerminal struct{}
 
 func (t *failTerminal) Terminate(_ *RunPlan) error { return nil }
-func (t *failTerminal) Send(_ *RunPlan, _ int64, _ string) error {
+func (t *failTerminal) Send(_ *RunPlan, _ string, _ string) error {
 	return errors.New("surface not found")
 }

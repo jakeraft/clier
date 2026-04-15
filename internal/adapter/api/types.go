@@ -9,20 +9,22 @@ import (
 
 // ResourceResponse is the unified response for all resource kinds.
 type ResourceResponse struct {
-	Kind       string           `json:"kind"`
-	Metadata   ResourceMetadata `json:"metadata"`
-	Spec       json.RawMessage  `json:"spec"`
-	Refs       []ResolvedRef    `json:"refs"`
-	AgentTypes []string         `json:"agent_types"`
+	Kind           string           `json:"kind"`
+	Metadata       ResourceMetadata `json:"metadata"`
+	Spec           json.RawMessage  `json:"spec"`
+	Refs           []ResolvedRef    `json:"refs"`
+	AgentTypes     []string         `json:"agent_types"`
+	VersionCreated bool             `json:"version_created,omitempty"`
 }
 
 // ResourceMetadata contains shared metadata across all resource kinds.
 type ResourceMetadata struct {
-	ID             int64     `json:"id"`
 	Name           string    `json:"name"`
 	Summary        string    `json:"summary"`
 	Visibility     int       `json:"visibility"`
 	RefCount       int       `json:"ref_count"`
+	StarCount      int       `json:"star_count"`
+	Starred        bool      `json:"starred"`
 	OwnerName      string    `json:"owner_name"`
 	OwnerType      int       `json:"owner_type"`
 	OwnerAvatarURL string    `json:"owner_avatar_url,omitempty"`
@@ -33,8 +35,6 @@ type ResourceMetadata struct {
 
 // ResolvedRef is a resolved reference between resources.
 type ResolvedRef struct {
-	ID             int64  `json:"id"`
-	TargetID       int64  `json:"target_id"`
 	TargetVersion  int    `json:"target_version"`
 	RelType        string `json:"rel_type"`
 	Name           string `json:"name"`
@@ -52,10 +52,9 @@ type ListResponse struct {
 
 // ResourceVersionResponse is the unified version response.
 type ResourceVersionResponse struct {
-	ID             int64           `json:"id"`
-	ResourceID     int64           `json:"resource_id"`
 	Version        int             `json:"version"`
 	Snapshot       json.RawMessage `json:"snapshot"`
+	Refs           []ResolvedRef   `json:"refs"`
 	CreatedAt      time.Time       `json:"created_at"`
 	OwnerName      string          `json:"owner_name"`
 	OwnerAvatarURL string          `json:"owner_avatar_url,omitempty"`
@@ -80,10 +79,16 @@ type TeamSpec struct {
 	Relations []TeamRelation `json:"relations"`
 }
 
+// ResourceIdentifier identifies a resource by owner and name.
+type ResourceIdentifier struct {
+	Owner string `json:"owner"`
+	Name  string `json:"name"`
+}
+
 // TeamRelation is a relation in team spec response.
 type TeamRelation struct {
-	From int64 `json:"from"`
-	To   int64 `json:"to"`
+	From ResourceIdentifier `json:"from"`
+	To   ResourceIdentifier `json:"to"`
 }
 
 // DecodeSpec extracts a typed spec from ResourceResponse.
@@ -101,7 +106,6 @@ type ContentWriteRequest struct {
 }
 
 type ContentPatchRequest struct {
-	Name    *string `json:"name,omitempty"`
 	Content *string `json:"content,omitempty"`
 	Summary *string `json:"summary,omitempty"`
 }
@@ -119,7 +123,6 @@ type MemberWriteRequest struct {
 }
 
 type MemberPatchRequest struct {
-	Name           *string              `json:"name,omitempty"`
 	Command        *string              `json:"command,omitempty"`
 	Skills         []ResourceRefRequest `json:"skills,omitempty"`
 	GitRepoURL     *string              `json:"git_repo_url,omitempty"`
@@ -131,8 +134,9 @@ type MemberPatchRequest struct {
 }
 
 type ResourceRefRequest struct {
-	ID      int64 `json:"id"`
-	Version int   `json:"version"`
+	Owner   string `json:"owner"`
+	Name    string `json:"name"`
+	Version int    `json:"version"`
 }
 
 type TeamWriteRequest struct {
@@ -143,20 +147,20 @@ type TeamWriteRequest struct {
 }
 
 type TeamPatchRequest struct {
-	Name        *string               `json:"name,omitempty"`
 	TeamMembers []TeamMemberRequest   `json:"team_members,omitempty"`
 	Relations   []TeamRelationRequest `json:"relations,omitempty"`
 	Summary     *string               `json:"summary,omitempty"`
 }
 
 type TeamMemberRequest struct {
-	MemberID      int64 `json:"member_id"`
-	MemberVersion int   `json:"member_version"`
+	Owner         string `json:"owner"`
+	Name          string `json:"name"`
+	MemberVersion int    `json:"member_version"`
 }
 
 type TeamRelationRequest struct {
-	From int64 `json:"from"`
-	To   int64 `json:"to"`
+	From ResourceIdentifier `json:"from"`
+	To   ResourceIdentifier `json:"to"`
 }
 
 // --- Org Types ---
@@ -166,7 +170,6 @@ type CreateOrgRequest struct {
 }
 
 type OrgResponse struct {
-	ID         int64     `json:"id"`
 	Name       string    `json:"name"`
 	Visibility int       `json:"visibility"`
 	AvatarURL  string    `json:"avatar_url,omitempty"`
@@ -175,8 +178,8 @@ type OrgResponse struct {
 }
 
 type OrgMemberResponse struct {
-	UserID int64 `json:"user_id"`
-	Role   int   `json:"role"`
+	Name string `json:"name"`
+	Role int    `json:"role"`
 }
 
 type InviteMemberRequest struct {
@@ -218,10 +221,14 @@ func (k ResourceKind) urlPath() string {
 }
 
 type ListOptions struct {
-	Kind   string
-	Query  string
-	Limit  int
-	Offset int
+	Kind    string
+	Query   string
+	Uses    string
+	Starred *bool
+	Limit   int
+	Offset  int
+	Sort    string
+	Order   string
 }
 
 // SetInstructionRef sets the instruction ref field matching the given kind.

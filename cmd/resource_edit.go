@@ -13,13 +13,13 @@ func init() {
 }
 
 var kindAllowedFlags = map[api.ResourceKind]map[string]bool{
-	api.KindMember:         {"name": true, "summary": true, "command": true, "repo": true, "claude-md": true, "claude-settings": true, "codex-md": true, "codex-settings": true, "skill": true},
-	api.KindTeam:           {"name": true, "summary": true, "member": true, "relation": true},
-	api.KindSkill:          {"name": true, "summary": true, "content": true},
-	api.KindClaudeMd:       {"name": true, "summary": true, "content": true},
-	api.KindClaudeSettings: {"name": true, "summary": true, "content": true},
-	api.KindCodexMd:        {"name": true, "summary": true, "content": true},
-	api.KindCodexSettings:  {"name": true, "summary": true, "content": true},
+	api.KindMember:         {"summary": true, "command": true, "repo": true, "claude-md": true, "claude-settings": true, "codex-md": true, "codex-settings": true, "skill": true},
+	api.KindTeam:           {"summary": true, "member": true, "relation": true},
+	api.KindSkill:          {"summary": true, "content": true},
+	api.KindClaudeMd:       {"summary": true, "content": true},
+	api.KindClaudeSettings: {"summary": true, "content": true},
+	api.KindCodexMd:        {"summary": true, "content": true},
+	api.KindCodexSettings:  {"summary": true, "content": true},
 }
 
 func validateEditFlags(cmd *cobra.Command, kind api.ResourceKind) error {
@@ -37,7 +37,7 @@ func validateEditFlags(cmd *cobra.Command, kind api.ResourceKind) error {
 }
 
 func newEditCmd() *cobra.Command {
-	var name, command, content, claudeMd, claudeSettings, codexMd, codexSettings, repo, summary string
+	var command, content, claudeMd, claudeSettings, codexMd, codexSettings, repo, summary string
 	var skills []string
 	var teamMembers, relations []string
 
@@ -71,9 +71,6 @@ Owner defaults to the logged-in user when not specified.`,
 			switch kind {
 			case api.KindMember:
 				body := api.MemberPatchRequest{}
-				if cmd.Flags().Changed("name") {
-					body.Name = &name
-				}
 				if cmd.Flags().Changed("command") {
 					body.Command = &command
 				}
@@ -132,9 +129,6 @@ Owner defaults to the logged-in user when not specified.`,
 
 			case api.KindTeam:
 				body := api.TeamPatchRequest{}
-				if cmd.Flags().Changed("name") {
-					body.Name = &name
-				}
 				if cmd.Flags().Changed("summary") {
 					body.Summary = &summary
 				}
@@ -163,9 +157,6 @@ Owner defaults to the logged-in user when not specified.`,
 
 			case api.KindSkill, api.KindClaudeMd, api.KindClaudeSettings, api.KindCodexMd, api.KindCodexSettings:
 				body := api.ContentPatchRequest{}
-				if cmd.Flags().Changed("name") {
-					body.Name = &name
-				}
 				if cmd.Flags().Changed("content") {
 					body.Content = &content
 				}
@@ -184,17 +175,16 @@ Owner defaults to the logged-in user when not specified.`,
 		},
 	}
 	// Superset of all kind-specific flags.
-	cmd.Flags().StringVar(&name, "name", "", "New resource name")
 	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
 	cmd.Flags().StringVar(&content, "content", "", "New content (skill, claude-md, claude-settings, codex-md, codex-settings)")
 	cmd.Flags().StringVar(&command, "command", "", "New command (member)")
 	cmd.Flags().StringVar(&repo, "repo", "", "New git repo URL (member)")
-	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "New claude md ref as <id>@<version> (member)")
-	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "New claude settings ref as <id>@<version> (member)")
-	cmd.Flags().StringVar(&codexMd, "codex-md", "", "New codex instruction ref as <id>@<version> (member)")
-	cmd.Flags().StringVar(&codexSettings, "codex-settings", "", "New codex settings ref as <id>@<version> (member)")
-	cmd.Flags().StringSliceVar(&skills, "skill", nil, "New skill ref as <id>@<version>; repeat for each (member)")
-	cmd.Flags().StringSliceVar(&teamMembers, "member", nil, "Replace team members with <member-id>@<version>; repeat for each (team)")
-	cmd.Flags().StringSliceVar(&relations, "relation", nil, "Replace relations with <from-member-id>:<to-member-id>; repeat for each (team)")
+	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "New claude md ref as <owner/name>@<version> (member)")
+	cmd.Flags().StringVar(&claudeSettings, "claude-settings", "", "New claude settings ref as <owner/name>@<version> (member)")
+	cmd.Flags().StringVar(&codexMd, "codex-md", "", "New codex instruction ref as <owner/name>@<version> (member)")
+	cmd.Flags().StringVar(&codexSettings, "codex-settings", "", "New codex settings ref as <owner/name>@<version> (member)")
+	cmd.Flags().StringSliceVar(&skills, "skill", nil, "New skill ref as <owner/name>@<version>; repeat for each (member)")
+	cmd.Flags().StringSliceVar(&teamMembers, "member", nil, "Replace team members with <owner/name>@<version>; repeat for each (team)")
+	cmd.Flags().StringSliceVar(&relations, "relation", nil, "Replace relations with <owner/name>:<owner/name>; repeat for each (team)")
 	return cmd
 }

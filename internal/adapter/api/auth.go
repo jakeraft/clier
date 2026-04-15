@@ -17,7 +17,6 @@ type DevicePollResponse struct {
 }
 
 type UserResponse struct {
-	ID         int64     `json:"id"`
 	Name       string    `json:"name"`
 	Email      string    `json:"email,omitempty"`
 	AvatarURL  string    `json:"avatar_url,omitempty"`

@@ -109,7 +109,8 @@ Core workflow:
   clier copy <owner/name>      Copy a resource to your namespace
   clier clone <name>           Clone a resource to your machine
   clier run start              Launch agents in tmux
-  clier run attach <run-id>    Watch agents in real time`,
+  clier run attach <run-id>    Watch agents in real time
+  clier open dashboard         Open the dashboard in a browser`,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},
@@ -174,26 +175,13 @@ func resolveOwner(explicit string) (string, error) {
 	}
 	login := currentLogin()
 	if login == "" {
-		return "", fmt.Errorf("specify --owner or run 'clier auth login'")
+		return "", errors.New("specify --owner or run 'clier auth login'")
 	}
 	return login, nil
 }
 
 // parseOwnerName splits "owner/name" into owner and name.
-// If no slash is present, the logged-in user is used as owner.
 func parseOwnerName(s string) (owner, name string, err error) {
-	parts := strings.SplitN(s, "/", 2)
-	if len(parts) == 2 {
-		return parts[0], parts[1], nil
-	}
-	login := currentLogin()
-	if login == "" {
-		return "", "", fmt.Errorf("ambiguous resource %q: use <owner/name> format or run 'clier auth login'", s)
-	}
-	return login, s, nil
-}
-
-func parseExplicitOwnerName(s string) (owner, name string, err error) {
 	parts := strings.SplitN(strings.TrimSpace(s), "/", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return "", "", fmt.Errorf("invalid resource %q: want <owner/name>", s)

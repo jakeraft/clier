@@ -314,11 +314,7 @@ func (s *Service) preparePushBody(base string, manifest *Manifest, r TrackedReso
 		if err != nil {
 			return "", nil, err
 		}
-		body, err := s.teamMutationFromProjection(projection)
-		if err != nil {
-			return "", nil, err
-		}
-		return kind, body, nil
+		return kind, s.teamMutationFromProjection(projection), nil
 	default:
 		content, err := s.readContentForPush(base, manifest, kind, r)
 		if err != nil {
@@ -451,10 +447,11 @@ func (s *Service) cloneMemberAsTeam(base, owner, name string) (*Manifest, error)
 	}
 
 	// Write team protocol for 1-member team (no relations).
+	mKey := memberKey(member.Metadata.OwnerName, member.Metadata.Name)
 	protocol := BuildAgentFacingTeamProtocol(
 		member.Metadata.Name, member.Metadata.Name,
-		domain.MemberRelations{Leaders: []int64{}, Workers: []int64{}},
-		map[int64]ProtocolMember{member.Metadata.ID: {ID: member.Metadata.ID, Name: member.Metadata.Name}},
+		domain.MemberRelations{Leaders: []string{}, Workers: []string{}},
+		map[string]ProtocolMember{mKey: {Owner: member.Metadata.OwnerName, Name: member.Metadata.Name}},
 	)
 	protocolPath := filepath.Join(memberBase, ".clier", TeamProtocolFileName(member.Metadata.Name))
 	if err := s.fs.EnsureFile(protocolPath, []byte(protocol)); err != nil {
@@ -465,7 +462,6 @@ func (s *Service) cloneMemberAsTeam(base, owner, name string) (*Manifest, error)
 	teamProjection := &TeamProjection{
 		Name: member.Metadata.Name,
 		Members: []TeamMemberProjection{{
-			MemberID:      member.Metadata.ID,
 			MemberVersion: member.Metadata.LatestVersion,
 			Name:          member.Metadata.Name,
 			Member: ResourceRefProjection{
@@ -557,11 +553,10 @@ func (s *Service) cloneMemberAsTeam(base, owner, name string) (*Manifest, error)
 		GeneratedFiles:   normalizePaths(generated),
 		Runtime: &RuntimeMetadata{
 			Team: &TeamRuntimeMetadata{
-				ID:   0,
 				Name: member.Metadata.Name,
 				Members: []TeamMemberRuntimeMetadata{{
-					MemberID:   member.Metadata.ID,
 					Name:       member.Metadata.Name,
+					Owner:      member.Metadata.OwnerName,
 					AgentType:  agentType,
 					Command:    projection.Command,
 					GitRepoURL: projection.GitRepoURL,
@@ -576,11 +571,6 @@ func (s *Service) cloneMemberAsTeam(base, owner, name string) (*Manifest, error)
 }
 
 func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
-	writer := NewWriter(s.client, owner, s.fs, s.git)
-	if err := writer.MaterializeTeamFiles(base, name); err != nil {
-		return nil, err
-	}
-
 	team, err := s.client.GetResource(owner, name)
 	if err != nil {
 		return nil, fmt.Errorf("get team %s/%s: %w", owner, name, err)
@@ -589,6 +579,12 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decode team spec %s/%s: %w", owner, name, err)
 	}
+
+	writer := NewWriter(s.client, owner, s.fs, s.git)
+	if err := writer.MaterializeTeamFiles(base, team, teamSpec); err != nil {
+		return nil, err
+	}
+
 	if err := WriteTeamProjection(s.fs, TeamProjectionPath(base), teamProjectionFromResource(team, teamSpec)); err != nil {
 		return nil, err
 	}
@@ -604,7 +600,6 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 	generated := []string{}
 	metadata := &RuntimeMetadata{
 		Team: &TeamRuntimeMetadata{
-			ID:   team.Metadata.ID,
 			Name: team.Metadata.Name,
 		},
 	}
@@ -633,8 +628,8 @@ func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
 		profile, _ := domain.ProfileFor(agentType)
 
 		metadata.Team.Members = append(metadata.Team.Members, TeamMemberRuntimeMetadata{
-			MemberID:   tm.TargetID,
 			Name:       tm.Name,
+			Owner:      tm.OwnerName,
 			AgentType:  agentType,
 			Command:    memberProjection.Command,
 			GitRepoURL: memberProjection.GitRepoURL,
@@ -715,29 +710,29 @@ func (s *Service) memberMutationFromProjection(projection *MemberProjection, age
 
 	var instructionRef *api.ResourceRefRequest
 	if projection.InstructionRef != nil {
-		res, err := s.client.GetResource(projection.InstructionRef.Owner, projection.InstructionRef.Name)
-		if err != nil {
-			return nil, err
+		instructionRef = &api.ResourceRefRequest{
+			Owner:   projection.InstructionRef.Owner,
+			Name:    projection.InstructionRef.Name,
+			Version: projection.InstructionRef.Version,
 		}
-		instructionRef = &api.ResourceRefRequest{ID: res.Metadata.ID, Version: projection.InstructionRef.Version}
 	}
 
 	var settingsRef *api.ResourceRefRequest
 	if projection.SettingsRef != nil {
-		res, err := s.client.GetResource(projection.SettingsRef.Owner, projection.SettingsRef.Name)
-		if err != nil {
-			return nil, err
+		settingsRef = &api.ResourceRefRequest{
+			Owner:   projection.SettingsRef.Owner,
+			Name:    projection.SettingsRef.Name,
+			Version: projection.SettingsRef.Version,
 		}
-		settingsRef = &api.ResourceRefRequest{ID: res.Metadata.ID, Version: projection.SettingsRef.Version}
 	}
 
 	skillRefs := make([]api.ResourceRefRequest, 0, len(projection.Skills))
 	for _, skillRef := range projection.Skills {
-		skill, err := s.client.GetResource(skillRef.Owner, skillRef.Name)
-		if err != nil {
-			return nil, err
-		}
-		skillRefs = append(skillRefs, api.ResourceRefRequest{ID: skill.Metadata.ID, Version: skillRef.Version})
+		skillRefs = append(skillRefs, api.ResourceRefRequest{
+			Owner:   skillRef.Owner,
+			Name:    skillRef.Name,
+			Version: skillRef.Version,
+		})
 	}
 
 	req := &api.MemberWriteRequest{
@@ -751,15 +746,12 @@ func (s *Service) memberMutationFromProjection(projection *MemberProjection, age
 	return req, nil
 }
 
-func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.TeamWriteRequest, error) {
+func (s *Service) teamMutationFromProjection(projection *TeamProjection) *api.TeamWriteRequest {
 	members := make([]api.TeamMemberRequest, 0, len(projection.Members))
 	for _, member := range projection.Members {
-		resolved, err := s.client.GetResource(member.Member.Owner, member.Member.Name)
-		if err != nil {
-			return nil, err
-		}
 		members = append(members, api.TeamMemberRequest{
-			MemberID:      resolved.Metadata.ID,
+			Owner:         member.Member.Owner,
+			Name:          member.Member.Name,
 			MemberVersion: member.Member.Version,
 		})
 	}
@@ -767,8 +759,8 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 	relations := make([]api.TeamRelationRequest, 0, len(projection.Relations))
 	for _, relation := range projection.Relations {
 		relations = append(relations, api.TeamRelationRequest{
-			From: relation.From,
-			To:   relation.To,
+			From: api.ResourceIdentifier{Owner: relation.From.Owner, Name: relation.From.Name},
+			To:   api.ResourceIdentifier{Owner: relation.To.Owner, Name: relation.To.Name},
 		})
 	}
 
@@ -776,7 +768,7 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 		Name:        projection.Name,
 		TeamMembers: members,
 		Relations:   relations,
-	}, nil
+	}
 }
 
 // agentTypeFromResource resolves the agent type from a live ResourceResponse.
@@ -849,10 +841,9 @@ func memberProjectionFromSnapshot(name string, vr *api.ResourceVersionResponse) 
 	}
 
 	// Decode refs from snapshot. The server sends a "refs" array of objects
-	// with rel_type, target_id, target_name, target_owner, target_version.
+	// with rel_type, target_name, target_owner, target_version.
 	type snapshotRef struct {
 		RelType       string `json:"rel_type"`
-		TargetID      int64  `json:"target_id"`
 		TargetName    string `json:"target_name"`
 		TargetOwner   string `json:"target_owner"`
 		TargetVersion int    `json:"target_version"`
@@ -891,7 +882,6 @@ func teamProjectionFromResource(r *api.ResourceResponse, spec *api.TeamSpec) *Te
 	}
 	for _, ref := range refsByRelType(r, string(api.KindMember)) {
 		projection.Members = append(projection.Members, TeamMemberProjection{
-			MemberID:      ref.TargetID,
 			MemberVersion: ref.TargetVersion,
 			Name:          ref.Name,
 			Member: ResourceRefProjection{
@@ -903,8 +893,8 @@ func teamProjectionFromResource(r *api.ResourceResponse, spec *api.TeamSpec) *Te
 	}
 	for _, relation := range spec.Relations {
 		projection.Relations = append(projection.Relations, TeamRelationProjection{
-			From: relation.From,
-			To:   relation.To,
+			From: api.ResourceIdentifier{Owner: relation.From.Owner, Name: relation.From.Name},
+			To:   api.ResourceIdentifier{Owner: relation.To.Owner, Name: relation.To.Name},
 		})
 	}
 	return projection
@@ -924,7 +914,6 @@ func (s *Service) populateBaseHashes(base string, tracked []TrackedResource) err
 func intPtr(v int) *int {
 	return &v
 }
-
 
 func normalizePaths(paths []string) []string {
 	out := make([]string, 0, len(paths))

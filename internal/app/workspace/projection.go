@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+
+	"github.com/jakeraft/clier/internal/adapter/api"
 )
 
 type ResourceRefProjection struct {
@@ -28,15 +30,14 @@ type TeamProjection struct {
 }
 
 type TeamMemberProjection struct {
-	MemberID      int64                 `json:"member_id"`
 	MemberVersion int                   `json:"member_version"`
 	Name          string                `json:"name"`
 	Member        ResourceRefProjection `json:"member"`
 }
 
 type TeamRelationProjection struct {
-	From int64 `json:"from"`
-	To   int64 `json:"to"`
+	From api.ResourceIdentifier `json:"from"`
+	To   api.ResourceIdentifier `json:"to"`
 }
 
 const TeamProjectionFile = "team.json"

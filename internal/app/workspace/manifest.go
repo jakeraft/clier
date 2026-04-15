@@ -13,7 +13,7 @@ const ManifestFile = "manifest.json"
 // CurrentFormat is the manifest schema version. Bump this integer
 // whenever the local-clone directory layout or manifest structure
 // changes in a way that is incompatible with older CLIs.
-const CurrentFormat = 2
+const CurrentFormat = 1
 
 type Manifest struct {
 	Format           int               `json:"format"`
@@ -43,14 +43,13 @@ type RuntimeMetadata struct {
 }
 
 type TeamRuntimeMetadata struct {
-	ID      int64                       `json:"id"`
 	Name    string                      `json:"name"`
 	Members []TeamMemberRuntimeMetadata `json:"members"`
 }
 
 type TeamMemberRuntimeMetadata struct {
-	MemberID   int64  `json:"member_id"`
 	Name       string `json:"name"`
+	Owner      string `json:"owner"`
 	AgentType  string `json:"agent_type"`
 	Command    string `json:"command"`
 	GitRepoURL string `json:"git_repo_url,omitempty"`

@@ -43,8 +43,8 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
 	members := []apprun.MemberTerminal{
-		{MemberID: 1, Name: "leader", Window: 0, Memberspace: "/tmp/leader", Cwd: "/tmp/leader", Command: "echo hello"},
-		{MemberID: 2, Name: "worker", Window: 1, Memberspace: "/tmp/worker", Cwd: "/tmp/worker"},
+		{Name: "leader", Window: 0, Memberspace: "/tmp/leader", Cwd: "/tmp/leader", Command: "echo hello"},
+		{Name: "worker", Window: 1, Memberspace: "/tmp/worker", Cwd: "/tmp/worker"},
 	}
 	plan := apprun.NewPlan("s-1", "my-team", members)
 
@@ -74,7 +74,6 @@ func TestTmuxTerminal_Send(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Members: []apprun.MemberTerminal{{
-			MemberID:    1,
 			Name:        "leader",
 			Window:      0,
 			Memberspace: "/tmp/leader",
@@ -85,7 +84,7 @@ func TestTmuxTerminal_Send(t *testing.T) {
 	runner := &fakeRunner{}
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
-	if err := tm.Send(plan, 1, "do the work"); err != nil {
+	if err := tm.Send(plan, "leader", "do the work"); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
 	if len(runner.calls) != 3 {
@@ -107,17 +106,14 @@ func TestTmuxTerminal_Terminate(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Members: []apprun.MemberTerminal{{
-			MemberID: 1,
-			Name:     "leader",
-			Window:   0,
+			Name:   "leader",
+			Window: 0,
 		}, {
-			MemberID: 2,
-			Name:     "worker",
-			Window:   1,
+			Name:   "worker",
+			Window: 1,
 		}, {
-			MemberID: 3,
-			Name:     "reviewer",
-			Window:   2,
+			Name:   "reviewer",
+			Window: 2,
 		}},
 	}
 	runner := &fakeRunner{}
@@ -145,9 +141,8 @@ func TestTmuxTerminal_Terminate_AlreadyDead(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Members: []apprun.MemberTerminal{{
-			MemberID: 1,
-			Name:     "leader",
-			Window:   0,
+			Name:   "leader",
+			Window: 0,
 		}},
 	}
 	runner := &fakeRunner{
@@ -168,21 +163,19 @@ func TestTmuxTerminal_Attach(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Members: []apprun.MemberTerminal{{
-			MemberID: 1,
-			Name:     "leader",
-			Window:   1,
+			Name:   "leader",
+			Window: 1,
 		}, {
-			MemberID: 2,
-			Name:     "worker",
-			Window:   2,
+			Name:   "worker",
+			Window: 2,
 		}},
 	}
 
 	t.Run("with member selects window", func(t *testing.T) {
 		runner := &fakeRunner{}
 		tm := &TmuxTerminal{runFn: runner.run, attachFn: func(string) error { return nil }, sleep: func(time.Duration) {}}
-		memberID := int64(2)
-		if err := tm.Attach(plan, &memberID); err != nil {
+		memberName := "worker"
+		if err := tm.Attach(plan, &memberName); err != nil {
 			t.Fatalf("Attach: %v", err)
 		}
 		if !hasCall(runner.calls, "select-window") {

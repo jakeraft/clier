@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
@@ -112,14 +111,9 @@ func newRunStartCmd() *cobra.Command {
 					return err
 				}
 				memberBase := filepath.Join(copyRoot, member.Name)
-				var teamIDPtr *int64
-				if team.ID != 0 {
-					teamIDPtr = &team.ID
-				}
-				envVars := buildMemberEnv(runID, member.MemberID, teamIDPtr, member.Name)
+				envVars := buildMemberEnv(runID, member.Name, team.Name)
 				fullCommand := buildFullCommand(envVars, memberProjection.Command, memberBase)
 				terminalPlans = append(terminalPlans, apprun.MemberTerminal{
-					MemberID:    member.MemberID,
 					Name:        member.Name,
 					AgentType:   member.AgentType,
 					Window:      i,
@@ -198,24 +192,20 @@ environment.`,
 				return err
 			}
 
-			var memberID *int64
+			var memberName *string
 			if memberFlag != "" {
-				parsed, err := strconv.ParseInt(memberFlag, 10, 64)
-				if err != nil {
-					return fmt.Errorf("invalid member id %q: %w", memberFlag, err)
-				}
-				memberID = &parsed
+				memberName = &memberFlag
 			}
-			return term.Attach(plan, memberID)
+			return term.Attach(plan, memberName)
 		},
 	}
-	cmd.Flags().StringVar(&memberFlag, "member", "", "Attach to a specific team member ID")
+	cmd.Flags().StringVar(&memberFlag, "member", "", "Attach to a specific team member name")
 	return cmd
 }
 
 func newRunTellCmd() *cobra.Command {
 	var runFlag string
-	var toMemberIDRaw int64
+	var toMemberName string
 
 	cmd := &cobra.Command{
 		Use:   "tell [content]",
@@ -224,9 +214,9 @@ func newRunTellCmd() *cobra.Command {
 Content can be provided as an argument or via stdin.
 
 Examples:
-  clier run tell --to <id> "simple message"
-  echo "message with special chars" | clier run tell --to <id>
-  clier run tell --to <id> <<'EOF'
+  clier run tell --to <name> "simple message"
+  echo "message with special chars" | clier run tell --to <name>
+  clier run tell --to <name> <<'EOF'
   message with ` + "`backticks`" + ` and --flags
   EOF`,
 		Args: cobra.MaximumNArgs(1),
@@ -236,7 +226,7 @@ Examples:
 				return err
 			}
 
-			runID, fromMemberID, err := resolveRunContext(runFlag)
+			runID, fromMember, err := resolveRunContext(runFlag)
 			if err != nil {
 				return err
 			}
@@ -245,7 +235,10 @@ Examples:
 				return err
 			}
 
-			toMemberID := &toMemberIDRaw
+			var toMember *string
+			if toMemberName != "" {
+				toMember = &toMemberName
+			}
 
 			store, err := newPlanStore()
 			if err != nil {
@@ -253,20 +246,20 @@ Examples:
 			}
 			svc := apprun.New(newTerminal(), store)
 
-			if err := svc.Send(plan, fromMemberID, toMemberID, content); err != nil {
+			if err := svc.Send(plan, fromMember, toMember, content); err != nil {
 				return err
 			}
 
 			return printJSON(map[string]any{
 				"status": "delivered",
-				"from":   fromMemberID,
-				"to":     toMemberID,
+				"from":   fromMember,
+				"to":     toMember,
 				"run":    runID,
 			})
 		},
 	}
 	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to "+envClierRunID+")")
-	cmd.Flags().Int64Var(&toMemberIDRaw, "to", 0, "Recipient member ID")
+	cmd.Flags().StringVar(&toMemberName, "to", "", "Recipient member name")
 	_ = cmd.MarkFlagRequired("to")
 	return cmd
 }
@@ -288,7 +281,7 @@ appended to the run file under ` + "`.clier/`" + `.`,
 				return err
 			}
 
-			runID, memberID, err := resolveRunContext(runFlag)
+			runID, member, err := resolveRunContext(runFlag)
 			if err != nil {
 				return err
 			}
@@ -304,13 +297,13 @@ appended to the run file under ` + "`.clier/`" + `.`,
 			}
 			svc := apprun.New(newTerminal(), store)
 
-			if err := svc.Note(plan, memberID, content); err != nil {
+			if err := svc.Note(plan, member, content); err != nil {
 				return err
 			}
 
 			var memberVal any
-			if memberID != nil {
-				memberVal = *memberID
+			if member != nil {
+				memberVal = *member
 			}
 			return printJSON(map[string]any{
 				"status": "posted",
@@ -339,8 +332,8 @@ func readContent(args []string) (string, error) {
 	return content, nil
 }
 
-// resolveRunContext resolves run ID and member ID from env vars set by clier.
-func resolveRunContext(runFlag string) (runID string, memberID *int64, err error) {
+// resolveRunContext resolves run ID and member name from env vars set by clier.
+func resolveRunContext(runFlag string) (runID string, memberName *string, err error) {
 	runID = strings.TrimSpace(runFlag)
 	if runID == "" {
 		runID = strings.TrimSpace(os.Getenv(envClierRunID))
@@ -348,12 +341,8 @@ func resolveRunContext(runFlag string) (runID string, memberID *int64, err error
 	if runID == "" {
 		return "", nil, fmt.Errorf("--run flag or %s must be set", envClierRunID)
 	}
-	if raw := os.Getenv(envClierMemberID); raw != "" {
-		v, parseErr := parseMemberID(raw)
-		if parseErr != nil {
-			return "", nil, fmt.Errorf("%s is not a valid int64: %w", envClierMemberID, parseErr)
-		}
-		memberID = &v
+	if raw := strings.TrimSpace(os.Getenv(envClierMemberName)); raw != "" {
+		memberName = &raw
 	}
-	return runID, memberID, nil
+	return runID, memberName, nil
 }

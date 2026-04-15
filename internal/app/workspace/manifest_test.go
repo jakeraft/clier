@@ -92,11 +92,10 @@ func TestManifest_MemberCloneUsesTeamRuntime(t *testing.T) {
 		}},
 		Runtime: &RuntimeMetadata{
 			Team: &TeamRuntimeMetadata{
-				ID:   0,
 				Name: "reviewer",
 				Members: []TeamMemberRuntimeMetadata{{
-					MemberID:  42,
 					Name:      "reviewer",
+					Owner:     "jakeraft",
 					AgentType: "claude",
 					Command:   "claude",
 				}},
@@ -123,8 +122,8 @@ func TestManifest_MemberCloneUsesTeamRuntime(t *testing.T) {
 	if loaded.Runtime.Team.Members[0].Name != "reviewer" {
 		t.Fatalf("member name = %q, want %q", loaded.Runtime.Team.Members[0].Name, "reviewer")
 	}
-	if loaded.Runtime.Team.ID != 0 {
-		t.Fatalf("team ID = %d, want 0 for member clone", loaded.Runtime.Team.ID)
+	if loaded.Runtime.Team.Members[0].Owner != "jakeraft" {
+		t.Fatalf("member owner = %q, want %q", loaded.Runtime.Team.Members[0].Owner, "jakeraft")
 	}
 }
 

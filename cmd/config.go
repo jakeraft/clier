@@ -43,6 +43,7 @@ func newConfigSetCmd() *cobra.Command {
 		Short: "Set a config value",
 	}
 	cmd.AddCommand(newConfigSetServerURLCmd())
+	cmd.AddCommand(newConfigSetDashboardURLCmd())
 	return cmd
 }
 
@@ -61,6 +62,35 @@ func newConfigSetServerURLCmd() *cobra.Command {
 			}
 
 			cfg.ServerURL = args[0]
+			if err := config.Save(configPath(), cfg); err != nil {
+				return err
+			}
+
+			resolved, err := config.Resolve(cfg)
+			if err != nil {
+				return err
+			}
+
+			return printJSON(resolved)
+		},
+	}
+}
+
+func newConfigSetDashboardURLCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "dashboard-url <url>",
+		Short: "Set the dashboard URL",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadRawConfig()
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return err
+			}
+			if cfg == nil {
+				cfg = &config.File{}
+			}
+
+			cfg.DashboardURL = args[0]
 			if err := config.Save(configPath(), cfg); err != nil {
 				return err
 			}

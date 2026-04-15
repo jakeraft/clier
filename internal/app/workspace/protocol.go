@@ -10,8 +10,13 @@ import (
 
 // ProtocolMember carries the runtime identity agents must use when communicating.
 type ProtocolMember struct {
-	ID   int64
-	Name string
+	Owner string
+	Name  string
+}
+
+// memberKey returns the unique identifier for a member (owner/name).
+func memberKey(owner, name string) string {
+	return owner + "/" + name
 }
 
 const workLogProtocolFileName = "work-log-protocol.md"
@@ -140,7 +145,7 @@ func BuildAgentFacingWorkLogProtocol() string {
 // BuildAgentFacingTeamProtocol generates the team-specific agent-facing
 // protocol content for a member. Written to {teamRoot}/{member}/.clier/{member}-team-protocol.md.
 // Claude imports it via @-reference; Codex inlines it into AGENTS.md.
-func BuildAgentFacingTeamProtocol(teamName, memberName string, relations domain.MemberRelations, membersByID map[int64]ProtocolMember) string {
+func BuildAgentFacingTeamProtocol(teamName, memberName string, relations domain.MemberRelations, membersByName map[string]ProtocolMember) string {
 	var b strings.Builder
 
 	// Header
@@ -149,8 +154,8 @@ func BuildAgentFacingTeamProtocol(teamName, memberName string, relations domain.
 
 	// Team Structure
 	b.WriteString("## Team Structure\n\n")
-	writeRelNames(&b, "Leaders", relations.Leaders, membersByID)
-	writeRelNames(&b, "Workers", relations.Workers, membersByID)
+	writeRelNames(&b, "Leaders", relations.Leaders, membersByName)
+	writeRelNames(&b, "Workers", relations.Workers, membersByName)
 	if len(relations.Leaders) == 0 && len(relations.Workers) == 0 {
 		b.WriteString("- (none)\n")
 	}
@@ -158,9 +163,9 @@ func BuildAgentFacingTeamProtocol(teamName, memberName string, relations domain.
 	// Communication
 	b.WriteString("\n## Communication\n\n")
 	b.WriteString("Use `clier run tell` to message another team member.\n")
-	b.WriteString("Use the numeric team member IDs below in `--to`.\n")
+	b.WriteString("Use the team member names below in `--to`.\n")
 	b.WriteString("Do not use built-in messaging tools for team coordination.\n\n")
-	writeTellCommands(&b, relations, membersByID)
+	writeTellCommands(&b, relations, membersByName)
 	b.WriteString("- Replies arrive directly in your terminal input.\n")
 	b.WriteString("- Keep each message substantive and action-oriented.\n")
 
@@ -177,25 +182,25 @@ func BuildAgentFacingTeamProtocol(teamName, memberName string, relations domain.
 }
 
 // writeTellCommands writes ready-to-use tell commands for each related member.
-func writeTellCommands(b *strings.Builder, rel domain.MemberRelations, membersByID map[int64]ProtocolMember) {
-	all := make([]int64, 0, len(rel.Leaders)+len(rel.Workers))
+func writeTellCommands(b *strings.Builder, rel domain.MemberRelations, membersByName map[string]ProtocolMember) {
+	all := make([]string, 0, len(rel.Leaders)+len(rel.Workers))
 	all = append(all, rel.Leaders...)
 	all = append(all, rel.Workers...)
-	for _, id := range all {
-		member := membersByID[id]
-		fmt.Fprintf(b, "Tell %s (team member %d):\n```bash\nclier run tell --to %d <<'EOF'\n<message>\nEOF\n```\n", member.Name, member.ID, member.ID)
+	for _, name := range all {
+		member := membersByName[name]
+		fmt.Fprintf(b, "Tell %s:\n```bash\nclier run tell --to %s <<'EOF'\n<message>\nEOF\n```\n", member.Name, member.Name)
 	}
 }
 
 // writeRelNames formats a relation line like "- Leaders: alice, bob".
-func writeRelNames(b *strings.Builder, label string, ids []int64, membersByID map[int64]ProtocolMember) {
-	if len(ids) == 0 {
+func writeRelNames(b *strings.Builder, label string, names []string, membersByName map[string]ProtocolMember) {
+	if len(names) == 0 {
 		return
 	}
-	names := make([]string, 0, len(ids))
-	for _, id := range ids {
-		member := membersByID[id]
-		names = append(names, fmt.Sprintf("%s (%d)", member.Name, member.ID))
+	displayNames := make([]string, 0, len(names))
+	for _, name := range names {
+		member := membersByName[name]
+		displayNames = append(displayNames, member.Name)
 	}
-	fmt.Fprintf(b, "- %s: %s\n", label, strings.Join(names, ", "))
+	fmt.Fprintf(b, "- %s: %s\n", label, strings.Join(displayNames, ", "))
 }

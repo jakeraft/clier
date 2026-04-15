@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -29,30 +28,19 @@ func sessionName(name, runID string) string {
 	return n + "-" + short
 }
 
-// parseMemberID converts a command-line member ID to int64.
-func parseMemberID(raw string) (int64, error) {
-	id, err := strconv.ParseInt(raw, 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("invalid member id %q: %w", raw, err)
-	}
-	return id, nil
-}
-
 // buildMemberEnv returns the environment variables for a member agent.
-// runID is a locally generated run ID; teamMemberID is the int64 member ID.
-// teamID is set only for agents launched from a team local clone.
-func buildMemberEnv(runID string, teamMemberID int64, teamID *int64, memberName string) map[string]string {
+func buildMemberEnv(runID, memberName, teamName string) map[string]string {
 	env := map[string]string{
 		envClierRunID:         runID,
-		envClierMemberID:      strconv.FormatInt(teamMemberID, 10),
+		envClierMemberName:    memberName,
 		envClierAgent:         "true",
 		"GIT_AUTHOR_NAME":     memberName,
 		"GIT_AUTHOR_EMAIL":    "noreply@clier.com",
 		"GIT_COMMITTER_NAME":  memberName,
 		"GIT_COMMITTER_EMAIL": "noreply@clier.com",
 	}
-	if teamID != nil {
-		env[envClierTeamID] = strconv.FormatInt(*teamID, 10)
+	if teamName != "" {
+		env[envClierTeamName] = teamName
 	}
 	return env
 }

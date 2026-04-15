@@ -37,7 +37,7 @@ func validateMemberCopy(base string, member *appworkspace.TeamMemberRuntimeMetad
 	if member == nil {
 		return errors.New("working-copy member metadata is missing")
 	}
-	if member.MemberID == 0 || member.Name == "" || member.Command == "" {
+	if member.Name == "" || member.Command == "" {
 		return fmt.Errorf("manifest in %s is incomplete; pull the local clone again", manifestPathLabel())
 	}
 	materialized, err := appworkspace.IsMaterializedRoot(newFileMaterializer(), newGitRepo(), member.GitRepoURL, base)

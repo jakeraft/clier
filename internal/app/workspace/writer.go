@@ -127,51 +127,47 @@ func (w *Writer) materializeMemberFiles(base string, projection *MemberProjectio
 // The team local clone owns a single root .clier directory for runtime metadata,
 // while each member owns a generated-only .clier directory for imported
 // protocol files inside its own working tree.
-func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
-	team, err := w.client.GetResource(w.owner, teamName)
-	if err != nil {
-		return fmt.Errorf("get team %s: %w", teamName, err)
-	}
-	teamSpec, err := api.DecodeSpec[api.TeamSpec](team)
-	if err != nil {
-		return fmt.Errorf("decode team spec: %w", err)
-	}
+func (w *Writer) MaterializeTeamFiles(base string, team *api.ResourceResponse, teamSpec *api.TeamSpec) error {
 
 	// Build member lookup for protocol generation from member refs.
-	// Key by TargetID (member resource ID) — matches relation from/to values.
+	// Key by owner/name — unique identifier across orgs.
 	tmRefs := refsByRelType(team, string(api.KindMember))
-	membersByID := make(map[int64]ProtocolMember, len(tmRefs))
+	membersByKey := make(map[string]ProtocolMember, len(tmRefs))
 	for _, ref := range tmRefs {
-		membersByID[ref.TargetID] = ProtocolMember{
-			ID:   ref.TargetID,
-			Name: ref.Name,
+		membersByKey[memberKey(ref.OwnerName, ref.Name)] = ProtocolMember{
+			Owner: ref.OwnerName,
+			Name:  ref.Name,
 		}
 	}
 
 	// Build relations from team spec.
-	relMap := make(map[int64]domain.MemberRelations, len(tmRefs))
+	relMap := make(map[string]domain.MemberRelations, len(tmRefs))
 	for _, ref := range tmRefs {
-		relMap[ref.TargetID] = domain.MemberRelations{Leaders: []int64{}, Workers: []int64{}}
+		relMap[memberKey(ref.OwnerName, ref.Name)] = domain.MemberRelations{Leaders: []string{}, Workers: []string{}}
 	}
 	for _, r := range teamSpec.Relations {
-		from := relMap[r.From]
-		from.Workers = append(from.Workers, r.To)
-		relMap[r.From] = from
+		fromKey := memberKey(r.From.Owner, r.From.Name)
+		toKey := memberKey(r.To.Owner, r.To.Name)
 
-		to := relMap[r.To]
-		to.Leaders = append(to.Leaders, r.From)
-		relMap[r.To] = to
+		from := relMap[fromKey]
+		from.Workers = append(from.Workers, toKey)
+		relMap[fromKey] = from
+
+		to := relMap[toKey]
+		to.Leaders = append(to.Leaders, fromKey)
+		relMap[toKey] = to
 	}
 
 	for _, tm := range tmRefs {
 		memberBase := filepath.Join(base, tm.Name)
+		tmKey := memberKey(tm.OwnerName, tm.Name)
 
 		projection, agentType, err := w.loadPinnedMember(tm.OwnerName, tm.Name, tm.TargetVersion, tm.AgentType)
 		if err != nil {
 			return fmt.Errorf("get member %s: %w", tm.Name, err)
 		}
 
-		protocol := BuildAgentFacingTeamProtocol(team.Metadata.Name, tm.Name, relMap[tm.TargetID], membersByID)
+		protocol := BuildAgentFacingTeamProtocol(team.Metadata.Name, tm.Name, relMap[tmKey], membersByKey)
 
 		if err := w.materializeMemberFiles(memberBase, projection, agentType, memberWriteOptions{
 			TeamMemberName: tm.Name,

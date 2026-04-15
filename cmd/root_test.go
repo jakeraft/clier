@@ -58,18 +58,18 @@ func TestNewAgentRootCmd_TeamScope(t *testing.T) {
 	}
 }
 
-func TestParseExplicitOwnerName(t *testing.T) {
+func TestParseOwnerName(t *testing.T) {
 	t.Parallel()
 
-	owner, name, err := parseExplicitOwnerName("jakeraft/todo-team")
+	owner, name, err := parseOwnerName("jakeraft/todo-team")
 	if err != nil {
-		t.Fatalf("parseExplicitOwnerName: %v", err)
+		t.Fatalf("parseOwnerName: %v", err)
 	}
 	if owner != "jakeraft" || name != "todo-team" {
 		t.Fatalf("got %q/%q", owner, name)
 	}
 
-	if _, _, err := parseExplicitOwnerName("todo-team"); err == nil {
+	if _, _, err := parseOwnerName("todo-team"); err == nil {
 		t.Fatal("expected missing owner to fail")
 	}
 }
