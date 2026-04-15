@@ -13,7 +13,7 @@ const ManifestFile = "manifest.json"
 // CurrentFormat is the manifest schema version. Bump this integer
 // whenever the local-clone directory layout or manifest structure
 // changes in a way that is incompatible with older CLIs.
-const CurrentFormat = 1
+const CurrentFormat = 2
 
 type Manifest struct {
 	Format           int               `json:"format"`

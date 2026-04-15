@@ -16,8 +16,8 @@ type MemberProjection struct {
 	Name           string                  `json:"name"`
 	Command        string                  `json:"command"`
 	GitRepoURL     string                  `json:"git_repo_url,omitempty"`
-	ClaudeMd       *ResourceRefProjection  `json:"claude_md,omitempty"`
-	ClaudeSettings *ResourceRefProjection  `json:"claude_settings,omitempty"`
+	InstructionRef *ResourceRefProjection  `json:"instruction_ref,omitempty"`
+	SettingsRef    *ResourceRefProjection  `json:"settings_ref,omitempty"`
 	Skills         []ResourceRefProjection `json:"skills,omitempty"`
 }
 

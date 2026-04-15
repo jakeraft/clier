@@ -42,6 +42,7 @@ type Writer struct {
 
 type memberWriteOptions struct {
 	TeamMemberName string
+	TeamProtocol   string
 }
 
 // NewWriter creates a Writer that uses the given API client and owner.
@@ -65,35 +66,35 @@ func (w *Writer) materializeMemberFiles(base string, projection *MemberProjectio
 	}
 
 	// Write instruction file (CLAUDE.md / AGENTS.md / GEMINI.md)
-	if projection.ClaudeMd != nil {
-		vr, err := w.client.GetResourceVersion(projection.ClaudeMd.Owner, projection.ClaudeMd.Name, projection.ClaudeMd.Version)
+	if projection.InstructionRef != nil {
+		vr, err := w.client.GetResourceVersion(projection.InstructionRef.Owner, projection.InstructionRef.Name, projection.InstructionRef.Version)
 		if err != nil {
-			return fmt.Errorf("get claude md %s/%s: %w", projection.ClaudeMd.Owner, projection.ClaudeMd.Name, err)
+			return fmt.Errorf("get instruction %s/%s: %w", projection.InstructionRef.Owner, projection.InstructionRef.Name, err)
 		}
 		contentSpec, err := decodeSnapshot[api.ContentSpec](vr.Snapshot)
 		if err != nil {
-			return fmt.Errorf("decode claude md %s/%s@%d: %w", projection.ClaudeMd.Owner, projection.ClaudeMd.Name, projection.ClaudeMd.Version, err)
+			return fmt.Errorf("decode instruction %s/%s@%d: %w", projection.InstructionRef.Owner, projection.InstructionRef.Name, projection.InstructionRef.Version, err)
 		}
-		content := ComposeTeamClaudeMd(opts.TeamMemberName, contentSpec.Content)
+		content := ComposeInstruction(agentType, opts.TeamMemberName, contentSpec.Content, opts.TeamProtocol)
 		if err := w.writeFile(paths.instructionFile, content); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
 	} else {
-		content := ComposeTeamClaudeMd(opts.TeamMemberName, "")
+		content := ComposeInstruction(agentType, opts.TeamMemberName, "", opts.TeamProtocol)
 		if err := w.writeFile(paths.instructionFile, content); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
 	}
 
 	// Write agent settings if referenced
-	if projection.ClaudeSettings != nil {
-		vr, err := w.client.GetResourceVersion(projection.ClaudeSettings.Owner, projection.ClaudeSettings.Name, projection.ClaudeSettings.Version)
+	if projection.SettingsRef != nil {
+		vr, err := w.client.GetResourceVersion(projection.SettingsRef.Owner, projection.SettingsRef.Name, projection.SettingsRef.Version)
 		if err != nil {
-			return fmt.Errorf("get claude settings %s/%s: %w", projection.ClaudeSettings.Owner, projection.ClaudeSettings.Name, err)
+			return fmt.Errorf("get settings %s/%s: %w", projection.SettingsRef.Owner, projection.SettingsRef.Name, err)
 		}
 		contentSpec, err := decodeSnapshot[api.ContentSpec](vr.Snapshot)
 		if err != nil {
-			return fmt.Errorf("decode claude settings %s/%s@%d: %w", projection.ClaudeSettings.Owner, projection.ClaudeSettings.Name, projection.ClaudeSettings.Version, err)
+			return fmt.Errorf("decode settings %s/%s@%d: %w", projection.SettingsRef.Owner, projection.SettingsRef.Name, projection.SettingsRef.Version, err)
 		}
 		if err := w.writeFile(paths.settingsFile, contentSpec.Content); err != nil {
 			return fmt.Errorf("write settings: %w", err)
@@ -170,12 +171,15 @@ func (w *Writer) MaterializeTeamFiles(base, teamName string) error {
 		if err != nil {
 			return fmt.Errorf("get member %s: %w", tm.Name, err)
 		}
+
+		protocol := BuildAgentFacingTeamProtocol(team.Metadata.Name, tm.Name, relMap[tm.TargetID], membersByID)
+
 		if err := w.materializeMemberFiles(memberBase, projection, agentType, memberWriteOptions{
 			TeamMemberName: tm.Name,
+			TeamProtocol:   protocol,
 		}); err != nil {
 			return fmt.Errorf("materialize member %s: %w", tm.Name, err)
 		}
-		protocol := BuildAgentFacingTeamProtocol(team.Metadata.Name, tm.Name, relMap[tm.TargetID], membersByID)
 		protocolPath := filepath.Join(memberBase, ".clier", TeamProtocolFileName(tm.Name))
 		if err := w.writeFile(protocolPath, protocol); err != nil {
 			return fmt.Errorf("write protocol for %s: %w", tm.Name, err)
