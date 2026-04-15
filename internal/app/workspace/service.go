@@ -485,7 +485,7 @@ func (s *Service) cloneMemberAsTeam(base, owner, name string) (*Manifest, error)
 	}
 
 	// Write member projection.
-	if err := WriteMemberProjection(s.fs, TeamMemberProjectionPath(base, name), projection); err != nil {
+	if err := WriteMemberProjection(s.fs, TeamMemberProjectionPath(base, member.Metadata.Name), projection); err != nil {
 		return nil, err
 	}
 

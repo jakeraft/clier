@@ -112,7 +112,11 @@ func newRunStartCmd() *cobra.Command {
 					return err
 				}
 				memberBase := filepath.Join(copyRoot, member.Name)
-				envVars := buildMemberEnv(runID, member.MemberID, &team.ID, member.Name)
+				var teamIDPtr *int64
+				if team.ID != 0 {
+					teamIDPtr = &team.ID
+				}
+				envVars := buildMemberEnv(runID, member.MemberID, teamIDPtr, member.Name)
 				fullCommand := buildFullCommand(envVars, memberProjection.Command, memberBase)
 				terminalPlans = append(terminalPlans, apprun.MemberTerminal{
 					MemberID:    member.MemberID,
