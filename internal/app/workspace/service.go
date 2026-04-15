@@ -414,7 +414,7 @@ func (s *Service) runSummary(base string) (RunStatusSummary, error) {
 	var summary RunStatusSummary
 	for _, entry := range entries {
 		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".json") || name == ManifestFile {
+		if entry.IsDir() || !strings.HasSuffix(name, ".json") || name == ManifestFile || name == TeamProjectionFile {
 			continue
 		}
 		plan, err := apprun.LoadPlanFromPath(filepath.Join(dir, name))

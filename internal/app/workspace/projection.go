@@ -39,8 +39,10 @@ type TeamRelationProjection struct {
 	To   int64 `json:"to"`
 }
 
+const TeamProjectionFile = "team.json"
+
 func TeamProjectionPath(base string) string {
-	return filepath.Join(base, ".clier", "team.json")
+	return filepath.Join(base, ".clier", TeamProjectionFile)
 }
 
 func TeamMemberProjectionPath(base, memberName string) string {

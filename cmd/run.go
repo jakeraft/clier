@@ -56,7 +56,7 @@ func newRunListCmd() *cobra.Command {
 
 			runs := make([]*apprun.RunPlan, 0)
 			for _, entry := range entries {
-				if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") || strings.HasSuffix(entry.Name(), ".state.json") || entry.Name() == appworkspace.ManifestFile {
+				if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") || strings.HasSuffix(entry.Name(), ".state.json") || entry.Name() == appworkspace.ManifestFile || entry.Name() == appworkspace.TeamProjectionFile {
 					continue
 				}
 				plan, err := apprun.LoadPlanFromPath(filepath.Join(runtimeDir, entry.Name()))
