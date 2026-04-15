@@ -40,31 +40,6 @@ func TeamWorkLogProtocolImportLine() string {
 	return "@" + WorkLogProtocolImportPath()
 }
 
-func ComposeTeamClaudeMd(memberName, content string) string {
-	content = strings.TrimLeft(content, "\n")
-	workLogLine := TeamWorkLogProtocolImportLine()
-	teamLine := TeamProtocolImportLine(memberName)
-	if content == "" {
-		return workLogLine + "\n" + teamLine + "\n"
-	}
-	return workLogLine + "\n" + teamLine + "\n\n" + content
-}
-
-func StripTeamClaudeMdPrelude(memberName, content string) string {
-	prefixes := []string{
-		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(memberName) + "\n\n",
-		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(memberName) + "\n",
-		TeamProtocolImportLine(memberName) + "\n\n",
-		TeamProtocolImportLine(memberName) + "\n",
-	}
-	for _, prefix := range prefixes {
-		if stripped, ok := strings.CutPrefix(content, prefix); ok {
-			return strings.TrimLeft(stripped, "\n")
-		}
-	}
-	return content
-}
-
 const instructionPreludeEnd = "<!-- clier:prelude-end -->"
 
 // ComposeInstruction wraps instruction content with agent-specific protocol.

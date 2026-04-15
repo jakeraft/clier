@@ -50,20 +50,6 @@ func TestBuildAgentFacingWorkLogProtocol_ExplainsNotesAsCliAction(t *testing.T) 
 	}
 }
 
-func TestComposeAndStripTeamClaudeMdPrelude(t *testing.T) {
-	t.Parallel()
-
-	content := "You are a reviewer.\n"
-	composed := ComposeTeamClaudeMd("reviewer", content)
-	if !strings.HasPrefix(composed, "@.clier/work-log-protocol.md\n@.clier/reviewer-team-protocol.md") {
-		t.Fatalf("missing import prelude:\n%s", composed)
-	}
-
-	stripped := StripTeamClaudeMdPrelude("reviewer", composed)
-	if stripped != content {
-		t.Fatalf("stripped content = %q, want %q", stripped, content)
-	}
-}
 
 func TestBuildAgentFacingTeamProtocol_SingleMemberTeam(t *testing.T) {
 	protocol := BuildAgentFacingTeamProtocol(
