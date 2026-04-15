@@ -34,7 +34,7 @@ func newOrgCreateCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			_ = requireLogin()
+
 			resp, err := client.CreateOrg(api.CreateOrgRequest{Name: args[0]})
 			if err != nil {
 				return err
@@ -51,7 +51,7 @@ func newOrgDeleteCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			_ = requireLogin()
+
 			if err := client.DeleteOrg(args[0]); err != nil {
 				return err
 			}
@@ -67,7 +67,7 @@ func newOrgListCmd() *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			_ = requireLogin()
+
 			orgs, err := client.ListMyOrgs()
 			if err != nil {
 				return err
@@ -84,7 +84,7 @@ func newOrgMembersCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			_ = requireLogin()
+
 			members, err := client.ListOrgMembers(args[0])
 			if err != nil {
 				return err
@@ -103,7 +103,7 @@ func newOrgInviteCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			_ = requireLogin()
+
 			if err := client.InviteOrgMember(args[0], api.InviteMemberRequest{
 				Name: args[1],
 				Role: role,
@@ -129,7 +129,7 @@ func newOrgRemoveCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			_ = requireLogin()
+
 			if err := client.RemoveOrgMember(args[0], args[1]); err != nil {
 				return err
 			}

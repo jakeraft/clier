@@ -249,7 +249,7 @@ func (s *Service) Status(base string) (*Status, error) {
 	return status, nil
 }
 
-func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
+func (s *Service) Push(base string) (*PushResult, error) {
 	manifest, err := LoadManifest(s.fs, base)
 	if err != nil {
 		return nil, err
@@ -269,10 +269,6 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 			continue
 		}
 		pushed++
-		if resource.Owner != currentLogin {
-			return nil, fmt.Errorf("cannot push %s %s/%s from %s: resource is not owned by %s",
-				resource.Kind, resource.Owner, resource.Name, resource.LocalPath, currentLogin)
-		}
 
 		kind, body, err := s.preparePushBody(base, manifest, resource)
 		if err != nil {

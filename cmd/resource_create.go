@@ -27,7 +27,7 @@ func newCreateCmd() *cobra.Command {
 }
 
 func newCreateMemberCmd() *cobra.Command {
-	var name, command, claudeMd, claudeSettings, repo, summary string
+	var ownerFlag, name, command, claudeMd, claudeSettings, repo, summary string
 	var skills []string
 
 	cmd := &cobra.Command{
@@ -35,7 +35,10 @@ func newCreateMemberCmd() *cobra.Command {
 		Short: "Create a new member",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := requireLogin()
+			owner, err := resolveOwner(ownerFlag)
+			if err != nil {
+				return err
+			}
 			claudeMdRef, err := parseOptionalResourceRefRequest(claudeMd)
 			if err != nil {
 				return fmt.Errorf("parse --claude-md: %w", err)
@@ -71,6 +74,7 @@ func newCreateMemberCmd() *cobra.Command {
 			return printJSON(resp)
 		},
 	}
+	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
 	cmd.Flags().StringVar(&name, "name", "", "Member name")
 	cmd.Flags().StringVar(&command, "command", "", "Command (binary + CLI flags)")
 	cmd.Flags().StringVar(&claudeMd, "claude-md", "", "Claude md resource ref as <id>@<version>")
@@ -84,7 +88,7 @@ func newCreateMemberCmd() *cobra.Command {
 }
 
 func newCreateTeamCmd() *cobra.Command {
-	var name, summary string
+	var ownerFlag, name, summary string
 	var teamMembers, relations []string
 
 	cmd := &cobra.Command{
@@ -92,7 +96,10 @@ func newCreateTeamCmd() *cobra.Command {
 		Short: "Create a new team",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := requireLogin()
+			owner, err := resolveOwner(ownerFlag)
+			if err != nil {
+				return err
+			}
 			members, err := parseTeamMemberSpecs(teamMembers)
 			if err != nil {
 				return err
@@ -114,6 +121,7 @@ func newCreateTeamCmd() *cobra.Command {
 			return printJSON(resp)
 		},
 	}
+	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
 	cmd.Flags().StringVar(&name, "name", "", "Team name")
 	cmd.Flags().StringSliceVar(&teamMembers, "member", nil, "Team member as <member-id>@<version>; repeat for each member")
 	cmd.Flags().StringSliceVar(&relations, "relation", nil, "Relation as <from-member-id>:<to-member-id>; repeat for each edge")
@@ -124,14 +132,17 @@ func newCreateTeamCmd() *cobra.Command {
 }
 
 func newCreateSkillCmd() *cobra.Command {
-	var name, content, summary string
+	var ownerFlag, name, content, summary string
 
 	cmd := &cobra.Command{
 		Use:   "skill",
 		Short: "Create a new skill",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := requireLogin()
+			owner, err := resolveOwner(ownerFlag)
+			if err != nil {
+				return err
+			}
 			resp, err := client.CreateResource(api.KindSkill, owner, api.ContentWriteRequest{
 				Name:    name,
 				Content: content,
@@ -143,6 +154,7 @@ func newCreateSkillCmd() *cobra.Command {
 			return printJSON(resp)
 		},
 	}
+	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
 	cmd.Flags().StringVar(&name, "name", "", "Skill name")
 	cmd.Flags().StringVar(&content, "content", "", "Skill content")
 	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
@@ -152,14 +164,17 @@ func newCreateSkillCmd() *cobra.Command {
 }
 
 func newCreateClaudeMdCmd() *cobra.Command {
-	var name, content, summary string
+	var ownerFlag, name, content, summary string
 
 	cmd := &cobra.Command{
 		Use:   "claude-md",
 		Short: "Create a new CLAUDE.md resource",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := requireLogin()
+			owner, err := resolveOwner(ownerFlag)
+			if err != nil {
+				return err
+			}
 			resp, err := client.CreateResource(api.KindClaudeMd, owner, api.ContentWriteRequest{
 				Name:    name,
 				Content: content,
@@ -171,6 +186,7 @@ func newCreateClaudeMdCmd() *cobra.Command {
 			return printJSON(resp)
 		},
 	}
+	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
 	cmd.Flags().StringVar(&name, "name", "", "Claude md name")
 	cmd.Flags().StringVar(&content, "content", "", "Claude md content")
 	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
@@ -180,14 +196,17 @@ func newCreateClaudeMdCmd() *cobra.Command {
 }
 
 func newCreateClaudeSettingsCmd() *cobra.Command {
-	var name, content, summary string
+	var ownerFlag, name, content, summary string
 
 	cmd := &cobra.Command{
 		Use:   "claude-settings",
 		Short: "Create a new Claude settings resource",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := requireLogin()
+			owner, err := resolveOwner(ownerFlag)
+			if err != nil {
+				return err
+			}
 			resp, err := client.CreateResource(api.KindClaudeSettings, owner, api.ContentWriteRequest{
 				Name:    name,
 				Content: content,
@@ -199,6 +218,7 @@ func newCreateClaudeSettingsCmd() *cobra.Command {
 			return printJSON(resp)
 		},
 	}
+	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
 	cmd.Flags().StringVar(&name, "name", "", "Settings name")
 	cmd.Flags().StringVar(&content, "content", "", "Settings JSON content")
 	cmd.Flags().StringVar(&summary, "summary", "", "Short description")

@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/spf13/cobra"
 )
@@ -30,7 +32,10 @@ func newListCmd() *cobra.Command {
 			}
 
 			if mine {
-				owner := requireLogin()
+				owner := currentLogin()
+				if owner == "" {
+					return fmt.Errorf("--mine requires login: run 'clier auth login'")
+				}
 				items, err := client.ListResources(owner, opts)
 				if err != nil {
 					return err

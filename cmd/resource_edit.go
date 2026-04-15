@@ -40,18 +40,22 @@ func newEditCmd() *cobra.Command {
 	var teamMembers, relations []string
 
 	cmd := &cobra.Command{
-		Use:   "edit <name>",
-		Short: "Update an owned resource (auto-detects kind)",
-		Long: `Update a resource you own. The resource kind is detected automatically
-via a GET request, and only the flags you provide are sent as changes.`,
+		Use:   "edit <[owner/]name>",
+		Short: "Update a resource (auto-detects kind)",
+		Long: `Update a resource. The resource kind is detected automatically
+via a GET request, and only the flags you provide are sent as changes.
+Owner defaults to the logged-in user when not specified.`,
 		GroupID: rootGroupResources,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner := requireLogin()
+			owner, name, err := parseOwnerName(args[0])
+			if err != nil {
+				return err
+			}
 
 			// Detect kind via GET.
-			res, err := client.GetResource(owner, args[0])
+			res, err := client.GetResource(owner, name)
 			if err != nil {
 				return fmt.Errorf("look up resource %q: %w", args[0], err)
 			}
@@ -104,7 +108,7 @@ via a GET request, and only the flags you provide are sent as changes.`,
 						body.Skills = append(body.Skills, *ref)
 					}
 				}
-				resp, err := client.PatchResource(api.KindMember, owner, args[0], &body)
+				resp, err := client.PatchResource(api.KindMember, owner, name, &body)
 				if err != nil {
 					return err
 				}
@@ -135,7 +139,7 @@ via a GET request, and only the flags you provide are sent as changes.`,
 					}
 					body.Relations = parsed
 				}
-				resp, err := client.PatchResource(api.KindTeam, owner, args[0], &body)
+				resp, err := client.PatchResource(api.KindTeam, owner, name, &body)
 				if err != nil {
 					return err
 				}
@@ -152,7 +156,7 @@ via a GET request, and only the flags you provide are sent as changes.`,
 				if cmd.Flags().Changed("summary") {
 					body.Summary = &summary
 				}
-				resp, err := client.PatchResource(kind, owner, args[0], &body)
+				resp, err := client.PatchResource(kind, owner, name, &body)
 				if err != nil {
 					return err
 				}

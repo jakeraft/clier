@@ -20,7 +20,6 @@ func newCopyCmd() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			_ = requireLogin()
 			owner, name, err := parseExplicitOwnerName(args[0])
 			if err != nil {
 				return err

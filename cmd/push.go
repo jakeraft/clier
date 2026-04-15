@@ -34,9 +34,8 @@ the remote version has changed (pull first to resolve).`,
 				return err
 			}
 
-			login := requireLogin()
 			svc := appworkspace.NewService(newAPIClient(), fs, git)
-			result, err := svc.Push(copyRoot, login)
+			result, err := svc.Push(copyRoot)
 			if err != nil {
 				return err
 			}

@@ -90,17 +90,6 @@ func newTerminal() *terminal.TmuxTerminal {
 	return terminal.NewTmuxTerminal()
 }
 
-// requireLogin loads credentials and returns login.
-// Exits with error if not logged in.
-func requireLogin() string {
-	creds, err := auth.Load(currentConfig().CredentialsPath)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error: not logged in. Run 'clier auth login' first.")
-		os.Exit(1)
-	}
-	return creds.Login
-}
-
 var rootCmd = &cobra.Command{
 	Use:   "clier",
 	Short: "Harness AI agent teams",
@@ -169,14 +158,39 @@ func filterUserCommands() {
 	}
 }
 
+// currentLogin returns the logged-in user's login, or empty string if not logged in.
+func currentLogin() string {
+	creds, err := auth.Load(currentConfig().CredentialsPath)
+	if err != nil {
+		return ""
+	}
+	return creds.Login
+}
+
+// resolveOwner returns the explicit owner if set, otherwise falls back to logged-in user.
+func resolveOwner(explicit string) (string, error) {
+	if explicit != "" {
+		return explicit, nil
+	}
+	login := currentLogin()
+	if login == "" {
+		return "", fmt.Errorf("specify --owner or run 'clier auth login'")
+	}
+	return login, nil
+}
+
 // parseOwnerName splits "owner/name" into owner and name.
-// If no slash is present, requireLogin() is used as owner.
-func parseOwnerName(s string) (owner, name string) {
+// If no slash is present, the logged-in user is used as owner.
+func parseOwnerName(s string) (owner, name string, err error) {
 	parts := strings.SplitN(s, "/", 2)
 	if len(parts) == 2 {
-		return parts[0], parts[1]
+		return parts[0], parts[1], nil
 	}
-	return requireLogin(), s
+	login := currentLogin()
+	if login == "" {
+		return "", "", fmt.Errorf("ambiguous resource %q: use <owner/name> format or run 'clier auth login'", s)
+	}
+	return login, s, nil
 }
 
 func parseExplicitOwnerName(s string) (owner, name string, err error) {

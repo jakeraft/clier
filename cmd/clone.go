@@ -20,7 +20,10 @@ Use push/pull to sync changes, and run start to launch agents.`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner, name := parseOwnerName(args[0])
+			owner, name, err := parseOwnerName(args[0])
+			if err != nil {
+				return err
+			}
 			kind, err := resolveServerResourceKind(client, owner, name)
 			if err != nil {
 				return err
