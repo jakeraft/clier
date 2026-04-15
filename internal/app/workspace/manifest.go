@@ -119,7 +119,10 @@ func LoadManifest(fs FileMaterializer, base string) (*Manifest, error) {
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return nil, fmt.Errorf("unmarshal manifest: %w", err)
 	}
-	if manifest.Format != CurrentFormat {
+	if manifest.Format > CurrentFormat {
+		return nil, fmt.Errorf("local clone uses a newer format (format %d, this CLI supports %d); upgrade clier", manifest.Format, CurrentFormat)
+	}
+	if manifest.Format < CurrentFormat {
 		return nil, fmt.Errorf("local clone is outdated (format %d, expected %d); re-clone with `clier clone`", manifest.Format, CurrentFormat)
 	}
 	return &manifest, nil

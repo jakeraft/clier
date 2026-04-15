@@ -149,6 +149,27 @@ func TestLoadManifest_RejectsOutdatedFormat(t *testing.T) {
 	}
 }
 
+func TestLoadManifest_RejectsNewerFormat(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	fs := filesystem.New()
+
+	// Write a manifest with a future format version.
+	data := []byte(`{"format":999,"kind":"member","owner":"jakeraft","name":"reviewer"}`)
+	if err := fs.EnsureFile(ManifestPath(base), data); err != nil {
+		t.Fatalf("write future manifest: %v", err)
+	}
+
+	_, err := LoadManifest(fs, base)
+	if err == nil {
+		t.Fatal("expected error for newer manifest format")
+	}
+	if !strings.Contains(err.Error(), "upgrade") {
+		t.Fatalf("error should suggest upgrade: %v", err)
+	}
+}
+
 func TestLoadManifest_RequiresManifestPath(t *testing.T) {
 	t.Parallel()
 
