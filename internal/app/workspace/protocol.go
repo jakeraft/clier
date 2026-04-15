@@ -65,6 +65,82 @@ func StripTeamClaudeMdPrelude(memberName, content string) string {
 	return content
 }
 
+const instructionPreludeEnd = "<!-- clier:prelude-end -->"
+
+// ComposeInstruction wraps instruction content with agent-specific protocol.
+// Claude: injects @import lines. Codex: inlines protocol content with marker.
+func ComposeInstruction(agentType, memberName, content, teamProtocol string) string {
+	switch agentType {
+	case "codex":
+		return composeCodexInstruction(content, teamProtocol)
+	default:
+		return composeClaudeInstruction(memberName, content)
+	}
+}
+
+// StripInstructionPrelude removes the agent-specific protocol prelude for push.
+func StripInstructionPrelude(agentType, memberName, content string) string {
+	switch agentType {
+	case "codex":
+		return stripCodexInstructionPrelude(content)
+	default:
+		return stripClaudeInstructionPrelude(memberName, content)
+	}
+}
+
+func composeClaudeInstruction(memberName, content string) string {
+	content = strings.TrimLeft(content, "\n")
+	workLogLine := TeamWorkLogProtocolImportLine()
+	teamLine := TeamProtocolImportLine(memberName)
+	if content == "" {
+		return workLogLine + "\n" + teamLine + "\n"
+	}
+	return workLogLine + "\n" + teamLine + "\n\n" + content
+}
+
+func stripClaudeInstructionPrelude(memberName, content string) string {
+	prefixes := []string{
+		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(memberName) + "\n\n",
+		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(memberName) + "\n",
+		TeamProtocolImportLine(memberName) + "\n\n",
+		TeamProtocolImportLine(memberName) + "\n",
+	}
+	for _, prefix := range prefixes {
+		if stripped, ok := strings.CutPrefix(content, prefix); ok {
+			return strings.TrimLeft(stripped, "\n")
+		}
+	}
+	return content
+}
+
+func composeCodexInstruction(content, teamProtocol string) string {
+	content = strings.TrimLeft(content, "\n")
+	var b strings.Builder
+	b.WriteString(BuildAgentFacingWorkLogProtocol())
+	if teamProtocol != "" {
+		b.WriteString("\n")
+		b.WriteString(teamProtocol)
+	}
+	b.WriteString("\n")
+	b.WriteString(instructionPreludeEnd)
+	b.WriteString("\n")
+	if content != "" {
+		b.WriteString("\n")
+		b.WriteString(content)
+	}
+	return b.String()
+}
+
+func stripCodexInstructionPrelude(content string) string {
+	marker := instructionPreludeEnd + "\n"
+	idx := strings.Index(content, marker)
+	if idx < 0 {
+		return content
+	}
+	after := content[idx+len(marker):]
+	return strings.TrimLeft(after, "\n")
+}
+
 func BuildAgentFacingWorkLogProtocol() string {
 	var b strings.Builder
 
