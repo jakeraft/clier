@@ -3,6 +3,7 @@ package workspace
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
@@ -124,6 +125,27 @@ func TestManifest_MemberCloneUsesTeamRuntime(t *testing.T) {
 	}
 	if loaded.Runtime.Team.ID != 0 {
 		t.Fatalf("team ID = %d, want 0 for member clone", loaded.Runtime.Team.ID)
+	}
+}
+
+func TestLoadManifest_RejectsOutdatedFormat(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	fs := filesystem.New()
+
+	// Write a manifest with format 0 (simulating a legacy clone).
+	data := []byte(`{"format":0,"kind":"member","owner":"jakeraft","name":"reviewer"}`)
+	if err := fs.EnsureFile(ManifestPath(base), data); err != nil {
+		t.Fatalf("write legacy manifest: %v", err)
+	}
+
+	_, err := LoadManifest(fs, base)
+	if err == nil {
+		t.Fatal("expected error for outdated manifest format")
+	}
+	if !strings.Contains(err.Error(), "outdated") {
+		t.Fatalf("error should mention outdated: %v", err)
 	}
 }
 

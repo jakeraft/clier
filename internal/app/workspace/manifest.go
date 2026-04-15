@@ -10,7 +10,13 @@ import (
 
 const ManifestFile = "manifest.json"
 
+// CurrentFormat is the manifest schema version. Bump this integer
+// whenever the local-clone directory layout or manifest structure
+// changes in a way that is incompatible with older CLIs.
+const CurrentFormat = 1
+
 type Manifest struct {
+	Format           int             `json:"format"`
 	Kind             string          `json:"kind"`
 	Owner            string          `json:"owner"`
 	Name             string          `json:"name"`
@@ -85,6 +91,7 @@ func FindManifestAbove(fs FileMaterializer, start string) (string, *Manifest, er
 }
 
 func SaveManifest(fs FileMaterializer, base string, manifest *Manifest) error {
+	manifest.Format = CurrentFormat
 	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal manifest: %w", err)
@@ -111,6 +118,9 @@ func LoadManifest(fs FileMaterializer, base string) (*Manifest, error) {
 	var manifest Manifest
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return nil, fmt.Errorf("unmarshal manifest: %w", err)
+	}
+	if manifest.Format != CurrentFormat {
+		return nil, fmt.Errorf("local clone is outdated (format %d, expected %d); re-clone with `clier clone`", manifest.Format, CurrentFormat)
 	}
 	return &manifest, nil
 }
