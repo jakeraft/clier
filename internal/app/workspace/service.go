@@ -13,6 +13,7 @@ import (
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	apprun "github.com/jakeraft/clier/internal/app/run"
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 type Service struct {
@@ -86,12 +87,15 @@ func NewService(client *api.Client, fs FileMaterializer, git GitRepo) *Service {
 	return &Service{client: client, fs: fs, git: git}
 }
 
-func (s *Service) CloneMember(base, owner, name string) (*Manifest, error) {
-	return s.materializeMember(base, owner, name)
-}
-
-func (s *Service) CloneTeam(base, owner, name string) (*Manifest, error) {
-	return s.materializeTeam(base, owner, name)
+func (s *Service) Clone(base, kind, owner, name string) (*Manifest, error) {
+	switch api.ResourceKind(kind) {
+	case api.KindMember:
+		return s.cloneMemberAsTeam(base, owner, name)
+	case api.KindTeam:
+		return s.materializeTeam(base, owner, name)
+	default:
+		return nil, fmt.Errorf("unsupported clone kind %q", kind)
+	}
 }
 
 func (s *Service) Pull(base string, force bool) (*Manifest, error) {
@@ -157,16 +161,11 @@ func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Mani
 			content := spec.Content
 			// CLAUDE.md files need prelude composition.
 			if api.ResourceKind(tr.Kind) == api.KindClaudeMd {
-				if manifest.Kind == string(api.KindTeam) {
-					// Find the team member name from the local path.
-					memberName := filepath.ToSlash(tr.LocalPath)
-					if idx := strings.Index(memberName, "/"); idx >= 0 {
-						memberName = memberName[:idx]
-					}
-					content = ComposeTeamClaudeMd(memberName, content)
-				} else {
-					content = ComposeMemberClaudeMd(content)
+				memberName := filepath.ToSlash(tr.LocalPath)
+				if idx := strings.Index(memberName, "/"); idx >= 0 {
+					memberName = memberName[:idx]
 				}
+				content = ComposeTeamClaudeMd(memberName, content)
 			}
 			if err := s.fs.EnsureFile(localPath, []byte(content)); err != nil {
 				return nil, fmt.Errorf("write %s: %w", tr.LocalPath, err)
@@ -432,71 +431,115 @@ func (s *Service) runSummary(base string) (RunStatusSummary, error) {
 	return summary, nil
 }
 
-func (s *Service) materializeMember(base, owner, name string) (*Manifest, error) {
-	writer := NewWriter(s.client, owner, s.fs, s.git)
-	if err := writer.MaterializeMemberFiles(base, name); err != nil {
-		return nil, err
-	}
-
+func (s *Service) cloneMemberAsTeam(base, owner, name string) (*Manifest, error) {
 	member, err := s.client.GetResource(owner, name)
 	if err != nil {
 		return nil, fmt.Errorf("get member %s/%s: %w", owner, name, err)
 	}
 	projection := memberProjectionFromResource(member)
-	if err := WriteMemberProjection(s.fs, MemberProjectionPath(base), projection); err != nil {
+	agentType := agentTypeFromResource(member)
+
+	writer := NewWriter(s.client, owner, s.fs, s.git)
+	memberBase := filepath.Join(base, member.Metadata.Name)
+
+	pinnedProjection, pinnedAgentType, err := writer.loadPinnedMember(
+		owner, name, member.Metadata.LatestVersion, agentType,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("load pinned member %s: %w", name, err)
+	}
+	if err := writer.materializeMemberFiles(memberBase, pinnedProjection, pinnedAgentType, memberWriteOptions{
+		TeamMemberName: member.Metadata.Name,
+	}); err != nil {
+		return nil, fmt.Errorf("materialize member %s: %w", name, err)
+	}
+
+	// Write team protocol for 1-member team (no relations).
+	protocol := BuildAgentFacingTeamProtocol(
+		member.Metadata.Name, member.Metadata.Name,
+		domain.MemberRelations{Leaders: []int64{}, Workers: []int64{}},
+		map[int64]ProtocolMember{member.Metadata.ID: {ID: member.Metadata.ID, Name: member.Metadata.Name}},
+	)
+	protocolPath := filepath.Join(memberBase, ".clier", TeamProtocolFileName(member.Metadata.Name))
+	if err := s.fs.EnsureFile(protocolPath, []byte(protocol)); err != nil {
+		return nil, fmt.Errorf("write protocol for %s: %w", name, err)
+	}
+
+	// Write team projection (1-member team) — generated, not tracked.
+	teamProjection := &TeamProjection{
+		Name: member.Metadata.Name,
+		Members: []TeamMemberProjection{{
+			MemberID:      member.Metadata.ID,
+			MemberVersion: member.Metadata.LatestVersion,
+			Name:          member.Metadata.Name,
+			Member: ResourceRefProjection{
+				Owner:   member.Metadata.OwnerName,
+				Name:    member.Metadata.Name,
+				Version: member.Metadata.LatestVersion,
+			},
+		}},
+		Relations: []TeamRelationProjection{},
+	}
+	if err := WriteTeamProjection(s.fs, TeamProjectionPath(base), teamProjection); err != nil {
 		return nil, err
 	}
 
+	// Write member projection.
+	if err := WriteMemberProjection(s.fs, TeamMemberProjectionPath(base, name), projection); err != nil {
+		return nil, err
+	}
+
+	// Build tracked resources.
+	memberLocalBase := filepath.ToSlash(member.Metadata.Name)
 	tracked := []TrackedResource{{
 		Kind:          string(api.KindMember),
 		Owner:         member.Metadata.OwnerName,
 		Name:          member.Metadata.Name,
-		LocalPath:     MemberProjectionLocalPath(),
+		LocalPath:     TeamMemberProjectionLocalPath(member.Metadata.Name),
 		RemoteVersion: intPtr(member.Metadata.LatestVersion),
 		Editable:      true,
 	}}
 
 	generated := []string{
-		filepath.ToSlash(filepath.Join(".clier", "work-log-protocol.md")),
-		filepath.ToSlash(filepath.Join(".claude", "settings.local.json")),
+		TeamProjectionLocalPath(),
+		filepath.ToSlash(filepath.Join(memberLocalBase, ".clier", "work-log-protocol.md")),
+		filepath.ToSlash(filepath.Join(memberLocalBase, ".clier", TeamProtocolFileName(member.Metadata.Name))),
+		filepath.ToSlash(filepath.Join(memberLocalBase, ".claude", "settings.local.json")),
 	}
 
-	claudeMdRef := firstRefByRelType(member, string(api.KindClaudeMd))
-	if claudeMdRef != nil {
+	if projection.ClaudeMd != nil {
 		tracked = append(tracked, TrackedResource{
 			Kind:          string(api.KindClaudeMd),
-			Owner:         claudeMdRef.OwnerName,
-			Name:          claudeMdRef.Name,
-			LocalPath:     filepath.ToSlash("CLAUDE.md"),
-			RemoteVersion: intPtr(claudeMdRef.TargetVersion),
+			Owner:         projection.ClaudeMd.Owner,
+			Name:          projection.ClaudeMd.Name,
+			LocalPath:     filepath.ToSlash(filepath.Join(memberLocalBase, "CLAUDE.md")),
+			RemoteVersion: intPtr(projection.ClaudeMd.Version),
 			Editable:      true,
 		})
 	} else {
-		generated = append(generated, filepath.ToSlash("CLAUDE.md"))
+		generated = append(generated, filepath.ToSlash(filepath.Join(memberLocalBase, "CLAUDE.md")))
 	}
-
-	claudeSettingsRef := firstRefByRelType(member, string(api.KindClaudeSettings))
-	if claudeSettingsRef != nil {
+	if projection.ClaudeSettings != nil {
 		tracked = append(tracked, TrackedResource{
 			Kind:          string(api.KindClaudeSettings),
-			Owner:         claudeSettingsRef.OwnerName,
-			Name:          claudeSettingsRef.Name,
-			LocalPath:     filepath.ToSlash(filepath.Join(".claude", "settings.json")),
-			RemoteVersion: intPtr(claudeSettingsRef.TargetVersion),
+			Owner:         projection.ClaudeSettings.Owner,
+			Name:          projection.ClaudeSettings.Name,
+			LocalPath:     filepath.ToSlash(filepath.Join(memberLocalBase, ".claude", "settings.json")),
+			RemoteVersion: intPtr(projection.ClaudeSettings.Version),
+			Editable:      true,
+		})
+	}
+	for _, skillRef := range projection.Skills {
+		tracked = append(tracked, TrackedResource{
+			Kind:          string(api.KindSkill),
+			Owner:         skillRef.Owner,
+			Name:          skillRef.Name,
+			LocalPath:     filepath.ToSlash(filepath.Join(memberLocalBase, ".claude", "skills", skillRef.Name, "SKILL.md")),
+			RemoteVersion: intPtr(skillRef.Version),
 			Editable:      true,
 		})
 	}
 
-	for _, skillRef := range refsByRelType(member, string(api.KindSkill)) {
-		tracked = append(tracked, TrackedResource{
-			Kind:          string(api.KindSkill),
-			Owner:         skillRef.OwnerName,
-			Name:          skillRef.Name,
-			LocalPath:     filepath.ToSlash(filepath.Join(".claude", "skills", skillRef.Name, "SKILL.md")),
-			RemoteVersion: intPtr(skillRef.TargetVersion),
-			Editable:      true,
-		})
-	}
 	if err := s.populateBaseHashes(base, tracked); err != nil {
 		return nil, err
 	}
@@ -510,12 +553,16 @@ func (s *Service) materializeMember(base, owner, name string) (*Manifest, error)
 		TrackedResources: tracked,
 		GeneratedFiles:   normalizePaths(generated),
 		Runtime: &RuntimeMetadata{
-			Member: &MemberRuntimeMetadata{
-				ID:         member.Metadata.ID,
-				Name:       member.Metadata.Name,
-				AgentType:  agentTypeFromResource(member),
-				Command:    projection.Command,
-				GitRepoURL: projection.GitRepoURL,
+			Team: &TeamRuntimeMetadata{
+				ID:   0,
+				Name: member.Metadata.Name,
+				Members: []TeamMemberRuntimeMetadata{{
+					MemberID:   member.Metadata.ID,
+					Name:       member.Metadata.Name,
+					AgentType:  agentType,
+					Command:    projection.Command,
+					GitRepoURL: projection.GitRepoURL,
+				}},
 			},
 		},
 	}
@@ -885,13 +932,10 @@ func (s *Service) serverClaudeMdContent(base string, manifest *Manifest, resourc
 		return "", fmt.Errorf("read local resource %s: %w", resource.LocalPath, err)
 	}
 	content := string(data)
-	clean := filepath.ToSlash(filepath.Clean(resource.LocalPath))
-	if clean == filepath.ToSlash("CLAUDE.md") {
-		return StripMemberClaudeMdPrelude(content), nil
-	}
 	if manifest.Runtime != nil && manifest.Runtime.Team != nil {
 		for _, member := range manifest.Runtime.Team.Members {
 			memberPath := filepath.ToSlash(filepath.Join(member.Name, "CLAUDE.md"))
+			clean := filepath.ToSlash(filepath.Clean(resource.LocalPath))
 			if clean == memberPath {
 				return StripTeamClaudeMdPrelude(member.Name, content), nil
 			}
