@@ -63,7 +63,7 @@ type ResourceVersionResponse struct {
 
 // --- Spec Types ---
 
-// ContentSpec is the spec for claude-md, claude-settings, skill.
+// ContentSpec is the spec for instruction (claude-md, codex-md), settings (claude-setting, codex-setting), and skill.
 type ContentSpec struct {
 	Content string `json:"content"`
 }
@@ -113,6 +113,8 @@ type MemberWriteRequest struct {
 	GitRepoURL     string               `json:"git_repo_url,omitempty"`
 	ClaudeMd       *ResourceRefRequest  `json:"claude-md,omitempty"`
 	ClaudeSettings *ResourceRefRequest  `json:"claude-setting,omitempty"`
+	CodexMd        *ResourceRefRequest  `json:"codex-md,omitempty"`
+	CodexSettings  *ResourceRefRequest  `json:"codex-setting,omitempty"`
 	Summary        string               `json:"summary,omitempty"`
 }
 
@@ -123,6 +125,8 @@ type MemberPatchRequest struct {
 	GitRepoURL     *string              `json:"git_repo_url,omitempty"`
 	ClaudeMd       *ResourceRefRequest  `json:"claude-md,omitempty"`
 	ClaudeSettings *ResourceRefRequest  `json:"claude-setting,omitempty"`
+	CodexMd        *ResourceRefRequest  `json:"codex-md,omitempty"`
+	CodexSettings  *ResourceRefRequest  `json:"codex-setting,omitempty"`
 	Summary        *string              `json:"summary,omitempty"`
 }
 
@@ -191,6 +195,8 @@ const (
 	KindSkill          ResourceKind = "skill"
 	KindClaudeMd       ResourceKind = "claude-md"
 	KindClaudeSettings ResourceKind = "claude-setting"
+	KindCodexMd        ResourceKind = "codex-md"
+	KindCodexSettings  ResourceKind = "codex-setting"
 )
 
 // urlPath returns the plural URL path segment for write endpoints.
@@ -200,6 +206,8 @@ var kindURLPaths = map[ResourceKind]string{
 	KindSkill:          "skills",
 	KindClaudeMd:       "claude-mds",
 	KindClaudeSettings: "claude-settings",
+	KindCodexMd:        "codex-mds",
+	KindCodexSettings:  "codex-settings",
 }
 
 func (k ResourceKind) urlPath() string {
@@ -214,4 +222,67 @@ type ListOptions struct {
 	Query  string
 	Limit  int
 	Offset int
+}
+
+// SetInstructionRef sets the instruction ref field matching the given kind.
+func (r *MemberWriteRequest) SetInstructionRef(kind string, ref *ResourceRefRequest) {
+	switch ResourceKind(kind) {
+	case KindClaudeMd:
+		r.ClaudeMd = ref
+	case KindCodexMd:
+		r.CodexMd = ref
+	}
+}
+
+// SetSettingsRef sets the settings ref field matching the given kind.
+func (r *MemberWriteRequest) SetSettingsRef(kind string, ref *ResourceRefRequest) {
+	switch ResourceKind(kind) {
+	case KindClaudeSettings:
+		r.ClaudeSettings = ref
+	case KindCodexSettings:
+		r.CodexSettings = ref
+	}
+}
+
+// SetInstructionRef sets the instruction ref field matching the given kind.
+func (r *MemberPatchRequest) SetInstructionRef(kind string, ref *ResourceRefRequest) {
+	switch ResourceKind(kind) {
+	case KindClaudeMd:
+		r.ClaudeMd = ref
+	case KindCodexMd:
+		r.CodexMd = ref
+	}
+}
+
+// SetSettingsRef sets the settings ref field matching the given kind.
+func (r *MemberPatchRequest) SetSettingsRef(kind string, ref *ResourceRefRequest) {
+	switch ResourceKind(kind) {
+	case KindClaudeSettings:
+		r.ClaudeSettings = ref
+	case KindCodexSettings:
+		r.CodexSettings = ref
+	}
+}
+
+// IsInstructionKind returns true for agent instruction resource kinds.
+func IsInstructionKind(kind string) bool {
+	switch ResourceKind(kind) {
+	case KindClaudeMd, KindCodexMd:
+		return true
+	}
+	return false
+}
+
+// IsSettingsKind returns true for agent settings resource kinds.
+func IsSettingsKind(kind string) bool {
+	switch ResourceKind(kind) {
+	case KindClaudeSettings, KindCodexSettings:
+		return true
+	}
+	return false
+}
+
+// IsContentKind returns true for all content-based resource kinds (instruction, settings, skill).
+func IsContentKind(kind string) bool {
+	return IsInstructionKind(kind) || IsSettingsKind(kind) || ResourceKind(kind) == KindSkill
 }
