@@ -10,11 +10,14 @@ import (
 )
 
 func TestValidateWorkingCopy_Member(t *testing.T) {
+	memberName := "reviewer"
 	base := t.TempDir()
+	memberBase := filepath.Join(base, memberName)
 	required := []string{
-		filepath.Join(base, "CLAUDE.md"),
-		filepath.Join(base, ".clier", "work-log-protocol.md"),
-		filepath.Join(base, ".claude", "settings.local.json"),
+		filepath.Join(memberBase, "CLAUDE.md"),
+		filepath.Join(memberBase, ".clier", "work-log-protocol.md"),
+		filepath.Join(memberBase, ".claude", "settings.local.json"),
+		filepath.Join(memberBase, ".clier", appworkspace.TeamProtocolFileName(memberName)),
 	}
 	for _, path := range required {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -28,10 +31,14 @@ func TestValidateWorkingCopy_Member(t *testing.T) {
 	meta := &appworkspace.Manifest{
 		Kind: string(api.KindMember),
 		Runtime: &appworkspace.RuntimeMetadata{
-			Member: &appworkspace.MemberRuntimeMetadata{
-				ID:      1,
-				Name:    "reviewer",
-				Command: "codex",
+			Team: &appworkspace.TeamRuntimeMetadata{
+				ID:   0,
+				Name: memberName,
+				Members: []appworkspace.TeamMemberRuntimeMetadata{{
+					MemberID: 1,
+					Name:     memberName,
+					Command:  "codex",
+				}},
 			},
 		},
 	}
@@ -45,10 +52,14 @@ func TestValidateWorkingCopy_MissingFileFails(t *testing.T) {
 	meta := &appworkspace.Manifest{
 		Kind: string(api.KindMember),
 		Runtime: &appworkspace.RuntimeMetadata{
-			Member: &appworkspace.MemberRuntimeMetadata{
-				ID:      1,
-				Name:    "reviewer",
-				Command: "codex",
+			Team: &appworkspace.TeamRuntimeMetadata{
+				ID:   0,
+				Name: "reviewer",
+				Members: []appworkspace.TeamMemberRuntimeMetadata{{
+					MemberID: 1,
+					Name:     "reviewer",
+					Command:  "codex",
+				}},
 			},
 		},
 	}

@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jakeraft/clier/internal/adapter/api"
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
@@ -101,62 +100,36 @@ func newRunStartCmd() *cobra.Command {
 				return err
 			}
 
-			switch manifest.Kind {
-			case string(api.KindMember):
-				memberProjection, err := appworkspace.LoadMemberProjection(fs, appworkspace.MemberProjectionPath(copyRoot))
+			if manifest.Runtime == nil || manifest.Runtime.Team == nil {
+				return fmt.Errorf("manifest is incomplete; pull the local clone again")
+			}
+			team := manifest.Runtime.Team
+			runName := sessionName(team.Name, runID)
+			var terminalPlans []apprun.MemberTerminal
+			for i, member := range team.Members {
+				memberProjection, err := appworkspace.LoadMemberProjection(fs, appworkspace.TeamMemberProjectionPath(copyRoot, member.Name))
 				if err != nil {
 					return err
 				}
-				member := manifest.Runtime.Member
-				runName := apprun.SessionName(member.Name, runID)
-				envVars := buildMemberEnv(runID, member.ID, nil, member.Name)
-				fullCommand := buildFullCommand(envVars, memberProjection.Command, copyRoot)
-				terminalPlans := []apprun.MemberTerminal{{
-					MemberID:    member.ID,
+				memberBase := filepath.Join(copyRoot, member.Name)
+				envVars := buildMemberEnv(runID, member.MemberID, &team.ID, member.Name)
+				fullCommand := buildFullCommand(envVars, memberProjection.Command, memberBase)
+				terminalPlans = append(terminalPlans, apprun.MemberTerminal{
+					MemberID:    member.MemberID,
 					Name:        member.Name,
 					AgentType:   member.AgentType,
-					Window:      0,
-					Memberspace: copyRoot,
-					Cwd:         copyRoot,
+					Window:      i,
+					Memberspace: memberBase,
+					Cwd:         memberBase,
 					Command:     fullCommand,
-				}}
-				runner := apprun.NewRunner(newTerminal())
-				plan, err := runner.Run(copyRoot, runID, runName, terminalPlans)
-				if err != nil {
-					return err
-				}
-				return printJSON(map[string]any{"run_id": runID, "session": plan.Session})
-			case string(api.KindTeam):
-				team := manifest.Runtime.Team
-				runName := apprun.SessionName(team.Name, runID)
-				var terminalPlans []apprun.MemberTerminal
-				for i, member := range team.Members {
-					memberProjection, err := appworkspace.LoadMemberProjection(fs, appworkspace.TeamMemberProjectionPath(copyRoot, member.Name))
-					if err != nil {
-						return err
-					}
-					memberBase := filepath.Join(copyRoot, member.Name)
-					envVars := buildMemberEnv(runID, member.MemberID, &team.ID, member.Name)
-					fullCommand := buildFullCommand(envVars, memberProjection.Command, memberBase)
-					terminalPlans = append(terminalPlans, apprun.MemberTerminal{
-						MemberID:    member.MemberID,
-						Name:        member.Name,
-						AgentType:   member.AgentType,
-						Window:      i,
-						Memberspace: memberBase,
-						Cwd:         memberBase,
-						Command:     fullCommand,
-					})
-				}
-				runner := apprun.NewRunner(newTerminal())
-				plan, err := runner.Run(copyRoot, runID, runName, terminalPlans)
-				if err != nil {
-					return err
-				}
-				return printJSON(map[string]any{"run_id": runID, "session": plan.Session})
-			default:
-				return fmt.Errorf("unsupported working-copy kind %q", manifest.Kind)
+				})
 			}
+			runner := apprun.NewRunner(newTerminal())
+			plan, err := runner.Run(copyRoot, runID, runName, terminalPlans)
+			if err != nil {
+				return err
+			}
+			return printJSON(map[string]any{"run_id": runID, "session": plan.Session})
 		},
 	}
 }
@@ -372,7 +345,7 @@ func resolveRunContext(runFlag string) (runID string, memberID *int64, err error
 		return "", nil, fmt.Errorf("--run flag or %s must be set", envClierRunID)
 	}
 	if raw := os.Getenv(envClierMemberID); raw != "" {
-		v, parseErr := apprun.ParseMemberID(raw)
+		v, parseErr := parseMemberID(raw)
 		if parseErr != nil {
 			return "", nil, fmt.Errorf("%s is not a valid int64: %w", envClierMemberID, parseErr)
 		}

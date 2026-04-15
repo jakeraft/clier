@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
-	"github.com/jakeraft/clier/internal/adapter/api"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
@@ -39,7 +36,7 @@ Use push/pull to sync changes, and run start to launch agents.`,
 			}
 
 			svc := appworkspace.NewService(client, newFileMaterializer(), newGitRepo())
-			manifest, err := cloneResolvedResource(svc, base, kind, owner, name)
+			manifest, err := svc.Clone(base, kind, owner, name)
 			if err != nil {
 				return err
 			}
@@ -52,16 +49,5 @@ Use push/pull to sync changes, and run start to launch agents.`,
 				"manifest": appworkspace.ManifestPath(base),
 			})
 		},
-	}
-}
-
-func cloneResolvedResource(svc *appworkspace.Service, base, kind, owner, name string) (*appworkspace.Manifest, error) {
-	switch kind {
-	case string(api.KindMember):
-		return svc.CloneMember(base, owner, name)
-	case string(api.KindTeam):
-		return svc.CloneTeam(base, owner, name)
-	default:
-		return nil, fmt.Errorf("unsupported resource kind %q", kind)
 	}
 }
