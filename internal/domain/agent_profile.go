@@ -1,5 +1,7 @@
 package domain
 
+import "fmt"
+
 // AgentProfile defines agent-specific paths, markers, and commands.
 type AgentProfile struct {
 	InstructionFile   string // root instruction file: "CLAUDE.md", "AGENTS.md", "GEMINI.md"
@@ -13,9 +15,9 @@ type AgentProfile struct {
 }
 
 // ProfileFor returns the AgentProfile for the given agent type.
-func ProfileFor(agentType string) AgentProfile {
+func ProfileFor(agentType string) (AgentProfile, error) {
 	switch agentType {
-	default: // "claude" or unspecified
+	case "claude", "":
 		return AgentProfile{
 			InstructionFile:   "CLAUDE.md",
 			SettingsDir:       ".claude",
@@ -25,6 +27,8 @@ func ProfileFor(agentType string) AgentProfile {
 			ReadyMarker:       "Claude",
 			ExitCommand:       "/exit",
 			HomeExcludeKey:    "claudeMdExcludes",
-		}
+		}, nil
+	default:
+		return AgentProfile{}, fmt.Errorf("unknown agent type: %q", agentType)
 	}
 }

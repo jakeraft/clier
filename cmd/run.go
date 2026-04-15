@@ -47,7 +47,7 @@ func newRunListCmd() *cobra.Command {
 				return err
 			}
 			if runtimeDir == "" {
-				return printJSON([]*apprun.State{})
+				return printJSON([]*apprun.RunPlan{})
 			}
 
 			entries, err := os.ReadDir(runtimeDir)
@@ -187,14 +187,13 @@ func newRunStopCmd() *cobra.Command {
 				return err
 			}
 
-			svc := apprun.New(newTerminal())
-
-			if err := svc.Stop(plan); err != nil {
+			store, err := newPlanStore()
+			if err != nil {
 				return err
 			}
+			svc := apprun.New(newTerminal(), store)
 
-			plan.MarkStopped()
-			if err := saveRunPlan(plan.RunID, plan); err != nil {
+			if err := svc.Stop(plan); err != nil {
 				return err
 			}
 
@@ -271,16 +270,13 @@ Examples:
 
 			toMemberID := &toMemberIDRaw
 
-			svc := apprun.New(newTerminal())
+			store, err := newPlanStore()
+			if err != nil {
+				return err
+			}
+			svc := apprun.New(newTerminal(), store)
 
 			if err := svc.Send(plan, fromMemberID, toMemberID, content); err != nil {
-				return err
-			}
-
-			if err := plan.AddMessage(fromMemberID, toMemberID, content); err != nil {
-				return err
-			}
-			if err := saveRunPlan(runID, plan); err != nil {
 				return err
 			}
 
@@ -320,20 +316,18 @@ appended to the run file under ` + "`.clier/`" + `.`,
 				return err
 			}
 
-			svc := apprun.New(newTerminal())
-
-			if err := svc.Note(memberID, content); err != nil {
-				return err
-			}
-
 			plan, err := resolveRunPlan(runID)
 			if err != nil {
 				return err
 			}
-			if err := plan.AddNote(memberID, content); err != nil {
+
+			store, err := newPlanStore()
+			if err != nil {
 				return err
 			}
-			if err := saveRunPlan(runID, plan); err != nil {
+			svc := apprun.New(newTerminal(), store)
+
+			if err := svc.Note(plan, memberID, content); err != nil {
 				return err
 			}
 

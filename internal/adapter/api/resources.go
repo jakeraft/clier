@@ -1,6 +1,10 @@
 package api
 
-import "fmt"
+import (
+	"fmt"
+	"net/url"
+	"strconv"
+)
 
 // --- Unified Read ---
 
@@ -60,22 +64,18 @@ func (c *Client) CopyResource(kind ResourceKind, owner, name string) (*ResourceR
 // --- Helpers ---
 
 func buildListQuery(opts ListOptions) string {
-	q := ""
-	sep := ""
+	v := url.Values{}
 	if opts.Kind != "" {
-		q += sep + "kind=" + opts.Kind
-		sep = "&"
+		v.Set("kind", opts.Kind)
 	}
 	if opts.Query != "" {
-		q += sep + "q=" + opts.Query
-		sep = "&"
+		v.Set("q", opts.Query)
 	}
 	if opts.Limit > 0 {
-		q += sep + fmt.Sprintf("limit=%d", opts.Limit)
-		sep = "&"
+		v.Set("limit", strconv.Itoa(opts.Limit))
 	}
 	if opts.Offset > 0 {
-		q += sep + fmt.Sprintf("offset=%d", opts.Offset)
+		v.Set("offset", strconv.Itoa(opts.Offset))
 	}
-	return q
+	return v.Encode()
 }

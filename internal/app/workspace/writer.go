@@ -69,7 +69,10 @@ func (w *Writer) MaterializeMemberFiles(base, memberName string) error {
 
 // materializeMemberFiles writes local-clone files from a MemberProjection.
 func (w *Writer) materializeMemberFiles(base string, projection *MemberProjection, agentType string, opts memberWriteOptions) error {
-	profile := domain.ProfileFor(agentType)
+	profile, err := domain.ProfileFor(agentType)
+	if err != nil {
+		return err
+	}
 	paths := resolveAgentPaths(base, profile)
 
 	if err := ensureRepoDir(w.fs, w.git, projection.GitRepoURL, base); err != nil {

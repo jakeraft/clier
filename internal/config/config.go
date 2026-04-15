@@ -18,17 +18,17 @@ type File struct {
 	CredentialsPath string `json:"credentials_path,omitempty"`
 }
 
-func defaultBaseDir() (string, error) {
+func defaultBaseDir() (string, string, error) {
 	u, err := user.Current()
 	if err != nil {
-		return "", fmt.Errorf("get current user: %w", err)
+		return "", "", fmt.Errorf("get current user: %w", err)
 	}
-	return filepath.Join(u.HomeDir, dotDir), nil
+	return filepath.Join(u.HomeDir, dotDir), u.HomeDir, nil
 }
 
 // DefaultPath returns the default ~/.clier/config.json location.
 func DefaultPath() (string, error) {
-	base, err := defaultBaseDir()
+	base, _, err := defaultBaseDir()
 	if err != nil {
 		return "", err
 	}
@@ -37,7 +37,7 @@ func DefaultPath() (string, error) {
 
 // Resolve fills missing config values with defaults and normalizes paths.
 func Resolve(cfg *File) (*File, error) {
-	base, err := defaultBaseDir()
+	base, homeDir, err := defaultBaseDir()
 	if err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func Resolve(cfg *File) (*File, error) {
 		out.ServerURL = normalizeServerURL(cfg.ServerURL)
 	}
 	if cfg.CredentialsPath != "" {
-		out.CredentialsPath = expandTilde(base, cfg.CredentialsPath)
+		out.CredentialsPath = expandTilde(homeDir, cfg.CredentialsPath)
 	}
 
 	return out, nil
@@ -89,8 +89,8 @@ func Save(path string, cfg *File) error {
 	return os.WriteFile(path, data, 0o600)
 }
 
-func expandTilde(baseDir, s string) string {
-	return strings.ReplaceAll(s, "~/", filepath.Dir(baseDir)+"/")
+func expandTilde(homeDir, s string) string {
+	return strings.ReplaceAll(s, "~/", homeDir+"/")
 }
 
 func normalizeServerURL(raw string) string {

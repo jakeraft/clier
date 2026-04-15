@@ -263,128 +263,98 @@ func (s *Service) Push(base, currentLogin string) (*PushResult, error) {
 		return &PushResult{Status: "no_changes", Pushed: 0, PulledAfterPush: false}, nil
 	}
 
+	pushed := 0
 	targetName := manifest.Name
 	for _, resource := range modified {
 		if !resource.Editable {
 			continue
 		}
+		pushed++
 		if resource.Owner != currentLogin {
 			return nil, fmt.Errorf("cannot push %s %s/%s from %s: resource is not owned by %s",
 				resource.Kind, resource.Owner, resource.Name, resource.LocalPath, currentLogin)
 		}
 
-		switch resource.Kind {
-		case string(api.KindMember):
-			projection, err := LoadMemberProjection(s.fs, filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
-			if err != nil {
-				return nil, err
-			}
-			current, err := s.client.GetResource(resource.Owner, resource.Name)
-			if err != nil {
-				return nil, err
-			}
-			if !versionsMatch(resource.RemoteVersion, current.Metadata.LatestVersion) {
-				return nil, fmt.Errorf("remote member %s/%s changed; pull before pushing", resource.Owner, resource.Name)
-			}
-			body, err := s.memberMutationFromProjection(projection)
-			if err != nil {
-				return nil, err
-			}
-			updated, err := s.client.UpdateResource(api.KindMember, resource.Owner, resource.Name, body)
-			if err != nil {
-				return nil, err
-			}
-			if resource.LocalPath == manifest.RootResource.LocalPath {
-				targetName = updated.Metadata.Name
-			}
-		case string(api.KindTeam):
-			projection, err := LoadTeamProjection(s.fs, filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
-			if err != nil {
-				return nil, err
-			}
-			current, err := s.client.GetResource(resource.Owner, resource.Name)
-			if err != nil {
-				return nil, err
-			}
-			if !versionsMatch(resource.RemoteVersion, current.Metadata.LatestVersion) {
-				return nil, fmt.Errorf("remote team %s/%s changed; pull before pushing", resource.Owner, resource.Name)
-			}
-			body, err := s.teamMutationFromProjection(projection)
-			if err != nil {
-				return nil, err
-			}
-			updated, err := s.client.UpdateResource(api.KindTeam, resource.Owner, resource.Name, body)
-			if err != nil {
-				return nil, err
-			}
-			if resource.LocalPath == manifest.RootResource.LocalPath {
-				targetName = updated.Metadata.Name
-			}
-		case string(api.KindClaudeMd):
-			content, err := s.serverClaudeMdContent(base, manifest, resource)
-			if err != nil {
-				return nil, err
-			}
-			current, err := s.client.GetResource(resource.Owner, resource.Name)
-			if err != nil {
-				return nil, err
-			}
-			if !versionsMatch(resource.RemoteVersion, current.Metadata.LatestVersion) {
-				return nil, fmt.Errorf("remote claude-md %s/%s changed; pull before pushing", resource.Owner, resource.Name)
-			}
-			if _, err := s.client.UpdateResource(api.KindClaudeMd, resource.Owner, resource.Name, api.ContentWriteRequest{
-				Name:    resource.Name,
-				Content: content,
-			}); err != nil {
-				return nil, err
-			}
-		case string(api.KindClaudeSettings):
-			content, err := s.fs.ReadFile(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
-			if err != nil {
-				return nil, fmt.Errorf("read local resource %s: %w", resource.LocalPath, err)
-			}
-			current, err := s.client.GetResource(resource.Owner, resource.Name)
-			if err != nil {
-				return nil, err
-			}
-			if !versionsMatch(resource.RemoteVersion, current.Metadata.LatestVersion) {
-				return nil, fmt.Errorf("remote claude-setting %s/%s changed; pull before pushing", resource.Owner, resource.Name)
-			}
-			if _, err := s.client.UpdateResource(api.KindClaudeSettings, resource.Owner, resource.Name, api.ContentWriteRequest{
-				Name:    resource.Name,
-				Content: string(content),
-			}); err != nil {
-				return nil, err
-			}
-		case string(api.KindSkill):
-			content, err := s.fs.ReadFile(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
-			if err != nil {
-				return nil, fmt.Errorf("read local resource %s: %w", resource.LocalPath, err)
-			}
-			current, err := s.client.GetResource(resource.Owner, resource.Name)
-			if err != nil {
-				return nil, err
-			}
-			if !versionsMatch(resource.RemoteVersion, current.Metadata.LatestVersion) {
-				return nil, fmt.Errorf("remote skill %s/%s changed; pull before pushing", resource.Owner, resource.Name)
-			}
-			if _, err := s.client.UpdateResource(api.KindSkill, resource.Owner, resource.Name, api.ContentWriteRequest{
-				Name:    resource.Name,
-				Content: string(content),
-			}); err != nil {
-				return nil, err
-			}
-		default:
-			return nil, fmt.Errorf("unsupported tracked resource kind %q", resource.Kind)
+		kind, body, err := s.preparePushBody(base, manifest, resource)
+		if err != nil {
+			return nil, err
+		}
+		updated, err := s.pushResource(resource, kind, body)
+		if err != nil {
+			return nil, err
+		}
+		if updated != nil && resource.LocalPath == manifest.RootResource.LocalPath {
+			targetName = updated.Metadata.Name
 		}
 	}
 
 	// Update manifest name if root resource was renamed, then pull latest.
 	manifest.Name = targetName
-	if _, err := s.pullTarget(base, manifest, true); err != nil {
+	pulled, err := s.pullTarget(base, manifest, true)
+	if err != nil {
 		return nil, err
 	}
-	return &PushResult{Status: "pushed", Pushed: len(modified), PulledAfterPush: true}, nil
+	if err := SaveManifest(s.fs, base, pulled); err != nil {
+		return nil, err
+	}
+	return &PushResult{Status: "pushed", Pushed: pushed, PulledAfterPush: true}, nil
+}
+
+// preparePushBody builds the request body for a single tracked resource.
+func (s *Service) preparePushBody(base string, manifest *Manifest, r TrackedResource) (api.ResourceKind, any, error) {
+	kind := api.ResourceKind(r.Kind)
+	switch kind {
+	case api.KindMember:
+		projection, err := LoadMemberProjection(s.fs, filepath.Join(base, filepath.FromSlash(r.LocalPath)))
+		if err != nil {
+			return "", nil, err
+		}
+		body, err := s.memberMutationFromProjection(projection)
+		if err != nil {
+			return "", nil, err
+		}
+		return kind, body, nil
+	case api.KindTeam:
+		projection, err := LoadTeamProjection(s.fs, filepath.Join(base, filepath.FromSlash(r.LocalPath)))
+		if err != nil {
+			return "", nil, err
+		}
+		body, err := s.teamMutationFromProjection(projection)
+		if err != nil {
+			return "", nil, err
+		}
+		return kind, body, nil
+	default:
+		content, err := s.readContentForPush(base, manifest, kind, r)
+		if err != nil {
+			return "", nil, err
+		}
+		return kind, api.ContentWriteRequest{Name: r.Name, Content: content}, nil
+	}
+}
+
+// pushResource checks the remote version and uploads the resource.
+func (s *Service) pushResource(r TrackedResource, kind api.ResourceKind, body any) (*api.ResourceResponse, error) {
+	current, err := s.client.GetResource(r.Owner, r.Name)
+	if err != nil {
+		return nil, err
+	}
+	if !versionsMatch(r.RemoteVersion, current.Metadata.LatestVersion) {
+		return nil, fmt.Errorf("remote %s %s/%s changed; pull before pushing", r.Kind, r.Owner, r.Name)
+	}
+	return s.client.UpdateResource(kind, r.Owner, r.Name, body)
+}
+
+// readContentForPush reads a content resource from disk, stripping the prelude for claude-md.
+func (s *Service) readContentForPush(base string, manifest *Manifest, kind api.ResourceKind, r TrackedResource) (string, error) {
+	if kind == api.KindClaudeMd {
+		return s.serverClaudeMdContent(base, manifest, r)
+	}
+	data, err := s.fs.ReadFile(filepath.Join(base, filepath.FromSlash(r.LocalPath)))
+	if err != nil {
+		return "", fmt.Errorf("read local resource %s: %w", r.LocalPath, err)
+	}
+	return string(data), nil
 }
 
 func (s *Service) ModifiedTrackedResources(base string) ([]TrackedResource, error) {

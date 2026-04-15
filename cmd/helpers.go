@@ -74,16 +74,24 @@ func resolveRunPlan(runID string) (*apprun.RunPlan, error) {
 	return plan, nil
 }
 
-func saveRunPlan(runID string, plan *apprun.RunPlan) error {
+// localPlanStore implements apprun.PlanStore by writing to the local clone's .clier/ directory.
+type localPlanStore struct {
+	copyRoot string
+}
+
+func newPlanStore() (*localPlanStore, error) {
 	runtimeDir, err := resolveRuntimeDir()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if runtimeDir == "" {
-		return errors.New("runtime dir not found in current local clone")
+		return nil, errors.New("runtime dir not found in current local clone")
 	}
-	copyRoot := filepath.Dir(runtimeDir)
-	return apprun.SavePlan(copyRoot, runID, plan)
+	return &localPlanStore{copyRoot: filepath.Dir(runtimeDir)}, nil
+}
+
+func (s *localPlanStore) Save(plan *apprun.RunPlan) error {
+	return apprun.SavePlan(s.copyRoot, plan.RunID, plan)
 }
 
 func resolveRunPlanPath(runID string) (string, error) {

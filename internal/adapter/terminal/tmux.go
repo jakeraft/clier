@@ -115,8 +115,8 @@ func (t *TmuxTerminal) Attach(plan *apprun.RunPlan, memberID *int64) error {
 // exitAllWindows sends the agent-specific exit command to every member window.
 func (t *TmuxTerminal) exitAllWindows(sess string, members []apprun.MemberTerminal) {
 	for _, m := range members {
-		profile := domain.ProfileFor(m.AgentType)
-		if profile.ExitCommand == "" {
+		profile, err := domain.ProfileFor(m.AgentType)
+		if err != nil || profile.ExitCommand == "" {
 			continue
 		}
 		_ = t.sendKeys(sess, strconv.Itoa(m.Window), profile.ExitCommand)
@@ -137,7 +137,10 @@ func (t *TmuxTerminal) setupMemberWindow(sess, win string, m apprun.MemberTermin
 
 // waitReady polls the pane title until the agent's TUI marker appears.
 func (t *TmuxTerminal) waitReady(sess, win string, timeout time.Duration, agentType string) error {
-	profile := domain.ProfileFor(agentType)
+	profile, err := domain.ProfileFor(agentType)
+	if err != nil {
+		return err
+	}
 	if profile.ReadyMarker == "" {
 		return nil
 	}

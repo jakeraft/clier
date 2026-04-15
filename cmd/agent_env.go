@@ -10,6 +10,11 @@ const (
 	envClierRunID    = "CLIER_RUN_ID"
 	envClierMemberID = "CLIER_MEMBER_ID"
 	envClierTeamID   = "CLIER_TEAM_ID"
+
+	// cmdNameRun and cmdNameNote are command names shared between
+	// command registration (run.go) and the agent-mode filter (root.go).
+	cmdNameRun  = "run"
+	cmdNameNote = "note"
 )
 
 func isAgentMode() bool {

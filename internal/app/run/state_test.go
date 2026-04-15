@@ -2,29 +2,29 @@ package run
 
 import "testing"
 
-func TestState_SaveLoadAndMutate(t *testing.T) {
+func TestPlan_SaveLoadAndMutate(t *testing.T) {
 	t.Parallel()
 
 	base := t.TempDir()
-	state := NewPlan("run-123", "team-run", nil)
-	if err := state.AddMessage(int64Ptr(1), int64Ptr(2), "hello"); err != nil {
+	plan := NewPlan("run-123", "team-run", nil)
+	if err := plan.AddMessage(int64Ptr(1), int64Ptr(2), "hello"); err != nil {
 		t.Fatalf("add message: %v", err)
 	}
-	if err := state.AddNote(int64Ptr(2), "working"); err != nil {
+	if err := plan.AddNote(int64Ptr(2), "working"); err != nil {
 		t.Fatalf("add note: %v", err)
 	}
-	state.MarkStopped()
+	plan.MarkStopped()
 
-	if err := SaveState(base, state); err != nil {
-		t.Fatalf("save state: %v", err)
+	if err := SavePlan(base, plan.RunID, plan); err != nil {
+		t.Fatalf("save plan: %v", err)
 	}
 
-	loaded, err := LoadState(base, state.RunID)
+	loaded, err := LoadPlan(base, plan.RunID)
 	if err != nil {
-		t.Fatalf("load state: %v", err)
+		t.Fatalf("load plan: %v", err)
 	}
-	if loaded.RunID != state.RunID {
-		t.Fatalf("RunID = %q, want %q", loaded.RunID, state.RunID)
+	if loaded.RunID != plan.RunID {
+		t.Fatalf("RunID = %q, want %q", loaded.RunID, plan.RunID)
 	}
 	if loaded.Status != StatusStopped {
 		t.Fatalf("Status = %q, want %q", loaded.Status, StatusStopped)

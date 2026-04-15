@@ -17,7 +17,10 @@ func TestLocalSettingsContent_UsesHomeClaudePath(t *testing.T) {
 	}
 	defer func() { _ = os.Setenv("HOME", oldHome) }()
 
-	profile := domain.ProfileFor("claude")
+	profile, profileErr := domain.ProfileFor("claude")
+	if profileErr != nil {
+		t.Fatalf("ProfileFor: %v", profileErr)
+	}
 	content, err := localSettingsContent(profile)
 	if err != nil {
 		t.Fatalf("localSettingsContent: %v", err)

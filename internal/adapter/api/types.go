@@ -194,7 +194,18 @@ const (
 )
 
 // urlPath returns the plural URL path segment for write endpoints.
+var kindURLPaths = map[ResourceKind]string{
+	KindMember:         "members",
+	KindTeam:           "teams",
+	KindSkill:          "skills",
+	KindClaudeMd:       "claude-mds",
+	KindClaudeSettings: "claude-settings",
+}
+
 func (k ResourceKind) urlPath() string {
+	if p, ok := kindURLPaths[k]; ok {
+		return p
+	}
 	return string(k) + "s"
 }
 

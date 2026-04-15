@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/auth"
 	"github.com/spf13/cobra"
 )
@@ -55,6 +56,12 @@ func newAuthLoginCmd() *cobra.Command {
 
 				poll, err := client.PollDeviceAuth(resp.DeviceCode)
 				if err != nil {
+					// Server may return an error for authorization_pending (RFC 8628).
+					// Continue polling unless it's a non-retryable error.
+					var apiErr *api.Error
+					if errors.As(err, &apiErr) && apiErr.StatusCode < 500 {
+						continue
+					}
 					return fmt.Errorf("poll failed: %w", err)
 				}
 

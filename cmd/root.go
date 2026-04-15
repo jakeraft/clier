@@ -152,13 +152,12 @@ func configureCommandGroups() {
 
 // filterUserCommands removes agent-only subcommands from "run" in user context.
 func filterUserCommands() {
-	// Coupled to: newRunNoteCmd
-	hidden := map[string]bool{"note": true}
+	agentOnly := map[string]bool{cmdNameNote: true}
 	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == "run" {
+		if cmd.Name() == cmdNameRun {
 			var keep []*cobra.Command
 			for _, sub := range cmd.Commands() {
-				if !hidden[sub.Name()] {
+				if !agentOnly[sub.Name()] {
 					keep = append(keep, sub)
 				}
 			}

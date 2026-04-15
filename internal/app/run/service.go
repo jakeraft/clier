@@ -14,21 +14,28 @@ type Terminal interface {
 	Send(plan *RunPlan, teamMemberID int64, text string) error
 }
 
+// PlanStore persists and retrieves run plans.
+type PlanStore interface {
+	Save(plan *RunPlan) error
+}
+
 // Service orchestrates run messaging and lifecycle.
 type Service struct {
 	terminal Terminal
+	store    PlanStore
 	sleep    func(time.Duration)
 }
 
 // New creates a run Service.
-func New(term Terminal) *Service {
+func New(term Terminal, store PlanStore) *Service {
 	return &Service{
 		terminal: term,
+		store:    store,
 		sleep:    time.Sleep,
 	}
 }
 
-// Stop terminates a running execution.
+// Stop terminates a running execution and persists the stopped state.
 func (s *Service) Stop(plan *RunPlan) error {
 	if err := s.terminal.Terminate(plan); err != nil {
 		return fmt.Errorf("terminate terminal %s: %w", plan.RunID, err)
@@ -37,10 +44,14 @@ func (s *Service) Stop(plan *RunPlan) error {
 	// Allow OS to release file handles from terminated processes.
 	s.sleep(2 * time.Second)
 
+	plan.MarkStopped()
+	if err := s.store.Save(plan); err != nil {
+		return fmt.Errorf("save stopped plan %s: %w", plan.RunID, err)
+	}
 	return nil
 }
 
-// Send delivers a message to the recipient's terminal.
+// Send delivers a message to the recipient's terminal and records it in the plan.
 func (s *Service) Send(plan *RunPlan, fromMemberID, toMemberID *int64, content string) error {
 	if toMemberID == nil {
 		return errors.New("recipient member id is required")
@@ -58,14 +69,27 @@ func (s *Service) Send(plan *RunPlan, fromMemberID, toMemberID *int64, content s
 	if err := s.terminal.Send(plan, *toMemberID, text); err != nil {
 		return fmt.Errorf("deliver message: %w", err)
 	}
+
+	if err := plan.AddMessage(fromMemberID, toMemberID, content); err != nil {
+		return fmt.Errorf("record message: %w", err)
+	}
+	if err := s.store.Save(plan); err != nil {
+		return fmt.Errorf("save plan %s: %w", plan.RunID, err)
+	}
 	return nil
 }
 
-// Note validates a progress entry posted by a member.
-func (s *Service) Note(memberID *int64, content string) error {
-	_ = memberID
+// Note records a progress entry posted by a member.
+func (s *Service) Note(plan *RunPlan, memberID *int64, content string) error {
 	if strings.TrimSpace(content) == "" {
 		return errors.New("note content must not be empty")
+	}
+
+	if err := plan.AddNote(memberID, content); err != nil {
+		return fmt.Errorf("record note: %w", err)
+	}
+	if err := s.store.Save(plan); err != nil {
+		return fmt.Errorf("save plan %s: %w", plan.RunID, err)
 	}
 	return nil
 }
