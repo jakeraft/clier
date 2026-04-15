@@ -1,42 +1,34 @@
-GO ?= go
-GOLANGCI_LINT ?= golangci-lint
+GO      ?= go
+LINTER  ?= golangci-lint
 
-.PHONY: help check fmt lint test build install run ci
+.PHONY: help check build install _fmt _lint _test _build
 
 help:
 	@printf '%s\n' \
-		'Dev quality:' \
-		'  make fmt         Format Go sources' \
-		'  make lint        Run golangci-lint' \
-		'  make test        Run go test ./...' \
-		'  make build       Run go build ./...' \
-		'  make check       Run lint, test, and build locally' \
-		'' \
-		'Local execution:' \
-		'  make run         Run clier with go run .' \
-		'  make install     Install clier with go install .' \
-		'' \
-		'CI:' \
-		'  make ci          Run the CI command set'
+		'  make check     Local quality gate (fmt → lint → test → build)' \
+		'  make build     Build production binary' \
+		'  make install   Install clier locally'
 
-check: lint test build
+## Public targets ─────────────────────────────────────────
 
-fmt:
-	@find . -type f -name '*.go' -print0 | xargs -0 gofmt -w
-
-lint:
-	$(GOLANGCI_LINT) run
-
-test:
-	$(GO) test ./...
+check: _fmt _lint _test _build
 
 build:
-	$(GO) build ./...
+	$(GO) build -o clier .
 
 install:
 	$(GO) install .
 
-run:
-	$(GO) run .
+## Internal targets ───────────────────────────────────────
 
-ci: check
+_fmt:
+	@gofmt -w .
+
+_lint:
+	$(LINTER) run
+
+_test:
+	$(GO) test ./...
+
+_build:
+	$(GO) build ./...

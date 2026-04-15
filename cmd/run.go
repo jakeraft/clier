@@ -101,7 +101,7 @@ func newRunStartCmd() *cobra.Command {
 			}
 
 			if manifest.Runtime == nil || manifest.Runtime.Team == nil {
-				return fmt.Errorf("manifest is incomplete; pull the local clone again")
+				return errors.New("manifest is incomplete; pull the local clone again")
 			}
 			team := manifest.Runtime.Team
 			runName := sessionName(team.Name, runID)
