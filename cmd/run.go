@@ -23,7 +23,10 @@ func newRunCmd() *cobra.Command {
 		Use:     "run",
 		Short:   "Manage running agent sessions",
 		GroupID: rootGroupRuntime,
-		Long:    `Start, stop, and interact with agents running in tmux.`,
+		Long: `Start, stop, and interact with agents running in tmux.
+
+Use start to launch agents, tell to send them instructions,
+and attach to watch them work.`,
 		RunE:    subcommandRequired,
 	}
 	cmd.AddCommand(newRunStartCmd())
@@ -78,7 +81,9 @@ func newRunStartCmd() *cobra.Command {
 		Use:   "start",
 		Short: "Launch the current working copy in tmux",
 		Long: `Start all agents in the current working copy. Works with both
-team clones (multiple agents) and member clones (single agent).`,
+team clones (multiple agents) and member clones (single agent).
+
+Agents start idle. Use run tell to send them instructions.`,
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()

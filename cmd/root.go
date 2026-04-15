@@ -117,6 +117,7 @@ Core workflow:
   clier fork <owner/name>        Fork a resource to customize it
   clier clone <owner/name>       Download a local working copy
   clier run start                Launch agents in tmux
+  clier run tell --to <name>     Send instructions to an agent
   clier run attach <run-id>      Watch agents in real time
   clier open dashboard           Open the dashboard in a browser`,
 	CompletionOptions: cobra.CompletionOptions{

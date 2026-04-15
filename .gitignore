@@ -48,3 +48,6 @@ ui/dist/
 
 # worktrees
 .worktrees/
+
+# cloned workspaces
+@*/
