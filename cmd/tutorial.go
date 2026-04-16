@@ -11,16 +11,18 @@ func init() {
 func newTutorialCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "tutorial",
-		Short:   "Learn to harness your first agent team",
+		Short:   "Walk through the hello-claude team",
 		GroupID: rootGroupSettings,
-		Long: `Learn to harness your first agent team.
+		Long: `Walk through the built-in hello-claude team.
 
-The "todo-team" is a team of AI agents that implements a feature
-on a real GitHub repo (github.com/jakeraft/clier_todo) with
-PR-based code review:
+The "@clier/hello-claude" tutorial is the quickest way to verify that
+clier can clone a team, launch members locally, pass messages between
+them, and sync tracked changes.
 
-  tech-lead (root)
-  └── coder → reviewer    (implement → PR → review loop)
+The team has two members:
+
+  hello-claude (root, Claude)
+  └── hello-codex (child, Codex)
 
 Follow the steps below to try it out.
 
@@ -30,48 +32,43 @@ Step 1. Log in
 
   Authenticate with GitHub via device flow.
 
-Step 2. Explore the pre-loaded todo-team
+Step 2. Explore the pre-loaded hello-claude team
 
   clier list --kind team
-  clier get jakeraft/todo-team
+  clier get @clier/hello-claude
 
-  The "jakeraft/todo-team" is already available.
+  The "@clier/hello-claude" team is already available.
 
-Step 3. Fork the team to your namespace
+Step 3. Clone the team locally
 
-  clier fork jakeraft/todo-team
+  clier clone @clier/hello-claude
+  cd @clier/hello-claude
 
-  This creates your own fork. Now you can customize it.
+  This downloads a local working copy with one directory per agent.
 
-Step 4. Customize your fork
+Step 4. Inspect the local working copy
 
-  Check your copied team and give it a summary:
+  clier status
+  clier run list
 
-    clier get <your-login>/todo-team
-    clier edit <your-login>/todo-team --summary "My first agent team"
+  You should see a clean working copy and no active runs yet.
 
-  Use --help on any command to see all available flags.
+Step 5. Start the team
 
-Step 5. Clone and start the team
-
-  clier clone <your-login>/todo-team
-  cd <your-login>/todo-team
   clier run start
 
-  This downloads a local working copy under ./<your-login>/todo-team/
-  and launches all agents in tmux.
+  This launches both members in tmux from the current local clone.
   Note the run ID from the output.
 
-Step 6. Give the team a job
+Step 6. Ask hello-claude to have both members greet each other
 
-  clier run tell --run <run-id> --to <owner/name> \
-    "Add a list --done flag to filter completed todos."
+  clier run tell --run <run-id> --to @clier/hello-claude \
+    "Have both team members greet each other and report the result."
 
-  The tech-lead plans the work, the coder implements it on a branch,
-  creates a PR, and the reviewer iterates on it until approved.
-  The tech-lead writes a final report on the PR.
+  A healthy run should show hello-claude contacting hello-codex,
+  hello-codex replying, and hello-claude reporting the greeting result.
 
-Step 7. Watch them work from the current local clone
+Step 7. Watch the run from the current local clone
 
   clier run attach <run-id>        Watch agents in real time
   clier run view <run-id>          Check progress notes and messages
@@ -79,23 +76,39 @@ Step 7. Watch them work from the current local clone
   Note: run attach is intended for a normal user terminal.
   It is not supported when clier is running inside an agent.
 
-Step 8. When done, stop the run from the current local clone
+Step 8. Verify the result
+
+  Confirm all of the following:
+
+  - both members participated
+  - the greeting exchange completed
+  - run view reflects the messages you observed
+
+Step 9. Stop the run from the current local clone
 
   clier run stop <run-id>
 
-Step 9. See the result
+Step 10. Edit a tracked file locally
 
-  gh pr list -R jakeraft/clier_todo
-  gh pr view <number> -R jakeraft/clier_todo --web
+  Resources you clone are tracked locally, similar to git.
+  Edit the root agent instruction, then inspect local state:
 
-Step 10. Edit and push local changes
-
-  Resources you clone are tracked locally, just like git.
-  Edit an agent's prompt, then push the change to the server:
-
-    edit hello-claude/CLAUDE.md  Open in your editor
+    Open hello-claude/CLAUDE.md in your editor
     clier status                Check what changed
-    clier push                  Push local changes to the server
+
+Step 11. Try sync flows
+
+  From the same local clone, verify:
+
+  - clean pull updates tracked files from the server
+  - dirty pull refuses to overwrite local changes unless forced
+  - push publishes your local tracked edits back to the server
+
+  Use:
+
+    clier pull
+    clier pull --force
+    clier push
 
 Tip: Use "clier <command> --help" for details on each command.`,
 	}
