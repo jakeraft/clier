@@ -14,15 +14,15 @@ func parseOptionalResourceRefRequest(raw string) (*api.ResourceRefRequest, error
 	if raw == "" {
 		return nil, nil
 	}
-	parts := strings.SplitN(raw, "@", 2)
-	if len(parts) != 2 {
+	at := strings.LastIndex(raw, "@")
+	if at <= 0 || at == len(raw)-1 {
 		return nil, fmt.Errorf("invalid resource ref %q: want <owner/name>@<version>", raw)
 	}
-	owner, name, err := splitResourceID(strings.TrimSpace(parts[0]))
+	owner, name, err := splitResourceID(strings.TrimSpace(raw[:at]))
 	if err != nil {
 		return nil, fmt.Errorf("invalid resource ref %q: %w", raw, err)
 	}
-	version, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+	version, err := strconv.Atoi(strings.TrimSpace(raw[at+1:]))
 	if err != nil {
 		return nil, fmt.Errorf("invalid resource version in %q: %w", raw, err)
 	}
