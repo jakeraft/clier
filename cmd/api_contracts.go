@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -28,44 +29,34 @@ func parseOptionalResourceRefRequest(raw string) (*api.ResourceRefRequest, error
 	return &api.ResourceRefRequest{Owner: owner, Name: name, Version: version}, nil
 }
 
-func parseTeamMemberSpecs(specs []string) ([]api.TeamMemberRequest, error) {
-	members := make([]api.TeamMemberRequest, 0, len(specs))
+func parseResourceRefSlice(specs []string) ([]api.ResourceRefRequest, error) {
+	refs := make([]api.ResourceRefRequest, 0, len(specs))
 	for _, spec := range specs {
 		ref, err := parseOptionalResourceRefRequest(spec)
 		if err != nil {
-			return nil, fmt.Errorf("invalid --member %q: %w", spec, err)
+			return nil, err
 		}
 		if ref == nil {
-			return nil, fmt.Errorf("invalid --member %q, member ref must not be empty", spec)
+			return nil, errors.New("resource ref must not be empty")
 		}
-		members = append(members, api.TeamMemberRequest{
-			Owner:         ref.Owner,
-			Name:          ref.Name,
-			MemberVersion: ref.Version,
-		})
+		refs = append(refs, *ref)
 	}
-	return members, nil
+	return refs, nil
 }
 
-func parseTeamRelationSpecs(specs []string) ([]api.TeamRelationRequest, error) {
-	relations := make([]api.TeamRelationRequest, 0, len(specs))
+func parseChildRefSpecs(specs []string) ([]api.ChildRefRequest, error) {
+	children := make([]api.ChildRefRequest, 0, len(specs))
 	for _, spec := range specs {
-		parts := strings.SplitN(spec, ":", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid --relation %q, want <owner/name>:<owner/name>", spec)
-		}
-		fromOwner, fromName, err := parseOwnerName(strings.TrimSpace(parts[0]))
+		ref, err := parseOptionalResourceRefRequest(spec)
 		if err != nil {
-			return nil, fmt.Errorf("invalid from in %q: %w", spec, err)
+			return nil, fmt.Errorf("invalid --child %q: %w", spec, err)
 		}
-		toOwner, toName, err := parseOwnerName(strings.TrimSpace(parts[1]))
-		if err != nil {
-			return nil, fmt.Errorf("invalid to in %q: %w", spec, err)
+		if ref == nil {
+			return nil, fmt.Errorf("invalid --child %q, child ref must not be empty", spec)
 		}
-		relations = append(relations, api.TeamRelationRequest{
-			From: api.ResourceIdentifier{Owner: fromOwner, Name: fromName},
-			To:   api.ResourceIdentifier{Owner: toOwner, Name: toName},
+		children = append(children, api.ChildRefRequest{
+			Owner: ref.Owner, Name: ref.Name, ChildVersion: ref.Version,
 		})
 	}
-	return relations, nil
+	return children, nil
 }

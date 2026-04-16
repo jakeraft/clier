@@ -35,6 +35,11 @@ func (c *Client) GetResourceVersion(owner, name string, version int) (*ResourceV
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/resources/%s/versions/%d", owner, name, version), &r)
 }
 
+func (c *Client) ResolveTeam(owner, name string) (*ResolveResponse, error) {
+	var r ResolveResponse
+	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/teams/%s/resolve", owner, name), &r)
+}
+
 // --- Generic Write ---
 
 func (c *Client) CreateResource(kind ResourceKind, owner string, body any) (*ResourceResponse, error) {
@@ -56,9 +61,9 @@ func (c *Client) DeleteResource(kind ResourceKind, owner, name string) error {
 	return c.delete(fmt.Sprintf("/api/v1/orgs/%s/%s/%s", owner, kind.urlPath(), name))
 }
 
-func (c *Client) CopyResource(kind ResourceKind, owner, name string) (*ResourceResponse, error) {
+func (c *Client) ForkResource(kind ResourceKind, owner, name string) (*ResourceResponse, error) {
 	var r ResourceResponse
-	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/%s/%s/copy", owner, kind.urlPath(), name), nil, &r)
+	return &r, c.post(fmt.Sprintf("/api/v1/orgs/%s/%s/%s/fork", owner, kind.urlPath(), name), nil, &r)
 }
 
 // --- Stars ---

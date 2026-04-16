@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-// Terminal launches and terminates member processes.
+// Terminal launches and terminates agent processes.
 type Terminal interface {
 	Terminate(plan *RunPlan) error
-	Send(plan *RunPlan, memberName string, text string) error
+	Send(plan *RunPlan, agentName string, text string) error
 }
 
 // PlanStore persists and retrieves run plans.
@@ -51,9 +51,9 @@ func (s *Service) Stop(plan *RunPlan) error {
 }
 
 // Send delivers a message to the recipient's terminal and records it in the plan.
-func (s *Service) Send(plan *RunPlan, fromMember, toMember *string, content string) error {
-	if toMember == nil {
-		return errors.New("recipient member name is required")
+func (s *Service) Send(plan *RunPlan, fromAgent, toAgent *string, content string) error {
+	if toAgent == nil {
+		return errors.New("recipient agent name is required")
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
@@ -61,15 +61,15 @@ func (s *Service) Send(plan *RunPlan, fromMember, toMember *string, content stri
 	}
 
 	text := content
-	if fromMember != nil {
-		text = fmt.Sprintf("[Message from %s] %s", *fromMember, content)
+	if fromAgent != nil {
+		text = fmt.Sprintf("[Message from %s] %s", *fromAgent, content)
 	}
 
-	if err := s.terminal.Send(plan, *toMember, text); err != nil {
+	if err := s.terminal.Send(plan, *toAgent, text); err != nil {
 		return fmt.Errorf("deliver message: %w", err)
 	}
 
-	if err := plan.AddMessage(fromMember, toMember, content); err != nil {
+	if err := plan.AddMessage(fromAgent, toAgent, content); err != nil {
 		return fmt.Errorf("record message: %w", err)
 	}
 	if err := s.store.Save(plan); err != nil {
@@ -78,13 +78,13 @@ func (s *Service) Send(plan *RunPlan, fromMember, toMember *string, content stri
 	return nil
 }
 
-// Note records a progress entry posted by a member.
-func (s *Service) Note(plan *RunPlan, member *string, content string) error {
+// Note records a progress entry posted by an agent.
+func (s *Service) Note(plan *RunPlan, agent *string, content string) error {
 	if strings.TrimSpace(content) == "" {
 		return errors.New("note content must not be empty")
 	}
 
-	if err := plan.AddNote(member, content); err != nil {
+	if err := plan.AddNote(agent, content); err != nil {
 		return fmt.Errorf("record note: %w", err)
 	}
 	if err := s.store.Save(plan); err != nil {

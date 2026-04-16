@@ -27,31 +27,25 @@ func resolveAgentPaths(base string, profile domain.AgentProfile) agentPaths {
 	}
 }
 
-// Writer fetches member/team definitions from the server and writes
-// the corresponding local-clone files (CLAUDE.md, generated protocols,
-// settings.json, settings.local.json, skills) to a local directory.
-// Referenced resources are materialized from the pinned versions recorded
-// in the member or team definition.
-// It is a thin layer: fetch -> write.
+// Writer materializes agent files from a pre-built resource map.
+// The resource map contains all transitive dependencies resolved by
+// the ResolveTeam API — the Writer makes ZERO additional API calls.
 type Writer struct {
-	client *api.Client
-	owner  string
-	fs     FileMaterializer
-	git    GitRepo
+	fs          FileMaterializer
+	git         GitRepo
+	resourceMap map[string]*api.ResolvedResource
 }
 
-type memberWriteOptions struct {
-	TeamMemberName string
+// NewWriter creates a Writer backed by a pre-built resource map.
+func NewWriter(fs FileMaterializer, git GitRepo, resourceMap map[string]*api.ResolvedResource) *Writer {
+	return &Writer{fs: fs, git: git, resourceMap: resourceMap}
 }
 
-// NewWriter creates a Writer that uses the given API client and owner.
-func NewWriter(client *api.Client, owner string, fs FileMaterializer, git GitRepo) *Writer {
-	return &Writer{client: client, owner: owner, fs: fs, git: git}
-}
-
-// materializeMemberFiles writes local-clone files from a MemberProjection.
-func (w *Writer) materializeMemberFiles(base string, projection *MemberProjection, agentType string, opts memberWriteOptions) error {
-	profile, err := domain.ProfileFor(agentType)
+// MaterializeAgent writes local-clone files for a single agent (leaf team).
+// teamName is the display name used in protocol composition (e.g. for
+// ComposeInstruction's agentName parameter).
+func (w *Writer) MaterializeAgent(base string, projection *TeamProjection, teamName string) error {
+	profile, err := domain.ProfileFor(projection.AgentType)
 	if err != nil {
 		return err
 	}
@@ -64,38 +58,30 @@ func (w *Writer) materializeMemberFiles(base string, projection *MemberProjectio
 		return fmt.Errorf("write work log protocol: %w", err)
 	}
 
-	// Write instruction file (CLAUDE.md / AGENTS.md / GEMINI.md)
+	// Write instruction file (CLAUDE.md / AGENTS.md)
 	if projection.InstructionRef != nil {
-		vr, err := w.client.GetResourceVersion(projection.InstructionRef.Owner, projection.InstructionRef.Name, projection.InstructionRef.Version)
+		content, err := w.resolveContent(projection.InstructionRef.Owner, projection.InstructionRef.Name)
 		if err != nil {
-			return fmt.Errorf("get instruction %s/%s: %w", projection.InstructionRef.Owner, projection.InstructionRef.Name, err)
+			return fmt.Errorf("resolve instruction %s/%s: %w", projection.InstructionRef.Owner, projection.InstructionRef.Name, err)
 		}
-		contentSpec, err := decodeSnapshot[api.ContentSpec](vr.Snapshot)
-		if err != nil {
-			return fmt.Errorf("decode instruction %s/%s@%d: %w", projection.InstructionRef.Owner, projection.InstructionRef.Name, projection.InstructionRef.Version, err)
-		}
-		content := ComposeInstruction(agentType, opts.TeamMemberName, contentSpec.Content)
-		if err := w.writeFile(paths.instructionFile, content); err != nil {
+		composed := ComposeInstruction(projection.AgentType, teamName, content)
+		if err := w.writeFile(paths.instructionFile, composed); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
 	} else {
-		content := ComposeInstruction(agentType, opts.TeamMemberName, "")
-		if err := w.writeFile(paths.instructionFile, content); err != nil {
+		composed := ComposeInstruction(projection.AgentType, teamName, "")
+		if err := w.writeFile(paths.instructionFile, composed); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
 	}
 
 	// Write agent settings if referenced
 	if projection.SettingsRef != nil {
-		vr, err := w.client.GetResourceVersion(projection.SettingsRef.Owner, projection.SettingsRef.Name, projection.SettingsRef.Version)
+		content, err := w.resolveContent(projection.SettingsRef.Owner, projection.SettingsRef.Name)
 		if err != nil {
-			return fmt.Errorf("get settings %s/%s: %w", projection.SettingsRef.Owner, projection.SettingsRef.Name, err)
+			return fmt.Errorf("resolve settings %s/%s: %w", projection.SettingsRef.Owner, projection.SettingsRef.Name, err)
 		}
-		contentSpec, err := decodeSnapshot[api.ContentSpec](vr.Snapshot)
-		if err != nil {
-			return fmt.Errorf("decode settings %s/%s@%d: %w", projection.SettingsRef.Owner, projection.SettingsRef.Name, projection.SettingsRef.Version, err)
-		}
-		if err := w.writeFile(paths.settingsFile, contentSpec.Content); err != nil {
+		if err := w.writeFile(paths.settingsFile, content); err != nil {
 			return fmt.Errorf("write settings: %w", err)
 		}
 	}
@@ -103,18 +89,14 @@ func (w *Writer) materializeMemberFiles(base string, projection *MemberProjectio
 		return fmt.Errorf("write local settings: %w", err)
 	}
 
-	// Write Skills
+	// Write skills
 	for _, skillRef := range projection.Skills {
-		vr, err := w.client.GetResourceVersion(skillRef.Owner, skillRef.Name, skillRef.Version)
+		content, err := w.resolveContent(skillRef.Owner, skillRef.Name)
 		if err != nil {
-			return fmt.Errorf("get skill %s/%s: %w", skillRef.Owner, skillRef.Name, err)
-		}
-		contentSpec, err := decodeSnapshot[api.ContentSpec](vr.Snapshot)
-		if err != nil {
-			return fmt.Errorf("decode skill %s/%s@%d: %w", skillRef.Owner, skillRef.Name, skillRef.Version, err)
+			return fmt.Errorf("resolve skill %s/%s: %w", skillRef.Owner, skillRef.Name, err)
 		}
 		skillPath := filepath.Join(paths.skillsDir, skillRef.Name, "SKILL.md")
-		if err := w.writeFile(skillPath, contentSpec.Content); err != nil {
+		if err := w.writeFile(skillPath, content); err != nil {
 			return fmt.Errorf("write skill %s: %w", skillRef.Name, err)
 		}
 	}
@@ -122,78 +104,19 @@ func (w *Writer) materializeMemberFiles(base string, projection *MemberProjectio
 	return nil
 }
 
-// MaterializeTeamFiles writes local-clone files for all team members.
-// Each member gets a subdirectory named after the team member name.
-// The team local clone owns a single root .clier directory for runtime metadata,
-// while each member owns a generated-only .clier directory for imported
-// protocol files inside its own working tree.
-func (w *Writer) MaterializeTeamFiles(base string, team *api.ResourceResponse, teamSpec *api.TeamSpec) error {
-
-	// Build member lookup for protocol generation from member refs.
-	// Key by owner/name — unique identifier across orgs.
-	tmRefs := refsByRelType(team, string(api.KindMember))
-	membersByKey := make(map[string]ProtocolMember, len(tmRefs))
-	for _, ref := range tmRefs {
-		membersByKey[memberKey(ref.OwnerName, ref.Name)] = ProtocolMember{
-			Owner: ref.OwnerName,
-			Name:  ref.Name,
-		}
+// resolveContent looks up a content resource (instruction, settings, skill)
+// from the pre-built resource map and returns its text content.
+func (w *Writer) resolveContent(owner, name string) (string, error) {
+	key := teamKey(owner, name)
+	r, ok := w.resourceMap[key]
+	if !ok {
+		return "", fmt.Errorf("resource %s not found in resolve map", key)
 	}
-
-	// Build relations from team spec.
-	relMap := make(map[string]domain.MemberRelations, len(tmRefs))
-	for _, ref := range tmRefs {
-		relMap[memberKey(ref.OwnerName, ref.Name)] = domain.MemberRelations{Leaders: []string{}, Workers: []string{}}
-	}
-	for _, r := range teamSpec.Relations {
-		fromKey := memberKey(r.From.Owner, r.From.Name)
-		toKey := memberKey(r.To.Owner, r.To.Name)
-
-		from := relMap[fromKey]
-		from.Workers = append(from.Workers, toKey)
-		relMap[fromKey] = from
-
-		to := relMap[toKey]
-		to.Leaders = append(to.Leaders, fromKey)
-		relMap[toKey] = to
-	}
-
-	for _, tm := range tmRefs {
-		memberBase := filepath.Join(base, tm.Name)
-		tmKey := memberKey(tm.OwnerName, tm.Name)
-
-		projection, agentType, err := w.loadPinnedMember(tm.OwnerName, tm.Name, tm.TargetVersion, tm.AgentType)
-		if err != nil {
-			return fmt.Errorf("get member %s: %w", tm.Name, err)
-		}
-
-		protocol := BuildAgentFacingTeamProtocol(team.Metadata.Name, tm.Name, relMap[tmKey], membersByKey)
-
-		if err := w.materializeMemberFiles(memberBase, projection, agentType, memberWriteOptions{
-			TeamMemberName: tm.Name,
-		}); err != nil {
-			return fmt.Errorf("materialize member %s: %w", tm.Name, err)
-		}
-		protocolPath := filepath.Join(memberBase, ".clier", TeamProtocolFileName(tm.Name))
-		if err := w.writeFile(protocolPath, protocol); err != nil {
-			return fmt.Errorf("write protocol for %s: %w", tm.Name, err)
-		}
-	}
-
-	return nil
-}
-
-// loadPinnedMember builds a MemberProjection and resolves agent type from a
-// pinned version snapshot. The refAgentType (from the team_member ref) takes
-// precedence over the snapshot's agent_type.
-func (w *Writer) loadPinnedMember(owner, name string, version int, refAgentType string) (*MemberProjection, string, error) {
-	vr, err := w.client.GetResourceVersion(owner, name, version)
+	spec, err := decodeSnapshot[api.ContentSpec](r.Snapshot)
 	if err != nil {
-		return nil, "", err
+		return "", fmt.Errorf("decode content %s: %w", key, err)
 	}
-	projection := memberProjectionFromSnapshot(name, vr)
-	agentType := agentTypeFromSnapshot(vr.Snapshot, refAgentType)
-	return projection, agentType, nil
+	return spec.Content, nil
 }
 
 func (w *Writer) writeFile(path, content string) error {

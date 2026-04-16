@@ -12,7 +12,7 @@ type AgentProfile struct {
 	ReadyMarker       string // pane title substring indicating agent is ready, empty to skip
 	ExitCommand       string // command to gracefully exit the agent, empty to skip
 	HomeExcludeKey    string // JSON key for home dir exclusion in local settings, empty to skip
-	InstructionKind   string // server resource kind: "claude-md", "codex-md"
+	InstructionKind   string // server resource kind: "instruction"
 	SettingsKind      string // server resource kind: "claude-setting", "codex-setting"
 }
 
@@ -29,7 +29,7 @@ func ProfileFor(agentType string) (AgentProfile, error) {
 			ReadyMarker:       "Claude",
 			ExitCommand:       "/exit",
 			HomeExcludeKey:    "claudeMdExcludes",
-			InstructionKind:   "claude-md",
+			InstructionKind:   "instruction",
 			SettingsKind:      "claude-setting",
 		}, nil
 	case "codex":
@@ -42,7 +42,7 @@ func ProfileFor(agentType string) (AgentProfile, error) {
 			ReadyMarker:       "",
 			ExitCommand:       "/exit",
 			HomeExcludeKey:    "",
-			InstructionKind:   "codex-md",
+			InstructionKind:   "instruction",
 			SettingsKind:      "codex-setting",
 		}, nil
 	default:

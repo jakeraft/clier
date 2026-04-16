@@ -24,7 +24,7 @@ func TestNewAgentRootCmd_StandaloneScope(t *testing.T) {
 	if !strings.Contains(run.Long, "Use `note` to record a work log entry.") {
 		t.Fatalf("standalone run help should mention note:\n%s", run.Long)
 	}
-	if strings.Contains(run.Long, "Use `tell` to message another team member.") {
+	if strings.Contains(run.Long, "Use `tell` to message another agent.") {
 		t.Fatalf("standalone run help should not mention tell:\n%s", run.Long)
 	}
 	if got := commandNames(run.Commands()); strings.Join(got, ",") != "note" {
@@ -35,7 +35,7 @@ func TestNewAgentRootCmd_StandaloneScope(t *testing.T) {
 func TestNewAgentRootCmd_TeamScope(t *testing.T) {
 	root := newAgentRootCmd(true)
 
-	if !strings.Contains(root.Long, "Use `clier run tell` to message another team member.") {
+	if !strings.Contains(root.Long, "Use `clier run tell` to message another agent.") {
 		t.Fatalf("team agent help should mention tell:\n%s", root.Long)
 	}
 	if !strings.Contains(root.Long, "Use `clier run note` to record a work log entry.") {
@@ -46,7 +46,7 @@ func TestNewAgentRootCmd_TeamScope(t *testing.T) {
 	}
 
 	run := root.Commands()[0]
-	if !strings.Contains(run.Long, "Use `tell` to message another team member.") {
+	if !strings.Contains(run.Long, "Use `tell` to message another agent.") {
 		t.Fatalf("team-scoped run help should mention tell:\n%s", run.Long)
 	}
 	if !strings.Contains(run.Long, "Use `note` to record a work log entry.") {

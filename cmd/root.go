@@ -104,16 +104,14 @@ Define agents, compose them into teams, and run them locally in tmux.
 Each agent gets its own terminal, git repo, and system prompt.
 You watch, steer, and intervene in real time.
 
-Teams and individual members can both be cloned and run.
-Cloning a member creates a runnable 1-member workspace.
+Teams can be leaf (single agent) or composite (multiple agents).
 
 Get started:
   clier tutorial               Walk through an example team
   clier list --kind team       Browse what others have built
 
 Core workflow:
-  clier create member            Define an agent
-  clier create team              Compose agents into a team
+  clier create team              Define an agent or compose a team
   clier fork <owner/name>        Fork a resource to customize it
   clier clone <owner/name>       Download a local working copy
   clier run start                Launch agents in tmux
@@ -214,15 +212,15 @@ func parseOwnerName(s string) (owner, name string, err error) {
 
 func newAgentRootCmd(teamScoped bool) *cobra.Command {
 	root := &cobra.Command{
-		Use:   "clier",
-		Short: "Commands for this run",
+		Use:           "clier",
+		Short:         "Commands for this run",
 		SilenceErrors: true,
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
 		},
 	}
 	if teamScoped {
-		root.Long = "Use `clier run tell` to message another team member.\nUse `clier run note` to record a work log entry."
+		root.Long = "Use `clier run tell` to message another agent.\nUse `clier run note` to record a work log entry."
 	} else {
 		root.Long = "Use `clier run note` to record a work log entry."
 	}
@@ -253,7 +251,7 @@ func newAgentRunCmd(teamScoped bool) *cobra.Command {
 		Short: "Commands for this run",
 	}
 	if teamScoped {
-		run.Long = "Use `tell` to message another team member.\nUse `note` to record a work log entry."
+		run.Long = "Use `tell` to message another agent.\nUse `note` to record a work log entry."
 		run.AddCommand(newRunTellCmd())
 	} else {
 		run.Long = "Use `note` to record a work log entry."

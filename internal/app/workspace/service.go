@@ -3,7 +3,6 @@ package workspace
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -60,43 +59,158 @@ type PushResult struct {
 	PulledAfterPush bool   `json:"pulled_after_push"`
 }
 
-// --- Resource helpers ---
-
-// refsByRelType filters ResolvedRef entries from a ResourceResponse by rel_type.
-func refsByRelType(r *api.ResourceResponse, relType string) []api.ResolvedRef {
-	var out []api.ResolvedRef
-	for _, ref := range r.Refs {
-		if ref.RelType == relType {
-			out = append(out, ref)
-		}
-	}
-	return out
-}
-
-// firstRefByRelType returns the first ResolvedRef matching relType, or nil.
-func firstRefByRelType(r *api.ResourceResponse, relType string) *api.ResolvedRef {
-	for i := range r.Refs {
-		if r.Refs[i].RelType == relType {
-			return &r.Refs[i]
-		}
-	}
-	return nil
-}
-
 func NewService(client *api.Client, fs FileMaterializer, git GitRepo) *Service {
 	return &Service{client: client, fs: fs, git: git}
 }
 
-func (s *Service) Clone(base, kind, owner, name string) (*Manifest, error) {
-	switch api.ResourceKind(kind) {
-	case api.KindMember:
-		return s.cloneMemberAsTeam(base, owner, name)
-	case api.KindTeam:
-		return s.materializeTeam(base, owner, name)
-	default:
-		return nil, fmt.Errorf("unsupported clone kind %q", kind)
-	}
+// --- Clone ---
+
+// agentEntry is a team node that will be materialized as a runnable agent.
+type agentEntry struct {
+	name       string
+	owner      string
+	version    int
+	projection *TeamProjection
+	localBase  string // relative path for tracked resources
 }
+
+func (s *Service) Clone(base, owner, name string) (*Manifest, error) {
+	resolved, err := s.client.ResolveTeam(owner, name)
+	if err != nil {
+		return nil, fmt.Errorf("resolve team %s/%s: %w", owner, name, err)
+	}
+
+	resourceMap := buildResourceMap(resolved.Resources)
+	root := &resolved.Root
+	rootProjection := teamProjectionFromResolved(root)
+
+	// Write root team projection.
+	if err := WriteTeamProjection(s.fs, TeamProjectionPath(base), rootProjection); err != nil {
+		return nil, err
+	}
+
+	// Composite pattern: collect all runnable agents from the tree.
+	// Every node with a known agent profile is materialized uniformly —
+	// no distinction between leaf and composite.
+	agents := s.collectCloneAgents(rootProjection, root, resourceMap)
+	if len(agents) == 0 {
+		return nil, fmt.Errorf("team %s/%s has no runnable agents (unknown agent type %q)", owner, name, rootProjection.AgentType)
+	}
+
+	// Build protocol lookup — all agents are peers.
+	allKeys := make([]string, 0, len(agents))
+	agentsByKey := make(map[string]ProtocolAgent, len(agents))
+	for _, a := range agents {
+		key := teamKey(a.owner, a.name)
+		allKeys = append(allKeys, key)
+		agentsByKey[key] = ProtocolAgent{Owner: a.owner, Name: a.name}
+	}
+
+	tracked := []TrackedResource{{
+		Kind:          string(api.KindTeam),
+		Owner:         root.OwnerName,
+		Name:          rootProjection.Name,
+		LocalPath:     TeamProjectionLocalPath(),
+		RemoteVersion: intPtr(root.Version),
+		Editable:      true,
+	}}
+	generated := []string{}
+	writer := NewWriter(s.fs, s.git, resourceMap)
+
+	for _, a := range agents {
+		agentBase := filepath.Join(base, a.name)
+
+		// Materialize agent files.
+		if err := writer.MaterializeAgent(agentBase, a.projection, a.name); err != nil {
+			return nil, fmt.Errorf("materialize agent %s: %w", a.name, err)
+		}
+
+		// Write team protocol — peers = all other agents.
+		aKey := teamKey(a.owner, a.name)
+		relations := buildPeerRelations(aKey, allKeys)
+		protocol := BuildAgentFacingTeamProtocol(rootProjection.Name, a.name, relations, agentsByKey)
+		protocolPath := filepath.Join(agentBase, ".clier", TeamProtocolFileName(a.name))
+		if err := s.fs.EnsureFile(protocolPath, []byte(protocol)); err != nil {
+			return nil, fmt.Errorf("write protocol for %s: %w", a.name, err)
+		}
+
+		// Write child projection (root already written as team.json).
+		isRoot := a.name == rootProjection.Name && a.owner == root.OwnerName
+		if !isRoot {
+			if err := WriteTeamProjection(s.fs, ChildTeamProjectionPath(base, a.name), a.projection); err != nil {
+				return nil, err
+			}
+			tracked = append(tracked, TrackedResource{
+				Kind:          string(api.KindTeam),
+				Owner:         a.owner,
+				Name:          a.name,
+				LocalPath:     ChildTeamProjectionLocalPath(a.name),
+				RemoteVersion: intPtr(a.version),
+				Editable:      true,
+			})
+		}
+
+		profile, _ := domain.ProfileFor(a.projection.AgentType)
+		generated = append(generated,
+			filepath.ToSlash(filepath.Join(a.localBase, ".clier", "work-log-protocol.md")),
+			filepath.ToSlash(filepath.Join(a.localBase, ".clier", TeamProtocolFileName(a.name))),
+		)
+		appendAgentTrackedResources(&tracked, &generated, a.projection, a.localBase, profile)
+	}
+
+	if err := s.populateBaseHashes(base, tracked); err != nil {
+		return nil, err
+	}
+	manifest := &Manifest{
+		Kind:             string(api.KindTeam),
+		Owner:            root.OwnerName,
+		Name:             rootProjection.Name,
+		ClonedAt:         time.Now().UTC(),
+		RootResource:     tracked[0],
+		TrackedResources: tracked,
+		GeneratedFiles:   normalizePaths(generated),
+	}
+	if err := SaveManifest(s.fs, base, manifest); err != nil {
+		return nil, err
+	}
+	return manifest, nil
+}
+
+// collectCloneAgents walks the team tree and collects every node that has
+// a known agent profile (ProfileFor succeeds). Uniform for leaf and composite.
+func (s *Service) collectCloneAgents(rootProjection *TeamProjection, root *api.ResolvedResource, resourceMap map[string]*api.ResolvedResource) []agentEntry {
+	var agents []agentEntry
+
+	// Root node.
+	if _, err := domain.ProfileFor(rootProjection.AgentType); err == nil {
+		agents = append(agents, agentEntry{
+			name: rootProjection.Name, owner: root.OwnerName,
+			version: root.Version, projection: rootProjection,
+			localBase: filepath.ToSlash(rootProjection.Name),
+		})
+	}
+
+	// Children.
+	for _, child := range rootProjection.Children {
+		childKey := teamKey(child.Owner, child.Name)
+		childResource, ok := resourceMap[childKey]
+		if !ok {
+			continue
+		}
+		childProjection := teamProjectionFromResolved(childResource)
+		if _, err := domain.ProfileFor(childProjection.AgentType); err == nil {
+			agents = append(agents, agentEntry{
+				name: child.Name, owner: child.Owner,
+				version: child.ChildVersion, projection: childProjection,
+				localBase: filepath.ToSlash(child.Name),
+			})
+		}
+	}
+
+	return agents
+}
+
+// --- Pull ---
 
 func (s *Service) Pull(base string, force bool) (*Manifest, error) {
 	manifest, err := LoadManifest(s.fs, base)
@@ -129,58 +243,69 @@ func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Mani
 		}
 	}
 
-	// Pull each tracked resource's latest version from server.
+	// Use ResolveTeam for a full refresh.
+	resolved, err := s.client.ResolveTeam(manifest.Owner, manifest.Name)
+	if err != nil {
+		return nil, fmt.Errorf("resolve team %s/%s: %w", manifest.Owner, manifest.Name, err)
+	}
+	resourceMap := buildResourceMap(resolved.Resources)
+	// Also add root to map for child lookups.
+	rootKey := teamKey(resolved.Root.OwnerName, resolved.Root.Name)
+	resourceMap[rootKey] = &resolved.Root
+
 	for i := range manifest.TrackedResources {
 		tr := &manifest.TrackedResources[i]
-		res, err := s.client.GetResource(tr.Owner, tr.Name)
-		if err != nil {
-			return nil, fmt.Errorf("pull %s %s/%s: %w", tr.Kind, tr.Owner, tr.Name, err)
-		}
+		key := teamKey(tr.Owner, tr.Name)
 		localPath := filepath.Join(base, filepath.FromSlash(tr.LocalPath))
-		latest := res.Metadata.LatestVersion
 
 		switch api.ResourceKind(tr.Kind) {
-		case api.KindMember:
-			projection := memberProjectionFromResource(res)
-			if err := WriteMemberProjection(s.fs, localPath, projection); err != nil {
-				return nil, err
-			}
 		case api.KindTeam:
-			teamSpec, err := api.DecodeSpec[api.TeamSpec](res)
-			if err != nil {
-				return nil, fmt.Errorf("decode team spec: %w", err)
+			r, ok := resourceMap[key]
+			if !ok {
+				return nil, fmt.Errorf("pull team %s: not found in resolve response", key)
 			}
-			if err := WriteTeamProjection(s.fs, localPath, teamProjectionFromResource(res, teamSpec)); err != nil {
+			projection := teamProjectionFromResolved(r)
+			if err := WriteTeamProjection(s.fs, localPath, projection); err != nil {
 				return nil, err
 			}
-		case api.KindClaudeMd, api.KindClaudeSettings, api.KindCodexMd, api.KindCodexSettings, api.KindSkill:
-			spec, err := api.DecodeSpec[api.ContentSpec](res)
+			tr.RemoteVersion = intPtr(r.Version)
+
+		case api.KindInstruction, api.KindClaudeSettings, api.KindCodexSettings, api.KindSkill:
+			r, ok := resourceMap[key]
+			if !ok {
+				return nil, fmt.Errorf("pull %s %s: not found in resolve response", tr.Kind, key)
+			}
+			spec, err := decodeSnapshot[api.ContentSpec](r.Snapshot)
 			if err != nil {
 				return nil, fmt.Errorf("decode %s spec: %w", tr.Kind, err)
 			}
 			content := spec.Content
 			if api.IsInstructionKind(tr.Kind) {
-				memberName := filepath.ToSlash(tr.LocalPath)
-				if idx := strings.Index(memberName, "/"); idx >= 0 {
-					memberName = memberName[:idx]
+				agentName := filepath.ToSlash(tr.LocalPath)
+				if idx := strings.Index(agentName, "/"); idx >= 0 {
+					agentName = agentName[:idx]
 				}
-				content = ComposeInstruction(tr.AgentType, memberName, content)
+				agentType := tr.AgentType
+				if agentType == "" {
+					agentType = "claude"
+				}
+				content = ComposeInstruction(agentType, agentName, content)
 			}
 			if err := s.fs.EnsureFile(localPath, []byte(content)); err != nil {
 				return nil, fmt.Errorf("write %s: %w", tr.LocalPath, err)
 			}
+			tr.RemoteVersion = intPtr(r.Version)
 		}
-
-		tr.RemoteVersion = &latest
 	}
 
 	// Recalculate base hashes after updating files.
 	if err := s.populateBaseHashes(base, manifest.TrackedResources); err != nil {
 		return nil, err
 	}
-
 	return manifest, nil
 }
+
+// --- Status ---
 
 func (s *Service) Status(base string) (*Status, error) {
 	manifest, err := LoadManifest(s.fs, base)
@@ -248,6 +373,8 @@ func (s *Service) Status(base string) (*Status, error) {
 	return status, nil
 }
 
+// --- Push ---
+
 func (s *Service) Push(base string) (*PushResult, error) {
 	manifest, err := LoadManifest(s.fs, base)
 	if err != nil {
@@ -298,23 +425,16 @@ func (s *Service) Push(base string) (*PushResult, error) {
 func (s *Service) preparePushBody(base string, manifest *Manifest, r TrackedResource) (api.ResourceKind, any, error) {
 	kind := api.ResourceKind(r.Kind)
 	switch kind {
-	case api.KindMember:
-		projection, err := LoadMemberProjection(s.fs, filepath.Join(base, filepath.FromSlash(r.LocalPath)))
-		if err != nil {
-			return "", nil, err
-		}
-		agentType := r.AgentType
-		body, err := s.memberMutationFromProjection(projection, agentType)
-		if err != nil {
-			return "", nil, err
-		}
-		return kind, body, nil
 	case api.KindTeam:
 		projection, err := LoadTeamProjection(s.fs, filepath.Join(base, filepath.FromSlash(r.LocalPath)))
 		if err != nil {
 			return "", nil, err
 		}
-		return kind, s.teamMutationFromProjection(projection), nil
+		body, err := s.teamMutationFromProjection(projection)
+		if err != nil {
+			return "", nil, err
+		}
+		return kind, body, nil
 	default:
 		content, err := s.readContentForPush(base, manifest, kind, r)
 		if err != nil {
@@ -347,6 +467,67 @@ func (s *Service) readContentForPush(base string, manifest *Manifest, kind api.R
 	}
 	return string(data), nil
 }
+
+// teamMutationFromProjection builds a TeamWriteRequest from a TeamProjection.
+// Works for both leaf teams (agent fields) and composite teams (children).
+func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.TeamWriteRequest, error) {
+	req := &api.TeamWriteRequest{
+		Name:       projection.Name,
+		Command:    projection.Command,
+		GitRepoURL: projection.GitRepoURL,
+	}
+
+	// Instruction and settings refs require an agent profile to resolve the kind.
+	// Only resolve when refs are present (leaf teams); composite teams skip this.
+	if projection.InstructionRef != nil || projection.SettingsRef != nil {
+		profile, err := domain.ProfileFor(projection.AgentType)
+		if err != nil {
+			return nil, fmt.Errorf("resolve agent profile: %w", err)
+		}
+		if projection.InstructionRef != nil {
+			ref := &api.ResourceRefRequest{
+				Owner:   projection.InstructionRef.Owner,
+				Name:    projection.InstructionRef.Name,
+				Version: projection.InstructionRef.Version,
+			}
+			req.SetInstructionRef(ref)
+		}
+		if projection.SettingsRef != nil {
+			ref := &api.ResourceRefRequest{
+				Owner:   projection.SettingsRef.Owner,
+				Name:    projection.SettingsRef.Name,
+				Version: projection.SettingsRef.Version,
+			}
+			req.SetSettingsRef(profile.SettingsKind, ref)
+		}
+	}
+
+	// Skills
+	skillRefs := make([]api.ResourceRefRequest, 0, len(projection.Skills))
+	for _, skillRef := range projection.Skills {
+		skillRefs = append(skillRefs, api.ResourceRefRequest{
+			Owner:   skillRef.Owner,
+			Name:    skillRef.Name,
+			Version: skillRef.Version,
+		})
+	}
+	req.Skills = skillRefs
+
+	// Children (for composite teams)
+	children := make([]api.ChildRefRequest, 0, len(projection.Children))
+	for _, child := range projection.Children {
+		children = append(children, api.ChildRefRequest{
+			Owner:        child.Owner,
+			Name:         child.Name,
+			ChildVersion: child.ChildVersion,
+		})
+	}
+	req.Children = children
+
+	return req, nil
+}
+
+// --- Modified / Tracked ---
 
 func (s *Service) ModifiedTrackedResources(base string) ([]TrackedResource, error) {
 	manifest, err := LoadManifest(s.fs, base)
@@ -423,436 +604,82 @@ func (s *Service) runSummary(base string) (RunStatusSummary, error) {
 	return summary, nil
 }
 
-func (s *Service) cloneMemberAsTeam(base, owner, name string) (*Manifest, error) {
-	member, err := s.client.GetResource(owner, name)
+// serverInstructionContent reads the local instruction file and strips the
+// agent-specific prelude before sending to the server.
+func (s *Service) serverInstructionContent(base string, _ *Manifest, resource TrackedResource) (string, error) {
+	data, err := s.fs.ReadFile(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
 	if err != nil {
-		return nil, fmt.Errorf("get member %s/%s: %w", owner, name, err)
+		return "", fmt.Errorf("read local resource %s: %w", resource.LocalPath, err)
 	}
-	projection := memberProjectionFromResource(member)
-	agentType := agentTypeFromResource(member)
+	content := string(data)
 
-	writer := NewWriter(s.client, owner, s.fs, s.git)
-	memberBase := filepath.Join(base, member.Metadata.Name)
-
-	pinnedProjection, pinnedAgentType, err := writer.loadPinnedMember(
-		owner, name, member.Metadata.LatestVersion, agentType,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("load pinned member %s: %w", name, err)
-	}
-	if err := writer.materializeMemberFiles(memberBase, pinnedProjection, pinnedAgentType, memberWriteOptions{
-		TeamMemberName: member.Metadata.Name,
-	}); err != nil {
-		return nil, fmt.Errorf("materialize member %s: %w", name, err)
+	// Determine the agent name from the local path (first path component).
+	agentName := filepath.ToSlash(filepath.Clean(resource.LocalPath))
+	if idx := strings.Index(agentName, "/"); idx >= 0 {
+		agentName = agentName[:idx]
 	}
 
-	// Write team protocol for 1-member team (no relations).
-	mKey := memberKey(member.Metadata.OwnerName, member.Metadata.Name)
-	protocol := BuildAgentFacingTeamProtocol(
-		member.Metadata.Name, member.Metadata.Name,
-		domain.MemberRelations{Leaders: []string{}, Workers: []string{}},
-		map[string]ProtocolMember{mKey: {Owner: member.Metadata.OwnerName, Name: member.Metadata.Name}},
-	)
-	protocolPath := filepath.Join(memberBase, ".clier", TeamProtocolFileName(member.Metadata.Name))
-	if err := s.fs.EnsureFile(protocolPath, []byte(protocol)); err != nil {
-		return nil, fmt.Errorf("write protocol for %s: %w", name, err)
+	// Try to find the agent type by looking up the agent's team projection.
+	agentType := resource.AgentType
+	if agentType == "" {
+		agentType = "claude"
 	}
-
-	// Write team projection (1-member team) — generated, not tracked.
-	teamProjection := &TeamProjection{
-		Name: member.Metadata.Name,
-		Members: []TeamMemberProjection{{
-			MemberVersion: member.Metadata.LatestVersion,
-			Name:          member.Metadata.Name,
-			Member: ResourceRefProjection{
-				Owner:   member.Metadata.OwnerName,
-				Name:    member.Metadata.Name,
-				Version: member.Metadata.LatestVersion,
-			},
-		}},
-		Relations: []TeamRelationProjection{},
-	}
-	if err := WriteTeamProjection(s.fs, TeamProjectionPath(base), teamProjection); err != nil {
-		return nil, err
-	}
-
-	// Write member projection.
-	if err := WriteMemberProjection(s.fs, TeamMemberProjectionPath(base, member.Metadata.Name), projection); err != nil {
-		return nil, err
-	}
-
-	// Build tracked resources.
-	memberLocalBase := filepath.ToSlash(member.Metadata.Name)
-	tracked := []TrackedResource{{
-		Kind:          string(api.KindMember),
-		Owner:         member.Metadata.OwnerName,
-		Name:          member.Metadata.Name,
-		LocalPath:     TeamMemberProjectionLocalPath(member.Metadata.Name),
-		RemoteVersion: intPtr(member.Metadata.LatestVersion),
-		Editable:      true,
-	}}
-
-	profile, _ := domain.ProfileFor(agentType)
-
-	generated := []string{
-		TeamProjectionLocalPath(),
-		filepath.ToSlash(filepath.Join(memberLocalBase, ".clier", "work-log-protocol.md")),
-		filepath.ToSlash(filepath.Join(memberLocalBase, ".clier", TeamProtocolFileName(member.Metadata.Name))),
-	}
-	if profile.LocalSettingsFile != "" {
-		generated = append(generated, filepath.ToSlash(filepath.Join(memberLocalBase, profile.SettingsDir, profile.LocalSettingsFile)))
-	}
-
-	if projection.InstructionRef != nil {
-		tracked = append(tracked, TrackedResource{
-			Kind:          profile.InstructionKind,
-			AgentType:     agentType,
-			Owner:         projection.InstructionRef.Owner,
-			Name:          projection.InstructionRef.Name,
-			LocalPath:     filepath.ToSlash(filepath.Join(memberLocalBase, profile.InstructionFile)),
-			RemoteVersion: intPtr(projection.InstructionRef.Version),
-			Editable:      true,
-		})
-	} else {
-		generated = append(generated, filepath.ToSlash(filepath.Join(memberLocalBase, profile.InstructionFile)))
-	}
-	if projection.SettingsRef != nil {
-		tracked = append(tracked, TrackedResource{
-			Kind:          profile.SettingsKind,
-			AgentType:     agentType,
-			Owner:         projection.SettingsRef.Owner,
-			Name:          projection.SettingsRef.Name,
-			LocalPath:     filepath.ToSlash(filepath.Join(memberLocalBase, profile.SettingsDir, profile.SettingsFile)),
-			RemoteVersion: intPtr(projection.SettingsRef.Version),
-			Editable:      true,
-		})
-	}
-	for _, skillRef := range projection.Skills {
-		tracked = append(tracked, TrackedResource{
-			Kind:          string(api.KindSkill),
-			AgentType:     agentType,
-			Owner:         skillRef.Owner,
-			Name:          skillRef.Name,
-			LocalPath:     filepath.ToSlash(filepath.Join(memberLocalBase, profile.SettingsDir, profile.SkillsDir, skillRef.Name, "SKILL.md")),
-			RemoteVersion: intPtr(skillRef.Version),
-			Editable:      true,
-		})
-	}
-
-	if err := s.populateBaseHashes(base, tracked); err != nil {
-		return nil, err
-	}
-
-	manifest := &Manifest{
-		Kind:             string(api.KindMember),
-		Owner:            member.Metadata.OwnerName,
-		Name:             member.Metadata.Name,
-		ClonedAt:         time.Now().UTC(),
-		RootResource:     tracked[0],
-		TrackedResources: tracked,
-		GeneratedFiles:   normalizePaths(generated),
-		Runtime: &RuntimeMetadata{
-			Team: &TeamRuntimeMetadata{
-				Name: member.Metadata.Name,
-				Members: []TeamMemberRuntimeMetadata{{
-					Name:       member.Metadata.Name,
-					Owner:      member.Metadata.OwnerName,
-					AgentType:  agentType,
-					Command:    projection.Command,
-					GitRepoURL: projection.GitRepoURL,
-				}},
-			},
-		},
-	}
-	if err := SaveManifest(s.fs, base, manifest); err != nil {
-		return nil, err
-	}
-	return manifest, nil
+	return StripInstructionPrelude(agentType, agentName, content), nil
 }
 
-func (s *Service) materializeTeam(base, owner, name string) (*Manifest, error) {
-	team, err := s.client.GetResource(owner, name)
-	if err != nil {
-		return nil, fmt.Errorf("get team %s/%s: %w", owner, name, err)
+// --- Helpers ---
+
+// buildResourceMap indexes resolved resources by owner/name for O(1) lookup.
+func buildResourceMap(resources []api.ResolvedResource) map[string]*api.ResolvedResource {
+	m := make(map[string]*api.ResolvedResource, len(resources))
+	for i := range resources {
+		r := &resources[i]
+		m[teamKey(r.OwnerName, r.Name)] = r
 	}
-	teamSpec, err := api.DecodeSpec[api.TeamSpec](team)
-	if err != nil {
-		return nil, fmt.Errorf("decode team spec %s/%s: %w", owner, name, err)
-	}
-
-	writer := NewWriter(s.client, owner, s.fs, s.git)
-	if err := writer.MaterializeTeamFiles(base, team, teamSpec); err != nil {
-		return nil, err
-	}
-
-	if err := WriteTeamProjection(s.fs, TeamProjectionPath(base), teamProjectionFromResource(team, teamSpec)); err != nil {
-		return nil, err
-	}
-
-	tracked := []TrackedResource{{
-		Kind:          string(api.KindTeam),
-		Owner:         team.Metadata.OwnerName,
-		Name:          team.Metadata.Name,
-		LocalPath:     TeamProjectionLocalPath(),
-		RemoteVersion: intPtr(team.Metadata.LatestVersion),
-		Editable:      true,
-	}}
-	generated := []string{}
-	metadata := &RuntimeMetadata{
-		Team: &TeamRuntimeMetadata{
-			Name: team.Metadata.Name,
-		},
-	}
-
-	for _, tm := range refsByRelType(team, string(api.KindMember)) {
-		memberVersion, err := s.client.GetResourceVersion(tm.OwnerName, tm.Name, tm.TargetVersion)
-		if err != nil {
-			return nil, fmt.Errorf("get member %s/%s: %w", tm.OwnerName, tm.Name, err)
-		}
-
-		// Build a MemberProjection from the snapshot + ref metadata.
-		memberProjection := memberProjectionFromSnapshot(tm.Name, memberVersion)
-		if err := WriteMemberProjection(s.fs, TeamMemberProjectionPath(base, tm.Name), memberProjection); err != nil {
-			return nil, err
-		}
-		tracked = append(tracked, TrackedResource{
-			Kind:          string(api.KindMember),
-			Owner:         tm.OwnerName,
-			Name:          tm.Name,
-			LocalPath:     TeamMemberProjectionLocalPath(tm.Name),
-			RemoteVersion: intPtr(tm.TargetVersion),
-			Editable:      true,
-		})
-
-		agentType := agentTypeFromSnapshot(memberVersion.Snapshot, tm.AgentType)
-		profile, _ := domain.ProfileFor(agentType)
-
-		metadata.Team.Members = append(metadata.Team.Members, TeamMemberRuntimeMetadata{
-			Name:       tm.Name,
-			Owner:      tm.OwnerName,
-			AgentType:  agentType,
-			Command:    memberProjection.Command,
-			GitRepoURL: memberProjection.GitRepoURL,
-		})
-
-		memberBase := filepath.ToSlash(tm.Name)
-		generated = append(generated,
-			filepath.ToSlash(filepath.Join(memberBase, ".clier", "work-log-protocol.md")),
-			filepath.ToSlash(filepath.Join(memberBase, ".clier", TeamProtocolFileName(tm.Name))),
-		)
-		if profile.LocalSettingsFile != "" {
-			generated = append(generated,
-				filepath.ToSlash(filepath.Join(memberBase, profile.SettingsDir, profile.LocalSettingsFile)),
-			)
-		}
-
-		if memberProjection.InstructionRef != nil {
-			tracked = append(tracked, TrackedResource{
-				Kind:          profile.InstructionKind,
-				AgentType:     agentType,
-				Owner:         memberProjection.InstructionRef.Owner,
-				Name:          memberProjection.InstructionRef.Name,
-				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, profile.InstructionFile)),
-				RemoteVersion: intPtr(memberProjection.InstructionRef.Version),
-				Editable:      true,
-			})
-		} else {
-			generated = append(generated, filepath.ToSlash(filepath.Join(memberBase, profile.InstructionFile)))
-		}
-		if memberProjection.SettingsRef != nil {
-			tracked = append(tracked, TrackedResource{
-				Kind:          profile.SettingsKind,
-				AgentType:     agentType,
-				Owner:         memberProjection.SettingsRef.Owner,
-				Name:          memberProjection.SettingsRef.Name,
-				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, profile.SettingsDir, profile.SettingsFile)),
-				RemoteVersion: intPtr(memberProjection.SettingsRef.Version),
-				Editable:      true,
-			})
-		}
-		for _, skillRef := range memberProjection.Skills {
-			tracked = append(tracked, TrackedResource{
-				Kind:          string(api.KindSkill),
-				AgentType:     agentType,
-				Owner:         skillRef.Owner,
-				Name:          skillRef.Name,
-				LocalPath:     filepath.ToSlash(filepath.Join(memberBase, profile.SettingsDir, profile.SkillsDir, skillRef.Name, "SKILL.md")),
-				RemoteVersion: intPtr(skillRef.Version),
-				Editable:      true,
-			})
-		}
-	}
-
-	if err := s.populateBaseHashes(base, tracked); err != nil {
-		return nil, err
-	}
-	manifest := &Manifest{
-		Kind:             string(api.KindTeam),
-		Owner:            team.Metadata.OwnerName,
-		Name:             team.Metadata.Name,
-		ClonedAt:         time.Now().UTC(),
-		RootResource:     tracked[0],
-		TrackedResources: tracked,
-		GeneratedFiles:   normalizePaths(generated),
-		Runtime:          metadata,
-	}
-	if err := SaveManifest(s.fs, base, manifest); err != nil {
-		return nil, err
-	}
-	return manifest, nil
+	return m
 }
 
-func (s *Service) memberMutationFromProjection(projection *MemberProjection, agentType string) (*api.MemberWriteRequest, error) {
-	profile, err := domain.ProfileFor(agentType)
-	if err != nil {
-		return nil, fmt.Errorf("resolve agent profile: %w", err)
-	}
-
-	var instructionRef *api.ResourceRefRequest
-	if projection.InstructionRef != nil {
-		instructionRef = &api.ResourceRefRequest{
-			Owner:   projection.InstructionRef.Owner,
-			Name:    projection.InstructionRef.Name,
-			Version: projection.InstructionRef.Version,
-		}
-	}
-
-	var settingsRef *api.ResourceRefRequest
-	if projection.SettingsRef != nil {
-		settingsRef = &api.ResourceRefRequest{
-			Owner:   projection.SettingsRef.Owner,
-			Name:    projection.SettingsRef.Name,
-			Version: projection.SettingsRef.Version,
-		}
-	}
-
-	skillRefs := make([]api.ResourceRefRequest, 0, len(projection.Skills))
-	for _, skillRef := range projection.Skills {
-		skillRefs = append(skillRefs, api.ResourceRefRequest{
-			Owner:   skillRef.Owner,
-			Name:    skillRef.Name,
-			Version: skillRef.Version,
-		})
-	}
-
-	req := &api.MemberWriteRequest{
-		Name:       projection.Name,
-		Command:    projection.Command,
-		GitRepoURL: projection.GitRepoURL,
-		Skills:     skillRefs,
-	}
-	req.SetInstructionRef(profile.InstructionKind, instructionRef)
-	req.SetSettingsRef(profile.SettingsKind, settingsRef)
-	return req, nil
+// snapshotRef represents a ref entry embedded in a resolve snapshot.
+type snapshotRef struct {
+	RelType       string `json:"rel_type"`
+	TargetName    string `json:"target_name"`
+	TargetOwner   string `json:"target_owner"`
+	TargetVersion int    `json:"target_version"`
+	AgentType     string `json:"agent_type,omitempty"`
+	Command       string `json:"command,omitempty"`
 }
 
-func (s *Service) teamMutationFromProjection(projection *TeamProjection) *api.TeamWriteRequest {
-	members := make([]api.TeamMemberRequest, 0, len(projection.Members))
-	for _, member := range projection.Members {
-		members = append(members, api.TeamMemberRequest{
-			Owner:         member.Member.Owner,
-			Name:          member.Member.Name,
-			MemberVersion: member.Member.Version,
-		})
-	}
-
-	relations := make([]api.TeamRelationRequest, 0, len(projection.Relations))
-	for _, relation := range projection.Relations {
-		relations = append(relations, api.TeamRelationRequest{
-			From: api.ResourceIdentifier{Owner: relation.From.Owner, Name: relation.From.Name},
-			To:   api.ResourceIdentifier{Owner: relation.To.Owner, Name: relation.To.Name},
-		})
-	}
-
-	return &api.TeamWriteRequest{
-		Name:        projection.Name,
-		TeamMembers: members,
-		Relations:   relations,
-	}
+// snapshotWithRefs is the common wrapper for snapshots that contain refs.
+type snapshotWithRefs struct {
+	Refs []snapshotRef `json:"refs"`
 }
 
-// agentTypeFromResource resolves the agent type from a live ResourceResponse.
-// The top-level AgentTypes field takes precedence over the spec-level agent_type.
-func agentTypeFromResource(r *api.ResourceResponse) string {
-	if len(r.AgentTypes) > 0 {
-		return r.AgentTypes[0]
-	}
-	if spec, err := api.DecodeSpec[api.MemberSpec](r); err == nil {
-		return spec.AgentType
-	}
-	return ""
-}
-
-// agentTypeFromSnapshot resolves the agent type from a version snapshot.
-// The refAgentType (from the parent ref, e.g. team_member) takes precedence
-// over the snapshot's embedded agent_type.
-func agentTypeFromSnapshot(snapshot json.RawMessage, refAgentType string) string {
-	if refAgentType != "" {
-		return refAgentType
-	}
-	if spec, err := decodeSnapshot[api.MemberSpec](snapshot); err == nil {
-		return spec.AgentType
-	}
-	return ""
-}
-
-// memberProjectionFromResource builds a MemberProjection from a unified ResourceResponse.
-func memberProjectionFromResource(r *api.ResourceResponse) *MemberProjection {
-	projection := &MemberProjection{
-		Name:   r.Metadata.Name,
-		Skills: make([]ResourceRefProjection, 0),
-	}
-
-	// Spec fields (Command, GitRepoURL) need to be decoded.
-	if spec, err := api.DecodeSpec[api.MemberSpec](r); err == nil {
-		projection.Command = spec.Command
-		projection.GitRepoURL = spec.GitRepoURL
-	}
-
-	for _, kind := range []api.ResourceKind{api.KindClaudeMd, api.KindCodexMd} {
-		if ref := firstRefByRelType(r, string(kind)); ref != nil {
-			projection.InstructionRef = &ResourceRefProjection{Owner: ref.OwnerName, Name: ref.Name, Version: ref.TargetVersion}
-			break
-		}
-	}
-	for _, kind := range []api.ResourceKind{api.KindClaudeSettings, api.KindCodexSettings} {
-		if ref := firstRefByRelType(r, string(kind)); ref != nil {
-			projection.SettingsRef = &ResourceRefProjection{Owner: ref.OwnerName, Name: ref.Name, Version: ref.TargetVersion}
-			break
-		}
-	}
-	for _, ref := range refsByRelType(r, string(api.KindSkill)) {
-		projection.Skills = append(projection.Skills, ResourceRefProjection{Owner: ref.OwnerName, Name: ref.Name, Version: ref.TargetVersion})
-	}
-	return projection
-}
-
-// memberProjectionFromSnapshot builds a MemberProjection from a version snapshot.
-func memberProjectionFromSnapshot(name string, vr *api.ResourceVersionResponse) *MemberProjection {
-	projection := &MemberProjection{
-		Name:   name,
-		Skills: make([]ResourceRefProjection, 0),
+// teamProjectionFromResolved builds a TeamProjection from a ResolvedResource
+// (used during Clone and Pull with ResolveTeam responses).
+func teamProjectionFromResolved(r *api.ResolvedResource) *TeamProjection {
+	projection := &TeamProjection{
+		Name:     r.Name,
+		Skills:   make([]ResourceRefProjection, 0),
+		Children: make([]ChildProjection, 0),
 	}
 
 	// Decode spec fields from snapshot.
-	if spec, err := decodeSnapshot[api.MemberSpec](vr.Snapshot); err == nil {
+	if spec, err := decodeSnapshot[api.TeamSpec](r.Snapshot); err == nil {
+		projection.AgentType = spec.AgentType
 		projection.Command = spec.Command
 		projection.GitRepoURL = spec.GitRepoURL
+		for _, child := range spec.Children {
+			projection.Children = append(projection.Children, ChildProjection{
+				Owner:        child.Owner,
+				Name:         child.Name,
+				ChildVersion: child.Version,
+			})
+		}
 	}
 
-	// Decode refs from snapshot. The server sends a "refs" array of objects
-	// with rel_type, target_name, target_owner, target_version.
-	type snapshotRef struct {
-		RelType       string `json:"rel_type"`
-		TargetName    string `json:"target_name"`
-		TargetOwner   string `json:"target_owner"`
-		TargetVersion int    `json:"target_version"`
-	}
-	type snapshotRefs struct {
-		Refs []snapshotRef `json:"refs"`
-	}
-	var refs snapshotRefs
-	if err := decodeSnapshotInto(vr.Snapshot, &refs); err == nil {
+	// Decode refs from snapshot for instruction, settings, skill references.
+	var refs snapshotWithRefs
+	if err := decodeSnapshotInto(r.Snapshot, &refs); err == nil {
 		for _, ref := range refs.Refs {
 			rp := ResourceRefProjection{
 				Owner:   ref.TargetOwner,
@@ -860,7 +687,7 @@ func memberProjectionFromSnapshot(name string, vr *api.ResourceVersionResponse) 
 				Version: ref.TargetVersion,
 			}
 			switch ref.RelType {
-			case string(api.KindClaudeMd), string(api.KindCodexMd):
+			case string(api.KindInstruction):
 				projection.InstructionRef = &rp
 			case string(api.KindClaudeSettings), string(api.KindCodexSettings):
 				projection.SettingsRef = &rp
@@ -873,31 +700,72 @@ func memberProjectionFromSnapshot(name string, vr *api.ResourceVersionResponse) 
 	return projection
 }
 
-// teamProjectionFromResource builds a TeamProjection from a unified ResourceResponse.
-func teamProjectionFromResource(r *api.ResourceResponse, spec *api.TeamSpec) *TeamProjection {
-	projection := &TeamProjection{
-		Name:      r.Metadata.Name,
-		Members:   make([]TeamMemberProjection, 0),
-		Relations: make([]TeamRelationProjection, 0),
+// appendAgentTrackedResources adds tracked resources and generated files for
+// a single agent (leaf team) to the tracked/generated slices.
+func appendAgentTrackedResources(tracked *[]TrackedResource, generated *[]string, projection *TeamProjection, localBase string, profile domain.AgentProfile) {
+	agentType := projection.AgentType
+
+	if profile.LocalSettingsFile != "" {
+		*generated = append(*generated, filepath.ToSlash(filepath.Join(localBase, profile.SettingsDir, profile.LocalSettingsFile)))
 	}
-	for _, ref := range refsByRelType(r, string(api.KindMember)) {
-		projection.Members = append(projection.Members, TeamMemberProjection{
-			MemberVersion: ref.TargetVersion,
-			Name:          ref.Name,
-			Member: ResourceRefProjection{
-				Owner:   ref.OwnerName,
-				Name:    ref.Name,
-				Version: ref.TargetVersion,
-			},
+
+	if projection.InstructionRef != nil {
+		*tracked = append(*tracked, TrackedResource{
+			Kind:          profile.InstructionKind,
+			AgentType:     agentType,
+			Owner:         projection.InstructionRef.Owner,
+			Name:          projection.InstructionRef.Name,
+			LocalPath:     filepath.ToSlash(filepath.Join(localBase, profile.InstructionFile)),
+			RemoteVersion: intPtr(projection.InstructionRef.Version),
+			Editable:      true,
+		})
+	} else {
+		*generated = append(*generated, filepath.ToSlash(filepath.Join(localBase, profile.InstructionFile)))
+	}
+
+	if projection.SettingsRef != nil {
+		*tracked = append(*tracked, TrackedResource{
+			Kind:          profile.SettingsKind,
+			AgentType:     agentType,
+			Owner:         projection.SettingsRef.Owner,
+			Name:          projection.SettingsRef.Name,
+			LocalPath:     filepath.ToSlash(filepath.Join(localBase, profile.SettingsDir, profile.SettingsFile)),
+			RemoteVersion: intPtr(projection.SettingsRef.Version),
+			Editable:      true,
 		})
 	}
-	for _, relation := range spec.Relations {
-		projection.Relations = append(projection.Relations, TeamRelationProjection{
-			From: api.ResourceIdentifier{Owner: relation.From.Owner, Name: relation.From.Name},
-			To:   api.ResourceIdentifier{Owner: relation.To.Owner, Name: relation.To.Name},
+
+	for _, skillRef := range projection.Skills {
+		*tracked = append(*tracked, TrackedResource{
+			Kind:          string(api.KindSkill),
+			AgentType:     agentType,
+			Owner:         skillRef.Owner,
+			Name:          skillRef.Name,
+			LocalPath:     filepath.ToSlash(filepath.Join(localBase, profile.SettingsDir, profile.SkillsDir, skillRef.Name, "SKILL.md")),
+			RemoteVersion: intPtr(skillRef.Version),
+			Editable:      true,
 		})
 	}
-	return projection
+}
+
+// buildPeerRelations builds TeamRelations where all other keys are peers (workers).
+// In the new flat model, children are peers — no leader/worker hierarchy.
+func buildPeerRelations(selfKey string, allKeys []string) domain.TeamRelations {
+	workers := make([]string, 0, len(allKeys)-1)
+	for _, key := range allKeys {
+		if key != selfKey {
+			workers = append(workers, key)
+		}
+	}
+	return domain.TeamRelations{
+		Leaders: []string{},
+		Workers: workers,
+	}
+}
+
+// teamKey returns the unique identifier for a team (owner/name).
+func teamKey(owner, name string) string {
+	return owner + "/" + name
 }
 
 func (s *Service) populateBaseHashes(base string, tracked []TrackedResource) error {
@@ -938,26 +806,4 @@ func versionsMatch(expected *int, actual int) bool {
 		return false
 	}
 	return *expected == actual
-}
-
-func (s *Service) serverInstructionContent(base string, manifest *Manifest, resource TrackedResource) (string, error) {
-	data, err := s.fs.ReadFile(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
-	if err != nil {
-		return "", fmt.Errorf("read local resource %s: %w", resource.LocalPath, err)
-	}
-	content := string(data)
-	if manifest.Runtime != nil && manifest.Runtime.Team != nil {
-		for _, member := range manifest.Runtime.Team.Members {
-			profile, pErr := domain.ProfileFor(member.AgentType)
-			if pErr != nil {
-				continue
-			}
-			memberPath := filepath.ToSlash(filepath.Join(member.Name, profile.InstructionFile))
-			clean := filepath.ToSlash(filepath.Clean(resource.LocalPath))
-			if clean == memberPath {
-				return StripInstructionPrelude(member.AgentType, member.Name, content), nil
-			}
-		}
-	}
-	return content, nil
 }

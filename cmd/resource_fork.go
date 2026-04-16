@@ -34,7 +34,7 @@ Not required for running — use clone to run any resource directly.`,
 			}
 			kind := api.ResourceKind(res.Kind)
 
-			resp, err := client.CopyResource(kind, owner, name)
+			resp, err := client.ForkResource(kind, owner, name)
 			if err != nil {
 				return err
 			}

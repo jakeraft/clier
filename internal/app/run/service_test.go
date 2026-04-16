@@ -90,7 +90,7 @@ func TestService_Send(t *testing.T) {
 	plan := &RunPlan{
 		RunID:   "1",
 		Session: "team-1",
-		Members: []MemberTerminal{{Name: "worker", Window: 1}},
+		Agents:  []AgentTerminal{{Name: "worker", Window: 1}},
 	}
 
 	t.Run("agent message includes sender name and is recorded", func(t *testing.T) {

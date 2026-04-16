@@ -42,11 +42,11 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	}}
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
-	members := []apprun.MemberTerminal{
-		{Name: "leader", Window: 0, Memberspace: "/tmp/leader", Cwd: "/tmp/leader", Command: "echo hello"},
-		{Name: "worker", Window: 1, Memberspace: "/tmp/worker", Cwd: "/tmp/worker"},
+	agents := []apprun.AgentTerminal{
+		{Name: "leader", Window: 0, Workspace: "/tmp/leader", Cwd: "/tmp/leader", Command: "echo hello"},
+		{Name: "worker", Window: 1, Workspace: "/tmp/worker", Cwd: "/tmp/worker"},
 	}
-	plan := apprun.NewPlan("s-1", "my-team", members)
+	plan := apprun.NewPlan("s-1", "my-team", agents)
 
 	if err := tm.Launch(plan); err != nil {
 		t.Fatalf("Launch: %v", err)
@@ -59,13 +59,13 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 		t.Error("expected set-option call for base-index")
 	}
 	if !hasCall(runner.calls, "new-window") {
-		t.Error("expected new-window call for second member")
+		t.Error("expected new-window call for second agent")
 	}
 	if countCalls(runner.calls, "rename-window") != 2 {
 		t.Errorf("expected 2 rename-window calls, got %d", countCalls(runner.calls, "rename-window"))
 	}
 	if !hasCall(runner.calls, "send-keys") {
-		t.Error("expected send-keys call for member command")
+		t.Error("expected send-keys call for agent command")
 	}
 }
 
@@ -73,12 +73,12 @@ func TestTmuxTerminal_Send(t *testing.T) {
 	plan := &apprun.RunPlan{
 		RunID:   "s-1",
 		Session: "my-team-s-1",
-		Members: []apprun.MemberTerminal{{
-			Name:        "leader",
-			Window:      0,
-			Memberspace: "/tmp/leader",
-			Cwd:         "/tmp/leader",
-			Command:     "echo hello",
+		Agents: []apprun.AgentTerminal{{
+			Name:      "leader",
+			Window:    0,
+			Workspace: "/tmp/leader",
+			Cwd:       "/tmp/leader",
+			Command:   "echo hello",
 		}},
 	}
 	runner := &fakeRunner{}
@@ -105,7 +105,7 @@ func TestTmuxTerminal_Terminate(t *testing.T) {
 	plan := &apprun.RunPlan{
 		RunID:   "s-1",
 		Session: "my-team-s-1",
-		Members: []apprun.MemberTerminal{{
+		Agents: []apprun.AgentTerminal{{
 			Name:   "leader",
 			Window: 0,
 		}, {
@@ -140,7 +140,7 @@ func TestTmuxTerminal_Terminate_AlreadyDead(t *testing.T) {
 	plan := &apprun.RunPlan{
 		RunID:   "s-1",
 		Session: "my-team-s-1",
-		Members: []apprun.MemberTerminal{{
+		Agents: []apprun.AgentTerminal{{
 			Name:   "leader",
 			Window: 0,
 		}},
@@ -162,7 +162,7 @@ func TestTmuxTerminal_Attach(t *testing.T) {
 	plan := &apprun.RunPlan{
 		RunID:   "s-1",
 		Session: "my-team-s-1",
-		Members: []apprun.MemberTerminal{{
+		Agents: []apprun.AgentTerminal{{
 			Name:   "leader",
 			Window: 1,
 		}, {
@@ -171,11 +171,11 @@ func TestTmuxTerminal_Attach(t *testing.T) {
 		}},
 	}
 
-	t.Run("with member selects window", func(t *testing.T) {
+	t.Run("with agent selects window", func(t *testing.T) {
 		runner := &fakeRunner{}
 		tm := &TmuxTerminal{runFn: runner.run, attachFn: func(string) error { return nil }, sleep: func(time.Duration) {}}
-		memberName := "worker"
-		if err := tm.Attach(plan, &memberName); err != nil {
+		agentName := "worker"
+		if err := tm.Attach(plan, &agentName); err != nil {
 			t.Fatalf("Attach: %v", err)
 		}
 		if !hasCall(runner.calls, "select-window") {
@@ -188,14 +188,14 @@ func TestTmuxTerminal_Attach(t *testing.T) {
 		}
 	})
 
-	t.Run("without member skips select-window", func(t *testing.T) {
+	t.Run("without agent skips select-window", func(t *testing.T) {
 		runner := &fakeRunner{}
 		tm := &TmuxTerminal{runFn: runner.run, attachFn: func(string) error { return nil }, sleep: func(time.Duration) {}}
 		if err := tm.Attach(plan, nil); err != nil {
 			t.Fatalf("Attach: %v", err)
 		}
 		if hasCall(runner.calls, "select-window") {
-			t.Error("select-window should not be called without member")
+			t.Error("select-window should not be called without agent")
 		}
 	})
 }

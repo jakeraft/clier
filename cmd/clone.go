@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/jakeraft/clier/internal/adapter/api"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
@@ -13,9 +14,9 @@ func newCloneCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "clone <owner/name>",
 		Short: "Download a local working copy",
-		Long: `Download a resource from the server into a local working copy.
-Works with both teams and individual members — cloning a member
-automatically creates a runnable 1-member workspace.
+		Long: `Download a team from the server into a local working copy.
+Works with both leaf teams (single agent) and composite teams
+(multiple agents).
 
 Use push/pull to sync changes, and run start to launch agents.`,
 		GroupID: rootGroupWorkspace,
@@ -26,13 +27,9 @@ Use push/pull to sync changes, and run start to launch agents.`,
 			if err != nil {
 				return err
 			}
-			kind, err := resolveServerResourceKind(client, owner, name)
-			if err != nil {
-				return err
-			}
 
 			base, err := resolveCloneBase(resourceTarget{
-				Kind:  kind,
+				Kind:  string(api.KindTeam),
 				Owner: owner,
 				Name:  name,
 			})
@@ -41,7 +38,7 @@ Use push/pull to sync changes, and run start to launch agents.`,
 			}
 
 			svc := appworkspace.NewService(client, newFileMaterializer(), newGitRepo())
-			manifest, err := svc.Clone(base, kind, owner, name)
+			manifest, err := svc.Clone(base, owner, name)
 			if err != nil {
 				return err
 			}

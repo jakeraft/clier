@@ -41,14 +41,14 @@ func TestLocalSettingsContent_UsesHomeClaudePath(t *testing.T) {
 	}
 
 	var payload struct {
-		ClaudeMdExcludes []string `json:"claudeMdExcludes"`
+		Excludes []string `json:"claudeMdExcludes"`
 	}
 	if err := json.Unmarshal([]byte(content), &payload); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
 
 	want := filepath.ToSlash(filepath.Join(homeDir, ".claude")) + "/**"
-	if len(payload.ClaudeMdExcludes) != 1 || payload.ClaudeMdExcludes[0] != want {
-		t.Fatalf("claudeMdExcludes = %v, want [%q]", payload.ClaudeMdExcludes, want)
+	if len(payload.Excludes) != 1 || payload.Excludes[0] != want {
+		t.Fatalf("excludes = %v, want [%q]", payload.Excludes, want)
 	}
 }

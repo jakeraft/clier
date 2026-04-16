@@ -27,7 +27,7 @@ func newRunCmd() *cobra.Command {
 
 Use start to launch agents, tell to send them instructions,
 and attach to watch them work.`,
-		RunE:    subcommandRequired,
+		RunE: subcommandRequired,
 	}
 	cmd.AddCommand(newRunStartCmd())
 	cmd.AddCommand(newRunListCmd())
@@ -81,10 +81,10 @@ func newRunStartCmd() *cobra.Command {
 		Use:   "start",
 		Short: "Launch the current working copy in tmux",
 		Long: `Start all agents in the current working copy. Works with both
-team clones (multiple agents) and member clones (single agent).
+leaf teams (single agent) and composite teams (multiple agents).
 
 Agents start idle. Use run tell to send them instructions.`,
-		Args:  cobra.NoArgs,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()
 			if err != nil {
@@ -107,27 +107,30 @@ Agents start idle. Use run tell to send them instructions.`,
 				return err
 			}
 
-			if manifest.Runtime == nil || manifest.Runtime.Team == nil {
-				return errors.New("manifest is incomplete; pull the local clone again")
+			rootProjection, err := appworkspace.LoadTeamProjection(fs, appworkspace.TeamProjectionPath(copyRoot))
+			if err != nil {
+				return fmt.Errorf("load team projection: %w", err)
 			}
-			team := manifest.Runtime.Team
-			runName := sessionName(team.Name, runID)
-			var terminalPlans []apprun.MemberTerminal
-			for i, member := range team.Members {
-				memberProjection, err := appworkspace.LoadMemberProjection(fs, appworkspace.TeamMemberProjectionPath(copyRoot, member.Name))
-				if err != nil {
-					return err
-				}
-				memberBase := filepath.Join(copyRoot, member.Name)
-				envVars := buildMemberEnv(runID, member.Name, team.Name)
-				fullCommand := buildFullCommand(envVars, memberProjection.Command, memberBase)
-				terminalPlans = append(terminalPlans, apprun.MemberTerminal{
-					Name:        member.Name,
-					AgentType:   member.AgentType,
-					Window:      i,
-					Memberspace: memberBase,
-					Cwd:         memberBase,
-					Command:     fullCommand,
+
+			// Composite pattern: uniform agent collection from tree.
+			agents, err := collectRunnableAgents(fs, copyRoot, rootProjection)
+			if err != nil {
+				return err
+			}
+
+			runName := sessionName(rootProjection.Name, runID)
+			var terminalPlans []apprun.AgentTerminal
+			for i, agent := range agents {
+				agentBase := filepath.Join(copyRoot, agent.Name)
+				envVars := buildAgentEnv(runID, agent.Name, rootProjection.Name)
+				fullCommand := buildFullCommand(envVars, agent.Command, agentBase)
+				terminalPlans = append(terminalPlans, apprun.AgentTerminal{
+					Name:      agent.Name,
+					AgentType: agent.AgentType,
+					Window:    i,
+					Workspace: agentBase,
+					Cwd:       agentBase,
+					Command:   fullCommand,
 				})
 			}
 			runner := apprun.NewRunner(newTerminal())
@@ -182,7 +185,7 @@ func newRunStopCmd() *cobra.Command {
 }
 
 func newRunAttachCmd() *cobra.Command {
-	var memberFlag string
+	var agentFlag string
 
 	cmd := &cobra.Command{
 		Use:   "attach <run-id>",
@@ -200,25 +203,25 @@ environment.`,
 				return err
 			}
 
-			var memberName *string
-			if memberFlag != "" {
-				memberName = &memberFlag
+			var agentName *string
+			if agentFlag != "" {
+				agentName = &agentFlag
 			}
-			return term.Attach(plan, memberName)
+			return term.Attach(plan, agentName)
 		},
 	}
-	cmd.Flags().StringVar(&memberFlag, "member", "", "Attach to a specific team member name")
+	cmd.Flags().StringVar(&agentFlag, "agent", "", "Attach to a specific agent name")
 	return cmd
 }
 
 func newRunTellCmd() *cobra.Command {
 	var runFlag string
-	var toMemberName string
+	var toAgentName string
 
 	cmd := &cobra.Command{
 		Use:   "tell [content]",
 		Short: "Send a message to an agent",
-		Long: `Send a message to another member in the current team run.
+		Long: `Send a message to another agent in the current team run.
 Content can be provided as an argument or via stdin.
 
 Examples:
@@ -234,7 +237,7 @@ Examples:
 				return err
 			}
 
-			runID, fromMember, err := resolveRunContext(runFlag)
+			runID, fromAgent, err := resolveRunContext(runFlag)
 			if err != nil {
 				return err
 			}
@@ -243,9 +246,9 @@ Examples:
 				return err
 			}
 
-			var toMember *string
-			if toMemberName != "" {
-				toMember = &toMemberName
+			var toAgent *string
+			if toAgentName != "" {
+				toAgent = &toAgentName
 			}
 
 			store, err := newPlanStore()
@@ -254,20 +257,20 @@ Examples:
 			}
 			svc := apprun.New(newTerminal(), store)
 
-			if err := svc.Send(plan, fromMember, toMember, content); err != nil {
+			if err := svc.Send(plan, fromAgent, toAgent, content); err != nil {
 				return err
 			}
 
 			return printJSON(map[string]any{
 				"status": "delivered",
-				"from":   fromMember,
-				"to":     toMember,
+				"from":   fromAgent,
+				"to":     toAgent,
 				"run":    runID,
 			})
 		},
 	}
 	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to "+envClierRunID+")")
-	cmd.Flags().StringVar(&toMemberName, "to", "", "Recipient member name")
+	cmd.Flags().StringVar(&toAgentName, "to", "", "Recipient agent name")
 	_ = cmd.MarkFlagRequired("to")
 	return cmd
 }
@@ -289,7 +292,7 @@ appended to the run file under ` + "`.clier/`" + `.`,
 				return err
 			}
 
-			runID, member, err := resolveRunContext(runFlag)
+			runID, agentName, err := resolveRunContext(runFlag)
 			if err != nil {
 				return err
 			}
@@ -305,17 +308,17 @@ appended to the run file under ` + "`.clier/`" + `.`,
 			}
 			svc := apprun.New(newTerminal(), store)
 
-			if err := svc.Note(plan, member, content); err != nil {
+			if err := svc.Note(plan, agentName, content); err != nil {
 				return err
 			}
 
-			var memberVal any
-			if member != nil {
-				memberVal = *member
+			var agentVal any
+			if agentName != nil {
+				agentVal = *agentName
 			}
 			return printJSON(map[string]any{
 				"status": "posted",
-				"member": memberVal,
+				"agent":  agentVal,
 				"run":    runID,
 			})
 		},
@@ -340,8 +343,8 @@ func readContent(args []string) (string, error) {
 	return content, nil
 }
 
-// resolveRunContext resolves run ID and member name from env vars set by clier.
-func resolveRunContext(runFlag string) (runID string, memberName *string, err error) {
+// resolveRunContext resolves run ID and agent name from env vars set by clier.
+func resolveRunContext(runFlag string) (runID string, agentName *string, err error) {
 	runID = strings.TrimSpace(runFlag)
 	if runID == "" {
 		runID = strings.TrimSpace(os.Getenv(envClierRunID))
@@ -349,8 +352,8 @@ func resolveRunContext(runFlag string) (runID string, memberName *string, err er
 	if runID == "" {
 		return "", nil, fmt.Errorf("--run flag or %s must be set", envClierRunID)
 	}
-	if raw := strings.TrimSpace(os.Getenv(envClierMemberName)); raw != "" {
-		memberName = &raw
+	if raw := strings.TrimSpace(os.Getenv(envClierAgentName)); raw != "" {
+		agentName = &raw
 	}
-	return runID, memberName, nil
+	return runID, agentName, nil
 }

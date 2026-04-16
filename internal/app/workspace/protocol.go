@@ -8,15 +8,10 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-// ProtocolMember carries the runtime identity agents must use when communicating.
-type ProtocolMember struct {
+// ProtocolAgent carries the runtime identity agents must use when communicating.
+type ProtocolAgent struct {
 	Owner string
 	Name  string
-}
-
-// memberKey returns the unique identifier for a member (owner/name).
-func memberKey(owner, name string) string {
-	return owner + "/" + name
 }
 
 const workLogProtocolFileName = "work-log-protocol.md"
@@ -25,20 +20,16 @@ func WorkLogProtocolImportPath() string {
 	return filepath.ToSlash(filepath.Join(".clier", workLogProtocolFileName))
 }
 
-func TeamProtocolFileName(memberName string) string {
-	return sanitizeRepoDirName(memberName) + "-team-protocol.md"
+func TeamProtocolFileName(agentName string) string {
+	return sanitizeRepoDirName(agentName) + "-team-protocol.md"
 }
 
-func TeamProtocolImportPath(memberName string) string {
-	return filepath.ToSlash(filepath.Join(".clier", TeamProtocolFileName(memberName)))
+func TeamProtocolImportPath(agentName string) string {
+	return filepath.ToSlash(filepath.Join(".clier", TeamProtocolFileName(agentName)))
 }
 
-func TeamProtocolImportLine(memberName string) string {
-	return "@" + TeamProtocolImportPath(memberName)
-}
-
-func WorkLogProtocolImportLine() string {
-	return "@" + WorkLogProtocolImportPath()
+func TeamProtocolImportLine(agentName string) string {
+	return "@" + TeamProtocolImportPath(agentName)
 }
 
 func TeamWorkLogProtocolImportLine() string {
@@ -49,41 +40,41 @@ func TeamWorkLogProtocolImportLine() string {
 // Claude: injects @import lines (native import syntax).
 // Codex: injects plain-text reference lines (agent reads files when needed).
 // Both agents use the same file structure; only the reference format differs.
-func ComposeInstruction(agentType, memberName, content string) string {
+func ComposeInstruction(agentType, agentName, content string) string {
 	switch agentType {
 	case "codex":
-		return composeCodexInstruction(memberName, content)
+		return composeCodexInstruction(agentName, content)
 	default:
-		return composeClaudeInstruction(memberName, content)
+		return composeClaudeInstruction(agentName, content)
 	}
 }
 
 // StripInstructionPrelude removes the agent-specific protocol prelude for push.
-func StripInstructionPrelude(agentType, memberName, content string) string {
+func StripInstructionPrelude(agentType, agentName, content string) string {
 	switch agentType {
 	case "codex":
-		return stripCodexInstructionPrelude(memberName, content)
+		return stripCodexInstructionPrelude(agentName, content)
 	default:
-		return stripClaudeInstructionPrelude(memberName, content)
+		return stripClaudeInstructionPrelude(agentName, content)
 	}
 }
 
-func composeClaudeInstruction(memberName, content string) string {
+func composeClaudeInstruction(agentName, content string) string {
 	content = strings.TrimLeft(content, "\n")
 	workLogLine := TeamWorkLogProtocolImportLine()
-	teamLine := TeamProtocolImportLine(memberName)
+	teamLine := TeamProtocolImportLine(agentName)
 	if content == "" {
 		return workLogLine + "\n" + teamLine + "\n"
 	}
 	return workLogLine + "\n" + teamLine + "\n\n" + content
 }
 
-func stripClaudeInstructionPrelude(memberName, content string) string {
+func stripClaudeInstructionPrelude(agentName, content string) string {
 	prefixes := []string{
-		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(memberName) + "\n\n",
-		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(memberName) + "\n",
-		TeamProtocolImportLine(memberName) + "\n\n",
-		TeamProtocolImportLine(memberName) + "\n",
+		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(agentName) + "\n\n",
+		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(agentName) + "\n",
+		TeamProtocolImportLine(agentName) + "\n\n",
+		TeamProtocolImportLine(agentName) + "\n",
 	}
 	for _, prefix := range prefixes {
 		if stripped, ok := strings.CutPrefix(content, prefix); ok {
@@ -99,26 +90,26 @@ func CodexWorkLogReferenceLine() string {
 }
 
 // CodexTeamProtocolReferenceLine returns the reference line for team protocol in Codex instruction files.
-func CodexTeamProtocolReferenceLine(memberName string) string {
-	return "Read " + TeamProtocolImportPath(memberName) + " for team coordination."
+func CodexTeamProtocolReferenceLine(agentName string) string {
+	return "Read " + TeamProtocolImportPath(agentName) + " for team coordination."
 }
 
-func composeCodexInstruction(memberName, content string) string {
+func composeCodexInstruction(agentName, content string) string {
 	content = strings.TrimLeft(content, "\n")
 	workLogLine := CodexWorkLogReferenceLine()
-	teamLine := CodexTeamProtocolReferenceLine(memberName)
+	teamLine := CodexTeamProtocolReferenceLine(agentName)
 	if content == "" {
 		return workLogLine + "\n" + teamLine + "\n"
 	}
 	return workLogLine + "\n" + teamLine + "\n\n" + content
 }
 
-func stripCodexInstructionPrelude(memberName, content string) string {
+func stripCodexInstructionPrelude(agentName, content string) string {
 	prefixes := []string{
-		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine(memberName) + "\n\n",
-		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine(memberName) + "\n",
-		CodexTeamProtocolReferenceLine(memberName) + "\n\n",
-		CodexTeamProtocolReferenceLine(memberName) + "\n",
+		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine(agentName) + "\n\n",
+		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine(agentName) + "\n",
+		CodexTeamProtocolReferenceLine(agentName) + "\n\n",
+		CodexTeamProtocolReferenceLine(agentName) + "\n",
 	}
 	for _, prefix := range prefixes {
 		if stripped, ok := strings.CutPrefix(content, prefix); ok {
@@ -143,29 +134,29 @@ func BuildAgentFacingWorkLogProtocol() string {
 }
 
 // BuildAgentFacingTeamProtocol generates the team-specific agent-facing
-// protocol content for a member. Written to {teamRoot}/{member}/.clier/{member}-team-protocol.md.
+// protocol content for an agent. Written to {teamRoot}/{agent}/.clier/{agent}-team-protocol.md.
 // Claude imports it via @-reference; Codex inlines it into AGENTS.md.
-func BuildAgentFacingTeamProtocol(teamName, memberName string, relations domain.MemberRelations, membersByName map[string]ProtocolMember) string {
+func BuildAgentFacingTeamProtocol(teamName, agentName string, relations domain.TeamRelations, agentsByKey map[string]ProtocolAgent) string {
 	var b strings.Builder
 
 	// Header
 	b.WriteString("# Team Protocol\n\n")
-	fmt.Fprintf(&b, "You are **%s**, operating as a member of team **%s**.\n\n", memberName, teamName)
+	fmt.Fprintf(&b, "You are **%s**, an agent in team **%s**.\n\n", agentName, teamName)
 
 	// Team Structure
 	b.WriteString("## Team Structure\n\n")
-	writeRelNames(&b, "Leaders", relations.Leaders, membersByName)
-	writeRelNames(&b, "Workers", relations.Workers, membersByName)
+	writeRelNames(&b, "Leaders", relations.Leaders, agentsByKey)
+	writeRelNames(&b, "Workers", relations.Workers, agentsByKey)
 	if len(relations.Leaders) == 0 && len(relations.Workers) == 0 {
 		b.WriteString("- (none)\n")
 	}
 
 	// Communication
 	b.WriteString("\n## Communication\n\n")
-	b.WriteString("Use `clier run tell` to message another team member.\n")
-	b.WriteString("Use the team member names below in `--to`.\n")
+	b.WriteString("Use `clier run tell` to message another agent.\n")
+	b.WriteString("Use the agent names below in `--to`.\n")
 	b.WriteString("Do not use built-in messaging tools for team coordination.\n\n")
-	writeTellCommands(&b, relations, membersByName)
+	writeTellCommands(&b, relations, agentsByKey)
 	b.WriteString("- Replies arrive directly in your terminal input.\n")
 	b.WriteString("- Keep each message substantive and action-oriented.\n")
 
@@ -181,26 +172,26 @@ func BuildAgentFacingTeamProtocol(teamName, memberName string, relations domain.
 	return b.String()
 }
 
-// writeTellCommands writes ready-to-use tell commands for each related member.
-func writeTellCommands(b *strings.Builder, rel domain.MemberRelations, membersByName map[string]ProtocolMember) {
+// writeTellCommands writes ready-to-use tell commands for each related agent.
+func writeTellCommands(b *strings.Builder, rel domain.TeamRelations, agentsByKey map[string]ProtocolAgent) {
 	all := make([]string, 0, len(rel.Leaders)+len(rel.Workers))
 	all = append(all, rel.Leaders...)
 	all = append(all, rel.Workers...)
 	for _, name := range all {
-		member := membersByName[name]
-		fmt.Fprintf(b, "Tell %s:\n```bash\nclier run tell --to %s <<'EOF'\n<message>\nEOF\n```\n", member.Name, member.Name)
+		agent := agentsByKey[name]
+		fmt.Fprintf(b, "Tell %s:\n```bash\nclier run tell --to %s <<'EOF'\n<message>\nEOF\n```\n", agent.Name, agent.Name)
 	}
 }
 
 // writeRelNames formats a relation line like "- Leaders: alice, bob".
-func writeRelNames(b *strings.Builder, label string, names []string, membersByName map[string]ProtocolMember) {
+func writeRelNames(b *strings.Builder, label string, names []string, agentsByKey map[string]ProtocolAgent) {
 	if len(names) == 0 {
 		return
 	}
 	displayNames := make([]string, 0, len(names))
 	for _, name := range names {
-		member := membersByName[name]
-		displayNames = append(displayNames, member.Name)
+		agent := agentsByKey[name]
+		displayNames = append(displayNames, agent.Name)
 	}
 	fmt.Fprintf(b, "- %s: %s\n", label, strings.Join(displayNames, ", "))
 }

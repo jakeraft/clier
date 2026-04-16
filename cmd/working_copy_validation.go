@@ -10,52 +10,52 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func manifestPathLabel() string {
-	return filepath.ToSlash(filepath.Join(".clier", appworkspace.ManifestFile))
-}
-
 func validateWorkingCopy(base string, manifest *appworkspace.Manifest) error {
 	if manifest == nil {
 		return errors.New("working-copy manifest is missing")
 	}
-	if manifest.Runtime == nil || manifest.Runtime.Team == nil {
-		return fmt.Errorf("manifest in %s is incomplete for runs", manifestPathLabel())
+	fs := newFileMaterializer()
+	rootProjection, err := appworkspace.LoadTeamProjection(fs, appworkspace.TeamProjectionPath(base))
+	if err != nil {
+		return fmt.Errorf("load team projection: %w", err)
 	}
-	if len(manifest.Runtime.Team.Members) == 0 {
-		return fmt.Errorf("manifest in %s is incomplete; pull the local clone again", manifestPathLabel())
+
+	// Composite pattern: uniform agent collection from tree.
+	projections, err := collectRunnableAgents(fs, base, rootProjection)
+	if err != nil {
+		return err
 	}
-	for _, member := range manifest.Runtime.Team.Members {
-		memberBase := filepath.Join(base, member.Name)
-		if err := validateMemberCopy(memberBase, &member, member.Name); err != nil {
+	if len(projections) == 0 {
+		return errors.New("team has no runnable agents")
+	}
+	for _, p := range projections {
+		if err := validateAgentCopy(filepath.Join(base, p.Name), p); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func validateMemberCopy(base string, member *appworkspace.TeamMemberRuntimeMetadata, teamMemberName string) error {
-	if member == nil {
-		return errors.New("working-copy member metadata is missing")
+func validateAgentCopy(base string, projection *appworkspace.TeamProjection) error {
+	if projection.AgentType == "" || projection.Name == "" {
+		return fmt.Errorf("incomplete projection for %s; pull the local clone again", projection.Name)
 	}
-	if member.Name == "" || member.Command == "" {
-		return fmt.Errorf("manifest in %s is incomplete; pull the local clone again", manifestPathLabel())
-	}
-	materialized, err := appworkspace.IsMaterializedRoot(newFileMaterializer(), newGitRepo(), member.GitRepoURL, base)
+	materialized, err := appworkspace.IsMaterializedRoot(newFileMaterializer(), newGitRepo(), projection.GitRepoURL, base)
 	if err != nil {
 		return err
 	}
 	if !materialized {
 		return fmt.Errorf("local clone is incomplete at %s", base)
 	}
-	profile, err := domain.ProfileFor(member.AgentType)
+	profile, err := domain.ProfileFor(projection.AgentType)
 	if err != nil {
-		return fmt.Errorf("unknown agent type %q for member %s", member.AgentType, member.Name)
+		return fmt.Errorf("unknown agent type %q for %s", projection.AgentType, projection.Name)
 	}
 
 	required := []string{
 		filepath.Join(base, profile.InstructionFile),
 		filepath.Join(base, ".clier", "work-log-protocol.md"),
-		filepath.Join(base, ".clier", appworkspace.TeamProtocolFileName(teamMemberName)),
+		filepath.Join(base, ".clier", appworkspace.TeamProtocolFileName(projection.Name)),
 	}
 	if profile.LocalSettingsFile != "" {
 		required = append(required, filepath.Join(base, profile.SettingsDir, profile.LocalSettingsFile))

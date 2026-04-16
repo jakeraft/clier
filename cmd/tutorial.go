@@ -64,7 +64,7 @@ Step 5. Clone and start the team
 
 Step 6. Give the team a job
 
-  clier run tell --run <run-id> --to <root-member-id> \
+  clier run tell --run <run-id> --to <agent-name> \
     "Add a list --done flag to filter completed todos."
 
   The tech-lead plans the work, the coder implements it on a branch,
@@ -91,7 +91,7 @@ Step 9. See the result
 Step 10. Edit and push local changes
 
   Resources you clone are tracked locally, just like git.
-  Edit a member's prompt, then push the change to the server:
+  Edit an agent's prompt, then push the change to the server:
 
     edit coder/CLAUDE.md        Open in your editor
     clier status                Check what changed

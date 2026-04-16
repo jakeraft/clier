@@ -14,7 +14,7 @@ import (
 )
 
 // TmuxTerminal manages agent terminals using tmux.
-// One tmux session per clier run, one window per member.
+// One tmux session per clier run, one window per agent.
 type TmuxTerminal struct {
 	runFn    func(args ...string) (string, error)
 	attachFn func(sess string) error
@@ -30,8 +30,8 @@ func NewTmuxTerminal() *TmuxTerminal {
 }
 
 func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
-	if len(plan.Members) == 0 {
-		return errors.New("no members to launch")
+	if len(plan.Agents) == 0 {
+		return errors.New("no agents to launch")
 	}
 
 	sess := plan.Session
@@ -52,7 +52,7 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
 	// regardless of user's global tmux config.
 	_, _ = t.runFn("set-option", "-t", sess, "base-index", "0")
 
-	for i, m := range plan.Members {
+	for i, m := range plan.Agents {
 		win := strconv.Itoa(i)
 
 		if i > 0 {
@@ -61,13 +61,13 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
 			}
 		}
 
-		if err := t.setupMemberWindow(sess, win, m); err != nil {
+		if err := t.setupAgentWindow(sess, win, m); err != nil {
 			return err
 		}
 	}
 
-	// Wait for all members to be ready before returning.
-	for i, m := range plan.Members {
+	// Wait for all agents to be ready before returning.
+	for i, m := range plan.Agents {
 		if m.Command == "" {
 			continue
 		}
@@ -80,31 +80,31 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
 	return nil
 }
 
-func (t *TmuxTerminal) Send(plan *apprun.RunPlan, memberName string, text string) error {
-	member, ok := plan.FindMember(memberName)
+func (t *TmuxTerminal) Send(plan *apprun.RunPlan, agentName string, text string) error {
+	agent, ok := plan.FindAgent(agentName)
 	if !ok {
-		return fmt.Errorf("member %q not found in run plan", memberName)
+		return fmt.Errorf("agent %q not found in run plan", agentName)
 	}
-	return t.sendKeys(plan.Session, strconv.Itoa(member.Window), text)
+	return t.sendKeys(plan.Session, strconv.Itoa(agent.Window), text)
 }
 
 func (t *TmuxTerminal) Terminate(plan *apprun.RunPlan) error {
 	sess := plan.Session
 	// Gracefully exit each agent before killing the session.
-	t.exitAllWindows(sess, plan.Members)
+	t.exitAllWindows(sess, plan.Agents)
 	_, _ = t.runFn("kill-session", "-t", sess)
 	return nil
 }
 
-func (t *TmuxTerminal) Attach(plan *apprun.RunPlan, memberName *string) error {
+func (t *TmuxTerminal) Attach(plan *apprun.RunPlan, agentName *string) error {
 	sess := plan.Session
 
-	if memberName != nil {
-		member, ok := plan.FindMember(*memberName)
+	if agentName != nil {
+		agent, ok := plan.FindAgent(*agentName)
 		if !ok {
-			return fmt.Errorf("member %q not found in run plan", *memberName)
+			return fmt.Errorf("agent %q not found in run plan", *agentName)
 		}
-		if _, err := t.runFn("select-window", "-t", sess+":"+strconv.Itoa(member.Window)); err != nil {
+		if _, err := t.runFn("select-window", "-t", sess+":"+strconv.Itoa(agent.Window)); err != nil {
 			return fmt.Errorf("select window: %w", err)
 		}
 	}
@@ -112,9 +112,9 @@ func (t *TmuxTerminal) Attach(plan *apprun.RunPlan, memberName *string) error {
 	return t.attachFn(sess)
 }
 
-// exitAllWindows sends the agent-specific exit command to every member window.
-func (t *TmuxTerminal) exitAllWindows(sess string, members []apprun.MemberTerminal) {
-	for _, m := range members {
+// exitAllWindows sends the agent-specific exit command to every agent window.
+func (t *TmuxTerminal) exitAllWindows(sess string, agents []apprun.AgentTerminal) {
+	for _, m := range agents {
 		profile, err := domain.ProfileFor(m.AgentType)
 		if err != nil || profile.ExitCommand == "" {
 			continue
@@ -123,7 +123,7 @@ func (t *TmuxTerminal) exitAllWindows(sess string, members []apprun.MemberTermin
 	}
 }
 
-func (t *TmuxTerminal) setupMemberWindow(sess, win string, m apprun.MemberTerminal) error {
+func (t *TmuxTerminal) setupAgentWindow(sess, win string, m apprun.AgentTerminal) error {
 	if _, err := t.runFn("rename-window", "-t", sess+":"+win, m.Name); err != nil {
 		return fmt.Errorf("rename window: %w", err)
 	}

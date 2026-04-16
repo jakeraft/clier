@@ -20,14 +20,14 @@ func TestResolveRunPlanPath_SearchesCurrentWorkspaceAncestors(t *testing.T) {
 		t.Fatalf("SavePlan: %v", err)
 	}
 	if err := appworkspace.SaveManifest(filesystem.New(), base, &appworkspace.Manifest{
-		Kind:  string(api.KindMember),
+		Kind:  string(api.KindTeam),
 		Owner: "jakeraft",
 		Name:  "tech-lead",
 	}); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 
-	repoDir := filepath.Join(base, "member")
+	repoDir := filepath.Join(base, "agent")
 	if err := os.MkdirAll(repoDir, 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
 	}
@@ -51,8 +51,8 @@ func TestResolveRunPlanPath_SearchesCurrentWorkspaceAncestors(t *testing.T) {
 	}
 }
 
-func TestBuildMemberEnv_OmitsTeamNameForStandaloneRuns(t *testing.T) {
-	env := buildMemberEnv("run-1", "tech-lead", "")
+func TestBuildAgentEnv_OmitsTeamNameForStandaloneRuns(t *testing.T) {
+	env := buildAgentEnv("run-1", "tech-lead", "")
 
 	if env["CLIER_TEAM_NAME"] != "" {
 		t.Fatalf("CLIER_TEAM_NAME should be omitted for standalone runs, got %q", env["CLIER_TEAM_NAME"])
@@ -60,13 +60,13 @@ func TestBuildMemberEnv_OmitsTeamNameForStandaloneRuns(t *testing.T) {
 	if env["CLIER_RUN_ID"] != "run-1" {
 		t.Fatalf("CLIER_RUN_ID = %q, want run-1", env["CLIER_RUN_ID"])
 	}
-	if env["CLIER_MEMBER_NAME"] != "tech-lead" {
-		t.Fatalf("CLIER_MEMBER_NAME = %q, want tech-lead", env["CLIER_MEMBER_NAME"])
+	if env["CLIER_AGENT_NAME"] != "tech-lead" {
+		t.Fatalf("CLIER_AGENT_NAME = %q, want tech-lead", env["CLIER_AGENT_NAME"])
 	}
 }
 
-func TestBuildMemberEnv_SetsTeamNameForTeamRuns(t *testing.T) {
-	env := buildMemberEnv("run-1", "coder", "my-team")
+func TestBuildAgentEnv_SetsTeamNameForTeamRuns(t *testing.T) {
+	env := buildAgentEnv("run-1", "coder", "my-team")
 
 	if env["CLIER_TEAM_NAME"] != "my-team" {
 		t.Fatalf("CLIER_TEAM_NAME = %q, want my-team", env["CLIER_TEAM_NAME"])

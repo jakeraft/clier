@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-
-	"github.com/jakeraft/clier/internal/adapter/api"
 )
 
 type ResourceRefProjection struct {
@@ -14,30 +12,30 @@ type ResourceRefProjection struct {
 	Version int    `json:"version"`
 }
 
-type MemberProjection struct {
+// TeamProjection is the unified projection for both leaf and composite teams.
+// Leaf team: has Command/AgentType/refs, no Children.
+// Composite team: has Children, may also have Command/AgentType.
+type TeamProjection struct {
 	Name           string                  `json:"name"`
-	Command        string                  `json:"command"`
+	AgentType      string                  `json:"agent_type,omitempty"`
+	Command        string                  `json:"command,omitempty"`
 	GitRepoURL     string                  `json:"git_repo_url,omitempty"`
 	InstructionRef *ResourceRefProjection  `json:"instruction_ref,omitempty"`
 	SettingsRef    *ResourceRefProjection  `json:"settings_ref,omitempty"`
 	Skills         []ResourceRefProjection `json:"skills,omitempty"`
+	Children       []ChildProjection       `json:"children,omitempty"`
 }
 
-type TeamProjection struct {
-	Name      string                   `json:"name"`
-	Members   []TeamMemberProjection   `json:"members"`
-	Relations []TeamRelationProjection `json:"relations,omitempty"`
+// ChildProjection is a reference to a child team at a pinned version.
+type ChildProjection struct {
+	Owner        string `json:"owner"`
+	Name         string `json:"name"`
+	ChildVersion int    `json:"child_version"`
 }
 
-type TeamMemberProjection struct {
-	MemberVersion int                   `json:"member_version"`
-	Name          string                `json:"name"`
-	Member        ResourceRefProjection `json:"member"`
-}
-
-type TeamRelationProjection struct {
-	From api.ResourceIdentifier `json:"from"`
-	To   api.ResourceIdentifier `json:"to"`
+// IsLeaf returns true if this team has no children (i.e. is a runnable agent).
+func (p *TeamProjection) IsLeaf() bool {
+	return len(p.Children) == 0
 }
 
 const TeamProjectionFile = "team.json"
@@ -46,32 +44,20 @@ func TeamProjectionPath(base string) string {
 	return filepath.Join(base, ".clier", TeamProjectionFile)
 }
 
-func TeamMemberProjectionPath(base, memberName string) string {
-	return filepath.Join(base, ".clier", "members", sanitizeRepoDirName(memberName)+".json")
+func ChildTeamProjectionPath(base, childName string) string {
+	return filepath.Join(base, ".clier", "teams", sanitizeRepoDirName(childName)+".json")
 }
 
 func TeamProjectionLocalPath() string {
 	return filepath.ToSlash(filepath.Join(".clier", "team.json"))
 }
 
-func TeamMemberProjectionLocalPath(memberName string) string {
-	return filepath.ToSlash(filepath.Join(".clier", "members", sanitizeRepoDirName(memberName)+".json"))
-}
-
-func WriteMemberProjection(fs FileMaterializer, path string, projection *MemberProjection) error {
-	return writeJSONProjection(fs, path, projection)
+func ChildTeamProjectionLocalPath(childName string) string {
+	return filepath.ToSlash(filepath.Join(".clier", "teams", sanitizeRepoDirName(childName)+".json"))
 }
 
 func WriteTeamProjection(fs FileMaterializer, path string, projection *TeamProjection) error {
 	return writeJSONProjection(fs, path, projection)
-}
-
-func LoadMemberProjection(fs FileMaterializer, path string) (*MemberProjection, error) {
-	var projection MemberProjection
-	if err := loadJSONProjection(fs, path, &projection); err != nil {
-		return nil, err
-	}
-	return &projection, nil
 }
 
 func LoadTeamProjection(fs FileMaterializer, path string) (*TeamProjection, error) {

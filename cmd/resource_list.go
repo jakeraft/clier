@@ -66,7 +66,7 @@ func newListCmd() *cobra.Command {
 			return printJSON(items)
 		},
 	}
-	cmd.Flags().StringVar(&kind, "kind", "", "Filter by resource kind (member, team, skill, claude-md, claude-setting, codex-md, codex-setting)")
+	cmd.Flags().StringVar(&kind, "kind", "", "Filter by resource kind (team, skill, instruction, claude-setting, codex-setting)")
 	cmd.Flags().StringVarP(&query, "query", "q", "", "Search query")
 	cmd.Flags().BoolVar(&mine, "mine", false, "List only my resources")
 	cmd.Flags().StringVar(&uses, "uses", "", "Filter: resources that reference this target (owner/name)")

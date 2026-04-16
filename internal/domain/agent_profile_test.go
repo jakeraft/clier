@@ -20,8 +20,8 @@ func TestProfileFor_DefaultIsClaude(t *testing.T) {
 		if profile.ExitCommand != "/exit" {
 			t.Errorf("ProfileFor(%q).ExitCommand = %q, want %q", agentType, profile.ExitCommand, "/exit")
 		}
-		if profile.InstructionKind != "claude-md" {
-			t.Errorf("ProfileFor(%q).InstructionKind = %q, want %q", agentType, profile.InstructionKind, "claude-md")
+		if profile.InstructionKind != "instruction" {
+			t.Errorf("ProfileFor(%q).InstructionKind = %q, want %q", agentType, profile.InstructionKind, "instruction")
 		}
 		if profile.SettingsKind != "claude-setting" {
 			t.Errorf("ProfileFor(%q).SettingsKind = %q, want %q", agentType, profile.SettingsKind, "claude-setting")
@@ -58,8 +58,8 @@ func TestProfileFor_Codex(t *testing.T) {
 	if profile.HomeExcludeKey != "" {
 		t.Errorf("HomeExcludeKey = %q, want empty", profile.HomeExcludeKey)
 	}
-	if profile.InstructionKind != "codex-md" {
-		t.Errorf("InstructionKind = %q, want %q", profile.InstructionKind, "codex-md")
+	if profile.InstructionKind != "instruction" {
+		t.Errorf("InstructionKind = %q, want %q", profile.InstructionKind, "instruction")
 	}
 	if profile.SettingsKind != "codex-setting" {
 		t.Errorf("SettingsKind = %q, want %q", profile.SettingsKind, "codex-setting")

@@ -24,7 +24,6 @@ type Manifest struct {
 	RootResource     TrackedResource   `json:"root_resource"`
 	TrackedResources []TrackedResource `json:"tracked_resources,omitempty"`
 	GeneratedFiles   []string          `json:"generated_files,omitempty"`
-	Runtime          *RuntimeMetadata  `json:"runtime,omitempty"`
 }
 
 type TrackedResource struct {
@@ -36,23 +35,6 @@ type TrackedResource struct {
 	RemoteVersion *int   `json:"remote_version,omitempty"`
 	BaseHash      string `json:"base_hash,omitempty"`
 	Editable      bool   `json:"editable"`
-}
-
-type RuntimeMetadata struct {
-	Team *TeamRuntimeMetadata `json:"team,omitempty"`
-}
-
-type TeamRuntimeMetadata struct {
-	Name    string                      `json:"name"`
-	Members []TeamMemberRuntimeMetadata `json:"members"`
-}
-
-type TeamMemberRuntimeMetadata struct {
-	Name       string `json:"name"`
-	Owner      string `json:"owner"`
-	AgentType  string `json:"agent_type"`
-	Command    string `json:"command"`
-	GitRepoURL string `json:"git_repo_url,omitempty"`
 }
 
 func ManifestPath(base string) string {

@@ -66,39 +66,87 @@ func TestSaveManifest(t *testing.T) {
 	}
 }
 
-func TestManifest_MemberCloneUsesTeamRuntime(t *testing.T) {
+func TestManifest_LeafTeamClone(t *testing.T) {
 	t.Parallel()
 
 	base := t.TempDir()
 	resourceVersion := 1
 	meta := &Manifest{
-		Kind:  string(api.KindMember),
+		Kind:  string(api.KindTeam),
 		Owner: "jakeraft",
 		Name:  "reviewer",
 		RootResource: TrackedResource{
-			Kind:      string(api.KindMember),
+			Kind:      string(api.KindTeam),
 			Owner:     "jakeraft",
 			Name:      "reviewer",
-			LocalPath: TeamMemberProjectionLocalPath("reviewer"),
+			LocalPath: TeamProjectionLocalPath(),
 			Editable:  true,
 		},
 		TrackedResources: []TrackedResource{{
-			Kind:          string(api.KindMember),
+			Kind:          string(api.KindTeam),
 			Owner:         "jakeraft",
 			Name:          "reviewer",
-			LocalPath:     TeamMemberProjectionLocalPath("reviewer"),
+			LocalPath:     TeamProjectionLocalPath(),
 			RemoteVersion: &resourceVersion,
 			Editable:      true,
 		}},
-		Runtime: &RuntimeMetadata{
-			Team: &TeamRuntimeMetadata{
-				Name: "reviewer",
-				Members: []TeamMemberRuntimeMetadata{{
-					Name:      "reviewer",
-					Owner:     "jakeraft",
-					AgentType: "claude",
-					Command:   "claude",
-				}},
+	}
+
+	if err := SaveManifest(filesystem.New(), base, meta); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
+	}
+	loaded, err := LoadManifest(filesystem.New(), base)
+	if err != nil {
+		t.Fatalf("LoadManifest: %v", err)
+	}
+	if loaded.Kind != string(api.KindTeam) {
+		t.Fatalf("Kind = %q, want %q", loaded.Kind, string(api.KindTeam))
+	}
+	if loaded.RootResource.LocalPath != TeamProjectionLocalPath() {
+		t.Fatalf("root local path = %q, want %q", loaded.RootResource.LocalPath, TeamProjectionLocalPath())
+	}
+	if len(loaded.TrackedResources) != 1 {
+		t.Fatalf("expected 1 tracked resource, got %d", len(loaded.TrackedResources))
+	}
+	if loaded.TrackedResources[0].Owner != "jakeraft" {
+		t.Fatalf("tracked owner = %q, want %q", loaded.TrackedResources[0].Owner, "jakeraft")
+	}
+}
+
+func TestManifest_CompositeTeamClone(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	rootVersion := 2
+	childVersion := 1
+	meta := &Manifest{
+		Kind:  string(api.KindTeam),
+		Owner: "jakeraft",
+		Name:  "dev-squad",
+		RootResource: TrackedResource{
+			Kind:          string(api.KindTeam),
+			Owner:         "jakeraft",
+			Name:          "dev-squad",
+			LocalPath:     TeamProjectionLocalPath(),
+			RemoteVersion: &rootVersion,
+			Editable:      true,
+		},
+		TrackedResources: []TrackedResource{
+			{
+				Kind:          string(api.KindTeam),
+				Owner:         "jakeraft",
+				Name:          "dev-squad",
+				LocalPath:     TeamProjectionLocalPath(),
+				RemoteVersion: &rootVersion,
+				Editable:      true,
+			},
+			{
+				Kind:          string(api.KindTeam),
+				Owner:         "jakeraft",
+				Name:          "reviewer",
+				LocalPath:     ChildTeamProjectionLocalPath("reviewer"),
+				RemoteVersion: &childVersion,
+				Editable:      true,
 			},
 		},
 	}
@@ -110,20 +158,14 @@ func TestManifest_MemberCloneUsesTeamRuntime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadManifest: %v", err)
 	}
-	if loaded.Kind != string(api.KindMember) {
-		t.Fatalf("Kind = %q, want %q", loaded.Kind, string(api.KindMember))
+	if loaded.Kind != string(api.KindTeam) {
+		t.Fatalf("Kind = %q, want %q", loaded.Kind, string(api.KindTeam))
 	}
-	if loaded.Runtime == nil || loaded.Runtime.Team == nil {
-		t.Fatal("expected Team runtime metadata")
+	if len(loaded.TrackedResources) != 2 {
+		t.Fatalf("expected 2 tracked resources, got %d", len(loaded.TrackedResources))
 	}
-	if len(loaded.Runtime.Team.Members) != 1 {
-		t.Fatalf("expected 1 member, got %d", len(loaded.Runtime.Team.Members))
-	}
-	if loaded.Runtime.Team.Members[0].Name != "reviewer" {
-		t.Fatalf("member name = %q, want %q", loaded.Runtime.Team.Members[0].Name, "reviewer")
-	}
-	if loaded.Runtime.Team.Members[0].Owner != "jakeraft" {
-		t.Fatalf("member owner = %q, want %q", loaded.Runtime.Team.Members[0].Owner, "jakeraft")
+	if loaded.TrackedResources[1].LocalPath != ChildTeamProjectionLocalPath("reviewer") {
+		t.Fatalf("child local path = %q, want %q", loaded.TrackedResources[1].LocalPath, ChildTeamProjectionLocalPath("reviewer"))
 	}
 }
 
@@ -134,7 +176,7 @@ func TestLoadManifest_RejectsOutdatedFormat(t *testing.T) {
 	fs := filesystem.New()
 
 	// Write a manifest with format 0 (simulating a legacy clone).
-	data := []byte(`{"format":0,"kind":"member","owner":"jakeraft","name":"reviewer"}`)
+	data := []byte(`{"format":0,"kind":"team","owner":"jakeraft","name":"reviewer"}`)
 	if err := fs.EnsureFile(ManifestPath(base), data); err != nil {
 		t.Fatalf("write legacy manifest: %v", err)
 	}
@@ -155,7 +197,7 @@ func TestLoadManifest_RejectsNewerFormat(t *testing.T) {
 	fs := filesystem.New()
 
 	// Write a manifest with a future format version.
-	data := []byte(`{"format":999,"kind":"member","owner":"jakeraft","name":"reviewer"}`)
+	data := []byte(`{"format":999,"kind":"team","owner":"jakeraft","name":"reviewer"}`)
 	if err := fs.EnsureFile(ManifestPath(base), data); err != nil {
 		t.Fatalf("write future manifest: %v", err)
 	}

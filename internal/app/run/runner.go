@@ -20,9 +20,9 @@ func NewRunner(launcher Launcher) *Runner {
 	return &Runner{launcher: launcher}
 }
 
-// Run creates a RunPlan from the given member plans, saves it to
+// Run creates a RunPlan from the given agent plans, saves it to
 // {copyRoot}/.clier/{runID}.json, and launches via tmux.
-func (r *Runner) Run(copyRoot, runID, sessionName string, plans []MemberTerminal) (*RunPlan, error) {
+func (r *Runner) Run(copyRoot, runID, sessionName string, plans []AgentTerminal) (*RunPlan, error) {
 	plan := NewPlan(runID, sessionName, plans)
 
 	if err := SavePlan(copyRoot, runID, plan); err != nil {
