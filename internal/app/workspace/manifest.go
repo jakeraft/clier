@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
-const ManifestFile = "manifest.json"
+const ManifestFile = "state.json"
 
 // CurrentFormat is the manifest schema version. Bump this integer
 // whenever the local-clone directory layout or manifest structure
@@ -22,8 +23,17 @@ type Manifest struct {
 	Name             string            `json:"name"`
 	ClonedAt         time.Time         `json:"cloned_at"`
 	RootResource     TrackedResource   `json:"root_resource"`
+	Teams            []StoredTeamState `json:"teams,omitempty"`
 	TrackedResources []TrackedResource `json:"tracked_resources,omitempty"`
 	GeneratedFiles   []string          `json:"generated_files,omitempty"`
+}
+
+type StoredTeamState struct {
+	Owner      string         `json:"owner"`
+	Name       string         `json:"name"`
+	Version    int            `json:"version"`
+	LocalDir   string         `json:"local_dir,omitempty"`
+	Projection TeamProjection `json:"projection"`
 }
 
 type TrackedResource struct {
@@ -115,6 +125,39 @@ func (m *Manifest) FindTrackedResource(localPath string) (*TrackedResource, bool
 	for i := range m.TrackedResources {
 		if filepath.ToSlash(filepath.Clean(m.TrackedResources[i].LocalPath)) == clean {
 			return &m.TrackedResources[i], true
+		}
+	}
+	return nil, false
+}
+
+func (m *Manifest) FindTeam(owner, name string) (*StoredTeamState, bool) {
+	for i := range m.Teams {
+		if m.Teams[i].Owner == owner && m.Teams[i].Name == name {
+			return &m.Teams[i], true
+		}
+	}
+	return nil, false
+}
+
+func (m *Manifest) FindTeamByLocalDir(localDir string) (*StoredTeamState, bool) {
+	clean := filepath.ToSlash(filepath.Clean(localDir))
+	for i := range m.Teams {
+		if filepath.ToSlash(filepath.Clean(m.Teams[i].LocalDir)) == clean {
+			return &m.Teams[i], true
+		}
+	}
+	return nil, false
+}
+
+func (m *Manifest) AgentForLocalPath(localPath string) (*StoredTeamState, bool) {
+	clean := filepath.ToSlash(filepath.Clean(localPath))
+	for i := range m.Teams {
+		if m.Teams[i].LocalDir == "" {
+			continue
+		}
+		prefix := filepath.ToSlash(filepath.Clean(m.Teams[i].LocalDir))
+		if clean == prefix || strings.HasPrefix(clean, prefix+"/") {
+			return &m.Teams[i], true
 		}
 	}
 	return nil, false

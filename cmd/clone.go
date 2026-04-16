@@ -23,7 +23,7 @@ Use push/pull to sync changes, and run start to launch agents.`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner, name, err := parseOwnerName(args[0])
+			owner, name, err := splitResourceID(args[0])
 			if err != nil {
 				return err
 			}
@@ -43,12 +43,12 @@ Use push/pull to sync changes, and run start to launch agents.`,
 				return err
 			}
 			return printJSON(map[string]any{
-				"status":   "cloned",
-				"kind":     manifest.Kind,
-				"owner":    manifest.Owner,
-				"name":     manifest.Name,
-				"dir":      base,
-				"manifest": appworkspace.ManifestPath(base),
+				"status": "cloned",
+				"kind":   manifest.Kind,
+				"owner":  manifest.Owner,
+				"name":   manifest.Name,
+				"dir":    base,
+				"state":  appworkspace.ManifestPath(base),
 			})
 		},
 	}

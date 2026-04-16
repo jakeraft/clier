@@ -13,13 +13,13 @@ func init() {
 
 func newDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:     "delete <[owner/]name>",
+		Use:     "delete <owner/name>",
 		Short:   "Delete a resource (auto-detects kind)",
 		GroupID: rootGroupResources,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner, name, err := parseOwnerName(args[0])
+			owner, name, err := splitResourceID(args[0])
 			if err != nil {
 				return err
 			}

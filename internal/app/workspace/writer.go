@@ -42,9 +42,7 @@ func NewWriter(fs FileMaterializer, git GitRepo, resourceMap map[string]*api.Res
 }
 
 // MaterializeAgent writes local-clone files for a single agent (leaf team).
-// teamName is the display name used in protocol composition (e.g. for
-// ComposeInstruction's agentName parameter).
-func (w *Writer) MaterializeAgent(base string, projection *TeamProjection, teamName string) error {
+func (w *Writer) MaterializeAgent(base string, projection *TeamProjection, agentID string) error {
 	profile, err := domain.ProfileFor(projection.AgentType)
 	if err != nil {
 		return err
@@ -64,12 +62,12 @@ func (w *Writer) MaterializeAgent(base string, projection *TeamProjection, teamN
 		if err != nil {
 			return fmt.Errorf("resolve instruction %s/%s: %w", projection.InstructionRef.Owner, projection.InstructionRef.Name, err)
 		}
-		composed := ComposeInstruction(projection.AgentType, teamName, content)
+		composed := ComposeInstruction(projection.AgentType, agentID, content)
 		if err := w.writeFile(paths.instructionFile, composed); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
 	} else {
-		composed := ComposeInstruction(projection.AgentType, teamName, "")
+		composed := ComposeInstruction(projection.AgentType, agentID, "")
 		if err := w.writeFile(paths.instructionFile, composed); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
@@ -95,7 +93,7 @@ func (w *Writer) MaterializeAgent(base string, projection *TeamProjection, teamN
 		if err != nil {
 			return fmt.Errorf("resolve skill %s/%s: %w", skillRef.Owner, skillRef.Name, err)
 		}
-		skillPath := filepath.Join(paths.skillsDir, skillRef.Name, "SKILL.md")
+		skillPath := filepath.Join(paths.skillsDir, skillRef.Owner, skillRef.Name, "SKILL.md")
 		if err := w.writeFile(skillPath, content); err != nil {
 			return fmt.Errorf("write skill %s: %w", skillRef.Name, err)
 		}

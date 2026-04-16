@@ -90,7 +90,7 @@ func TestService_Send(t *testing.T) {
 	plan := &RunPlan{
 		RunID:   "1",
 		Session: "team-1",
-		Agents:  []AgentTerminal{{Name: "worker", Window: 1}},
+		Agents:  []AgentTerminal{{ID: "alice/worker", Name: "worker", Window: 1}},
 	}
 
 	t.Run("agent message includes sender name and is recorded", func(t *testing.T) {
@@ -98,13 +98,13 @@ func TestService_Send(t *testing.T) {
 		store := &stubPlanStore{}
 		svc := New(term, store)
 
-		if err := svc.Send(plan, strPtr("leader"), strPtr("worker"), "hello"); err != nil {
+		if err := svc.Send(plan, strPtr("alice/leader"), strPtr("alice/worker"), "hello"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if len(term.sent) != 1 {
 			t.Fatalf("expected 1 sent, got %d", len(term.sent))
 		}
-		want := "[Message from leader] hello"
+		want := "[Message from alice/leader] hello"
 		if term.sent[0] != want {
 			t.Errorf("sent = %q, want %q", term.sent[0], want)
 		}
@@ -120,7 +120,7 @@ func TestService_Send(t *testing.T) {
 		term := &stubTerminal{}
 		svc := New(term, &stubPlanStore{})
 
-		if err := svc.Send(plan, nil, strPtr("worker"), "do this"); err != nil {
+		if err := svc.Send(plan, nil, strPtr("alice/worker"), "do this"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if term.sent[0] != "do this" {
@@ -132,7 +132,7 @@ func TestService_Send(t *testing.T) {
 		term := &failTerminal{}
 		svc := New(term, &stubPlanStore{})
 
-		err := svc.Send(plan, strPtr("leader"), strPtr("unknown"), "hello")
+		err := svc.Send(plan, strPtr("alice/leader"), strPtr("unknown/worker"), "hello")
 		if err == nil {
 			t.Fatal("expected error for failed delivery")
 		}

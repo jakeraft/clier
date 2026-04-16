@@ -29,18 +29,18 @@ func sessionName(name, runID string) string {
 }
 
 // buildAgentEnv returns the environment variables for an agent.
-func buildAgentEnv(runID, agentName, teamName string) map[string]string {
+func buildAgentEnv(runID, agentID, teamID string) map[string]string {
 	env := map[string]string{
 		envClierRunID:         runID,
-		envClierAgentName:     agentName,
+		envClierAgentName:     agentID,
 		envClierAgent:         "true",
-		"GIT_AUTHOR_NAME":     agentName,
+		"GIT_AUTHOR_NAME":     agentID,
 		"GIT_AUTHOR_EMAIL":    "noreply@clier.com",
-		"GIT_COMMITTER_NAME":  agentName,
+		"GIT_COMMITTER_NAME":  agentID,
 		"GIT_COMMITTER_EMAIL": "noreply@clier.com",
 	}
-	if teamName != "" {
-		env[envClierTeamName] = teamName
+	if teamID != "" {
+		env[envClierTeamName] = teamID
 	}
 	return env
 }

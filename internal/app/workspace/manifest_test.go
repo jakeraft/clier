@@ -23,7 +23,7 @@ func TestSaveManifest(t *testing.T) {
 			Kind:          string(api.KindTeam),
 			Owner:         "jakeraft",
 			Name:          "dev-squad",
-			LocalPath:     ".clier/team.json",
+			LocalPath:     teamTrackedPath("jakeraft", "dev-squad"),
 			RemoteVersion: &resourceVersion,
 			BaseHash:      "abc123",
 			Editable:      true,
@@ -32,7 +32,7 @@ func TestSaveManifest(t *testing.T) {
 			Kind:          string(api.KindSkill),
 			Owner:         "jakeraft",
 			Name:          "reviewer",
-			LocalPath:     "lead/.claude/skills/reviewer/SKILL.md",
+			LocalPath:     "lead/.claude/skills/jakeraft/reviewer/SKILL.md",
 			RemoteVersion: &resourceVersion,
 			BaseHash:      "def456",
 			Editable:      true,
@@ -79,14 +79,14 @@ func TestManifest_LeafTeamClone(t *testing.T) {
 			Kind:      string(api.KindTeam),
 			Owner:     "jakeraft",
 			Name:      "reviewer",
-			LocalPath: TeamProjectionLocalPath(),
+			LocalPath: teamTrackedPath("jakeraft", "reviewer"),
 			Editable:  true,
 		},
 		TrackedResources: []TrackedResource{{
 			Kind:          string(api.KindTeam),
 			Owner:         "jakeraft",
 			Name:          "reviewer",
-			LocalPath:     TeamProjectionLocalPath(),
+			LocalPath:     teamTrackedPath("jakeraft", "reviewer"),
 			RemoteVersion: &resourceVersion,
 			Editable:      true,
 		}},
@@ -102,8 +102,8 @@ func TestManifest_LeafTeamClone(t *testing.T) {
 	if loaded.Kind != string(api.KindTeam) {
 		t.Fatalf("Kind = %q, want %q", loaded.Kind, string(api.KindTeam))
 	}
-	if loaded.RootResource.LocalPath != TeamProjectionLocalPath() {
-		t.Fatalf("root local path = %q, want %q", loaded.RootResource.LocalPath, TeamProjectionLocalPath())
+	if loaded.RootResource.LocalPath != teamTrackedPath("jakeraft", "reviewer") {
+		t.Fatalf("root local path = %q, want %q", loaded.RootResource.LocalPath, teamTrackedPath("jakeraft", "reviewer"))
 	}
 	if len(loaded.TrackedResources) != 1 {
 		t.Fatalf("expected 1 tracked resource, got %d", len(loaded.TrackedResources))
@@ -127,7 +127,7 @@ func TestManifest_CompositeTeamClone(t *testing.T) {
 			Kind:          string(api.KindTeam),
 			Owner:         "jakeraft",
 			Name:          "dev-squad",
-			LocalPath:     TeamProjectionLocalPath(),
+			LocalPath:     teamTrackedPath("jakeraft", "dev-squad"),
 			RemoteVersion: &rootVersion,
 			Editable:      true,
 		},
@@ -136,7 +136,7 @@ func TestManifest_CompositeTeamClone(t *testing.T) {
 				Kind:          string(api.KindTeam),
 				Owner:         "jakeraft",
 				Name:          "dev-squad",
-				LocalPath:     TeamProjectionLocalPath(),
+				LocalPath:     teamTrackedPath("jakeraft", "dev-squad"),
 				RemoteVersion: &rootVersion,
 				Editable:      true,
 			},
@@ -144,7 +144,7 @@ func TestManifest_CompositeTeamClone(t *testing.T) {
 				Kind:          string(api.KindTeam),
 				Owner:         "jakeraft",
 				Name:          "reviewer",
-				LocalPath:     ChildTeamProjectionLocalPath("reviewer"),
+				LocalPath:     teamTrackedPath("jakeraft", "reviewer"),
 				RemoteVersion: &childVersion,
 				Editable:      true,
 			},
@@ -164,8 +164,8 @@ func TestManifest_CompositeTeamClone(t *testing.T) {
 	if len(loaded.TrackedResources) != 2 {
 		t.Fatalf("expected 2 tracked resources, got %d", len(loaded.TrackedResources))
 	}
-	if loaded.TrackedResources[1].LocalPath != ChildTeamProjectionLocalPath("reviewer") {
-		t.Fatalf("child local path = %q, want %q", loaded.TrackedResources[1].LocalPath, ChildTeamProjectionLocalPath("reviewer"))
+	if loaded.TrackedResources[1].LocalPath != teamTrackedPath("jakeraft", "reviewer") {
+		t.Fatalf("child local path = %q, want %q", loaded.TrackedResources[1].LocalPath, teamTrackedPath("jakeraft", "reviewer"))
 	}
 }
 
@@ -216,6 +216,6 @@ func TestLoadManifest_RequiresManifestPath(t *testing.T) {
 
 	base := t.TempDir()
 	if _, err := LoadManifest(filesystem.New(), base); err == nil {
-		t.Fatalf("expected manifest lookup to fail without manifest.json")
+		t.Fatalf("expected manifest lookup to fail without state.json")
 	}
 }

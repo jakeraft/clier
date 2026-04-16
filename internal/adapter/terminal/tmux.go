@@ -72,7 +72,7 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
 			continue
 		}
 		if err := t.waitReady(sess, strconv.Itoa(i), 60*time.Second, m.AgentType); err != nil {
-			return fmt.Errorf("wait ready %s: %w", m.Name, err)
+			return fmt.Errorf("wait ready %s: %w", m.ID, err)
 		}
 	}
 
@@ -124,7 +124,7 @@ func (t *TmuxTerminal) exitAllWindows(sess string, agents []apprun.AgentTerminal
 }
 
 func (t *TmuxTerminal) setupAgentWindow(sess, win string, m apprun.AgentTerminal) error {
-	if _, err := t.runFn("rename-window", "-t", sess+":"+win, m.Name); err != nil {
+	if _, err := t.runFn("rename-window", "-t", sess+":"+win, m.ID); err != nil {
 		return fmt.Errorf("rename window: %w", err)
 	}
 	if m.Command != "" {

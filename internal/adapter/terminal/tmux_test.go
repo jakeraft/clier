@@ -43,8 +43,8 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
 	agents := []apprun.AgentTerminal{
-		{Name: "leader", Window: 0, Workspace: "/tmp/leader", Cwd: "/tmp/leader", Command: "echo hello"},
-		{Name: "worker", Window: 1, Workspace: "/tmp/worker", Cwd: "/tmp/worker"},
+		{ID: "alice/leader", Name: "leader", Window: 0, Workspace: "/tmp/leader", Cwd: "/tmp/leader", Command: "echo hello"},
+		{ID: "bob/worker", Name: "worker", Window: 1, Workspace: "/tmp/worker", Cwd: "/tmp/worker"},
 	}
 	plan := apprun.NewPlan("s-1", "my-team", agents)
 
@@ -74,6 +74,7 @@ func TestTmuxTerminal_Send(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Agents: []apprun.AgentTerminal{{
+			ID:        "alice/leader",
 			Name:      "leader",
 			Window:    0,
 			Workspace: "/tmp/leader",
@@ -84,7 +85,7 @@ func TestTmuxTerminal_Send(t *testing.T) {
 	runner := &fakeRunner{}
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
-	if err := tm.Send(plan, "leader", "do the work"); err != nil {
+	if err := tm.Send(plan, "alice/leader", "do the work"); err != nil {
 		t.Fatalf("Send: %v", err)
 	}
 	if len(runner.calls) != 3 {
@@ -106,12 +107,15 @@ func TestTmuxTerminal_Terminate(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Agents: []apprun.AgentTerminal{{
+			ID:     "alice/leader",
 			Name:   "leader",
 			Window: 0,
 		}, {
+			ID:     "bob/worker",
 			Name:   "worker",
 			Window: 1,
 		}, {
+			ID:     "carol/reviewer",
 			Name:   "reviewer",
 			Window: 2,
 		}},
@@ -141,6 +145,7 @@ func TestTmuxTerminal_Terminate_AlreadyDead(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Agents: []apprun.AgentTerminal{{
+			ID:     "alice/leader",
 			Name:   "leader",
 			Window: 0,
 		}},
@@ -163,9 +168,11 @@ func TestTmuxTerminal_Attach(t *testing.T) {
 		RunID:   "s-1",
 		Session: "my-team-s-1",
 		Agents: []apprun.AgentTerminal{{
+			ID:     "alice/leader",
 			Name:   "leader",
 			Window: 1,
 		}, {
+			ID:     "bob/worker",
 			Name:   "worker",
 			Window: 2,
 		}},
@@ -174,7 +181,7 @@ func TestTmuxTerminal_Attach(t *testing.T) {
 	t.Run("with agent selects window", func(t *testing.T) {
 		runner := &fakeRunner{}
 		tm := &TmuxTerminal{runFn: runner.run, attachFn: func(string) error { return nil }, sleep: func(time.Duration) {}}
-		agentName := "worker"
+		agentName := "bob/worker"
 		if err := tm.Attach(plan, &agentName); err != nil {
 			t.Fatalf("Attach: %v", err)
 		}

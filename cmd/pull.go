@@ -42,11 +42,11 @@ have local modifications unless --force is used.`,
 				return err
 			}
 			return printJSON(map[string]any{
-				"status":   "pulled",
-				"kind":     manifest.Kind,
-				"owner":    manifest.Owner,
-				"name":     manifest.Name,
-				"manifest": appworkspace.ManifestPath(copyRoot),
+				"status": "pulled",
+				"kind":   manifest.Kind,
+				"owner":  manifest.Owner,
+				"name":   manifest.Name,
+				"state":  appworkspace.ManifestPath(copyRoot),
 			})
 		},
 	}

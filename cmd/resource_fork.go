@@ -22,7 +22,7 @@ Not required for running — use clone to run any resource directly.`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner, name, err := parseOwnerName(args[0])
+			owner, name, err := splitResourceID(args[0])
 			if err != nil {
 				return err
 			}

@@ -39,16 +39,15 @@ func newEditCmd() *cobra.Command {
 	var skills, children []string
 
 	cmd := &cobra.Command{
-		Use:   "edit <[owner/]name>",
+		Use:   "edit <owner/name>",
 		Short: "Update a resource (auto-detects kind)",
 		Long: `Update a resource. The resource kind is detected automatically
-via a GET request, and only the flags you provide are sent as changes.
-Owner defaults to the logged-in user when not specified.`,
+via a GET request, and only the flags you provide are sent as changes.`,
 		GroupID: rootGroupResources,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner, name, err := parseOwnerName(args[0])
+			owner, name, err := splitResourceID(args[0])
 			if err != nil {
 				return err
 			}

@@ -14,14 +14,7 @@ func validateWorkingCopy(base string, manifest *appworkspace.Manifest) error {
 	if manifest == nil {
 		return errors.New("working-copy manifest is missing")
 	}
-	fs := newFileMaterializer()
-	rootProjection, err := appworkspace.LoadTeamProjection(fs, appworkspace.TeamProjectionPath(base))
-	if err != nil {
-		return fmt.Errorf("load team projection: %w", err)
-	}
-
-	// Composite pattern: uniform agent collection from tree.
-	projections, err := collectRunnableAgents(fs, base, rootProjection)
+	projections, err := collectRunnableAgents(manifest)
 	if err != nil {
 		return err
 	}
@@ -29,14 +22,15 @@ func validateWorkingCopy(base string, manifest *appworkspace.Manifest) error {
 		return errors.New("team has no runnable agents")
 	}
 	for _, p := range projections {
-		if err := validateAgentCopy(filepath.Join(base, p.Name), p); err != nil {
+		if err := validateAgentCopy(filepath.Join(base, filepath.FromSlash(p.LocalBase)), p); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func validateAgentCopy(base string, projection *appworkspace.TeamProjection) error {
+func validateAgentCopy(base string, agent runnableAgent) error {
+	projection := agent.Projection
 	if projection.AgentType == "" || projection.Name == "" {
 		return fmt.Errorf("incomplete projection for %s; pull the local clone again", projection.Name)
 	}
@@ -55,7 +49,7 @@ func validateAgentCopy(base string, projection *appworkspace.TeamProjection) err
 	required := []string{
 		filepath.Join(base, profile.InstructionFile),
 		filepath.Join(base, ".clier", "work-log-protocol.md"),
-		filepath.Join(base, ".clier", appworkspace.TeamProtocolFileName(projection.Name)),
+		filepath.Join(base, ".clier", appworkspace.TeamProtocolFileName(agent.ID)),
 	}
 	if profile.LocalSettingsFile != "" {
 		required = append(required, filepath.Join(base, profile.SettingsDir, profile.LocalSettingsFile))

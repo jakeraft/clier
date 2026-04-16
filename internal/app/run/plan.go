@@ -26,6 +26,7 @@ type RunPlan struct {
 
 // AgentTerminal maps an agent to its tmux window and launch command.
 type AgentTerminal struct {
+	ID        string `json:"id"`
 	Name      string `json:"name"`
 	AgentType string `json:"agent_type"`
 	Window    int    `json:"window"`
@@ -60,10 +61,10 @@ func NewPlan(runID, sessionName string, plans []AgentTerminal) *RunPlan {
 	}
 }
 
-// FindAgent finds the terminal slot for an agent by name in the run plan.
-func (p *RunPlan) FindAgent(agentName string) (*AgentTerminal, bool) {
+// FindAgent finds the terminal slot for an agent by owner/name ID in the run plan.
+func (p *RunPlan) FindAgent(agentID string) (*AgentTerminal, bool) {
 	for i := range p.Agents {
-		if p.Agents[i].Name == agentName {
+		if p.Agents[i].ID == agentID {
 			return &p.Agents[i], true
 		}
 	}

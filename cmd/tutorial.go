@@ -48,23 +48,23 @@ Step 4. Customize your fork
   Check your copied team and give it a summary:
 
     clier get <your-login>/todo-team
-    clier edit todo-team --summary "My first agent team"
+    clier edit <your-login>/todo-team --summary "My first agent team"
 
   Use --help on any command to see all available flags.
 
 Step 5. Clone and start the team
 
   clier clone <your-login>/todo-team
-  cd todo-team
+  cd <your-login>/todo-team
   clier run start
 
-  This downloads a local working copy under ./todo-team/
+  This downloads a local working copy under ./<your-login>/todo-team/
   and launches all agents in tmux.
   Note the run ID from the output.
 
 Step 6. Give the team a job
 
-  clier run tell --run <run-id> --to <agent-name> \
+  clier run tell --run <run-id> --to <owner/name> \
     "Add a list --done flag to filter completed todos."
 
   The tech-lead plans the work, the coder implements it on a branch,
@@ -93,7 +93,7 @@ Step 10. Edit and push local changes
   Resources you clone are tracked locally, just like git.
   Edit an agent's prompt, then push the change to the server:
 
-    edit coder/CLAUDE.md        Open in your editor
+    edit hello-claude/CLAUDE.md  Open in your editor
     clier status                Check what changed
     clier push                  Push local changes to the server
 

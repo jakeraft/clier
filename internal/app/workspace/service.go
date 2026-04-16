@@ -3,6 +3,8 @@ package workspace
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -65,13 +67,17 @@ func NewService(client *api.Client, fs FileMaterializer, git GitRepo) *Service {
 
 // --- Clone ---
 
-// agentEntry is a team node that will be materialized as a runnable agent.
-type agentEntry struct {
-	name       string
+type teamEntry struct {
+	id         string
 	owner      string
+	name       string
 	version    int
 	projection *TeamProjection
-	localBase  string // relative path for tracked resources
+}
+
+type agentEntry struct {
+	teamEntry
+	localBase string
 }
 
 func (s *Service) Clone(base, owner, name string) (*Manifest, error) {
@@ -82,132 +88,134 @@ func (s *Service) Clone(base, owner, name string) (*Manifest, error) {
 
 	resourceMap := buildResourceMap(resolved.Resources)
 	root := &resolved.Root
-	rootProjection := teamProjectionFromResolved(root)
-
-	// Write root team projection.
-	if err := WriteTeamProjection(s.fs, TeamProjectionPath(base), rootProjection); err != nil {
+	manifest, err := s.materializeResolvedTeam(base, root, resourceMap, nil)
+	if err != nil {
 		return nil, err
 	}
-
-	// Composite pattern: collect all runnable agents from the tree.
-	// Every node with a known agent profile is materialized uniformly —
-	// no distinction between leaf and composite.
-	agents := s.collectCloneAgents(rootProjection, root, resourceMap)
-	if len(agents) == 0 {
-		return nil, fmt.Errorf("team %s/%s has no runnable agents (unknown agent type %q)", owner, name, rootProjection.AgentType)
-	}
-
-	// Build protocol lookup — all agents are peers.
-	allKeys := make([]string, 0, len(agents))
-	agentsByKey := make(map[string]ProtocolAgent, len(agents))
-	for _, a := range agents {
-		key := teamKey(a.owner, a.name)
-		allKeys = append(allKeys, key)
-		agentsByKey[key] = ProtocolAgent{Owner: a.owner, Name: a.name}
-	}
-
-	tracked := []TrackedResource{{
-		Kind:          string(api.KindTeam),
-		Owner:         root.OwnerName,
-		Name:          rootProjection.Name,
-		LocalPath:     TeamProjectionLocalPath(),
-		RemoteVersion: intPtr(root.Version),
-		Editable:      true,
-	}}
-	generated := []string{}
-	writer := NewWriter(s.fs, s.git, resourceMap)
-
-	for _, a := range agents {
-		agentBase := filepath.Join(base, a.name)
-
-		// Materialize agent files.
-		if err := writer.MaterializeAgent(agentBase, a.projection, a.name); err != nil {
-			return nil, fmt.Errorf("materialize agent %s: %w", a.name, err)
-		}
-
-		// Write team protocol — peers = all other agents.
-		aKey := teamKey(a.owner, a.name)
-		relations := buildPeerRelations(aKey, allKeys)
-		protocol := BuildAgentFacingTeamProtocol(rootProjection.Name, a.name, relations, agentsByKey)
-		protocolPath := filepath.Join(agentBase, ".clier", TeamProtocolFileName(a.name))
-		if err := s.fs.EnsureFile(protocolPath, []byte(protocol)); err != nil {
-			return nil, fmt.Errorf("write protocol for %s: %w", a.name, err)
-		}
-
-		// Write child projection (root already written as team.json).
-		isRoot := a.name == rootProjection.Name && a.owner == root.OwnerName
-		if !isRoot {
-			if err := WriteTeamProjection(s.fs, ChildTeamProjectionPath(base, a.name), a.projection); err != nil {
-				return nil, err
-			}
-			tracked = append(tracked, TrackedResource{
-				Kind:          string(api.KindTeam),
-				Owner:         a.owner,
-				Name:          a.name,
-				LocalPath:     ChildTeamProjectionLocalPath(a.name),
-				RemoteVersion: intPtr(a.version),
-				Editable:      true,
-			})
-		}
-
-		profile, _ := domain.ProfileFor(a.projection.AgentType)
-		generated = append(generated,
-			filepath.ToSlash(filepath.Join(a.localBase, ".clier", "work-log-protocol.md")),
-			filepath.ToSlash(filepath.Join(a.localBase, ".clier", TeamProtocolFileName(a.name))),
-		)
-		appendAgentTrackedResources(&tracked, &generated, a.projection, a.localBase, profile)
-	}
-
-	if err := s.populateBaseHashes(base, tracked); err != nil {
-		return nil, err
-	}
-	manifest := &Manifest{
-		Kind:             string(api.KindTeam),
-		Owner:            root.OwnerName,
-		Name:             rootProjection.Name,
-		ClonedAt:         time.Now().UTC(),
-		RootResource:     tracked[0],
-		TrackedResources: tracked,
-		GeneratedFiles:   normalizePaths(generated),
-	}
+	manifest.ClonedAt = time.Now().UTC()
 	if err := SaveManifest(s.fs, base, manifest); err != nil {
 		return nil, err
 	}
 	return manifest, nil
 }
 
-// collectCloneAgents walks the team tree and collects every node that has
-// a known agent profile (ProfileFor succeeds). Uniform for leaf and composite.
-func (s *Service) collectCloneAgents(rootProjection *TeamProjection, root *api.ResolvedResource, resourceMap map[string]*api.ResolvedResource) []agentEntry {
-	var agents []agentEntry
+func (s *Service) materializeResolvedTeam(base string, root *api.ResolvedResource, resourceMap map[string]*api.ResolvedResource, previous *Manifest) (*Manifest, error) {
+	rootProjection := teamProjectionFromResolved(root)
+	teams, agents, err := s.collectResolvedEntries(root.OwnerName, root.Version, rootProjection, resourceMap)
+	if err != nil {
+		return nil, err
+	}
+	if len(agents) == 0 {
+		return nil, fmt.Errorf("team %s/%s has no runnable agents (unknown agent type %q)", root.OwnerName, rootProjection.Name, rootProjection.AgentType)
+	}
+	localDirs := assignLocalDirs(agents, previous)
 
-	// Root node.
-	if _, err := domain.ProfileFor(rootProjection.AgentType); err == nil {
-		agents = append(agents, agentEntry{
-			name: rootProjection.Name, owner: root.OwnerName,
-			version: root.Version, projection: rootProjection,
-			localBase: filepath.ToSlash(rootProjection.Name),
+	tracked := make([]TrackedResource, 0, len(teams))
+	storedTeams := make([]StoredTeamState, 0, len(teams))
+	generated := []string{}
+
+	for _, team := range teams {
+		localDir := localDirs[team.id]
+		storedTeams = append(storedTeams, StoredTeamState{
+			Owner:      team.owner,
+			Name:       team.name,
+			Version:    team.version,
+			LocalDir:   localDir,
+			Projection: *team.projection,
+		})
+		tracked = append(tracked, TrackedResource{
+			Kind:          string(api.KindTeam),
+			AgentType:     team.projection.AgentType,
+			Owner:         team.owner,
+			Name:          team.name,
+			LocalPath:     teamTrackedPath(team.owner, team.name),
+			RemoteVersion: intPtr(team.version),
+			Editable:      true,
 		})
 	}
 
-	// Children.
-	for _, child := range rootProjection.Children {
-		childKey := teamKey(child.Owner, child.Name)
-		childResource, ok := resourceMap[childKey]
-		if !ok {
-			continue
-		}
-		childProjection := teamProjectionFromResolved(childResource)
-		if _, err := domain.ProfileFor(childProjection.AgentType); err == nil {
-			agents = append(agents, agentEntry{
-				name: child.Name, owner: child.Owner,
-				version: child.ChildVersion, projection: childProjection,
-				localBase: filepath.ToSlash(child.Name),
-			})
-		}
+	allKeys := make([]string, 0, len(agents))
+	agentsByKey := make(map[string]ProtocolAgent, len(agents))
+	for _, agent := range agents {
+		allKeys = append(allKeys, agent.id)
+		agentsByKey[agent.id] = ProtocolAgent{ID: agent.id, Owner: agent.owner, Name: agent.name}
 	}
 
-	return agents
+	writer := NewWriter(s.fs, s.git, resourceMap)
+	for _, agent := range agents {
+		agent.localBase = localDirs[agent.id]
+		agentBase := filepath.Join(base, filepath.FromSlash(agent.localBase))
+		if err := writer.MaterializeAgent(agentBase, agent.projection, agent.id); err != nil {
+			return nil, fmt.Errorf("materialize agent %s: %w", agent.id, err)
+		}
+
+		relations := buildPeerRelations(agent.id, allKeys)
+		self := agentsByKey[agent.id]
+		protocol := BuildAgentFacingTeamProtocol(rootProjection.Name, self, relations, agentsByKey)
+		protocolPath := filepath.Join(agentBase, ".clier", TeamProtocolFileName(agent.id))
+		if err := s.fs.EnsureFile(protocolPath, []byte(protocol)); err != nil {
+			return nil, fmt.Errorf("write protocol for %s: %w", agent.id, err)
+		}
+
+		profile, _ := domain.ProfileFor(agent.projection.AgentType)
+		generated = append(generated,
+			filepath.ToSlash(filepath.Join(agent.localBase, ".clier", "work-log-protocol.md")),
+			filepath.ToSlash(filepath.Join(agent.localBase, ".clier", TeamProtocolFileName(agent.id))),
+		)
+		appendAgentTrackedResources(&tracked, &generated, agent.projection, agent.localBase, profile)
+	}
+
+	manifest := &Manifest{
+		Kind:             string(api.KindTeam),
+		Owner:            root.OwnerName,
+		Name:             rootProjection.Name,
+		Teams:            storedTeams,
+		RootResource:     tracked[0],
+		TrackedResources: tracked,
+		GeneratedFiles:   normalizePaths(generated),
+	}
+	if err := s.populateBaseHashes(base, manifest); err != nil {
+		return nil, err
+	}
+	return manifest, nil
+}
+
+func (s *Service) collectResolvedEntries(rootOwner string, rootVersion int, rootProjection *TeamProjection, resourceMap map[string]*api.ResolvedResource) ([]teamEntry, []agentEntry, error) {
+	var teams []teamEntry
+	var agents []agentEntry
+
+	var walk func(owner string, version int, projection *TeamProjection) error
+	walk = func(owner string, version int, projection *TeamProjection) error {
+		entry := teamEntry{
+			id:         ResourceID(owner, projection.Name),
+			owner:      owner,
+			name:       projection.Name,
+			version:    version,
+			projection: projection,
+		}
+		teams = append(teams, entry)
+		if _, err := domain.ProfileFor(projection.AgentType); err == nil {
+			agents = append(agents, agentEntry{
+				teamEntry: entry,
+				localBase: AgentWorkspaceLocalPath(owner, projection.Name),
+			})
+		}
+		for _, child := range projection.Children {
+			childResource, ok := resourceMap[teamKey(child.Owner, child.Name)]
+			if !ok {
+				return fmt.Errorf("resolve child team %s/%s: not found in resolve response", child.Owner, child.Name)
+			}
+			if err := walk(child.Owner, childResource.Version, teamProjectionFromResolved(childResource)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := walk(rootOwner, rootVersion, rootProjection); err != nil {
+		return nil, nil, err
+	}
+	return teams, agents, nil
 }
 
 // --- Pull ---
@@ -252,57 +260,15 @@ func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Mani
 	// Also add root to map for child lookups.
 	rootKey := teamKey(resolved.Root.OwnerName, resolved.Root.Name)
 	resourceMap[rootKey] = &resolved.Root
-
-	for i := range manifest.TrackedResources {
-		tr := &manifest.TrackedResources[i]
-		key := teamKey(tr.Owner, tr.Name)
-		localPath := filepath.Join(base, filepath.FromSlash(tr.LocalPath))
-
-		switch api.ResourceKind(tr.Kind) {
-		case api.KindTeam:
-			r, ok := resourceMap[key]
-			if !ok {
-				return nil, fmt.Errorf("pull team %s: not found in resolve response", key)
-			}
-			projection := teamProjectionFromResolved(r)
-			if err := WriteTeamProjection(s.fs, localPath, projection); err != nil {
-				return nil, err
-			}
-			tr.RemoteVersion = intPtr(r.Version)
-
-		case api.KindInstruction, api.KindClaudeSettings, api.KindCodexSettings, api.KindSkill:
-			r, ok := resourceMap[key]
-			if !ok {
-				return nil, fmt.Errorf("pull %s %s: not found in resolve response", tr.Kind, key)
-			}
-			spec, err := decodeSnapshot[api.ContentSpec](r.Snapshot)
-			if err != nil {
-				return nil, fmt.Errorf("decode %s spec: %w", tr.Kind, err)
-			}
-			content := spec.Content
-			if api.IsInstructionKind(tr.Kind) {
-				agentName := filepath.ToSlash(tr.LocalPath)
-				if idx := strings.Index(agentName, "/"); idx >= 0 {
-					agentName = agentName[:idx]
-				}
-				agentType := tr.AgentType
-				if agentType == "" {
-					agentType = "claude"
-				}
-				content = ComposeInstruction(agentType, agentName, content)
-			}
-			if err := s.fs.EnsureFile(localPath, []byte(content)); err != nil {
-				return nil, fmt.Errorf("write %s: %w", tr.LocalPath, err)
-			}
-			tr.RemoteVersion = intPtr(r.Version)
-		}
-	}
-
-	// Recalculate base hashes after updating files.
-	if err := s.populateBaseHashes(base, manifest.TrackedResources); err != nil {
+	pulled, err := s.materializeResolvedTeam(base, &resolved.Root, resourceMap, manifest)
+	if err != nil {
 		return nil, err
 	}
-	return manifest, nil
+	pulled.ClonedAt = manifest.ClonedAt
+	if err := s.removeStaleManagedFiles(base, manifest, pulled); err != nil {
+		return nil, err
+	}
+	return pulled, nil
 }
 
 // --- Status ---
@@ -330,6 +296,10 @@ func (s *Service) Status(base string) (*Status, error) {
 		err    error
 	}
 	remoteCache := map[string]*remoteVersion{}
+	trackedIndex := make(map[string]int, len(tracked))
+	for i, tr := range tracked {
+		trackedIndex[tr.Path] = i
+	}
 	for i, tr := range manifest.TrackedResources {
 		if tr.RemoteVersion == nil {
 			continue
@@ -347,13 +317,17 @@ func (s *Service) Status(base string) (*Status, error) {
 		if rv.err != nil {
 			continue
 		}
+		idx, ok := trackedIndex[manifest.TrackedResources[i].LocalPath]
+		if !ok {
+			continue
+		}
 		pinned := *tr.RemoteVersion
-		tracked[i].PinnedVersion = &pinned
-		tracked[i].LatestVersion = &rv.latest
+		tracked[idx].PinnedVersion = &pinned
+		tracked[idx].LatestVersion = &rv.latest
 		if pinned < rv.latest {
-			tracked[i].Remote = "behind"
+			tracked[idx].Remote = "behind"
 		} else {
-			tracked[i].Remote = "up-to-date"
+			tracked[idx].Remote = "up-to-date"
 		}
 	}
 
@@ -390,22 +364,77 @@ func (s *Service) Push(base string) (*PushResult, error) {
 
 	pushed := 0
 	targetName := manifest.Name
+	pushedPaths := map[string]bool{}
+
 	for _, resource := range modified {
-		if !resource.Editable {
+		if !resource.Editable || api.ResourceKind(resource.Kind) == api.KindTeam {
 			continue
 		}
+		updated, err := s.pushTrackedResource(base, manifest, resource)
+		if err != nil {
+			return nil, err
+		}
 		pushed++
+		pushedPaths[resource.LocalPath] = true
+		if updated != nil {
+			if resource.LocalPath == manifest.RootResource.LocalPath {
+				targetName = updated.Metadata.Name
+			}
+			s.applyPushedResourceVersion(manifest, resource, updated.Metadata.LatestVersion)
+			if err := s.recordPushedResourceState(base, manifest, resource); err != nil {
+				return nil, err
+			}
+		}
+	}
 
-		kind, body, err := s.preparePushBody(base, manifest, resource)
+	for {
+		progress := false
+		for _, resource := range manifest.TrackedResources {
+			if !resource.Editable || api.ResourceKind(resource.Kind) != api.KindTeam {
+				continue
+			}
+			if pushedPaths[resource.LocalPath] {
+				continue
+			}
+			modified, blocked, err := s.teamPushState(base, manifest, resource)
+			if err != nil {
+				return nil, err
+			}
+			if !modified || blocked {
+				continue
+			}
+			updated, err := s.pushTrackedResource(base, manifest, resource)
+			if err != nil {
+				return nil, err
+			}
+			pushed++
+			pushedPaths[resource.LocalPath] = true
+			progress = true
+			if updated != nil {
+				if resource.LocalPath == manifest.RootResource.LocalPath {
+					targetName = updated.Metadata.Name
+				}
+				s.applyPushedResourceVersion(manifest, resource, updated.Metadata.LatestVersion)
+				if err := s.recordPushedResourceState(base, manifest, resource); err != nil {
+					return nil, err
+				}
+			}
+		}
+		if !progress {
+			break
+		}
+	}
+
+	for _, resource := range manifest.TrackedResources {
+		if !resource.Editable || api.ResourceKind(resource.Kind) != api.KindTeam {
+			continue
+		}
+		modified, _, err := s.teamPushState(base, manifest, resource)
 		if err != nil {
 			return nil, err
 		}
-		updated, err := s.pushResource(resource, kind, body)
-		if err != nil {
-			return nil, err
-		}
-		if updated != nil && resource.LocalPath == manifest.RootResource.LocalPath {
-			targetName = updated.Metadata.Name
+		if modified {
+			return nil, fmt.Errorf("unable to push team %s/%s: unresolved local team changes remain", resource.Owner, resource.Name)
 		}
 	}
 
@@ -421,16 +450,124 @@ func (s *Service) Push(base string) (*PushResult, error) {
 	return &PushResult{Status: "pushed", Pushed: pushed, PulledAfterPush: true}, nil
 }
 
+func (s *Service) pushTrackedResource(base string, manifest *Manifest, resource TrackedResource) (*api.ResourceResponse, error) {
+	kind, body, err := s.preparePushBody(base, manifest, resource)
+	if err != nil {
+		return nil, err
+	}
+	return s.pushResource(resource, kind, body)
+}
+
+func (s *Service) teamPushState(base string, manifest *Manifest, resource TrackedResource) (modified bool, blocked bool, err error) {
+	sum, err := s.trackedResourceHash(base, manifest, resource)
+	if err != nil {
+		return false, false, err
+	}
+	if sum == resource.BaseHash {
+		return false, false, nil
+	}
+
+	team, ok := manifest.FindTeam(resource.Owner, resource.Name)
+	if !ok {
+		return false, false, fmt.Errorf("team state %s/%s not found", resource.Owner, resource.Name)
+	}
+	for _, child := range team.Projection.Children {
+		childTracked, ok := manifest.FindTrackedResource(teamTrackedPath(child.Owner, child.Name))
+		if !ok || !childTracked.Editable {
+			continue
+		}
+		childSum, err := s.trackedResourceHash(base, manifest, *childTracked)
+		if err != nil {
+			return false, false, err
+		}
+		if childSum != childTracked.BaseHash {
+			return true, true, nil
+		}
+	}
+	return true, false, nil
+}
+
+func (s *Service) applyPushedResourceVersion(manifest *Manifest, resource TrackedResource, latest int) {
+	for i := range manifest.TrackedResources {
+		if manifest.TrackedResources[i].Kind != resource.Kind {
+			continue
+		}
+		if manifest.TrackedResources[i].Owner != resource.Owner || manifest.TrackedResources[i].Name != resource.Name {
+			continue
+		}
+		manifest.TrackedResources[i].RemoteVersion = intPtr(latest)
+	}
+
+	if resource.Kind == string(api.KindTeam) {
+		if manifest.RootResource.Kind == resource.Kind && manifest.RootResource.Owner == resource.Owner && manifest.RootResource.Name == resource.Name {
+			manifest.RootResource.RemoteVersion = intPtr(latest)
+		}
+		for i := range manifest.Teams {
+			if manifest.Teams[i].Owner == resource.Owner && manifest.Teams[i].Name == resource.Name {
+				manifest.Teams[i].Version = latest
+			}
+			for j := range manifest.Teams[i].Projection.Children {
+				child := &manifest.Teams[i].Projection.Children[j]
+				if child.Owner == resource.Owner && child.Name == resource.Name {
+					child.ChildVersion = latest
+				}
+			}
+		}
+		return
+	}
+
+	for i := range manifest.Teams {
+		projection := &manifest.Teams[i].Projection
+		if resource.Kind == string(api.KindInstruction) && projection.InstructionRef != nil &&
+			projection.InstructionRef.Owner == resource.Owner && projection.InstructionRef.Name == resource.Name {
+			projection.InstructionRef.Version = latest
+		}
+		if (resource.Kind == string(api.KindClaudeSettings) || resource.Kind == string(api.KindCodexSettings)) &&
+			projection.SettingsRef != nil &&
+			projection.SettingsRef.Owner == resource.Owner && projection.SettingsRef.Name == resource.Name {
+			projection.SettingsRef.Version = latest
+		}
+		if resource.Kind == string(api.KindSkill) {
+			for j := range projection.Skills {
+				skill := &projection.Skills[j]
+				if skill.Owner == resource.Owner && skill.Name == resource.Name {
+					skill.Version = latest
+				}
+			}
+		}
+	}
+}
+
+func (s *Service) recordPushedResourceState(base string, manifest *Manifest, resource TrackedResource) error {
+	sum, err := s.trackedResourceHash(base, manifest, resource)
+	if err != nil {
+		return err
+	}
+	for i := range manifest.TrackedResources {
+		if manifest.TrackedResources[i].Kind != resource.Kind {
+			continue
+		}
+		if manifest.TrackedResources[i].Owner != resource.Owner || manifest.TrackedResources[i].Name != resource.Name {
+			continue
+		}
+		manifest.TrackedResources[i].BaseHash = sum
+	}
+	if manifest.RootResource.Kind == resource.Kind && manifest.RootResource.Owner == resource.Owner && manifest.RootResource.Name == resource.Name {
+		manifest.RootResource.BaseHash = sum
+	}
+	return nil
+}
+
 // preparePushBody builds the request body for a single tracked resource.
 func (s *Service) preparePushBody(base string, manifest *Manifest, r TrackedResource) (api.ResourceKind, any, error) {
 	kind := api.ResourceKind(r.Kind)
 	switch kind {
 	case api.KindTeam:
-		projection, err := LoadTeamProjection(s.fs, filepath.Join(base, filepath.FromSlash(r.LocalPath)))
-		if err != nil {
-			return "", nil, err
+		team, ok := manifest.FindTeam(r.Owner, r.Name)
+		if !ok {
+			return "", nil, fmt.Errorf("team state %s/%s not found", r.Owner, r.Name)
 		}
-		body, err := s.teamMutationFromProjection(projection)
+		body, err := s.teamMutationFromProjection(&team.Projection)
 		if err != nil {
 			return "", nil, err
 		}
@@ -537,7 +674,7 @@ func (s *Service) ModifiedTrackedResources(base string) ([]TrackedResource, erro
 
 	var modified []TrackedResource
 	for _, resource := range manifest.TrackedResources {
-		sum, err := s.fileHash(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
+		sum, err := s.trackedResourceHash(base, manifest, resource)
 		if err != nil {
 			return nil, err
 		}
@@ -552,7 +689,7 @@ func (s *Service) trackedStatuses(base string, manifest *Manifest) ([]TrackedSta
 	statuses := make([]TrackedStatus, 0, len(manifest.TrackedResources))
 	modifiedCount := 0
 	for _, resource := range manifest.TrackedResources {
-		sum, err := s.fileHash(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
+		sum, err := s.trackedResourceHash(base, manifest, resource)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -587,7 +724,7 @@ func (s *Service) runSummary(base string) (RunStatusSummary, error) {
 	var summary RunStatusSummary
 	for _, entry := range entries {
 		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".json") || name == ManifestFile || name == TeamProjectionFile {
+		if entry.IsDir() || !strings.HasSuffix(name, ".json") || name == ManifestFile {
 			continue
 		}
 		plan, err := apprun.LoadPlanFromPath(filepath.Join(dir, name))
@@ -606,25 +743,23 @@ func (s *Service) runSummary(base string) (RunStatusSummary, error) {
 
 // serverInstructionContent reads the local instruction file and strips the
 // agent-specific prelude before sending to the server.
-func (s *Service) serverInstructionContent(base string, _ *Manifest, resource TrackedResource) (string, error) {
+func (s *Service) serverInstructionContent(base string, manifest *Manifest, resource TrackedResource) (string, error) {
 	data, err := s.fs.ReadFile(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
 	if err != nil {
 		return "", fmt.Errorf("read local resource %s: %w", resource.LocalPath, err)
 	}
 	content := string(data)
 
-	// Determine the agent name from the local path (first path component).
-	agentName := filepath.ToSlash(filepath.Clean(resource.LocalPath))
-	if idx := strings.Index(agentName, "/"); idx >= 0 {
-		agentName = agentName[:idx]
-	}
-
 	// Try to find the agent type by looking up the agent's team projection.
 	agentType := resource.AgentType
 	if agentType == "" {
 		agentType = "claude"
 	}
-	return StripInstructionPrelude(agentType, agentName, content), nil
+	agent, ok := manifest.AgentForLocalPath(resource.LocalPath)
+	if !ok {
+		return "", fmt.Errorf("derive agent id from %s: no matching local dir in state", resource.LocalPath)
+	}
+	return StripInstructionPrelude(agentType, ResourceID(agent.Owner, agent.Name), content), nil
 }
 
 // --- Helpers ---
@@ -741,7 +876,7 @@ func appendAgentTrackedResources(tracked *[]TrackedResource, generated *[]string
 			AgentType:     agentType,
 			Owner:         skillRef.Owner,
 			Name:          skillRef.Name,
-			LocalPath:     filepath.ToSlash(filepath.Join(localBase, profile.SettingsDir, profile.SkillsDir, skillRef.Name, "SKILL.md")),
+			LocalPath:     filepath.ToSlash(filepath.Join(localBase, profile.SettingsDir, profile.SkillsDir, skillRef.Owner, skillRef.Name, "SKILL.md")),
 			RemoteVersion: intPtr(skillRef.Version),
 			Editable:      true,
 		})
@@ -765,16 +900,47 @@ func buildPeerRelations(selfKey string, allKeys []string) domain.TeamRelations {
 
 // teamKey returns the unique identifier for a team (owner/name).
 func teamKey(owner, name string) string {
-	return owner + "/" + name
+	return ResourceID(owner, name)
 }
 
-func (s *Service) populateBaseHashes(base string, tracked []TrackedResource) error {
-	for i := range tracked {
-		sum, err := s.fileHash(filepath.Join(base, filepath.FromSlash(tracked[i].LocalPath)))
+func (s *Service) removeStaleManagedFiles(base string, previous, next *Manifest) error {
+	keep := make(map[string]struct{}, len(next.TrackedResources)+len(next.GeneratedFiles))
+	for _, resource := range next.TrackedResources {
+		keep[resource.LocalPath] = struct{}{}
+	}
+	for _, path := range next.GeneratedFiles {
+		keep[path] = struct{}{}
+	}
+
+	for _, resource := range previous.TrackedResources {
+		if _, ok := keep[resource.LocalPath]; ok {
+			continue
+		}
+		if err := s.fs.RemoveAll(filepath.Join(base, filepath.FromSlash(resource.LocalPath))); err != nil {
+			return fmt.Errorf("remove stale tracked file %s: %w", resource.LocalPath, err)
+		}
+	}
+	for _, path := range previous.GeneratedFiles {
+		if _, ok := keep[path]; ok {
+			continue
+		}
+		if err := s.fs.RemoveAll(filepath.Join(base, filepath.FromSlash(path))); err != nil {
+			return fmt.Errorf("remove stale generated file %s: %w", path, err)
+		}
+	}
+	return nil
+}
+
+func (s *Service) populateBaseHashes(base string, manifest *Manifest) error {
+	for i := range manifest.TrackedResources {
+		sum, err := s.trackedResourceHash(base, manifest, manifest.TrackedResources[i])
 		if err != nil {
 			return err
 		}
-		tracked[i].BaseHash = sum
+		manifest.TrackedResources[i].BaseHash = sum
+	}
+	if len(manifest.TrackedResources) > 0 {
+		manifest.RootResource = manifest.TrackedResources[0]
 	}
 	return nil
 }
@@ -799,6 +965,64 @@ func (s *Service) fileHash(path string) (string, error) {
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:]), nil
+}
+
+func (s *Service) trackedResourceHash(base string, manifest *Manifest, resource TrackedResource) (string, error) {
+	if api.ResourceKind(resource.Kind) == api.KindTeam {
+		if manifest == nil {
+			return "", errors.New("team hash requires state")
+		}
+		team, ok := manifest.FindTeam(resource.Owner, resource.Name)
+		if !ok {
+			return "", fmt.Errorf("team state %s/%s not found", resource.Owner, resource.Name)
+		}
+		data, err := json.Marshal(team.Projection)
+		if err != nil {
+			return "", fmt.Errorf("marshal team projection %s/%s: %w", resource.Owner, resource.Name, err)
+		}
+		sum := sha256.Sum256(data)
+		return hex.EncodeToString(sum[:]), nil
+	}
+	return s.fileHash(filepath.Join(base, filepath.FromSlash(resource.LocalPath)))
+}
+
+func teamTrackedPath(owner, name string) string {
+	return ".clier/" + ResourceID(owner, name) + ".team"
+}
+
+func assignLocalDirs(agents []agentEntry, previous *Manifest) map[string]string {
+	assigned := make(map[string]string, len(agents))
+	taken := map[string]bool{}
+
+	if previous != nil {
+		for _, team := range previous.Teams {
+			if team.LocalDir != "" {
+				taken[team.LocalDir] = true
+			}
+		}
+	}
+
+	for _, agent := range agents {
+		if previous != nil {
+			if prior, ok := previous.FindTeam(agent.owner, agent.name); ok && prior.LocalDir != "" {
+				assigned[agent.id] = prior.LocalDir
+				continue
+			}
+		}
+		base := sanitizeRepoDirName(agent.name)
+		candidate := base
+		if taken[candidate] {
+			ownerPart := sanitizeRepoDirName(agent.owner)
+			candidate = base + "__" + ownerPart
+		}
+		for i := 2; taken[candidate]; i++ {
+			candidate = fmt.Sprintf("%s__%d", base, i)
+		}
+		taken[candidate] = true
+		assigned[agent.id] = candidate
+	}
+
+	return assigned
 }
 
 func versionsMatch(expected *int, actual int) bool {

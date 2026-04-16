@@ -18,7 +18,7 @@ func parseOptionalResourceRefRequest(raw string) (*api.ResourceRefRequest, error
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid resource ref %q: want <owner/name>@<version>", raw)
 	}
-	owner, name, err := parseOwnerName(strings.TrimSpace(parts[0]))
+	owner, name, err := splitResourceID(strings.TrimSpace(parts[0]))
 	if err != nil {
 		return nil, fmt.Errorf("invalid resource ref %q: %w", raw, err)
 	}

@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"strings"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
 	adaptergit "github.com/jakeraft/clier/internal/adapter/git"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
+	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/auth"
 	"github.com/jakeraft/clier/internal/config"
 	"github.com/spf13/cobra"
@@ -115,7 +115,7 @@ Core workflow:
   clier fork <owner/name>        Fork a resource to customize it
   clier clone <owner/name>       Download a local working copy
   clier run start                Launch agents in tmux
-  clier run tell --to <name>     Send instructions to an agent
+  clier run tell --to <owner/name> Send instructions to an agent
   clier run attach <run-id>      Watch agents in real time
   clier open dashboard           Open the dashboard in a browser`,
 	SilenceErrors: true,
@@ -201,13 +201,8 @@ func resolveOwner(explicit string) (string, error) {
 	return login, nil
 }
 
-// parseOwnerName splits "owner/name" into owner and name.
-func parseOwnerName(s string) (owner, name string, err error) {
-	parts := strings.SplitN(strings.TrimSpace(s), "/", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return "", "", fmt.Errorf("invalid resource %q: want <owner/name>", s)
-	}
-	return parts[0], parts[1], nil
+func splitResourceID(id string) (owner, name string, err error) {
+	return appworkspace.SplitResourceID(id)
 }
 
 func newAgentRootCmd(teamScoped bool) *cobra.Command {

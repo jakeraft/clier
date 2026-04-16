@@ -59,7 +59,7 @@ func newRunListCmd() *cobra.Command {
 
 			runs := make([]*apprun.RunPlan, 0)
 			for _, entry := range entries {
-				if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") || strings.HasSuffix(entry.Name(), ".state.json") || entry.Name() == appworkspace.ManifestFile || entry.Name() == appworkspace.TeamProjectionFile {
+				if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") || strings.HasSuffix(entry.Name(), ".state.json") || entry.Name() == appworkspace.ManifestFile {
 					continue
 				}
 				plan, err := apprun.LoadPlanFromPath(filepath.Join(runtimeDir, entry.Name()))
@@ -107,26 +107,21 @@ Agents start idle. Use run tell to send them instructions.`,
 				return err
 			}
 
-			rootProjection, err := appworkspace.LoadTeamProjection(fs, appworkspace.TeamProjectionPath(copyRoot))
-			if err != nil {
-				return fmt.Errorf("load team projection: %w", err)
-			}
-
-			// Composite pattern: uniform agent collection from tree.
-			agents, err := collectRunnableAgents(fs, copyRoot, rootProjection)
+			agents, err := collectRunnableAgents(manifest)
 			if err != nil {
 				return err
 			}
 
-			runName := sessionName(rootProjection.Name, runID)
+			runName := sessionName(manifest.Name, runID)
 			var terminalPlans []apprun.AgentTerminal
 			for i, agent := range agents {
-				agentBase := filepath.Join(copyRoot, agent.Name)
-				envVars := buildAgentEnv(runID, agent.Name, rootProjection.Name)
-				fullCommand := buildFullCommand(envVars, agent.Command, agentBase)
+				agentBase := filepath.Join(copyRoot, filepath.FromSlash(agent.LocalBase))
+				envVars := buildAgentEnv(runID, agent.ID, appworkspace.ResourceID(manifest.Owner, manifest.Name))
+				fullCommand := buildFullCommand(envVars, agent.Projection.Command, agentBase)
 				terminalPlans = append(terminalPlans, apprun.AgentTerminal{
+					ID:        agent.ID,
 					Name:      agent.Name,
-					AgentType: agent.AgentType,
+					AgentType: agent.Projection.AgentType,
 					Window:    i,
 					Workspace: agentBase,
 					Cwd:       agentBase,
@@ -210,7 +205,7 @@ environment.`,
 			return term.Attach(plan, agentName)
 		},
 	}
-	cmd.Flags().StringVar(&agentFlag, "agent", "", "Attach to a specific agent name")
+	cmd.Flags().StringVar(&agentFlag, "agent", "", "Attach to a specific agent ID (owner/name)")
 	return cmd
 }
 
@@ -225,9 +220,9 @@ func newRunTellCmd() *cobra.Command {
 Content can be provided as an argument or via stdin.
 
 Examples:
-  clier run tell --to <name> "simple message"
-  echo "message with special chars" | clier run tell --to <name>
-  clier run tell --to <name> <<'EOF'
+  clier run tell --to <owner/name> "simple message"
+  echo "message with special chars" | clier run tell --to <owner/name>
+  clier run tell --to <owner/name> <<'EOF'
   message with ` + "`backticks`" + ` and --flags
   EOF`,
 		Args: cobra.MaximumNArgs(1),
@@ -270,7 +265,7 @@ Examples:
 		},
 	}
 	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to "+envClierRunID+")")
-	cmd.Flags().StringVar(&toAgentName, "to", "", "Recipient agent name")
+	cmd.Flags().StringVar(&toAgentName, "to", "", "Recipient agent ID (owner/name)")
 	_ = cmd.MarkFlagRequired("to")
 	return cmd
 }
@@ -343,7 +338,7 @@ func readContent(args []string) (string, error) {
 	return content, nil
 }
 
-// resolveRunContext resolves run ID and agent name from env vars set by clier.
+// resolveRunContext resolves run ID and agent ID from env vars set by clier.
 func resolveRunContext(runFlag string) (runID string, agentName *string, err error) {
 	runID = strings.TrimSpace(runFlag)
 	if runID == "" {

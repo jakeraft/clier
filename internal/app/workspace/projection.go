@@ -44,16 +44,8 @@ func TeamProjectionPath(base string) string {
 	return filepath.Join(base, ".clier", TeamProjectionFile)
 }
 
-func ChildTeamProjectionPath(base, childName string) string {
-	return filepath.Join(base, ".clier", "teams", sanitizeRepoDirName(childName)+".json")
-}
-
 func TeamProjectionLocalPath() string {
 	return filepath.ToSlash(filepath.Join(".clier", "team.json"))
-}
-
-func ChildTeamProjectionLocalPath(childName string) string {
-	return filepath.ToSlash(filepath.Join(".clier", "teams", sanitizeRepoDirName(childName)+".json"))
 }
 
 func WriteTeamProjection(fs FileMaterializer, path string, projection *TeamProjection) error {
