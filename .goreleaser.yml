@@ -19,8 +19,10 @@ brews:
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/jakeraft/clier"
-    description: "Design your agent team. Run them in real terminals, not API calls."
+    description: "Harness multi-agent teams with a native CLI."
     license: "MIT"
+    dependencies:
+      - name: tmux
 
 changelog:
   sort: asc

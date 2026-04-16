@@ -97,7 +97,7 @@ func SetVersion(v string) {
 
 var rootCmd = &cobra.Command{
 	Use:   "clier",
-	Short: "Harness AI agent teams",
+	Short: "Harness multi-agent teams with a native CLI",
 	Long: `clier is a harness for AI coding agent teams.
 
 Define agents, compose them into teams, and run them locally in tmux.
@@ -107,7 +107,7 @@ You watch, steer, and intervene in real time.
 Teams can be leaf (single agent) or composite (multiple agents).
 
 Get started:
-  clier tutorial               Walk through an example team
+  clier tutorial               Walk through the hello-claude team
   clier list --kind team       Browse what others have built
 
 Core workflow:
