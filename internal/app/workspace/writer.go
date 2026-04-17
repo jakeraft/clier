@@ -1,9 +1,7 @@
 package workspace
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
@@ -12,18 +10,16 @@ import (
 
 // agentPaths holds resolved file paths for a specific agent profile.
 type agentPaths struct {
-	instructionFile   string // e.g. {base}/CLAUDE.md
-	settingsFile      string // e.g. {base}/.claude/settings.json
-	localSettingsFile string // e.g. {base}/.claude/settings.local.json
-	skillsDir         string // e.g. {base}/.claude/skills
+	instructionFile string // e.g. {base}/CLAUDE.md
+	settingsFile    string // e.g. {base}/.claude/settings.json
+	skillsDir       string // e.g. {base}/.claude/skills
 }
 
 func resolveAgentPaths(base string, profile domain.AgentProfile) agentPaths {
 	return agentPaths{
-		instructionFile:   filepath.Join(base, profile.InstructionFile),
-		settingsFile:      filepath.Join(base, profile.SettingsDir, profile.SettingsFile),
-		localSettingsFile: filepath.Join(base, profile.SettingsDir, profile.LocalSettingsFile),
-		skillsDir:         filepath.Join(base, profile.SettingsDir, profile.SkillsDir),
+		instructionFile: filepath.Join(base, profile.InstructionFile),
+		settingsFile:    filepath.Join(base, profile.SettingsDir, profile.SettingsFile),
+		skillsDir:       filepath.Join(base, profile.SettingsDir, profile.SkillsDir),
 	}
 }
 
@@ -41,7 +37,7 @@ func NewWriter(fs FileMaterializer, git GitRepo, resourceMap map[string]*api.Res
 	return &Writer{fs: fs, git: git, resourceMap: resourceMap}
 }
 
-// MaterializeAgent writes local-clone files for a single agent (leaf team).
+// MaterializeAgent writes local-clone files for a team that runs as an agent.
 func (w *Writer) MaterializeAgent(base string, projection *TeamProjection, agentID string) error {
 	profile, err := domain.ProfileFor(projection.AgentType)
 	if err != nil {
@@ -83,9 +79,6 @@ func (w *Writer) MaterializeAgent(base string, projection *TeamProjection, agent
 			return fmt.Errorf("write settings: %w", err)
 		}
 	}
-	if err := w.writeLocalSettings(base, profile); err != nil {
-		return fmt.Errorf("write local settings: %w", err)
-	}
 
 	// Write skills
 	for _, skillRef := range projection.Skills {
@@ -121,37 +114,6 @@ func (w *Writer) writeFile(path, content string) error {
 	return w.fs.EnsureFile(path, []byte(content))
 }
 
-func (w *Writer) writeLocalSettings(base string, profile domain.AgentProfile) error {
-	if profile.LocalSettingsFile == "" {
-		return nil
-	}
-	content, err := localSettingsContent(profile)
-	if err != nil {
-		return err
-	}
-	return w.writeFile(filepath.Join(base, profile.SettingsDir, profile.LocalSettingsFile), content)
-}
-
 func (w *Writer) writeWorkLogProtocol(base string) error {
 	return w.writeFile(filepath.Join(base, ".clier", workLogProtocolFileName), BuildAgentFacingWorkLogProtocol())
-}
-
-func localSettingsContent(profile domain.AgentProfile) (string, error) {
-	if profile.HomeExcludeKey == "" {
-		return "{}", nil
-	}
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("resolve home directory: %w", err)
-	}
-	payload := map[string]any{
-		profile.HomeExcludeKey: []string{
-			filepath.ToSlash(filepath.Join(homeDir, profile.SettingsDir)) + "/**",
-		},
-	}
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return "", fmt.Errorf("marshal local settings: %w", err)
-	}
-	return string(data), nil
 }

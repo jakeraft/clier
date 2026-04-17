@@ -12,9 +12,8 @@ type ResourceRefProjection struct {
 	Version int    `json:"version"`
 }
 
-// TeamProjection is the unified projection for both leaf and composite teams.
-// Leaf team: has Command/AgentType/refs, no Children.
-// Composite team: has Children, may also have Command/AgentType.
+// TeamProjection describes a team. Command/AgentType/refs apply when the
+// team itself runs as an agent; Children references nested teams.
 type TeamProjection struct {
 	Name           string                  `json:"name"`
 	AgentType      string                  `json:"agent_type,omitempty"`
@@ -31,11 +30,6 @@ type ChildProjection struct {
 	Owner        string `json:"owner"`
 	Name         string `json:"name"`
 	ChildVersion int    `json:"child_version"`
-}
-
-// IsLeaf returns true if this team has no children (i.e. is a runnable agent).
-func (p *TeamProjection) IsLeaf() bool {
-	return len(p.Children) == 0
 }
 
 const TeamProjectionFile = "team.json"

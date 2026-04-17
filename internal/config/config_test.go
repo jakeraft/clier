@@ -70,7 +70,7 @@ func TestResolveDefaults(t *testing.T) {
 func TestResolveOverrides(t *testing.T) {
 	got, err := Resolve(&File{
 		ServerURL:       "https://api.example.com/",
-		CredentialsPath: "~/creds.json",
+		CredentialsPath: "/tmp/creds.json",
 	})
 	if err != nil {
 		t.Fatalf("Resolve() error: %v", err)
@@ -78,7 +78,7 @@ func TestResolveOverrides(t *testing.T) {
 	if got.ServerURL != "https://api.example.com" {
 		t.Fatalf("ServerURL = %q, want %q", got.ServerURL, "https://api.example.com")
 	}
-	if !strings.Contains(got.CredentialsPath, "creds.json") {
-		t.Fatalf("CredentialsPath = %q", got.CredentialsPath)
+	if got.CredentialsPath != "/tmp/creds.json" {
+		t.Fatalf("CredentialsPath = %q, want %q", got.CredentialsPath, "/tmp/creds.json")
 	}
 }

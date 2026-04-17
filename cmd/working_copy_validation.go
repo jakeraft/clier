@@ -51,9 +51,6 @@ func validateAgentCopy(base string, agent runnableAgent) error {
 		filepath.Join(base, ".clier", "work-log-protocol.md"),
 		filepath.Join(base, ".clier", appworkspace.TeamProtocolFileName(agent.ID)),
 	}
-	if profile.LocalSettingsFile != "" {
-		required = append(required, filepath.Join(base, profile.SettingsDir, profile.LocalSettingsFile))
-	}
 	for _, path := range required {
 		if err := requireCopyPath(path); err != nil {
 			return err

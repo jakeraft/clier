@@ -104,8 +104,6 @@ Define agents, compose them into teams, and run them locally in tmux.
 Each agent gets its own terminal, git repo, and system prompt.
 You watch, steer, and intervene in real time.
 
-Teams can be leaf (single agent) or composite (multiple agents).
-
 Get started:
   clier tutorial               Walk through the hello-claude team
   clier list --kind team       Browse what others have built

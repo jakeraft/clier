@@ -15,8 +15,6 @@ func newCloneCmd() *cobra.Command {
 		Use:   "clone <owner/name>",
 		Short: "Download a local working copy",
 		Long: `Download a team from the server into a local working copy.
-Works with both leaf teams (single agent) and composite teams
-(multiple agents).
 
 Use push/pull to sync changes, and run start to launch agents.`,
 		GroupID: rootGroupWorkspace,

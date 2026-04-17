@@ -605,8 +605,8 @@ func (s *Service) readContentForPush(base string, manifest *Manifest, kind api.R
 	return string(data), nil
 }
 
-// teamMutationFromProjection builds a TeamWriteRequest from a TeamProjection.
-// Works for both leaf teams (agent fields) and composite teams (children).
+// teamMutationFromProjection builds a TeamWriteRequest from a TeamProjection,
+// resolving the team's own agent fields and its children.
 func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.TeamWriteRequest, error) {
 	req := &api.TeamWriteRequest{
 		Name:       projection.Name,
@@ -615,7 +615,6 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 	}
 
 	// Instruction and settings refs require an agent profile to resolve the kind.
-	// Only resolve when refs are present (leaf teams); composite teams skip this.
 	if projection.InstructionRef != nil || projection.SettingsRef != nil {
 		profile, err := domain.ProfileFor(projection.AgentType)
 		if err != nil {
@@ -650,7 +649,7 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 	}
 	req.Skills = skillRefs
 
-	// Children (for composite teams)
+	// Children
 	children := make([]api.ChildRefRequest, 0, len(projection.Children))
 	for _, child := range projection.Children {
 		children = append(children, api.ChildRefRequest{
@@ -836,13 +835,9 @@ func teamProjectionFromResolved(r *api.ResolvedResource) *TeamProjection {
 }
 
 // appendAgentTrackedResources adds tracked resources and generated files for
-// a single agent (leaf team) to the tracked/generated slices.
+// a team's agent role to the tracked/generated slices.
 func appendAgentTrackedResources(tracked *[]TrackedResource, generated *[]string, projection *TeamProjection, localBase string, profile domain.AgentProfile) {
 	agentType := projection.AgentType
-
-	if profile.LocalSettingsFile != "" {
-		*generated = append(*generated, filepath.ToSlash(filepath.Join(localBase, profile.SettingsDir, profile.LocalSettingsFile)))
-	}
 
 	if projection.InstructionRef != nil {
 		*tracked = append(*tracked, TrackedResource{

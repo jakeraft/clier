@@ -43,9 +43,6 @@ func TestProfileFor_Codex(t *testing.T) {
 	if profile.SettingsFile != "config.toml" {
 		t.Errorf("SettingsFile = %q, want %q", profile.SettingsFile, "config.toml")
 	}
-	if profile.LocalSettingsFile != "" {
-		t.Errorf("LocalSettingsFile = %q, want empty", profile.LocalSettingsFile)
-	}
 	if profile.SkillsDir != "skills" {
 		t.Errorf("SkillsDir = %q, want %q", profile.SkillsDir, "skills")
 	}
@@ -54,9 +51,6 @@ func TestProfileFor_Codex(t *testing.T) {
 	}
 	if profile.ExitCommand != "/exit" {
 		t.Errorf("ExitCommand = %q, want %q", profile.ExitCommand, "/exit")
-	}
-	if profile.HomeExcludeKey != "" {
-		t.Errorf("HomeExcludeKey = %q, want empty", profile.HomeExcludeKey)
 	}
 	if profile.InstructionKind != "instruction" {
 		t.Errorf("InstructionKind = %q, want %q", profile.InstructionKind, "instruction")

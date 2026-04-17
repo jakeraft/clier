@@ -80,8 +80,7 @@ func newRunStartCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "start",
 		Short: "Launch the current working copy in tmux",
-		Long: `Start all agents in the current working copy. Works with both
-leaf teams (single agent) and composite teams (multiple agents).
+		Long: `Start all agents in the current working copy.
 
 Agents start idle. Use run tell to send them instructions.`,
 		Args: cobra.NoArgs,

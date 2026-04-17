@@ -66,7 +66,7 @@ func TestSaveManifest(t *testing.T) {
 	}
 }
 
-func TestManifest_LeafTeamClone(t *testing.T) {
+func TestManifest_AgentTeamClone(t *testing.T) {
 	t.Parallel()
 
 	base := t.TempDir()
