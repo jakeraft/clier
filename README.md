@@ -34,8 +34,6 @@ brew install jakeraft/tap/clier
 clier open dashboard
 ```
 
-Opens the dashboard in your browser. Browse teams, skills, and docs in read-only mode.
-
 <table>
   <tr>
     <td><img src="assets/docs.png" alt="Docs" /></td>
@@ -52,10 +50,10 @@ Opens the dashboard in your browser. Browse teams, skills, and docs in read-only
 Open your CLI agent and say:
 
 ```
-I want to try clier. Explore the clier CLI using "clier --help" and walk me through the tutorial.
+I want to try clier. Explore "clier --help" and walk me through the tutorial.
 ```
 
-Under the hood, the agent drives. Steps marked **(you)** need your hands on the keyboard.
+Under the hood
 
 The agent starts by exploring:
 
@@ -63,39 +61,19 @@ The agent starts by exploring:
 clier --help
 clier tutorial
 clier auth status
-```
-
-It sees you're not logged in and says *"Please run `clier auth login`."*
-
-```bash
-clier auth login                            # (you) GitHub device flow
-```
-
-Back in the agent:
-
-```bash
+clier auth login
+...
 clier clone @clier/hello-claude
 clier run start @clier/hello-claude
-```
-
-On first launch, vendor CLIs may need one-time approval. The agent says *"Attach and approve any prompts, then detach with Ctrl-b d."*
-
-```bash
-clier run attach <run-id>                   # (you) approve, then Ctrl-b d
-```
-
-The agent then sends the first instruction:
-
-```bash
 clier run tell --run <run-id> \
   --to @clier/hello-claude \
   "Have both team members greet each other and report the result."
 ```
 
-Attach anytime to watch the exchange:
+You can attach anytime to watch the exchange:
 
 ```bash
-clier run attach <run-id>                   # (you) watch live
+clier run attach <run-id>
 ```
 
 ## License
