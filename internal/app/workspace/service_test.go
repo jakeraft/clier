@@ -1,9 +1,13 @@
 package workspace
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
@@ -188,5 +192,75 @@ func TestApplyPushedResourceVersion_UpdatesReferencingTeamState(t *testing.T) {
 	root, _ = manifest.FindTeam("org", "root")
 	if len(root.Projection.Children) != 1 || root.Projection.Children[0].ChildVersion != 3 {
 		t.Fatalf("root child version = %+v, want 3", root.Projection.Children)
+	}
+}
+
+func TestPull_PreservesFirstRunAt(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	fs := filesystem.New()
+
+	cloned := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	firstRun := time.Date(2026, 4, 10, 12, 0, 0, 0, time.UTC)
+	pre := &Manifest{
+		Kind:       string(api.KindTeam),
+		Owner:      "org",
+		Name:       "solo",
+		ClonedAt:   cloned,
+		FirstRunAt: &firstRun,
+		RootResource: TrackedResource{
+			Kind:      string(api.KindTeam),
+			Owner:     "org",
+			Name:      "solo",
+			LocalPath: teamTrackedPath("org", "solo"),
+			Editable:  true,
+		},
+	}
+	if err := SaveManifest(fs, base, pre); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1/orgs/org/teams/solo/resolve" {
+			_ = json.NewEncoder(w).Encode(api.ResolveResponse{
+				Root: api.ResolvedResource{
+					Kind:      string(api.KindTeam),
+					OwnerName: "org",
+					Name:      "solo",
+					Version:   1,
+					Snapshot:  []byte(`{"agent_type":"claude","command":"claude"}`),
+				},
+				Resources: []api.ResolvedResource{},
+			})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	svc := NewService(api.NewClient(server.URL, ""), fs, nil)
+	pulled, err := svc.Pull(base, true)
+	if err != nil {
+		t.Fatalf("Pull: %v", err)
+	}
+
+	if pulled.FirstRunAt == nil {
+		t.Fatal("Pull dropped FirstRunAt from returned manifest")
+	}
+	if !pulled.FirstRunAt.Equal(firstRun) {
+		t.Fatalf("returned FirstRunAt = %v, want %v", pulled.FirstRunAt, firstRun)
+	}
+	if !pulled.ClonedAt.Equal(cloned) {
+		t.Fatalf("returned ClonedAt = %v, want %v", pulled.ClonedAt, cloned)
+	}
+
+	reloaded, err := LoadManifest(fs, base)
+	if err != nil {
+		t.Fatalf("LoadManifest after pull: %v", err)
+	}
+	if reloaded.FirstRunAt == nil || !reloaded.FirstRunAt.Equal(firstRun) {
+		t.Fatalf("persisted FirstRunAt = %v, want %v", reloaded.FirstRunAt, firstRun)
 	}
 }

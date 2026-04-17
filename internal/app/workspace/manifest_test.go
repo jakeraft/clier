@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
@@ -217,5 +218,70 @@ func TestLoadManifest_RequiresManifestPath(t *testing.T) {
 	base := t.TempDir()
 	if _, err := LoadManifest(filesystem.New(), base); err == nil {
 		t.Fatalf("expected manifest lookup to fail without state.json")
+	}
+}
+
+func TestManifest_FirstRunAtRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	fs := filesystem.New()
+	stamp := time.Date(2026, 4, 17, 12, 0, 0, 0, time.UTC)
+	meta := &Manifest{
+		Kind:       string(api.KindTeam),
+		Owner:      "jakeraft",
+		Name:       "dev-squad",
+		FirstRunAt: &stamp,
+		RootResource: TrackedResource{
+			Kind:      string(api.KindTeam),
+			Owner:     "jakeraft",
+			Name:      "dev-squad",
+			LocalPath: teamTrackedPath("jakeraft", "dev-squad"),
+			Editable:  true,
+		},
+	}
+
+	if err := SaveManifest(fs, base, meta); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
+	}
+	loaded, err := LoadManifest(fs, base)
+	if err != nil {
+		t.Fatalf("LoadManifest: %v", err)
+	}
+	if loaded.FirstRunAt == nil {
+		t.Fatal("FirstRunAt was lost on round trip")
+	}
+	if !loaded.FirstRunAt.Equal(stamp) {
+		t.Fatalf("FirstRunAt = %v, want %v", loaded.FirstRunAt, stamp)
+	}
+}
+
+func TestManifest_FirstRunAtOmittedWhenNil(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	fs := filesystem.New()
+	meta := &Manifest{
+		Kind:  string(api.KindTeam),
+		Owner: "jakeraft",
+		Name:  "dev-squad",
+		RootResource: TrackedResource{
+			Kind:      string(api.KindTeam),
+			Owner:     "jakeraft",
+			Name:      "dev-squad",
+			LocalPath: teamTrackedPath("jakeraft", "dev-squad"),
+			Editable:  true,
+		},
+	}
+
+	if err := SaveManifest(fs, base, meta); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(base, ".clier", ManifestFile))
+	if err != nil {
+		t.Fatalf("read manifest: %v", err)
+	}
+	if strings.Contains(string(data), "first_run_at") {
+		t.Fatalf("nil FirstRunAt should be omitted from JSON, got: %s", data)
 	}
 }

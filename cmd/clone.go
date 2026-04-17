@@ -16,7 +16,12 @@ func newCloneCmd() *cobra.Command {
 		Short: "Download a local working copy",
 		Long: `Download a team from the server into a local working copy.
 
-Use push/pull to sync changes, and run start to launch agents.`,
+Use push/pull to sync changes, and run start to launch agents.
+
+Note: Some vendor CLIs key approvals on the absolute workspace path
+(e.g., Codex's directory trust). Cloning under a parent directory
+you have already trusted in that vendor avoids one-time approval
+prompts on the first start.`,
 		GroupID: rootGroupWorkspace,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

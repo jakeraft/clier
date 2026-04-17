@@ -265,6 +265,7 @@ func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Mani
 		return nil, err
 	}
 	pulled.ClonedAt = manifest.ClonedAt
+	pulled.FirstRunAt = manifest.FirstRunAt
 	if err := s.removeStaleManagedFiles(base, manifest, pulled); err != nil {
 		return nil, err
 	}

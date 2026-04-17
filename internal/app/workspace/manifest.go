@@ -22,6 +22,7 @@ type Manifest struct {
 	Owner            string            `json:"owner"`
 	Name             string            `json:"name"`
 	ClonedAt         time.Time         `json:"cloned_at"`
+	FirstRunAt       *time.Time        `json:"first_run_at,omitempty"`
 	RootResource     TrackedResource   `json:"root_resource"`
 	Teams            []StoredTeamState `json:"teams,omitempty"`
 	TrackedResources []TrackedResource `json:"tracked_resources,omitempty"`

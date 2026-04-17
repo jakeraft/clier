@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
@@ -82,7 +83,14 @@ func newRunStartCmd() *cobra.Command {
 		Short: "Launch the current working copy in tmux",
 		Long: `Start all agents in the current working copy.
 
-Agents start idle. Use run tell to send them instructions.`,
+Agents start idle. Use run tell to send them instructions.
+
+On the first start in a fresh working copy, the JSON output includes
+a one-time "first_run_hint" field. Vendor CLIs (e.g., Codex) may
+show their own approval prompts in their pane on first launch.
+clier does not modify vendor configs on your behalf — ask the user
+to run "clier run attach <run-id>" from a normal terminal, approve
+those prompts, and detach (Ctrl-b d) before sending messages.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()
@@ -132,9 +140,38 @@ Agents start idle. Use run tell to send them instructions.`,
 			if err != nil {
 				return err
 			}
-			return printJSON(map[string]any{"run_id": runID, "session": plan.Session})
+
+			result := map[string]any{"run_id": runID, "session": plan.Session}
+			if hint, mark := firstRunHint(manifest, runID); hint != "" {
+				result[firstRunHintField] = hint
+				manifest.FirstRunAt = mark
+				// Best-effort persist: if the manifest write fails, the
+				// hint reappears on the next run — no data loss, just a
+				// duplicate hint. Failing the run for this would be worse.
+				_ = appworkspace.SaveManifest(fs, copyRoot, manifest)
+			}
+			return printJSON(result)
 		},
 	}
+}
+
+// firstRunHintField is the JSON key used in run start output and
+// referenced in tutorial / docs. Keep callers in sync via this constant.
+const firstRunHintField = "first_run_hint"
+
+// firstRunHint returns the one-time hint and the timestamp to mark on
+// the manifest when this is the workspace's first start. Returns ("", nil)
+// if FirstRunAt is already set.
+func firstRunHint(manifest *appworkspace.Manifest, runID string) (string, *time.Time) {
+	if manifest.FirstRunAt != nil {
+		return "", nil
+	}
+	now := time.Now().UTC()
+	text := fmt.Sprintf(
+		"First start in this workspace. Before sending messages, ask your user to run 'clier run attach %s' from a normal terminal and approve any one-time vendor prompts (e.g., Codex's directory trust), then detach (Ctrl-b d).",
+		runID,
+	)
+	return text, &now
 }
 
 func newRunViewCmd() *cobra.Command {
@@ -183,8 +220,13 @@ func newRunAttachCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "attach <run-id>",
-		Short: "Watch agents in real time",
+		Short: "Watch and interact with agents in real time",
 		Long: `Attach to the tmux session for an active run.
+
+attach is interactive — you can observe agents and type into their
+panes. Use it to approve any one-time vendor prompts (e.g., Codex's
+directory trust) on a workspace's first start, then detach with
+Ctrl-b d.
 
 This command is intended for use from a normal user terminal.
 It is not supported when clier itself is running inside an agent

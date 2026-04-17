@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +15,7 @@ func newTutorialCmd() *cobra.Command {
 		Use:     "tutorial",
 		Short:   "Walk through the hello-claude team",
 		GroupID: rootGroupSettings,
-		Long: `Walk through the built-in hello-claude team.
+		Long: fmt.Sprintf(`Walk through the built-in hello-claude team.
 
 The "@clier/hello-claude" tutorial is the quickest way to verify that
 clier can clone a team, launch members locally, pass messages between
@@ -59,6 +61,13 @@ Step 5. Start the team
 
   This launches both members in tmux from the current local clone.
   Note the run ID from the output.
+
+  On the first start in a fresh working copy, the output includes a
+  one-time %q field. Vendor CLIs (e.g., Codex) may show their own
+  approval prompts in their pane on first launch. Run
+  "clier run attach <run-id>" from your terminal, approve those
+  prompts, and detach (Ctrl-b d) before sending messages in the
+  next step.
 
 Step 6. Ask hello-claude to have both members greet each other
 
@@ -110,7 +119,7 @@ Step 11. Try sync flows
     clier pull --force
     clier push
 
-Tip: Use "clier <command> --help" for details on each command.`,
+Tip: Use "clier <command> --help" for details on each command.`, firstRunHintField),
 	}
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		return c.Help()
