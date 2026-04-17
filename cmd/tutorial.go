@@ -15,13 +15,14 @@ func newTutorialCmd() *cobra.Command {
 		Use:     "tutorial",
 		Short:   "Walk through the hello-claude team",
 		GroupID: rootGroupSettings,
-		Long: fmt.Sprintf(`Walk through the built-in hello-claude team.
+		Long: fmt.Sprintf(`Walk through the built-in @clier/hello-claude team.
 
-The "@clier/hello-claude" tutorial is the quickest way to verify that
-clier can clone a team, launch members locally, pass messages between
-them, and sync tracked changes.
+The tutorial has two phases:
 
-The team has two members:
+  Phase 1 — Run the canned team to verify the install (Steps 1–9)
+  Phase 2 — Fork it into your own namespace and iterate (Steps 10–18)
+
+The team you start with:
 
   hello-claude (root, Claude)
   └── hello-codex (child, Codex)
@@ -31,7 +32,9 @@ clier owns the working-copy layout — every clone lives at
 ~/.clier/workspace). Run subcommands work from any cwd; identify
 working copies with <owner>/<name> and runs with their run-id.
 
-Follow the steps below to try it out.
+================================================================
+Phase 1 — Try the canned team
+================================================================
 
 Step 1. Log in
 
@@ -39,18 +42,16 @@ Step 1. Log in
 
   Authenticate with GitHub via device flow.
 
-Step 2. Explore the pre-loaded hello-claude team
+Step 2. Explore the pre-loaded team
 
   clier list --kind team
   clier get @clier/hello-claude
-
-  The "@clier/hello-claude" team is already available.
 
 Step 3. Clone the team
 
   clier clone @clier/hello-claude
 
-  This downloads the working copy to
+  Downloads the working copy to
   ~/.clier/workspace/@clier/hello-claude/. No cd is needed.
 
 Step 4. Inspect the working copy
@@ -64,72 +65,115 @@ Step 5. Start the team
 
   clier run start @clier/hello-claude
 
-  This launches both members in tmux. Note the run ID from the output.
+  This launches both members in tmux. Note the run ID.
 
   On the first start in a fresh working copy, the output includes a
   one-time %q field. Vendor CLIs (e.g., Codex) may show their own
   approval prompts in their pane on first launch. Run
   "clier run attach <run-id>" from your terminal, approve those
-  prompts, and detach (Ctrl-b d) before sending messages in the
-  next step.
+  prompts, and detach (Ctrl-b d) before sending messages.
 
-Step 6. Ask hello-claude to have both members greet each other
+Step 6. Ask hello-claude to greet
 
   clier run tell --run <run-id> --to @clier/hello-claude \
     "Have both team members greet each other and report the result."
 
-  A healthy run should show hello-claude contacting hello-codex,
-  hello-codex replying, and hello-claude reporting the greeting result.
-
-Step 7. Watch the run
+Step 7. Watch and verify
 
   clier run attach <run-id>        Watch agents in real time
-  clier run view <run-id>          Check progress notes and messages
+  clier run view <run-id>          Inspect messages and notes
 
-  Note: run attach is intended for a normal user terminal.
-  It is not supported when clier is running inside an agent.
+  Confirm both members participated and the greeting completed.
 
-Step 8. Verify the result
-
-  Confirm all of the following:
-
-  - both members participated
-  - the greeting exchange completed
-  - run view reflects the messages you observed
-
-Step 9. Stop the run
+Step 8. Stop the run
 
   clier run stop <run-id>
 
-Step 10. Edit a tracked file
-
-  Resources you clone are tracked locally, similar to git. Locate
-  the root agent's CLAUDE.md inside the working copy, edit it,
-  then check what changed:
-
-    clier status @clier/hello-claude
-
-Step 11. Try sync flows
-
-  Verify:
-
-  - clean pull updates tracked files from the server
-  - dirty pull refuses to overwrite local changes unless forced
-  - push publishes your local tracked edits back to the server
-
-  Use:
-
-    clier pull @clier/hello-claude
-    clier pull @clier/hello-claude --force
-    clier push @clier/hello-claude
-
-Step 12. Tear it down
+Step 9. Tear down the canned team
 
   clier remove @clier/hello-claude
 
-  Removes the working copy and every run plan that points to it.
-  Refuses if there are uncommitted changes or a run is still
-  running — push/revert or stop those first.
+  Removes the working copy and any associated run plans. Phase 2
+  starts from a fresh fork in your own namespace.
+
+================================================================
+Phase 2 — Fork it and iterate
+================================================================
+
+This is where clier's value loop lives: clone → use → refine →
+push → others pull. To make a team yours, fork it on the server,
+then clone the fork.
+
+About fork depth:
+
+  fork is shallow — it copies only the team itself into your
+  namespace. Leaf resources (instruction, settings, skills) and
+  child teams remain owned by the original author. To rewrite a
+  leaf, fork that leaf too and rewire your team to point at it.
+
+Step 10. Fork the team into your namespace
+
+  clier fork @clier/hello-claude
+  → creates <yourname>/hello-claude
+
+Step 11. Fork the instruction so you own the prompt text
+
+  clier fork @clier/greeting-prompt
+  → creates <yourname>/greeting-prompt
+
+Step 12. Rewire your team to use your instruction
+
+  clier edit <yourname>/hello-claude \
+    --instruction <yourname>/greeting-prompt@1
+
+  This bumps your team's version because its ref changed.
+
+Step 13. Clone your fork
+
+  clier clone <yourname>/hello-claude
+
+Step 14. Edit the prompt and check status
+
+  Locate CLAUDE.md inside the working copy and add your refinement.
+
+  clier status <yourname>/hello-claude
+  → "modified <yourname>/greeting-prompt"
+
+Step 15. Push your refinement
+
+  clier push <yourname>/hello-claude
+
+  Bumps <yourname>/greeting-prompt to v2 and your team's ref
+  follows.
+
+Step 16. Verify the version bump
+
+  clier get <yourname>/greeting-prompt
+  → latest_version: 2
+
+Step 17. Pull keeps you (and others) in sync
+
+  clier pull <yourname>/hello-claude
+
+  Anyone who has cloned your team can run pull to receive the
+  improvement. Iteration is now a true loop — keep refining and
+  pushing as you use the team.
+
+Step 18. Cleanup
+
+  clier remove <yourname>/hello-claude
+
+================================================================
+Going further
+================================================================
+
+Collaborating without forking — clier org
+
+  Members of the same organization share write access to that
+  owner's resources, so you can skip fork-rewire and iterate
+  together on a shared namespace. See:
+
+    clier org --help          create, invite, list, members
 
 Tip: Use "clier <command> --help" for details on each command.`, hintField),
 	}
