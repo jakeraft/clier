@@ -69,11 +69,11 @@ type Status struct {
 
 // StatusDetails carries structured context about the failed resource.
 type StatusDetails struct {
-	Kind    string         `json:"kind,omitempty"`
-	Owner   string         `json:"owner,omitempty"`
-	Name    string         `json:"name,omitempty"`
-	Version int            `json:"version,omitempty"`
-	Causes  []StatusCause  `json:"causes,omitempty"`
+	Kind    string        `json:"kind,omitempty"`
+	Owner   string        `json:"owner,omitempty"`
+	Name    string        `json:"name,omitempty"`
+	Version int           `json:"version,omitempty"`
+	Causes  []StatusCause `json:"causes,omitempty"`
 }
 
 // StatusCause describes a single field-level validation cause.

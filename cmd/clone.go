@@ -26,7 +26,7 @@ overridden via the workspace_dir field in ~/.clier/config.json.
 
 Use push/pull to sync changes, and run start to launch agents.`,
 		GroupID: rootGroupWorkspace,
-		Args:    requireExactArgs(1, "clier clone <owner/name>"),
+		Args:    requireOneArg("clier clone <owner/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner, name, err := splitResourceID(args[0])

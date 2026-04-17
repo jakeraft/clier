@@ -9,10 +9,10 @@ import (
 	"github.com/jakeraft/clier/cmd/middleware"
 	"github.com/jakeraft/clier/cmd/present"
 	"github.com/jakeraft/clier/internal/adapter/api"
-	"github.com/jakeraft/clier/internal/app"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
 	adaptergit "github.com/jakeraft/clier/internal/adapter/git"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
+	"github.com/jakeraft/clier/internal/app"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/auth"
 	"github.com/jakeraft/clier/internal/config"
@@ -100,9 +100,9 @@ func SetVersion(v string) {
 }
 
 var rootCmd = &cobra.Command{
-	Use:           "clier",
-	Short:         "Harness multi-agent teams with a native CLI",
-	SilenceUsage:  true,
+	Use:          "clier",
+	Short:        "Harness multi-agent teams with a native CLI",
+	SilenceUsage: true,
 	Long: `clier is a harness for AI coding agent teams.
 
 Define agents, compose them into teams, and run them locally in tmux.

@@ -5,22 +5,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// requireExactArgs returns a cobra.PositionalArgs validator that enforces
-// exactly n arguments. Failures are returned as domain.Fault values so
+// requireOneArg returns a cobra.PositionalArgs validator that enforces
+// exactly one argument. Failures are returned as domain.Fault values so
 // the central presenter renders the message — cobra's default
 // "accepts N arg(s), received M" never reaches the user.
-func requireExactArgs(n int, usage string) cobra.PositionalArgs {
+func requireOneArg(usage string) cobra.PositionalArgs {
 	return func(_ *cobra.Command, args []string) error {
-		if len(args) == n {
+		switch {
+		case len(args) == 1:
 			return nil
-		}
-		kind := domain.KindMissingArgument
-		if len(args) > n {
-			kind = domain.KindTooManyArgs
-		}
-		return &domain.Fault{
-			Kind:    kind,
-			Subject: map[string]string{"usage": usage},
+		case len(args) > 1:
+			return &domain.Fault{
+				Kind:    domain.KindTooManyArgs,
+				Subject: map[string]string{"usage": usage},
+			}
+		default:
+			return &domain.Fault{
+				Kind:    domain.KindMissingArgument,
+				Subject: map[string]string{"usage": usage},
+			}
 		}
 	}
 }

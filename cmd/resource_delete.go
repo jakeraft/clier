@@ -16,7 +16,7 @@ func newDeleteCmd() *cobra.Command {
 		Use:     "delete <owner/name>",
 		Short:   "Delete a resource (auto-detects kind)",
 		GroupID: rootGroupResources,
-		Args:    requireExactArgs(1, "clier delete <owner/name>"),
+		Args:    requireOneArg("clier delete <owner/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner, name, err := splitResourceID(args[0])

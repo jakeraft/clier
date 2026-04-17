@@ -72,7 +72,7 @@ own approval prompts in their pane on first launch. clier does not
 modify vendor configs on your behalf — ask the user to run
 "clier run attach <run-id>" from a normal terminal, approve those
 prompts, and detach (Ctrl-b d) before sending messages.`,
-		Args: requireExactArgs(1, "clier run start <owner/name>"),
+		Args: requireOneArg("clier run start <owner/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			owner, name, err := splitResourceID(args[0])
 			if err != nil {
@@ -165,7 +165,7 @@ func newRunViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view <run-id>",
 		Short: "Show run status and notes",
-		Args:  requireExactArgs(1, "clier run view <run-id>"),
+		Args:  requireOneArg("clier run view <run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			plan, err := resolveRunPlan(args[0])
 			if err != nil {
@@ -180,7 +180,7 @@ func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "stop <run-id>",
 		Short: "Stop a running session",
-		Args:  requireExactArgs(1, "clier run stop <run-id>"),
+		Args:  requireOneArg("clier run stop <run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			plan, err := resolveRunPlan(args[0])
 			if err != nil {
@@ -221,7 +221,7 @@ Verifying without attaching:
     tmux capture-pane -p -t <session>:<window>
   Use 'clier run view <run-id>' to look up the session name and
   per-agent window indices.`,
-		Args: requireExactArgs(1, "clier run attach <run-id>"),
+		Args: requireOneArg("clier run attach <run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			term := newTerminal()
 			plan, err := resolveRunPlan(args[0])
