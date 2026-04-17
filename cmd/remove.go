@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +53,10 @@ Refused when:
 				return err
 			}
 			if len(modified) > 0 {
-				return fmt.Errorf("working copy has uncommitted changes; push or revert before removing (%d modified)", len(modified))
+				return &domain.Fault{
+					Kind:    domain.KindWorkspaceDirty,
+					Subject: map[string]string{"modified": strconv.Itoa(len(modified))},
+				}
 			}
 
 			plans, err := apprun.ListPlans(runsDir())
@@ -66,7 +71,10 @@ Refused when:
 			}
 			for _, p := range owned {
 				if p.Status == apprun.StatusRunning {
-					return fmt.Errorf("run %s is still running; clier run stop %s before removing", p.RunID, p.RunID)
+					return &domain.Fault{
+						Kind:    domain.KindRunBlocksRemove,
+						Subject: map[string]string{"run_id": p.RunID},
+					}
 				}
 			}
 

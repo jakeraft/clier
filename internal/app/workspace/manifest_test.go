@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 func TestSaveManifest(t *testing.T) {
@@ -186,8 +188,12 @@ func TestLoadManifest_RejectsOutdatedFormat(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for outdated manifest format")
 	}
-	if !strings.Contains(err.Error(), "outdated") {
-		t.Fatalf("error should mention outdated: %v", err)
+	var f *domain.Fault
+	if !errors.As(err, &f) || f.Kind != domain.KindManifestIncompatible {
+		t.Fatalf("expected KindManifestIncompatible, got %v", err)
+	}
+	if f.Subject["hint"] != "re-clone with 'clier clone'" {
+		t.Fatalf("hint should mention re-clone, got %q", f.Subject["hint"])
 	}
 }
 
@@ -207,8 +213,12 @@ func TestLoadManifest_RejectsNewerFormat(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for newer manifest format")
 	}
-	if !strings.Contains(err.Error(), "upgrade") {
-		t.Fatalf("error should suggest upgrade: %v", err)
+	var f *domain.Fault
+	if !errors.As(err, &f) || f.Kind != domain.KindManifestIncompatible {
+		t.Fatalf("expected KindManifestIncompatible, got %v", err)
+	}
+	if f.Subject["hint"] != "upgrade clier" {
+		t.Fatalf("hint should suggest upgrade, got %q", f.Subject["hint"])
 	}
 }
 

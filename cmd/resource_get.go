@@ -11,7 +11,7 @@ func newGetCmd() *cobra.Command {
 		Use:     "get <owner/name>",
 		Short:   "Show any resource by owner and name",
 		GroupID: rootGroupResources,
-		Args:    cobra.ExactArgs(1),
+		Args:    requireExactArgs(1, "clier get <owner/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner, name, err := splitResourceID(args[0])

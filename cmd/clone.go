@@ -6,6 +6,7 @@ import (
 	"os"
 
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +26,7 @@ overridden via the workspace_dir field in ~/.clier/config.json.
 
 Use push/pull to sync changes, and run start to launch agents.`,
 		GroupID: rootGroupWorkspace,
-		Args:    cobra.ExactArgs(1),
+		Args:    requireExactArgs(1, "clier clone <owner/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
 			owner, name, err := splitResourceID(args[0])
@@ -38,7 +39,14 @@ Use push/pull to sync changes, and run start to launch agents.`,
 
 			base := workingCopyPath(owner, name)
 			if _, err := os.Stat(base); err == nil {
-				return fmt.Errorf("clone destination already exists: %s", base)
+				return &domain.Fault{
+					Kind: domain.KindCloneDestExists,
+					Subject: map[string]string{
+						"path":  base,
+						"owner": owner,
+						"name":  name,
+					},
+				}
 			} else if !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("stat clone destination: %w", err)
 			}

@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"path/filepath"
 
 	"github.com/jakeraft/clier/internal/config"
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -95,7 +95,10 @@ paths are rejected.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			path := args[0]
 			if !filepath.IsAbs(path) {
-				return fmt.Errorf("workspace_dir must be an absolute path: %q", path)
+				return &domain.Fault{
+					Kind:    domain.KindWorkspaceDirNotAbsolute,
+					Subject: map[string]string{"path": path},
+				}
 			}
 
 			cfg, err := loadRawConfig()

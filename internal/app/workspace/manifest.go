@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 const ManifestFile = "state.json"
@@ -93,10 +96,24 @@ func LoadManifest(fs FileMaterializer, base string) (*Manifest, error) {
 		return nil, fmt.Errorf("unmarshal manifest: %w", err)
 	}
 	if manifest.Format > CurrentFormat {
-		return nil, fmt.Errorf("local clone uses a newer format (format %d, this CLI supports %d); upgrade clier", manifest.Format, CurrentFormat)
+		return nil, &domain.Fault{
+			Kind: domain.KindManifestIncompatible,
+			Subject: map[string]string{
+				"got":      strconv.Itoa(manifest.Format),
+				"expected": strconv.Itoa(CurrentFormat),
+				"hint":     "upgrade clier",
+			},
+		}
 	}
 	if manifest.Format < CurrentFormat {
-		return nil, fmt.Errorf("local clone is outdated (format %d, expected %d); re-clone with `clier clone`", manifest.Format, CurrentFormat)
+		return nil, &domain.Fault{
+			Kind: domain.KindManifestIncompatible,
+			Subject: map[string]string{
+				"got":      strconv.Itoa(manifest.Format),
+				"expected": strconv.Itoa(CurrentFormat),
+				"hint":     "re-clone with 'clier clone'",
+			},
+		}
 	}
 	return &manifest, nil
 }

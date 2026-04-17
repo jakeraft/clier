@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +11,7 @@ import (
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -72,7 +72,7 @@ own approval prompts in their pane on first launch. clier does not
 modify vendor configs on your behalf — ask the user to run
 "clier run attach <run-id>" from a normal terminal, approve those
 prompts, and detach (Ctrl-b d) before sending messages.`,
-		Args: cobra.ExactArgs(1),
+		Args: requireExactArgs(1, "clier run start <owner/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			owner, name, err := splitResourceID(args[0])
 			if err != nil {
@@ -165,7 +165,7 @@ func newRunViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view <run-id>",
 		Short: "Show run status and notes",
-		Args:  cobra.ExactArgs(1),
+		Args:  requireExactArgs(1, "clier run view <run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			plan, err := resolveRunPlan(args[0])
 			if err != nil {
@@ -180,7 +180,7 @@ func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "stop <run-id>",
 		Short: "Stop a running session",
-		Args:  cobra.ExactArgs(1),
+		Args:  requireExactArgs(1, "clier run stop <run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			plan, err := resolveRunPlan(args[0])
 			if err != nil {
@@ -213,8 +213,15 @@ Ctrl-b d.
 
 This command is intended for use from a normal user terminal.
 It is not supported when clier itself is running inside an agent
-environment.`,
-		Args: cobra.ExactArgs(1),
+environment.
+
+Verifying without attaching:
+  When attach can't be used (running inside another tmux session,
+  CI, automated QA), inspect any agent pane non-interactively:
+    tmux capture-pane -p -t <session>:<window>
+  Use 'clier run view <run-id>' to look up the session name and
+  per-agent window indices.`,
+		Args: requireExactArgs(1, "clier run attach <run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			term := newTerminal()
 			plan, err := resolveRunPlan(args[0])
@@ -249,7 +256,7 @@ Examples:
   clier run tell --run <run-id> --to <owner/name> <<'EOF'
   message with ` + "`backticks`" + ` and --flags
   EOF`,
-		Args: cobra.MaximumNArgs(1),
+		Args: requireMaxArgs(1, "clier run tell --run <run-id> --to <owner/name> [content]"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := readContent(args)
 			if err != nil {
@@ -300,7 +307,7 @@ func newRunNoteCmd() *cobra.Command {
 
 Content can be provided as an argument or via stdin. The note is
 appended to the run file under <workspace_dir>/.runs/.`,
-		Args: cobra.MaximumNArgs(1),
+		Args: requireMaxArgs(1, "clier run note [content]"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := readContent(args)
 			if err != nil {
@@ -349,7 +356,7 @@ func readContent(args []string) (string, error) {
 	}
 	content := strings.TrimSpace(string(b))
 	if content == "" {
-		return "", errors.New("no content provided (pass as argument or pipe via stdin)")
+		return "", &domain.Fault{Kind: domain.KindContentRequired}
 	}
 	return content, nil
 }
@@ -361,7 +368,10 @@ func resolveRunContext(runFlag string) (runID string, agentName *string, err err
 		runID = strings.TrimSpace(os.Getenv(envClierRunID))
 	}
 	if runID == "" {
-		return "", nil, fmt.Errorf("--run flag or %s must be set", envClierRunID)
+		return "", nil, &domain.Fault{
+			Kind:    domain.KindRunIDRequired,
+			Subject: map[string]string{"env": envClierRunID},
+		}
 	}
 	if raw := strings.TrimSpace(os.Getenv(envClierAgentName)); raw != "" {
 		agentName = &raw

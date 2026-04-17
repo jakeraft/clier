@@ -2,18 +2,24 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 	"os"
 
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-// errNoWorkingCopy returns a uniform "not cloned yet" message used by
+// errNoWorkingCopy returns a uniform "not cloned yet" Fault used by
 // status / pull / push / run start so the user always gets the same
 // remediation hint regardless of which command they tried.
 func errNoWorkingCopy(owner, name, base string) error {
-	return fmt.Errorf("no working copy at %s; run 'clier clone %s/%s' first", base, owner, name)
+	return &domain.Fault{
+		Kind: domain.KindWorkingCopyMissing,
+		Subject: map[string]string{
+			"path":  base,
+			"owner": owner,
+			"name":  name,
+		},
+	}
 }
 
 // classifyWorkingCopyError wraps the raw os.ErrNotExist from manifest
@@ -45,7 +51,10 @@ func collectRunnableAgents(state *appworkspace.Manifest) ([]runnableAgent, error
 		if _, err := domain.ProfileFor(projection.AgentType); err == nil {
 			team, ok := state.FindTeam(owner, projection.Name)
 			if !ok || team.LocalDir == "" {
-				return fmt.Errorf("local dir missing for runnable agent %s/%s", owner, projection.Name)
+				return &domain.Fault{
+					Kind:    domain.KindWorkingCopyIncomplete,
+					Subject: map[string]string{"detail": "local dir missing for runnable agent " + owner + "/" + projection.Name},
+				}
 			}
 			agents = append(agents, runnableAgent{
 				ID:         appworkspace.ResourceID(owner, projection.Name),
@@ -59,7 +68,10 @@ func collectRunnableAgents(state *appworkspace.Manifest) ([]runnableAgent, error
 		for _, child := range projection.Children {
 			cp, ok := state.FindTeam(child.Owner, child.Name)
 			if !ok {
-				return fmt.Errorf("team state missing for child %s/%s", child.Owner, child.Name)
+				return &domain.Fault{
+					Kind:    domain.KindWorkingCopyIncomplete,
+					Subject: map[string]string{"detail": "team state missing for child " + child.Owner + "/" + child.Name},
+				}
 			}
 			projection := cp.Projection
 			if err := walk(child.Owner, &projection); err != nil {
@@ -71,7 +83,10 @@ func collectRunnableAgents(state *appworkspace.Manifest) ([]runnableAgent, error
 
 	root, ok := state.FindTeam(state.Owner, state.Name)
 	if !ok {
-		return nil, fmt.Errorf("root team state missing for %s/%s", state.Owner, state.Name)
+		return nil, &domain.Fault{
+			Kind:    domain.KindWorkingCopyIncomplete,
+			Subject: map[string]string{"detail": "root team state missing for " + state.Owner + "/" + state.Name},
+		}
 	}
 	rootProjection := root.Projection
 	if err := walk(state.Owner, &rootProjection); err != nil {

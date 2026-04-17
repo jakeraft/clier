@@ -10,13 +10,13 @@ import (
 )
 
 // Error is a structured API error with the original response status.
+// When the server returns a recognizable ErrorResponse envelope, Status
+// is populated and command-layer code should branch on Status.Reason
+// for user-friendly presentation.
 type Error struct {
 	StatusCode int
 	Body       string
-}
-
-func (e *Error) Error() string {
-	return fmt.Sprintf("api error %d: %s", e.StatusCode, e.Body)
+	Status     *Status
 }
 
 // Client is the HTTP client for the clier-server API.
@@ -61,7 +61,7 @@ func (c *Client) do(method, path string, body any, result any) error {
 	}()
 	if resp.StatusCode >= 400 {
 		b, _ := io.ReadAll(resp.Body)
-		return &Error{StatusCode: resp.StatusCode, Body: string(b)}
+		return &Error{StatusCode: resp.StatusCode, Body: string(b), Status: parseStatus(b)}
 	}
 	if result != nil {
 		if err := json.NewDecoder(resp.Body).Decode(result); err != nil {

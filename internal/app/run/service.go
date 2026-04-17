@@ -1,10 +1,11 @@
 package run
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 // Terminal launches and terminates agent processes.
@@ -53,11 +54,14 @@ func (s *Service) Stop(plan *RunPlan) error {
 // Send delivers a message to the recipient's terminal and records it in the plan.
 func (s *Service) Send(plan *RunPlan, fromAgent, toAgent *string, content string) error {
 	if toAgent == nil {
-		return errors.New("recipient agent ID is required")
+		return &domain.Fault{
+			Kind:    domain.KindInvalidArgument,
+			Subject: map[string]string{"detail": "recipient agent ID is required"},
+		}
 	}
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return errors.New("message content must not be empty")
+		return &domain.Fault{Kind: domain.KindContentRequired}
 	}
 
 	text := content
@@ -81,7 +85,7 @@ func (s *Service) Send(plan *RunPlan, fromAgent, toAgent *string, content string
 // Note records a progress entry posted by an agent.
 func (s *Service) Note(plan *RunPlan, agent *string, content string) error {
 	if strings.TrimSpace(content) == "" {
-		return errors.New("note content must not be empty")
+		return &domain.Fault{Kind: domain.KindContentRequired}
 	}
 
 	if err := plan.AddNote(agent, content); err != nil {

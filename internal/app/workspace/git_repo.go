@@ -4,7 +4,19 @@ import (
 	"errors"
 	"fmt"
 	"os"
+
+	"github.com/jakeraft/clier/internal/domain"
 )
+
+func repoConflict(path, detail string) *domain.Fault {
+	return &domain.Fault{
+		Kind: domain.KindRepoDirConflict,
+		Subject: map[string]string{
+			"path":   path,
+			"detail": detail,
+		},
+	}
+}
 
 func ensureRepoDir(fs FileMaterializer, git GitRepo, repoURL, repoDir string) error {
 	if repoURL == "" {
@@ -19,7 +31,7 @@ func ensureRepoDir(fs FileMaterializer, git GitRepo, repoURL, repoDir string) er
 		return fmt.Errorf("stat repo dir: %w", err)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("repo path %s exists and is not a directory", repoDir)
+		return repoConflict(repoDir, "path exists but is not a directory")
 	}
 
 	entries, err := fs.ReadDir(repoDir)
@@ -40,12 +52,12 @@ func ensureRepoDir(fs FileMaterializer, git GitRepo, repoURL, repoDir string) er
 			return fmt.Errorf("read git origin: %w", err)
 		}
 		if originURL != repoURL {
-			return fmt.Errorf("repo dir %s already tracks %s, not %s", repoDir, originURL, repoURL)
+			return repoConflict(repoDir, "already tracks "+originURL+", not "+repoURL)
 		}
 		return nil
 	}
 
-	return fmt.Errorf("repo dir %s already exists and is not a git repo", repoDir)
+	return repoConflict(repoDir, "directory exists but is not a git repo")
 }
 
 func IsMaterializedRoot(fs FileMaterializer, git GitRepo, repoURL, root string) (bool, error) {

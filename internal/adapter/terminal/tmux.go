@@ -1,7 +1,6 @@
 package terminal
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +11,15 @@ import (
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	"github.com/jakeraft/clier/internal/domain"
 )
+
+// errReadyTimeout is wrapped by Launch into a KindRunStartTimeout
+// Fault. Kept as a package-level sentinel so the wait loop can stay a
+// pure helper without constructing user-facing strings.
+var errReadyTimeout = stringError("ready marker not observed before deadline")
+
+type stringError string
+
+func (e stringError) Error() string { return string(e) }
 
 // TmuxTerminal manages agent terminals using tmux.
 // One tmux session per clier run, one window per agent.
@@ -31,7 +39,10 @@ func NewTmuxTerminal() *TmuxTerminal {
 
 func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
 	if len(plan.Agents) == 0 {
-		return errors.New("no agents to launch")
+		return &domain.Fault{
+			Kind:    domain.KindWorkingCopyIncomplete,
+			Subject: map[string]string{"detail": "no runnable agents in plan"},
+		}
 	}
 
 	sess := plan.Session
@@ -72,7 +83,11 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
 			continue
 		}
 		if err := t.waitReady(sess, strconv.Itoa(i), 60*time.Second, m.AgentType); err != nil {
-			return fmt.Errorf("wait ready %s: %w", m.ID, err)
+			return &domain.Fault{
+				Kind:    domain.KindRunStartTimeout,
+				Subject: map[string]string{"agent": m.ID},
+				Cause:   err,
+			}
 		}
 	}
 
@@ -83,9 +98,15 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
 func (t *TmuxTerminal) Send(plan *apprun.RunPlan, agentName string, text string) error {
 	agent, ok := plan.FindAgent(agentName)
 	if !ok {
-		return fmt.Errorf("agent %q not found in run plan", agentName)
+		return &domain.Fault{
+			Kind:    domain.KindInternal,
+			Subject: map[string]string{"detail": "agent " + agentName + " not found in run plan"},
+		}
 	}
-	return t.sendKeys(plan.Session, strconv.Itoa(agent.Window), text)
+	if err := t.sendKeys(plan.Session, strconv.Itoa(agent.Window), text); err != nil {
+		return wrapSessionError(plan.Session, err)
+	}
+	return nil
 }
 
 func (t *TmuxTerminal) Terminate(plan *apprun.RunPlan) error {
@@ -102,14 +123,20 @@ func (t *TmuxTerminal) Attach(plan *apprun.RunPlan, agentName *string) error {
 	if agentName != nil {
 		agent, ok := plan.FindAgent(*agentName)
 		if !ok {
-			return fmt.Errorf("agent %q not found in run plan", *agentName)
+			return &domain.Fault{
+				Kind:    domain.KindInternal,
+				Subject: map[string]string{"detail": "agent " + *agentName + " not found in run plan"},
+			}
 		}
 		if _, err := t.runFn("select-window", "-t", sess+":"+strconv.Itoa(agent.Window)); err != nil {
-			return fmt.Errorf("select window: %w", err)
+			return wrapSessionError(sess, err)
 		}
 	}
 
-	return t.attachFn(sess)
+	if err := t.attachFn(sess); err != nil {
+		return wrapSessionError(sess, err)
+	}
+	return nil
 }
 
 // exitAllWindows sends the agent-specific exit command to every agent window.
@@ -153,7 +180,7 @@ func (t *TmuxTerminal) waitReady(sess, win string, timeout time.Duration, agentT
 		}
 		t.sleep(500 * time.Millisecond)
 	}
-	return fmt.Errorf("not ready after %v", timeout)
+	return fmt.Errorf("%w (after %v)", errReadyTimeout, timeout)
 }
 
 // tmux command helpers
@@ -172,6 +199,9 @@ func (t *TmuxTerminal) sendKeys(sess, win, text string) error {
 }
 
 func (t *TmuxTerminal) defaultAttach(sess string) error {
+	if !isTerminal(os.Stdin) {
+		return &ErrNoTTY{}
+	}
 	cmd := exec.Command("tmux", "attach-session", "-t", sess)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -186,4 +216,20 @@ func (t *TmuxTerminal) defaultRun(args ...string) (string, error) {
 		return "", fmt.Errorf("tmux %s: %w: %s", args[0], err, strings.TrimSpace(string(out)))
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// wrapSessionError translates tmux "session not found" failures into the
+// adapter-neutral ErrSessionGone so the CLI presenter can show a hint
+// without leaking tmux internals. Other tmux errors pass through.
+func wrapSessionError(sess string, err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	if strings.Contains(msg, "can't find session") ||
+		strings.Contains(msg, "session not found") ||
+		strings.Contains(msg, "no server running") {
+		return &ErrSessionGone{Session: sess}
+	}
+	return err
 }

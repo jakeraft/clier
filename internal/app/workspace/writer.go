@@ -101,7 +101,7 @@ func (w *Writer) resolveContent(owner, name string) (string, error) {
 	key := teamKey(owner, name)
 	r, ok := w.resourceMap[key]
 	if !ok {
-		return "", fmt.Errorf("resource %s not found in resolve map", key)
+		return "", internalFault("resource %s not found in resolve map", key)
 	}
 	spec, err := decodeSnapshot[api.ContentSpec](r.Snapshot)
 	if err != nil {

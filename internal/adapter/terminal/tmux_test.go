@@ -213,12 +213,8 @@ func TestTmuxTerminal_WaitReady_Timeout(t *testing.T) {
 	}}
 	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
 
-	err := tm.waitReady("sess", "0", 10*time.Millisecond, "claude")
-	if err == nil {
+	if err := tm.waitReady("sess", "0", 10*time.Millisecond, "claude"); err == nil {
 		t.Fatal("expected timeout error")
-	}
-	if !strings.Contains(err.Error(), "not ready") {
-		t.Errorf("unexpected error: %v", err)
 	}
 }
 

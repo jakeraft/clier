@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"runtime"
 
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -45,6 +46,9 @@ func openBrowser(url string) error {
 	case "windows":
 		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
 	default:
-		return fmt.Errorf("unsupported platform %s", runtime.GOOS)
+		return &domain.Fault{
+			Kind:    domain.KindUnsupportedPlatform,
+			Subject: map[string]string{"platform": runtime.GOOS},
+		}
 	}
 }

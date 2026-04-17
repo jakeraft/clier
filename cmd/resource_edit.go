@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -29,7 +31,12 @@ func validateEditFlags(cmd *cobra.Command, kind api.ResourceKind) error {
 		}
 	})
 	if len(invalid) > 0 {
-		return fmt.Errorf("flags %v not applicable to resource kind %q", invalid, kind)
+		return &domain.Fault{
+			Kind: domain.KindInvalidArgument,
+			Subject: map[string]string{
+				"detail": "flags " + strings.Join(invalid, ", ") + " not applicable to resource kind " + string(kind),
+			},
+		}
 	}
 	return nil
 }
@@ -132,7 +139,10 @@ via a GET request, and only the flags you provide are sent as changes.`,
 				return printJSON(resp)
 
 			default:
-				return fmt.Errorf("unsupported resource kind %q", res.Kind)
+				return &domain.Fault{
+					Kind:    domain.KindUnsupportedKind,
+					Subject: map[string]string{"resource_kind": res.Kind},
+				}
 			}
 		},
 	}

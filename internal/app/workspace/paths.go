@@ -1,9 +1,10 @@
 package workspace
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 func ResourceID(owner, name string) string {
@@ -13,9 +14,21 @@ func ResourceID(owner, name string) string {
 func SplitResourceID(id string) (owner, name string, err error) {
 	parts := strings.SplitN(strings.TrimSpace(id), "/", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return "", "", fmt.Errorf("invalid resource %q: want <owner/name>", id)
+		return "", "", &domain.Fault{
+			Kind: domain.KindInvalidArgument,
+			Subject: map[string]string{
+				"detail": "expected <owner/name>, got " + quoteOrEmpty(id),
+			},
+		}
 	}
 	return parts[0], parts[1], nil
+}
+
+func quoteOrEmpty(s string) string {
+	if s == "" {
+		return `""`
+	}
+	return `"` + s + `"`
 }
 
 func AgentWorkspacePath(base, owner, name string) string {

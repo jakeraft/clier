@@ -1,8 +1,10 @@
 package cmd
 
 import (
-	"strings"
+	"errors"
 	"testing"
+
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 func TestParseOptionalResourceRefRequest_OrgOwner(t *testing.T) {
@@ -27,8 +29,9 @@ func TestParseOptionalResourceRefRequest_MissingVersionReturnsError(t *testing.T
 	if err == nil {
 		t.Fatal("expected error for missing version")
 	}
-	if !strings.Contains(err.Error(), "want <owner/name>@<version>") {
-		t.Fatalf("unexpected error: %v", err)
+	var f *domain.Fault
+	if !errors.As(err, &f) || f.Kind != domain.KindInvalidResourceRef {
+		t.Fatalf("expected KindInvalidResourceRef, got %v", err)
 	}
 }
 
@@ -69,7 +72,8 @@ func TestParseChildRefSpecs_EmptyRefReturnsError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for empty child ref")
 	}
-	if !strings.Contains(err.Error(), "child ref must not be empty") {
-		t.Fatalf("unexpected error: %v", err)
+	var f *domain.Fault
+	if !errors.As(err, &f) || f.Kind != domain.KindInvalidArgument {
+		t.Fatalf("expected KindInvalidArgument, got %v", err)
 	}
 }

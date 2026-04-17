@@ -1,9 +1,10 @@
 package run
 
 import (
-	"errors"
 	"strings"
 	"time"
+
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 const (
@@ -78,7 +79,7 @@ func (p *RunPlan) FindAgent(agentID string) (*AgentTerminal, bool) {
 func (p *RunPlan) AddMessage(fromAgent, toAgent *string, content string) error {
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return errors.New("message content must not be empty")
+		return &domain.Fault{Kind: domain.KindContentRequired}
 	}
 	p.Messages = append(p.Messages, RecordedMessage{
 		FromAgent: copyStrPtr(fromAgent),
@@ -92,7 +93,7 @@ func (p *RunPlan) AddMessage(fromAgent, toAgent *string, content string) error {
 func (p *RunPlan) AddNote(agent *string, content string) error {
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return errors.New("note content must not be empty")
+		return &domain.Fault{Kind: domain.KindContentRequired}
 	}
 	p.Notes = append(p.Notes, RecordedNote{
 		Agent:     copyStrPtr(agent),

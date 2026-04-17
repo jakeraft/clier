@@ -11,6 +11,7 @@ import (
 	"time"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 // sessionName generates a tmux-safe session name from a name and run ID.
@@ -74,7 +75,10 @@ func rejectIfRunActive(base string) error {
 	}
 	for _, p := range plans {
 		if p.WorkingCopyPath == base && p.Status == apprun.StatusRunning {
-			return fmt.Errorf("run %s is already running for this working copy; clier run stop %s first (or fork the team to run in parallel)", p.RunID, p.RunID)
+			return &domain.Fault{
+				Kind:    domain.KindRunAlreadyRunning,
+				Subject: map[string]string{"run_id": p.RunID},
+			}
 		}
 	}
 	return nil
@@ -85,12 +89,20 @@ func resolveRunPlan(runID string) (*apprun.RunPlan, error) {
 	plan, err := apprun.LoadPlan(runsDir(), runID)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("run %s not found", runID)
+			return nil, &domain.Fault{
+				Kind:    domain.KindRunNotFound,
+				Subject: map[string]string{"run_id": runID},
+			}
 		}
 		return nil, fmt.Errorf("load run plan: %w", err)
 	}
 	if plan.RunID != "" && plan.RunID != runID {
-		return nil, fmt.Errorf("run plan for %s reports run id %s", runID, plan.RunID)
+		return nil, &domain.Fault{
+			Kind: domain.KindInternal,
+			Subject: map[string]string{
+				"detail": "run plan for " + runID + " reports run id " + plan.RunID,
+			},
+		}
 	}
 	return plan, nil
 }

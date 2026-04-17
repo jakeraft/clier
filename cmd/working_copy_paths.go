@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 // workspaceDir returns the resolved workspace root from config.
@@ -30,7 +30,10 @@ func workingCopyPath(owner, name string) string {
 // workspace subdirectories (anything starting with '.', e.g., ".runs").
 func validateOwner(owner string) error {
 	if strings.HasPrefix(owner, ".") {
-		return fmt.Errorf("owner name cannot start with '.': %q", owner)
+		return &domain.Fault{
+			Kind:    domain.KindInvalidArgument,
+			Subject: map[string]string{"detail": "owner name cannot start with '.': " + owner},
+		}
 	}
 	return nil
 }

@@ -6,13 +6,17 @@ import (
 	"io/fs"
 	"os"
 
+	"github.com/jakeraft/clier/cmd/middleware"
+	"github.com/jakeraft/clier/cmd/present"
 	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/internal/app"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
 	adaptergit "github.com/jakeraft/clier/internal/adapter/git"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/auth"
 	"github.com/jakeraft/clier/internal/config"
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -96,8 +100,9 @@ func SetVersion(v string) {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "clier",
-	Short: "Harness multi-agent teams with a native CLI",
+	Use:           "clier",
+	Short:         "Harness multi-agent teams with a native CLI",
+	SilenceUsage:  true,
 	Long: `clier is a harness for AI coding agent teams.
 
 Define agents, compose them into teams, and run them locally in tmux.
@@ -129,7 +134,13 @@ For agent consumers:
   user-only action (e.g., "clier run attach" needs a real terminal),
   copy the relevant command to the user's clipboard (pbcopy / xclip
   / clip.exe) and ask the user to run it. The agent drives the
-  workflow; the user is the keyboard for human-only steps.`,
+  workflow; the user is the keyboard for human-only steps.
+
+Output conventions:
+  - JSON object on stdout, snake_case fields across all commands.
+  - Empty collections render as [] (never null).
+  - Server timestamps are RFC3339 UTC (Z suffix); runtime timestamps
+    from the host carry the local offset.`,
 	SilenceErrors: true,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
@@ -160,10 +171,20 @@ func Execute() {
 	} else {
 		filterUserCommands()
 	}
+
+	middleware.Apply(cmd, middleware.Chain(
+		middleware.Recover,
+		middleware.Translate,
+	))
+
 	if err := cmd.Execute(); err != nil {
-		if !errors.Is(err, errSubcommandRequired) && !errors.Is(err, errSilent) {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		if errors.Is(err, errSubcommandRequired) || errors.Is(err, errSilent) {
+			os.Exit(1)
 		}
+		// Args validators run outside RunE, so flag/positional failures
+		// bypass the middleware chain. Translate once more here so the
+		// presenter always sees a domain.Fault.
+		present.Emit(os.Stderr, app.Translate(err))
 		os.Exit(1)
 	}
 }
@@ -213,7 +234,7 @@ func resolveOwner(explicit string) (string, error) {
 	}
 	login := currentLogin()
 	if login == "" {
-		return "", errors.New("specify --owner or run 'clier auth login'")
+		return "", &domain.Fault{Kind: domain.KindOwnerRequired}
 	}
 	return login, nil
 }

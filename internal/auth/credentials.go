@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 // Credentials stores the user's authentication state.
@@ -18,7 +20,7 @@ type Credentials struct {
 func Load(path string) (*Credentials, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, errors.New("not logged in; run 'clier auth login' first")
+		return nil, &domain.Fault{Kind: domain.KindAuthRequired, Cause: err}
 	}
 	var c Credentials
 	if err := json.Unmarshal(data, &c); err != nil {

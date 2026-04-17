@@ -4,7 +4,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -105,7 +104,12 @@ func (s *Service) materializeResolvedTeam(base string, root *api.ResolvedResourc
 		return nil, err
 	}
 	if len(agents) == 0 {
-		return nil, fmt.Errorf("team %s/%s has no runnable agents (unknown agent type %q)", root.OwnerName, rootProjection.Name, rootProjection.AgentType)
+		return nil, &domain.Fault{
+			Kind: domain.KindWorkingCopyIncomplete,
+			Subject: map[string]string{
+				"detail": "team " + root.OwnerName + "/" + rootProjection.Name + " has no runnable agents (unknown agent type " + rootProjection.AgentType + ")",
+			},
+		}
 	}
 	localDirs := assignLocalDirs(agents, previous)
 
@@ -202,7 +206,7 @@ func (s *Service) collectResolvedEntries(rootOwner string, rootVersion int, root
 		for _, child := range projection.Children {
 			childResource, ok := resourceMap[teamKey(child.Owner, child.Name)]
 			if !ok {
-				return fmt.Errorf("resolve child team %s/%s: not found in resolve response", child.Owner, child.Name)
+				return internalFault("resolve child team %s/%s: not found in resolve response", child.Owner, child.Name)
 			}
 			if err := walk(child.Owner, childResource.Version, teamProjectionFromResolved(childResource)); err != nil {
 				return err
@@ -246,7 +250,10 @@ func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Mani
 				paths = append(paths, resource.LocalPath)
 			}
 			slices.Sort(paths)
-			return nil, fmt.Errorf("local changes prevent pull; push or revert first: %s", strings.Join(paths, ", "))
+			return nil, &domain.Fault{
+				Kind:    domain.KindWorkspaceDirty,
+				Subject: map[string]string{"modified": strings.Join(paths, ", ")},
+			}
 		}
 	}
 
@@ -434,7 +441,12 @@ func (s *Service) Push(base string) (*PushResult, error) {
 			return nil, err
 		}
 		if modified {
-			return nil, fmt.Errorf("unable to push team %s/%s: unresolved local team changes remain", resource.Owner, resource.Name)
+			return nil, &domain.Fault{
+				Kind: domain.KindWorkspaceDirty,
+				Subject: map[string]string{
+					"modified": "team " + resource.Owner + "/" + resource.Name + " has unresolved local changes",
+				},
+			}
 		}
 	}
 
@@ -469,7 +481,7 @@ func (s *Service) teamPushState(base string, manifest *Manifest, resource Tracke
 
 	team, ok := manifest.FindTeam(resource.Owner, resource.Name)
 	if !ok {
-		return false, false, fmt.Errorf("team state %s/%s not found", resource.Owner, resource.Name)
+		return false, false, internalFault("team state %s/%s not found", resource.Owner, resource.Name)
 	}
 	for _, child := range team.Projection.Children {
 		childTracked, ok := manifest.FindTrackedResource(teamTrackedPath(child.Owner, child.Name))
@@ -565,7 +577,7 @@ func (s *Service) preparePushBody(base string, manifest *Manifest, r TrackedReso
 	case api.KindTeam:
 		team, ok := manifest.FindTeam(r.Owner, r.Name)
 		if !ok {
-			return "", nil, fmt.Errorf("team state %s/%s not found", r.Owner, r.Name)
+			return "", nil, internalFault("team state %s/%s not found", r.Owner, r.Name)
 		}
 		body, err := s.teamMutationFromProjection(&team.Projection)
 		if err != nil {
@@ -588,7 +600,14 @@ func (s *Service) pushResource(r TrackedResource, kind api.ResourceKind, body an
 		return nil, err
 	}
 	if !versionsMatch(r.RemoteVersion, current.Metadata.LatestVersion) {
-		return nil, fmt.Errorf("remote %s %s/%s changed; pull before pushing", r.Kind, r.Owner, r.Name)
+		return nil, &domain.Fault{
+			Kind: domain.KindRemoteChanged,
+			Subject: map[string]string{
+				"resource_kind": r.Kind,
+				"owner":         r.Owner,
+				"name":          r.Name,
+			},
+		}
 	}
 	return s.client.UpdateResource(kind, r.Owner, r.Name, body)
 }
@@ -752,7 +771,7 @@ func (s *Service) serverInstructionContent(base string, manifest *Manifest, reso
 	}
 	agent, ok := manifest.AgentForLocalPath(resource.LocalPath)
 	if !ok {
-		return "", fmt.Errorf("derive agent id from %s: no matching local dir in state", resource.LocalPath)
+		return "", internalFault("derive agent id from %s: no matching local dir in state", resource.LocalPath)
 	}
 	return StripInstructionPrelude(agentType, ResourceID(agent.Owner, agent.Name), content), nil
 }
@@ -961,11 +980,11 @@ func (s *Service) fileHash(path string) (string, error) {
 func (s *Service) trackedResourceHash(base string, manifest *Manifest, resource TrackedResource) (string, error) {
 	if api.ResourceKind(resource.Kind) == api.KindTeam {
 		if manifest == nil {
-			return "", errors.New("team hash requires state")
+			return "", internalFault("team hash requires manifest state")
 		}
 		team, ok := manifest.FindTeam(resource.Owner, resource.Name)
 		if !ok {
-			return "", fmt.Errorf("team state %s/%s not found", resource.Owner, resource.Name)
+			return "", internalFault("team state %s/%s not found", resource.Owner, resource.Name)
 		}
 		data, err := json.Marshal(team.Projection)
 		if err != nil {

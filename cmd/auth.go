@@ -3,12 +3,12 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/auth"
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -84,7 +84,7 @@ func newAuthLoginCmd() *cobra.Command {
 				}
 			}
 
-			return errors.New("login timed out — please try again")
+			return &domain.Fault{Kind: domain.KindAuthTimeout}
 		},
 	}
 }
@@ -112,38 +112,21 @@ func newAuthStatusCmd() *cobra.Command {
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			creds, _ := auth.Load(currentConfig().CredentialsPath)
-			var (
-				user    *api.UserResponse
-				userErr error
-			)
-			if creds != nil {
-				user, userErr = newAPIClient().GetCurrentUser()
+			if creds == nil {
+				return &domain.Fault{Kind: domain.KindAuthRequired}
 			}
-			msg, ok := authStatusResult(creds, user, userErr)
-			fmt.Fprintln(os.Stderr, msg)
-			if !ok {
-				return errSilent
+			user, err := newAPIClient().GetCurrentUser()
+			if err != nil {
+				// app.Translate (middleware) maps the underlying api.Error
+				// or connection failure to the right Kind; the catalog
+				// renders the user-visible message from there.
+				return err
 			}
-			return nil
+			return printJSON(map[string]string{
+				"login": user.Name,
+			})
 		},
 	}
-}
-
-// authStatusResult reports the login state based on the stored credentials
-// and the server's response to a verification request. The boolean is true
-// only when the server has confirmed the token is valid.
-func authStatusResult(creds *auth.Credentials, user *api.UserResponse, userErr error) (string, bool) {
-	if creds == nil {
-		return "Not logged in.", false
-	}
-	if userErr == nil && user != nil {
-		return "Logged in as " + user.Name, true
-	}
-	var apiErr *api.Error
-	if errors.As(userErr, &apiErr) && (apiErr.StatusCode == http.StatusUnauthorized || apiErr.StatusCode == http.StatusForbidden) {
-		return "Not logged in: stored token is invalid or expired.\nRun 'clier auth login' to re-authenticate.", false
-	}
-	return fmt.Sprintf("Unable to verify login for %s: %v", creds.Login, userErr), false
 }
 
 func newAuthTokenCmd() *cobra.Command {

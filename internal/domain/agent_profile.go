@@ -1,7 +1,5 @@
 package domain
 
-import "fmt"
-
 // AgentProfile defines agent-specific paths, markers, and commands.
 type AgentProfile struct {
 	InstructionFile string // root instruction file: "CLAUDE.md", "AGENTS.md", "GEMINI.md"
@@ -40,6 +38,9 @@ func ProfileFor(agentType string) (AgentProfile, error) {
 			SettingsKind:    "codex-setting",
 		}, nil
 	default:
-		return AgentProfile{}, fmt.Errorf("unknown agent type: %q", agentType)
+		return AgentProfile{}, &Fault{
+			Kind:    KindUnsupportedKind,
+			Subject: map[string]string{"resource_kind": agentType},
+		}
 	}
 }

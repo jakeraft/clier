@@ -1,14 +1,15 @@
 package workspace
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
 	adaptergit "github.com/jakeraft/clier/internal/adapter/git"
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 func TestEnsureRepoDir_WithoutRepoURLCreatesDirectory(t *testing.T) {
@@ -96,8 +97,9 @@ func TestEnsureRepoDir_DoesNotTreatParentRepositoryAsTargetRepository(t *testing
 	if err == nil {
 		t.Fatalf("ensureRepoDir should reject a non-git child directory inside another repository")
 	}
-	if !strings.Contains(err.Error(), "is not a git repo") {
-		t.Fatalf("unexpected error: %v", err)
+	var f *domain.Fault
+	if !errors.As(err, &f) || f.Kind != domain.KindRepoDirConflict {
+		t.Fatalf("expected KindRepoDirConflict, got %v", err)
 	}
 }
 
