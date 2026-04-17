@@ -6,7 +6,7 @@
 
 ## Why Clier?
 
-Running multi-agent teams is tricky. Most tools wrap already-powerful agents behind their own API and dashboard, then chase upstream just to keep parity — you get a layer that hides what the agent does and still lags whatever vendors ship next. And a harness that actually works — the right roles, skills, and team shape — tends to stay buried in one repo while every new team starts from scratch.
+Running multi-agent teams is tricky. Many tools have tried to solve this, but most of them just wrap already-powerful agents behind their own API and dashboard, then chase upstream to keep parity — leaving you with a layer that hides what the agent does and still lags whatever vendors ship next. On top of that, a harness that actually works — the right roles, skills, and team shape — tends to stay buried in one repo while every new team starts from scratch.
 
 I think agents are most productive when used interactively in their own CLI. Clier extends that to teams:
 
