@@ -51,3 +51,6 @@ ui/dist/
 
 # cloned workspaces
 @*/
+
+# Local demo recording assets (vhs / asciinema)
+demo/
