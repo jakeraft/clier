@@ -108,15 +108,20 @@ Get started:
   clier tutorial               Walk through the hello-claude team
   clier list --kind team       Browse what others have built
 
-Core workflow:
-  clier create team                Define an agent or compose a team
-  clier fork <owner/name>          Fork a resource to customize it
-  clier clone <owner/name>         Download a local working copy
-  clier run start <owner/name>     Launch a working copy in tmux
-  clier run tell --to <owner/name> Send instructions to an agent
-  clier run attach <run-id>        Watch agents in real time
-  clier remove <owner/name>        Delete a working copy and its runs
-  clier open dashboard             Open the dashboard in a browser
+Try a team:
+  clier clone <owner/name>                  Download a working copy
+  clier run start <owner/name>              Launch agents in tmux
+  clier run tell --run <id> --to <agent>    Send instructions to an agent
+  clier run attach <run-id>                 Watch agents in real time
+  clier remove <owner/name>                 Delete a working copy and its runs
+
+Refine and share:
+  clier create team                         Define a new team
+  clier fork <owner/name>                   Fork an existing resource to your namespace
+  clier status <owner/name>                 Show local modifications
+  clier push <owner/name>                   Publish your refinements
+  clier pull <owner/name>                   Sync the latest from the registry
+  clier open dashboard                      Open the dashboard in a browser
 
 For agent consumers:
   clier output is shaped for agents to parse. Some commands include
