@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -38,7 +39,7 @@ Use push/pull to sync changes, and run start to launch agents.`,
 			base := workingCopyPath(owner, name)
 			if _, err := os.Stat(base); err == nil {
 				return fmt.Errorf("clone destination already exists: %s", base)
-			} else if !os.IsNotExist(err) {
+			} else if !errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("stat clone destination: %w", err)
 			}
 

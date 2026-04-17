@@ -61,7 +61,7 @@ func validateAgentCopy(base string, agent runnableAgent) error {
 
 func requireCopyPath(path string) error {
 	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("local clone is missing %s", path)
 		}
 		return fmt.Errorf("stat working-copy path %s: %w", path, err)

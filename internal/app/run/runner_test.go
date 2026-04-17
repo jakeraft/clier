@@ -27,7 +27,7 @@ func TestRunnerRun_RemovesRunFileWhenLaunchFails(t *testing.T) {
 		t.Fatal("expected launch failure")
 	}
 
-	if _, statErr := os.Stat(PlanPath(base, "run-123")); !os.IsNotExist(statErr) {
+	if _, statErr := os.Stat(PlanPath(base, "run-123")); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("run file should be removed on launch failure, got %v", statErr)
 	}
 }

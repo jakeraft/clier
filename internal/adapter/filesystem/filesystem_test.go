@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -77,7 +78,7 @@ func TestLocalFS_MkdirTempAndRemoveAll(t *testing.T) {
 	if err := lfs.RemoveAll(dir); err != nil {
 		t.Fatalf("RemoveAll: %v", err)
 	}
-	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+	if _, err := os.Stat(dir); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("temp dir not removed")
 	}
 }

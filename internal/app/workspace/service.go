@@ -720,7 +720,7 @@ func (s *Service) runSummary(base, runsDir string) (RunStatusSummary, error) {
 	}
 	entries, err := s.fs.ReadDir(runsDir)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return RunStatusSummary{}, nil
 		}
 		return RunStatusSummary{}, fmt.Errorf("read runs dir: %w", err)
@@ -728,7 +728,7 @@ func (s *Service) runSummary(base, runsDir string) (RunStatusSummary, error) {
 	var summary RunStatusSummary
 	for _, entry := range entries {
 		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".state.json") {
+		if entry.IsDir() || !strings.HasSuffix(name, ".json") {
 			continue
 		}
 		plan, err := apprun.LoadPlanFromPath(filepath.Join(runsDir, name))

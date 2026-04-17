@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -89,10 +90,10 @@ func TestRemoveStaleManagedFiles_RemovesDroppedTrackedAndGeneratedFiles(t *testi
 	if err := svc.removeStaleManagedFiles(base, prev, next); err != nil {
 		t.Fatalf("removeStaleManagedFiles: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(base, filepath.FromSlash(oldTracked))); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(base, filepath.FromSlash(oldTracked))); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("tracked file should be removed, got %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(base, filepath.FromSlash(oldGenerated))); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(base, filepath.FromSlash(oldGenerated))); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("generated file should be removed, got %v", err)
 	}
 }

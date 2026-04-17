@@ -2,6 +2,7 @@ package workspace
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -56,7 +57,7 @@ func FindManifestPath(fs FileMaterializer, base string) (string, error) {
 	path := ManifestPath(base)
 	if _, err := fs.Stat(path); err == nil {
 		return path, nil
-	} else if err != nil && !os.IsNotExist(err) {
+	} else if !errors.Is(err, os.ErrNotExist) {
 		return "", fmt.Errorf("stat working-copy manifest: %w", err)
 	}
 	return "", os.ErrNotExist
@@ -77,7 +78,7 @@ func SaveManifest(fs FileMaterializer, base string, manifest *Manifest) error {
 func LoadManifest(fs FileMaterializer, base string) (*Manifest, error) {
 	path, err := FindManifestPath(fs, base)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("read manifest: %w", err)
 		}
 		return nil, err

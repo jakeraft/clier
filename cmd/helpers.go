@@ -3,6 +3,7 @@ package cmd
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -62,7 +63,7 @@ func shellQuote(v string) string {
 func resolveRunPlan(runID string) (*apprun.RunPlan, error) {
 	plan, err := apprun.LoadPlan(runsDir(), runID)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("run %s not found", runID)
 		}
 		return nil, fmt.Errorf("load run plan: %w", err)

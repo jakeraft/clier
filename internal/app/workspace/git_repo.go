@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"os"
 )
@@ -12,7 +13,7 @@ func ensureRepoDir(fs FileMaterializer, git GitRepo, repoURL, repoDir string) er
 
 	info, err := fs.Stat(repoDir)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return git.Clone(repoURL, repoDir)
 		}
 		return fmt.Errorf("stat repo dir: %w", err)
@@ -50,7 +51,7 @@ func ensureRepoDir(fs FileMaterializer, git GitRepo, repoURL, repoDir string) er
 func IsMaterializedRoot(fs FileMaterializer, git GitRepo, repoURL, root string) (bool, error) {
 	info, err := fs.Stat(root)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
 		}
 		return false, fmt.Errorf("stat root: %w", err)

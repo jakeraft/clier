@@ -42,7 +42,7 @@ func Save(path string, creds *Credentials) error {
 // Delete removes the credentials file. No error if it doesn't exist.
 func Delete(path string) error {
 	err := os.Remove(path)
-	if os.IsNotExist(err) {
+	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
 	return err
