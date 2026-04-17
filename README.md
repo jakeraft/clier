@@ -6,23 +6,19 @@
 
 ## Why Clier?
 
-Running multiple AI agents across different roles and repos gets messy fast. Most tools solve this by wrapping already-powerful services like Claude Code and Codex behind their own API and dashboard, then chasing upstream just to keep parity with what the underlying agents already do. You get a layer that hides what the agent does, and still lags whatever vendors ship next.
+Running multi-agent teams is tricky. Most tools wrap already-powerful agents behind their own API and dashboard, then chase upstream just to keep parity — you get a layer that hides what the agent does and still lags whatever vendors ship next. And a harness that actually works — the right roles, skills, and team shape — tends to stay buried in one repo while every new team starts from scratch.
 
-Even as developers, we're most productive using these agents interactively in their CLI — not through a wrapped API. Clier extends that to teams: use them as-is. Each agent runs its native CLI as shipped, wrapped in a transparent harness that scopes its role, workspace, skills, and teammates. And since the agent — not a dashboard — does the work, every Clier command and output is shaped for agents to parse and act on, with you watching in the terminal.
+I think agents are most productive when used interactively in their own CLI. Clier extends that to teams:
 
-And a harness that actually works is hard-won — the right roles, skills, and team shape. It usually stays buried in one repo, and every new team starts from scratch.
-
-## How it works
-
-**1. Native, not wrapped** — No API wrappers between you and the agent. Agents run their own CLI directly, and you see exactly what they see.
+**1. Native, not wrapped** — Agents run their own CLI directly, and you see exactly what they see.
 
 **2. Per-agent harness** — Each agent gets its own instruction, workspace, skills, and settings. You control what it sees and does.
 
 **3. Deep, multi-agent teams** — Compose agents into teams, then nest teams inside teams. No depth limit.
 
-**4. Agent-first** — Every command and output is shaped for agents to parse and act on. You talk to agents in their terminal, not click buttons on a dashboard. When clier needs you (the human) for a step only you can do, the agent copies the command to your clipboard and asks.
+**4. Agent-first** — Every command and output is shaped for agents to parse and act on. The agent drives, not a dashboard; you watch from the terminal.
 
-**5. Built on real terminals** — tmux gives each agent its own isolated window. You observe, steer, and intervene in real time.
+**5. Real terminals** — tmux gives each agent its own isolated window. You observe, steer, and intervene in real time.
 
 **6. Shareable harnesses** — Publish your agents, skills, and teams; fork someone else's. Everything is versioned, so you build on top instead of starting over.
 
