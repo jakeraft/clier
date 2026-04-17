@@ -80,7 +80,7 @@ func TestStatus_AssignsRemoteVersionsAfterSortingTrackedPaths(t *testing.T) {
 	defer server.Close()
 
 	svc := NewService(api.NewClient(server.URL, ""), fs, nil)
-	status, err := svc.Status(base)
+	status, err := svc.Status(base, "")
 	if err != nil {
 		t.Fatalf("Status: %v", err)
 	}

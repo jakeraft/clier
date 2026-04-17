@@ -43,27 +43,24 @@ and attach to watch them work.`,
 func newRunListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List active runs",
+		Short: "List runs across all working copies",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runtimeDir, err := resolveRuntimeDir()
+			dir := runsDir()
+			entries, err := os.ReadDir(dir)
 			if err != nil {
-				return err
-			}
-			if runtimeDir == "" {
-				return printJSON([]*apprun.RunPlan{})
-			}
-
-			entries, err := os.ReadDir(runtimeDir)
-			if err != nil {
-				return fmt.Errorf("read runtime dir: %w", err)
+				if os.IsNotExist(err) {
+					return printJSON([]*apprun.RunPlan{})
+				}
+				return fmt.Errorf("read runs dir: %w", err)
 			}
 
 			runs := make([]*apprun.RunPlan, 0)
 			for _, entry := range entries {
-				if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") || strings.HasSuffix(entry.Name(), ".state.json") || entry.Name() == appworkspace.ManifestFile {
+				name := entry.Name()
+				if entry.IsDir() || !strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".state.json") {
 					continue
 				}
-				plan, err := apprun.LoadPlanFromPath(filepath.Join(runtimeDir, entry.Name()))
+				plan, err := apprun.LoadPlanFromPath(filepath.Join(dir, name))
 				if err != nil {
 					return err
 				}
@@ -79,9 +76,10 @@ func newRunListCmd() *cobra.Command {
 
 func newRunStartCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "start",
-		Short: "Launch the current working copy in tmux",
-		Long: `Start all agents in the current working copy.
+		Use:   "start <owner/name>",
+		Short: "Launch a working copy in tmux",
+		Long: `Start all agents for the working copy at
+<workspace_dir>/<owner>/<name>/.
 
 Agents start idle. Use run tell to send them instructions.
 
@@ -91,21 +89,26 @@ own approval prompts in their pane on first launch. clier does not
 modify vendor configs on your behalf — ask the user to run
 "clier run attach <run-id>" from a normal terminal, approve those
 prompts, and detach (Ctrl-b d) before sending messages.`,
-		Args: cobra.NoArgs,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			base, err := resolveCurrentDir()
+			owner, name, err := splitResourceID(args[0])
 			if err != nil {
 				return err
 			}
+			if err := validateOwner(owner); err != nil {
+				return err
+			}
+			base := workingCopyPath(owner, name)
+
 			fs := newFileMaterializer()
-			copyRoot, manifest, err := appworkspace.FindManifestAbove(fs, base)
+			manifest, err := appworkspace.LoadManifest(fs, base)
 			if err != nil {
 				if os.IsNotExist(err) {
-					return errNotInWorkingCopy()
+					return fmt.Errorf("no working copy at %s; run 'clier clone %s/%s' first", base, owner, name)
 				}
 				return err
 			}
-			if err := validateWorkingCopy(copyRoot, manifest); err != nil {
+			if err := validateWorkingCopy(base, manifest); err != nil {
 				return err
 			}
 
@@ -122,7 +125,7 @@ prompts, and detach (Ctrl-b d) before sending messages.`,
 			runName := sessionName(manifest.Name, runID)
 			var terminalPlans []apprun.AgentTerminal
 			for i, agent := range agents {
-				agentBase := filepath.Join(copyRoot, filepath.FromSlash(agent.LocalBase))
+				agentBase := filepath.Join(base, filepath.FromSlash(agent.LocalBase))
 				envVars := buildAgentEnv(runID, agent.ID, appworkspace.ResourceID(manifest.Owner, manifest.Name))
 				fullCommand := buildFullCommand(envVars, agent.Projection.Command, agentBase)
 				terminalPlans = append(terminalPlans, apprun.AgentTerminal{
@@ -136,7 +139,7 @@ prompts, and detach (Ctrl-b d) before sending messages.`,
 				})
 			}
 			runner := apprun.NewRunner(newTerminal())
-			plan, err := runner.Run(copyRoot, runID, runName, terminalPlans)
+			plan, err := runner.Run(runsDir(), base, runID, runName, terminalPlans)
 			if err != nil {
 				return err
 			}
@@ -148,7 +151,7 @@ prompts, and detach (Ctrl-b d) before sending messages.`,
 				// Best-effort persist: if the manifest write fails, the
 				// hint reappears on the next run — no data loss, just a
 				// duplicate hint. Failing the run for this would be worse.
-				_ = appworkspace.SaveManifest(fs, copyRoot, manifest)
+				_ = appworkspace.SaveManifest(fs, base, manifest)
 			}
 			return printJSON(result)
 		},
@@ -177,7 +180,7 @@ func firstRunHint(manifest *appworkspace.Manifest, runID string) (string, *time.
 
 func newRunViewCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "view <id>",
+		Use:   "view <run-id>",
 		Short: "Show run status and notes",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -192,7 +195,7 @@ func newRunViewCmd() *cobra.Command {
 
 func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "stop <id>",
+		Use:   "stop <run-id>",
 		Short: "Stop a running session",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -201,11 +204,7 @@ func newRunStopCmd() *cobra.Command {
 				return err
 			}
 
-			store, err := newPlanStore()
-			if err != nil {
-				return err
-			}
-			svc := apprun.New(newTerminal(), store)
+			svc := apprun.New(newTerminal(), newPlanStore())
 
 			if err := svc.Stop(plan); err != nil {
 				return err
@@ -258,13 +257,13 @@ func newRunTellCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tell [content]",
 		Short: "Send a message to an agent",
-		Long: `Send a message to another agent in the current team run.
+		Long: `Send a message to another agent in a run.
 Content can be provided as an argument or via stdin.
 
 Examples:
-  clier run tell --to <owner/name> "simple message"
-  echo "message with special chars" | clier run tell --to <owner/name>
-  clier run tell --to <owner/name> <<'EOF'
+  clier run tell --run <run-id> --to <owner/name> "simple message"
+  echo "message with special chars" | clier run tell --run <run-id> --to <owner/name>
+  clier run tell --run <run-id> --to <owner/name> <<'EOF'
   message with ` + "`backticks`" + ` and --flags
   EOF`,
 		Args: cobra.MaximumNArgs(1),
@@ -288,11 +287,7 @@ Examples:
 				toAgent = &toAgentName
 			}
 
-			store, err := newPlanStore()
-			if err != nil {
-				return err
-			}
-			svc := apprun.New(newTerminal(), store)
+			svc := apprun.New(newTerminal(), newPlanStore())
 
 			if err := svc.Send(plan, fromAgent, toAgent, content); err != nil {
 				return err
@@ -318,10 +313,10 @@ func newRunNoteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "note [content]",
 		Short: "Record a progress note",
-		Long: `Record a work log entry in the current run.
+		Long: `Record a work log entry in a run.
 
 Content can be provided as an argument or via stdin. The note is
-appended to the run file under ` + "`.clier/`" + `.`,
+appended to the run file under <workspace_dir>/.runs/.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := readContent(args)
@@ -339,11 +334,7 @@ appended to the run file under ` + "`.clier/`" + `.`,
 				return err
 			}
 
-			store, err := newPlanStore()
-			if err != nil {
-				return err
-			}
-			svc := apprun.New(newTerminal(), store)
+			svc := apprun.New(newTerminal(), newPlanStore())
 
 			if err := svc.Note(plan, agentName, content); err != nil {
 				return err

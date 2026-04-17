@@ -65,12 +65,16 @@ func TestResolveDefaults(t *testing.T) {
 	if !strings.HasSuffix(got.CredentialsPath, filepath.Join(dotDir, "credentials.json")) {
 		t.Fatalf("CredentialsPath = %q", got.CredentialsPath)
 	}
+	if !strings.HasSuffix(got.WorkspaceDir, filepath.Join(dotDir, "workspace")) {
+		t.Fatalf("WorkspaceDir = %q, should end with %q", got.WorkspaceDir, filepath.Join(dotDir, "workspace"))
+	}
 }
 
 func TestResolveOverrides(t *testing.T) {
 	got, err := Resolve(&File{
 		ServerURL:       "https://api.example.com/",
 		CredentialsPath: "/tmp/creds.json",
+		WorkspaceDir:    "/tmp/clier-workspaces",
 	})
 	if err != nil {
 		t.Fatalf("Resolve() error: %v", err)
@@ -80,5 +84,8 @@ func TestResolveOverrides(t *testing.T) {
 	}
 	if got.CredentialsPath != "/tmp/creds.json" {
 		t.Fatalf("CredentialsPath = %q, want %q", got.CredentialsPath, "/tmp/creds.json")
+	}
+	if got.WorkspaceDir != "/tmp/clier-workspaces" {
+		t.Fatalf("WorkspaceDir = %q, want %q", got.WorkspaceDir, "/tmp/clier-workspaces")
 	}
 }

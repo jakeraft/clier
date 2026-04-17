@@ -1,16 +1,11 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/domain"
 )
-
-func errNotInWorkingCopy() error {
-	return errors.New("no local clone found in the current directory or its ancestors")
-}
 
 type runnableAgent struct {
 	ID         string

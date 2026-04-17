@@ -10,6 +10,8 @@ Running multiple AI agents across different roles and repos gets messy fast. Mos
 
 Even as developers, we're most productive using these agents interactively in their CLI — not through a wrapped API. Clier extends that to teams: use them as-is. Each agent runs its native CLI as shipped, wrapped in a transparent harness that scopes its role, workspace, skills, and teammates. And since the agent — not a dashboard — does the work, every Clier command and output is shaped for agents to parse and act on, with you watching in the terminal.
 
+And a harness that actually works is hard-won — the right roles, skills, and team shape. It usually stays buried in one repo, and every new team starts from scratch.
+
 ## How it works
 
 **1. Native, not wrapped** — No API wrappers between you and the agent. Agents run their own CLI directly, and you see exactly what they see.
@@ -21,6 +23,8 @@ Even as developers, we're most productive using these agents interactively in th
 **4. Agent-first** — Every command and output is shaped for agents to parse and act on. You talk to agents in their terminal, not click buttons on a dashboard. When clier needs you (the human) for a step only you can do, the agent copies the command to your clipboard and asks.
 
 **5. Built on real terminals** — tmux gives each agent its own isolated window. You observe, steer, and intervene in real time.
+
+**6. Shareable harnesses** — Publish your agents, skills, and teams; fork someone else's. Everything is versioned, so you build on top instead of starting over.
 
 ## Quick Start
 
@@ -40,9 +44,8 @@ Under the hood, your agent will:
 clier --help                                # explore available commands
 clier tutorial                              # read the tutorial steps
 clier auth login                            # authenticate with GitHub
-clier clone @clier/hello-claude             # download the tutorial team
-cd @clier/hello-claude
-clier run start                             # launch agents in tmux
+clier clone @clier/hello-claude             # download to ~/.clier/workspace/@clier/hello-claude/
+clier run start @clier/hello-claude         # launch agents in tmux
 clier run tell --run <run-id> \
   --to @clier/hello-claude \
   "Have both team members greet each other and report the result."

@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"os"
-
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
@@ -15,29 +13,26 @@ func newPullCmd() *cobra.Command {
 	var force bool
 
 	cmd := &cobra.Command{
-		Use:   "pull",
-		Short: "Pull latest changes from the server",
-		Long: `Pull the latest version of tracked resources from the server,
-updating local projections and materialized files. Fails if you
-have local modifications unless --force is used.`,
+		Use:   "pull <owner/name>",
+		Short: "Pull latest changes for a working copy",
+		Long: `Pull the latest version of tracked resources for a working copy at
+<workspace_dir>/<owner>/<name>/, updating local projections and
+materialized files. Fails if local modifications exist unless
+--force is used.`,
 		GroupID: rootGroupWorkspace,
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			base, err := resolveCurrentDir()
+			owner, name, err := splitResourceID(args[0])
 			if err != nil {
 				return err
 			}
-			fs := newFileMaterializer()
-			git := newGitRepo()
-			copyRoot, _, err := appworkspace.FindManifestAbove(fs, base)
-			if err != nil {
-				if os.IsNotExist(err) {
-					return errNotInWorkingCopy()
-				}
+			if err := validateOwner(owner); err != nil {
 				return err
 			}
+			base := workingCopyPath(owner, name)
 
-			svc := appworkspace.NewService(newAPIClient(), fs, git)
-			manifest, err := svc.Pull(copyRoot, force)
+			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
+			manifest, err := svc.Pull(base, force)
 			if err != nil {
 				return err
 			}
@@ -46,7 +41,7 @@ have local modifications unless --force is used.`,
 				"kind":   manifest.Kind,
 				"owner":  manifest.Owner,
 				"name":   manifest.Name,
-				"state":  appworkspace.ManifestPath(copyRoot),
+				"state":  appworkspace.ManifestPath(base),
 			})
 		},
 	}

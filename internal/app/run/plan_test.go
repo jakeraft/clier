@@ -6,7 +6,7 @@ func TestPlan_SaveLoadAndMutate(t *testing.T) {
 	t.Parallel()
 
 	base := t.TempDir()
-	plan := NewPlan("run-123", "team-run", nil)
+	plan := NewPlan("run-123", "team-run", "/tmp/wc", nil)
 	if err := plan.AddMessage(strPtr("leader"), strPtr("worker"), "hello"); err != nil {
 		t.Fatalf("add message: %v", err)
 	}

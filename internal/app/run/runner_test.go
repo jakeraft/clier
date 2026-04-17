@@ -20,7 +20,7 @@ func TestRunnerRun_RemovesRunFileWhenLaunchFails(t *testing.T) {
 	base := t.TempDir()
 	runner := NewRunner(&stubLauncher{err: errors.New("launch failed")})
 
-	_, err := runner.Run(base, "run-123", "alpha", []AgentTerminal{{
+	_, err := runner.Run(base, "/tmp/wc", "run-123", "alpha", []AgentTerminal{{
 		Name: "leader",
 	}})
 	if err == nil {

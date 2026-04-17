@@ -26,6 +26,11 @@ The team has two members:
   hello-claude (root, Claude)
   └── hello-codex (child, Codex)
 
+clier owns the working-copy layout — every clone lives at
+<workspace_dir>/<owner>/<name>/ (default workspace_dir is
+~/.clier/workspace). Run subcommands work from any cwd; identify
+working copies with <owner>/<name> and runs with their run-id.
+
 Follow the steps below to try it out.
 
 Step 1. Log in
@@ -41,26 +46,25 @@ Step 2. Explore the pre-loaded hello-claude team
 
   The "@clier/hello-claude" team is already available.
 
-Step 3. Clone the team locally
+Step 3. Clone the team
 
   clier clone @clier/hello-claude
-  cd @clier/hello-claude
 
-  This downloads a local working copy with one directory per agent.
+  This downloads the working copy to
+  ~/.clier/workspace/@clier/hello-claude/. No cd is needed.
 
-Step 4. Inspect the local working copy
+Step 4. Inspect the working copy
 
-  clier status
+  clier status @clier/hello-claude
   clier run list
 
   You should see a clean working copy and no active runs yet.
 
 Step 5. Start the team
 
-  clier run start
+  clier run start @clier/hello-claude
 
-  This launches both members in tmux from the current local clone.
-  Note the run ID from the output.
+  This launches both members in tmux. Note the run ID from the output.
 
   On the first start in a fresh working copy, the output includes a
   one-time %q field. Vendor CLIs (e.g., Codex) may show their own
@@ -77,7 +81,7 @@ Step 6. Ask hello-claude to have both members greet each other
   A healthy run should show hello-claude contacting hello-codex,
   hello-codex replying, and hello-claude reporting the greeting result.
 
-Step 7. Watch the run from the current local clone
+Step 7. Watch the run
 
   clier run attach <run-id>        Watch agents in real time
   clier run view <run-id>          Check progress notes and messages
@@ -93,21 +97,21 @@ Step 8. Verify the result
   - the greeting exchange completed
   - run view reflects the messages you observed
 
-Step 9. Stop the run from the current local clone
+Step 9. Stop the run
 
   clier run stop <run-id>
 
-Step 10. Edit a tracked file locally
+Step 10. Edit a tracked file
 
   Resources you clone are tracked locally, similar to git.
   Edit the root agent instruction, then inspect local state:
 
-    Open @clier/hello-claude/CLAUDE.md in your editor
-    clier status                Check what changed
+    Open ~/.clier/workspace/@clier/hello-claude/@clier/hello-claude/CLAUDE.md
+    clier status @clier/hello-claude    Check what changed
 
 Step 11. Try sync flows
 
-  From the same local clone, verify:
+  Verify:
 
   - clean pull updates tracked files from the server
   - dirty pull refuses to overwrite local changes unless forced
@@ -115,9 +119,9 @@ Step 11. Try sync flows
 
   Use:
 
-    clier pull
-    clier pull --force
-    clier push
+    clier pull @clier/hello-claude
+    clier pull @clier/hello-claude --force
+    clier push @clier/hello-claude
 
 Tip: Use "clier <command> --help" for details on each command.`, hintField),
 	}

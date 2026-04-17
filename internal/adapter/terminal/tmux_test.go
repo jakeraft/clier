@@ -46,7 +46,7 @@ func TestTmuxTerminal_Launch(t *testing.T) {
 		{ID: "alice/leader", Name: "leader", Window: 0, Workspace: "/tmp/leader", Cwd: "/tmp/leader", Command: "echo hello"},
 		{ID: "bob/worker", Name: "worker", Window: 1, Workspace: "/tmp/worker", Cwd: "/tmp/worker"},
 	}
-	plan := apprun.NewPlan("s-1", "my-team", agents)
+	plan := apprun.NewPlan("s-1", "my-team", "/tmp/wc", agents)
 
 	if err := tm.Launch(plan); err != nil {
 		t.Fatalf("Launch: %v", err)

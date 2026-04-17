@@ -62,27 +62,6 @@ func FindManifestPath(fs FileMaterializer, base string) (string, error) {
 	return "", os.ErrNotExist
 }
 
-func FindManifestAbove(fs FileMaterializer, start string) (string, *Manifest, error) {
-	base, err := filepath.Abs(start)
-	if err != nil {
-		return "", nil, fmt.Errorf("resolve working-copy base: %w", err)
-	}
-	for dir := base; ; dir = filepath.Dir(dir) {
-		if _, err := FindManifestPath(fs, dir); err == nil {
-			manifest, loadErr := LoadManifest(fs, dir)
-			if loadErr != nil {
-				return "", nil, loadErr
-			}
-			return dir, manifest, nil
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-	}
-	return "", nil, os.ErrNotExist
-}
-
 func SaveManifest(fs FileMaterializer, base string, manifest *Manifest) error {
 	manifest.Format = CurrentFormat
 	data, err := json.MarshalIndent(manifest, "", "  ")

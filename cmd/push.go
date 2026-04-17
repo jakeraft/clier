@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"os"
-
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
@@ -13,29 +11,26 @@ func init() {
 
 func newPushCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "push",
-		Short: "Push tracked local changes to the server",
-		Long: `Push locally modified resources to the server. Only resources
-that have changed since the last pull/clone are sent. Fails if
-the remote version has changed (pull first to resolve).`,
+		Use:   "push <owner/name>",
+		Short: "Push tracked local changes for a working copy",
+		Long: `Push locally modified resources to the server for the working copy
+at <workspace_dir>/<owner>/<name>/. Only resources that have changed
+since the last pull/clone are sent. Fails if the remote version has
+changed (pull first to resolve).`,
 		GroupID: rootGroupWorkspace,
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			base, err := resolveCurrentDir()
+			owner, name, err := splitResourceID(args[0])
 			if err != nil {
 				return err
 			}
-			fs := newFileMaterializer()
-			git := newGitRepo()
-			copyRoot, _, err := appworkspace.FindManifestAbove(fs, base)
-			if err != nil {
-				if os.IsNotExist(err) {
-					return errNotInWorkingCopy()
-				}
+			if err := validateOwner(owner); err != nil {
 				return err
 			}
+			base := workingCopyPath(owner, name)
 
-			svc := appworkspace.NewService(newAPIClient(), fs, git)
-			result, err := svc.Push(copyRoot)
+			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
+			result, err := svc.Push(base)
 			if err != nil {
 				return err
 			}

@@ -3,16 +3,13 @@ package cmd
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
-	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
 
 // sessionName generates a tmux-safe session name from a name and run ID.
@@ -61,78 +58,32 @@ func shellQuote(v string) string {
 	return "'" + strings.ReplaceAll(v, "'", `'"'"'`) + "'"
 }
 
-func resolveCurrentDir() (string, error) {
-	base, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("resolve current directory: %w", err)
-	}
-	return filepath.Abs(base)
-}
-
+// resolveRunPlan loads a run plan by run-id from the central runs directory.
 func resolveRunPlan(runID string) (*apprun.RunPlan, error) {
-	planPath, err := resolveRunPlanPath(runID)
+	plan, err := apprun.LoadPlan(runsDir(), runID)
 	if err != nil {
-		return nil, err
-	}
-	plan, err := apprun.LoadPlanFromPath(planPath)
-	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("run %s not found", runID)
+		}
 		return nil, fmt.Errorf("load run plan: %w", err)
 	}
 	if plan.RunID != "" && plan.RunID != runID {
-		return nil, fmt.Errorf("run plan %s belongs to run %s", planPath, plan.RunID)
+		return nil, fmt.Errorf("run plan for %s reports run id %s", runID, plan.RunID)
 	}
 	return plan, nil
 }
 
-// localPlanStore implements apprun.PlanStore by writing to the local clone's .clier/ directory.
-type localPlanStore struct {
-	copyRoot string
+// globalPlanStore implements apprun.PlanStore by writing to the central runs dir.
+type globalPlanStore struct {
+	dir string
 }
 
-func newPlanStore() (*localPlanStore, error) {
-	runtimeDir, err := resolveRuntimeDir()
-	if err != nil {
-		return nil, err
-	}
-	if runtimeDir == "" {
-		return nil, errors.New("runtime dir not found in current local clone")
-	}
-	return &localPlanStore{copyRoot: filepath.Dir(runtimeDir)}, nil
+func newPlanStore() *globalPlanStore {
+	return &globalPlanStore{dir: runsDir()}
 }
 
-func (s *localPlanStore) Save(plan *apprun.RunPlan) error {
-	return apprun.SavePlan(s.copyRoot, plan.RunID, plan)
-}
-
-func resolveRunPlanPath(runID string) (string, error) {
-	runtimeDir, err := resolveRuntimeDir()
-	if err != nil {
-		return "", err
-	}
-	if runtimeDir == "" {
-		return "", errors.New("runtime dir not found in current local clone")
-	}
-	planPath := filepath.Join(runtimeDir, runID+".json")
-	if _, err := os.Stat(planPath); err == nil {
-		return planPath, nil
-	}
-	return "", fmt.Errorf("run plan %s not found in current local clone", runID)
-}
-
-func resolveRuntimeDir() (string, error) {
-	base, err := resolveCurrentDir()
-	if err != nil {
-		return "", err
-	}
-
-	copyRoot, _, err := appworkspace.FindManifestAbove(newFileMaterializer(), base)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", nil
-		}
-		return "", err
-	}
-	return filepath.Join(copyRoot, ".clier"), nil
+func (s *globalPlanStore) Save(plan *apprun.RunPlan) error {
+	return apprun.SavePlan(s.dir, plan.RunID, plan)
 }
 
 func newRunID() (string, error) {

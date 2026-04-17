@@ -274,7 +274,7 @@ func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Mani
 
 // --- Status ---
 
-func (s *Service) Status(base string) (*Status, error) {
+func (s *Service) Status(base, runsDir string) (*Status, error) {
 	manifest, err := LoadManifest(s.fs, base)
 	if err != nil {
 		return nil, err
@@ -283,7 +283,7 @@ func (s *Service) Status(base string) (*Status, error) {
 	if err != nil {
 		return nil, err
 	}
-	runs, err := s.runSummary(base)
+	runs, err := s.runSummary(base, runsDir)
 	if err != nil {
 		return nil, err
 	}
@@ -712,23 +712,30 @@ func (s *Service) trackedStatuses(base string, manifest *Manifest) ([]TrackedSta
 	return statuses, modifiedCount, nil
 }
 
-func (s *Service) runSummary(base string) (RunStatusSummary, error) {
-	dir := filepath.Join(base, ".clier")
-	entries, err := s.fs.ReadDir(dir)
+// runSummary scans the central runs dir and counts plans whose
+// WorkingCopyPath matches the given base.
+func (s *Service) runSummary(base, runsDir string) (RunStatusSummary, error) {
+	if runsDir == "" {
+		return RunStatusSummary{}, nil
+	}
+	entries, err := s.fs.ReadDir(runsDir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return RunStatusSummary{}, nil
 		}
-		return RunStatusSummary{}, fmt.Errorf("read runtime dir: %w", err)
+		return RunStatusSummary{}, fmt.Errorf("read runs dir: %w", err)
 	}
 	var summary RunStatusSummary
 	for _, entry := range entries {
 		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".json") || name == ManifestFile {
+		if entry.IsDir() || !strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".state.json") {
 			continue
 		}
-		plan, err := apprun.LoadPlanFromPath(filepath.Join(dir, name))
+		plan, err := apprun.LoadPlanFromPath(filepath.Join(runsDir, name))
 		if err != nil {
+			continue
+		}
+		if plan.WorkingCopyPath != base {
 			continue
 		}
 		summary.Total++

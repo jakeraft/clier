@@ -2,39 +2,35 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
+	"strings"
 
-	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
+	apprun "github.com/jakeraft/clier/internal/app/run"
 )
 
-type resourceTarget struct {
-	Kind  string
-	Owner string
-	Name  string
+// workspaceDir returns the resolved workspace root from config.
+func workspaceDir() string {
+	return currentConfig().WorkspaceDir
 }
 
-func resolveCloneBase(target resourceTarget) (string, error) {
-	base, err := resolveCurrentDir()
-	if err != nil {
-		return "", err
-	}
-	if copyRoot, _, err := appworkspace.FindManifestAbove(newFileMaterializer(), base); err == nil {
-		return "", fmt.Errorf("clone must be run outside an existing local clone; found %s", copyRoot)
-	}
-
-	cloneDir := defaultCloneDir(base, target)
-	if _, err := os.Stat(cloneDir); err == nil {
-		return "", fmt.Errorf("%s clone destination already exists: %s", target.Kind, cloneDir)
-	} else if !os.IsNotExist(err) {
-		return "", fmt.Errorf("stat clone destination: %w", err)
-	}
-	return cloneDir, nil
+// runsDir returns the central directory holding all run plans.
+func runsDir() string {
+	return filepath.Join(workspaceDir(), apprun.RunsDirName)
 }
 
-func defaultCloneDir(base string, target resourceTarget) string {
-	if target.Owner == "" {
-		return filepath.Join(base, target.Name)
+// workingCopyPath returns the canonical absolute path for a team's working copy.
+func workingCopyPath(owner, name string) string {
+	if owner == "" {
+		return filepath.Join(workspaceDir(), name)
 	}
-	return filepath.Join(base, target.Owner, target.Name)
+	return filepath.Join(workspaceDir(), owner, name)
+}
+
+// validateOwner rejects owner names that would collide with internal
+// workspace subdirectories (anything starting with '.', e.g., ".runs").
+func validateOwner(owner string) error {
+	if strings.HasPrefix(owner, ".") {
+		return fmt.Errorf("owner name cannot start with '.': %q", owner)
+	}
+	return nil
 }

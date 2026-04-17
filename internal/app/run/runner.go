@@ -21,16 +21,16 @@ func NewRunner(launcher Launcher) *Runner {
 }
 
 // Run creates a RunPlan from the given agent plans, saves it to
-// {copyRoot}/.clier/{runID}.json, and launches via tmux.
-func (r *Runner) Run(copyRoot, runID, sessionName string, plans []AgentTerminal) (*RunPlan, error) {
-	plan := NewPlan(runID, sessionName, plans)
+// <runsDir>/<runID>.json, and launches via tmux.
+func (r *Runner) Run(runsDir, workingCopyPath, runID, sessionName string, plans []AgentTerminal) (*RunPlan, error) {
+	plan := NewPlan(runID, sessionName, workingCopyPath, plans)
 
-	if err := SavePlan(copyRoot, runID, plan); err != nil {
+	if err := SavePlan(runsDir, runID, plan); err != nil {
 		return nil, fmt.Errorf("save plan: %w", err)
 	}
 
 	if err := r.launcher.Launch(plan); err != nil {
-		_ = os.Remove(PlanPath(copyRoot, runID))
+		_ = os.Remove(PlanPath(runsDir, runID))
 		return nil, fmt.Errorf("launch: %w", err)
 	}
 

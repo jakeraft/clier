@@ -11,17 +11,20 @@ const (
 	StatusStopped = "stopped"
 )
 
-// RunPlan is the persisted local run record saved to .clier/{RUN_ID}.json.
-// It captures both the tmux execution plan and mutable runtime state.
+// RunPlan is the persisted local run record saved to <runsDir>/<RUN_ID>.json.
+// It captures both the tmux execution plan and mutable runtime state, plus
+// the absolute path of the working copy that spawned it (so per-team
+// summaries can filter without scanning agent paths).
 type RunPlan struct {
-	RunID     string            `json:"run_id"`
-	Session   string            `json:"session"`
-	Agents    []AgentTerminal   `json:"agents"`
-	Status    string            `json:"status"`
-	StartedAt time.Time         `json:"started_at"`
-	StoppedAt *time.Time        `json:"stopped_at,omitempty"`
-	Messages  []RecordedMessage `json:"messages,omitempty"`
-	Notes     []RecordedNote    `json:"notes,omitempty"`
+	RunID           string            `json:"run_id"`
+	Session         string            `json:"session"`
+	WorkingCopyPath string            `json:"working_copy_path"`
+	Agents          []AgentTerminal   `json:"agents"`
+	Status          string            `json:"status"`
+	StartedAt       time.Time         `json:"started_at"`
+	StoppedAt       *time.Time        `json:"stopped_at,omitempty"`
+	Messages        []RecordedMessage `json:"messages,omitempty"`
+	Notes           []RecordedNote    `json:"notes,omitempty"`
 }
 
 // AgentTerminal maps an agent to its tmux window and launch command.
@@ -49,15 +52,16 @@ type RecordedNote struct {
 }
 
 // NewPlan builds a RunPlan from concrete terminal launch specs.
-func NewPlan(runID, sessionName string, plans []AgentTerminal) *RunPlan {
+func NewPlan(runID, sessionName, workingCopyPath string, plans []AgentTerminal) *RunPlan {
 	agentTerminals := make([]AgentTerminal, len(plans))
 	copy(agentTerminals, plans)
 	return &RunPlan{
-		RunID:     runID,
-		Session:   sessionName,
-		Agents:    agentTerminals,
-		Status:    StatusRunning,
-		StartedAt: time.Now(),
+		RunID:           runID,
+		Session:         sessionName,
+		WorkingCopyPath: workingCopyPath,
+		Agents:          agentTerminals,
+		Status:          StatusRunning,
+		StartedAt:       time.Now(),
 	}
 }
 

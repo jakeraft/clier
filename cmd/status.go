@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"os"
-
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/spf13/cobra"
 )
@@ -13,28 +11,26 @@ func init() {
 
 func newStatusCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "status",
-		Short: "Show the current local clone status",
-		Long: `Show the status of the current working copy. Displays which
-tracked resources have local modifications and active runs.`,
-		GroupID: rootGroupWorkspace,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			base, err := resolveCurrentDir()
-			if err != nil {
-				return err
-			}
-			fs := newFileMaterializer()
-			git := newGitRepo()
-			copyRoot, _, err := appworkspace.FindManifestAbove(fs, base)
-			if err != nil {
-				if os.IsNotExist(err) {
-					return errNotInWorkingCopy()
-				}
-				return err
-			}
+		Use:   "status <owner/name>",
+		Short: "Show a working copy's status",
+		Long: `Show the status of a working copy at <workspace_dir>/<owner>/<name>/.
 
-			svc := appworkspace.NewService(newAPIClient(), fs, git)
-			status, err := svc.Status(copyRoot)
+Displays which tracked resources have local modifications and any
+runs spawned from this working copy.`,
+		GroupID: rootGroupWorkspace,
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			owner, name, err := splitResourceID(args[0])
+			if err != nil {
+				return err
+			}
+			if err := validateOwner(owner); err != nil {
+				return err
+			}
+			base := workingCopyPath(owner, name)
+
+			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
+			status, err := svc.Status(base, runsDir())
 			if err != nil {
 				return err
 			}

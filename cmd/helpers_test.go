@@ -1,55 +1,9 @@
 package cmd
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/jakeraft/clier/internal/adapter/api"
-	"github.com/jakeraft/clier/internal/adapter/filesystem"
-	apprun "github.com/jakeraft/clier/internal/app/run"
-	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 )
-
-func TestResolveRunPlanPath_SearchesCurrentWorkspaceAncestors(t *testing.T) {
-	base := t.TempDir()
-	runID := "42"
-	plan := &apprun.RunPlan{RunID: runID, Session: "alpha-42"}
-	if err := apprun.SavePlan(base, runID, plan); err != nil {
-		t.Fatalf("SavePlan: %v", err)
-	}
-	if err := appworkspace.SaveManifest(filesystem.New(), base, &appworkspace.Manifest{
-		Kind:  string(api.KindTeam),
-		Owner: "jakeraft",
-		Name:  "tech-lead",
-	}); err != nil {
-		t.Fatalf("SaveManifest: %v", err)
-	}
-
-	repoDir := filepath.Join(base, "agent")
-	if err := os.MkdirAll(repoDir, 0o755); err != nil {
-		t.Fatalf("MkdirAll: %v", err)
-	}
-
-	origWD, _ := os.Getwd()
-	if err := os.Chdir(repoDir); err != nil {
-		t.Fatalf("Chdir: %v", err)
-	}
-	defer func() { _ = os.Chdir(origWD) }()
-
-	got, err := resolveRunPlanPath(runID)
-	if err != nil {
-		t.Fatalf("resolveRunPlanPath: %v", err)
-	}
-	want, err := filepath.EvalSymlinks(apprun.PlanPath(base, runID))
-	if err != nil {
-		t.Fatalf("EvalSymlinks: %v", err)
-	}
-	if got != want {
-		t.Fatalf("plan path = %q, want %q", got, want)
-	}
-}
 
 func TestBuildAgentEnv_OmitsTeamNameForStandaloneRuns(t *testing.T) {
 	env := buildAgentEnv("run-1", "jakeraft/tech-lead", "")
