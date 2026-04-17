@@ -6,13 +6,13 @@
 
 ## Why Clier?
 
-AI coding agents are already powerful. But the tools built around them keep making the same mistakes.
+As projects grow, you end up running multiple AI agents — different roles, different repos, different contexts. You need a way to set them up, coordinate them, and see what they're doing.
 
-They wrap proven CLIs behind another API layer — then spend forever catching up with upstream changes. They build flashy dashboards and UIs to impress humans — but humans aren't the ones running the tools. In this era, the primary consumer of a tool is the agent itself.
+Most tools solve this by wrapping native agents behind another API layer, then building a dashboard on top. It looks impressive, but it hides what the agent is actually doing — and every upstream update breaks something.
 
-We tried the API wrapper approach. Performance was unacceptable. Debugging was opaque. And every upstream release broke something.
+We tried the wrapper approach. Performance was unacceptable. Debugging was opaque. We came back to using the CLIs directly — and realized the tool should be designed for the agent, not the human watching it.
 
-So we went the other way. Let agents run their native CLIs directly. Give each agent its own harness — scoped to its role, transparent to the developer. Compose them into teams. Run them in real terminals. Let the agent do the work, and let the developer see everything.
+Let agents run their native CLIs directly. Give each one its own harness — scoped to its role, transparent to the developer. Compose them into teams. Run them in real terminals. Let the agent do the work, and let the developer see everything.
 
 **1. Per-agent harness** — Each agent is harnessed with its own instruction, workspace, skills, and settings. You control what each agent sees and does.
 
