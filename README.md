@@ -34,22 +34,49 @@ Open your CLI agent and say:
 I want to try clier. Explore the CLI and walk me through the tutorial.
 ```
 
-Under the hood, the agent drives. Steps marked **(you)** need your hands on the keyboard:
+<!-- TODO: embed demo.gif of the hello-claude flow here -->
+
+Under the hood, the agent drives. Steps marked **(you)** need your hands on the keyboard.
+
+The agent starts by exploring:
 
 ```bash
-clier --help                                # explore available commands
-clier tutorial                              # read the tutorial steps
+clier --help
+clier tutorial
 clier auth status
 ```
-your agents says "Please login"
+
+It sees you're not logged in and says *"Please run `clier auth login`."*
 
 ```bash
-clier clone @clier/hello-claude             # download to ~/.clier/workspace/@clier/hello-claude/
-clier run start @clier/hello-claude         # launch agents in tmux
+clier auth login                            # (you) GitHub device flow
+```
+
+Back in the agent:
+
+```bash
+clier clone @clier/hello-claude
+clier run start @clier/hello-claude
+```
+
+On first launch, vendor CLIs may need one-time approval. The agent says *"Attach and approve any prompts, then detach with Ctrl-b d."*
+
+```bash
+clier run attach <run-id>                   # (you) approve, then Ctrl-b d
+```
+
+The agent then sends the first instruction:
+
+```bash
 clier run tell --run <run-id> \
   --to @clier/hello-claude \
   "Have both team members greet each other and report the result."
-clier run attach <run-id>                   # (you) watch agents in real time
+```
+
+Attach anytime to watch the exchange:
+
+```bash
+clier run attach <run-id>                   # (you) watch live
 ```
 
 ## License

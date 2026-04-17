@@ -19,8 +19,8 @@ func newTutorialCmd() *cobra.Command {
 
 The tutorial has two phases:
 
-  Phase 1 — Run the canned team to verify the install (Steps 1–9)
-  Phase 2 — Fork it into your own namespace and iterate (Steps 10–18)
+  Phase 1 — Run the canned team to verify the install (Steps 1–10)
+  Phase 2 — Fork it into your own namespace and iterate (Steps 11–19)
 
 The team you start with:
 
@@ -42,26 +42,35 @@ Step 1. Log in
 
   Authenticate with GitHub via device flow.
 
-Step 2. Explore the pre-loaded team
+Step 2. See what's there in the dashboard
+
+  clier open dashboard
+
+  Opens the configured dashboard URL (default http://localhost:5173).
+  This is the visual overview of teams, resources, and runs — get
+  a feel for the whole picture before diving into the CLI. Change
+  the URL with: clier config set dashboard-url <url>
+
+Step 3. Explore the pre-loaded team from the CLI
 
   clier list --kind team
   clier get @clier/hello-claude
 
-Step 3. Clone the team
+Step 4. Clone the team
 
   clier clone @clier/hello-claude
 
   Downloads the working copy to
   ~/.clier/workspace/@clier/hello-claude/. No cd is needed.
 
-Step 4. Inspect the working copy
+Step 5. Inspect the working copy
 
   clier status @clier/hello-claude
   clier run list
 
   You should see a clean working copy and no active runs yet.
 
-Step 5. Start the team
+Step 6. Start the team
 
   clier run start @clier/hello-claude
 
@@ -73,23 +82,23 @@ Step 5. Start the team
   "clier run attach <run-id>" from your terminal, approve those
   prompts, and detach (Ctrl-b d) before sending messages.
 
-Step 6. Ask hello-claude to greet
+Step 7. Ask hello-claude to greet
 
   clier run tell --run <run-id> --to @clier/hello-claude \
     "Have both team members greet each other and report the result."
 
-Step 7. Watch and verify
+Step 8. Watch and verify
 
   clier run attach <run-id>        Watch agents in real time
   clier run view <run-id>          Inspect messages and notes
 
   Confirm both members participated and the greeting completed.
 
-Step 8. Stop the run
+Step 9. Stop the run
 
   clier run stop <run-id>
 
-Step 9. Tear down the canned team
+Step 10. Tear down the canned team
 
   clier remove @clier/hello-claude
 
@@ -111,47 +120,47 @@ About fork depth:
   child teams remain owned by the original author. To rewrite a
   leaf, fork that leaf too and rewire your team to point at it.
 
-Step 10. Fork the team into your namespace
+Step 11. Fork the team into your namespace
 
   clier fork @clier/hello-claude
   → creates <yourname>/hello-claude
 
-Step 11. Fork the instruction so you own the prompt text
+Step 12. Fork the instruction so you own the prompt text
 
   clier fork @clier/greeting-prompt
   → creates <yourname>/greeting-prompt
 
-Step 12. Rewire your team to use your instruction
+Step 13. Rewire your team to use your instruction
 
   clier edit <yourname>/hello-claude \
     --instruction <yourname>/greeting-prompt@1
 
   This bumps your team's version because its ref changed.
 
-Step 13. Clone your fork
+Step 14. Clone your fork
 
   clier clone <yourname>/hello-claude
 
-Step 14. Edit the prompt and check status
+Step 15. Edit the prompt and check status
 
   Locate CLAUDE.md inside the working copy and add your refinement.
 
   clier status <yourname>/hello-claude
   → "modified <yourname>/greeting-prompt"
 
-Step 15. Push your refinement
+Step 16. Push your refinement
 
   clier push <yourname>/hello-claude
 
   Bumps <yourname>/greeting-prompt to v2 and your team's ref
   follows.
 
-Step 16. Verify the version bump
+Step 17. Verify the version bump
 
   clier get <yourname>/greeting-prompt
   → latest_version: 2
 
-Step 17. Pull keeps you (and others) in sync
+Step 18. Pull keeps you (and others) in sync
 
   clier pull <yourname>/hello-claude
 
@@ -159,7 +168,7 @@ Step 17. Pull keeps you (and others) in sync
   improvement. Iteration is now a true loop — keep refining and
   pushing as you use the team.
 
-Step 18. Cleanup
+Step 19. Cleanup
 
   clier remove <yourname>/hello-claude
 
