@@ -32,7 +32,7 @@ runs spawned from this working copy.`,
 			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
 			status, err := svc.Status(base, runsDir())
 			if err != nil {
-				return err
+				return classifyWorkingCopyError(owner, name, base, err)
 			}
 			return printJSON(status)
 		},

@@ -37,7 +37,58 @@ and attach to watch them work.`,
 	cmd.AddCommand(newRunAttachCmd())
 	cmd.AddCommand(newRunTellCmd())
 	cmd.AddCommand(newRunNoteCmd())
+	cmd.AddCommand(newRunPruneCmd())
 	return cmd
+}
+
+func newRunPruneCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "prune",
+		Short: "Delete run plans whose working copy no longer exists",
+		Long: `Scan <workspace_dir>/.runs/ and remove any plan whose
+WorkingCopyPath no longer points to an existing directory.
+
+Use this after manually deleting a working copy to keep run list
+output clean. Plans for working copies that still exist are left
+alone, regardless of whether they are running or stopped.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dir := runsDir()
+			entries, err := os.ReadDir(dir)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return printJSON(map[string]any{"pruned": []string{}})
+				}
+				return fmt.Errorf("read runs dir: %w", err)
+			}
+
+			pruned := make([]string, 0)
+			for _, entry := range entries {
+				name := entry.Name()
+				if entry.IsDir() || !strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".state.json") {
+					continue
+				}
+				path := filepath.Join(dir, name)
+				plan, err := apprun.LoadPlanFromPath(path)
+				if err != nil {
+					continue
+				}
+				if plan.WorkingCopyPath == "" {
+					continue
+				}
+				if _, err := os.Stat(plan.WorkingCopyPath); err == nil {
+					continue
+				} else if !os.IsNotExist(err) {
+					return fmt.Errorf("stat working copy %s: %w", plan.WorkingCopyPath, err)
+				}
+				if err := os.Remove(path); err != nil {
+					return fmt.Errorf("remove %s: %w", path, err)
+				}
+				pruned = append(pruned, plan.RunID)
+			}
+			return printJSON(map[string]any{"pruned": pruned})
+		},
+	}
 }
 
 func newRunListCmd() *cobra.Command {
@@ -103,10 +154,7 @@ prompts, and detach (Ctrl-b d) before sending messages.`,
 			fs := newFileMaterializer()
 			manifest, err := appworkspace.LoadManifest(fs, base)
 			if err != nil {
-				if os.IsNotExist(err) {
-					return fmt.Errorf("no working copy at %s; run 'clier clone %s/%s' first", base, owner, name)
-				}
-				return err
+				return classifyWorkingCopyError(owner, name, base, err)
 			}
 			if err := validateWorkingCopy(base, manifest); err != nil {
 				return err

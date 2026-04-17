@@ -32,7 +32,7 @@ changed (pull first to resolve).`,
 			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
 			result, err := svc.Push(base)
 			if err != nil {
-				return err
+				return classifyWorkingCopyError(owner, name, base, err)
 			}
 			return printJSON(result)
 		},

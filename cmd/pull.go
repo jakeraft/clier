@@ -34,7 +34,7 @@ materialized files. Fails if local modifications exist unless
 			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
 			manifest, err := svc.Pull(base, force)
 			if err != nil {
-				return err
+				return classifyWorkingCopyError(owner, name, base, err)
 			}
 			return printJSON(map[string]any{
 				"status": "pulled",

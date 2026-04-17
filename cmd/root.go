@@ -112,9 +112,9 @@ Core workflow:
   clier create team              Define an agent or compose a team
   clier fork <owner/name>        Fork a resource to customize it
   clier clone <owner/name>       Download a local working copy
-  clier run start                Launch agents in tmux
+  clier run start <owner/name>     Launch a working copy in tmux
   clier run tell --to <owner/name> Send instructions to an agent
-  clier run attach <run-id>      Watch agents in real time
+  clier run attach <run-id>        Watch agents in real time
   clier open dashboard           Open the dashboard in a browser
 
 For agent consumers:

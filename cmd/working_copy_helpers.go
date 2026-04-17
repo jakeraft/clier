@@ -1,11 +1,31 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"os"
 
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/domain"
 )
+
+// errNoWorkingCopy returns a uniform "not cloned yet" message used by
+// status / pull / push / run start so the user always gets the same
+// remediation hint regardless of which command they tried.
+func errNoWorkingCopy(owner, name, base string) error {
+	return fmt.Errorf("no working copy at %s; run 'clier clone %s/%s' first", base, owner, name)
+}
+
+// classifyWorkingCopyError wraps the raw os.ErrNotExist from manifest
+// loading into the friendly errNoWorkingCopy error. Other errors pass
+// through untouched. Uses errors.Is so wrapped errors (e.g.,
+// "read manifest: %w") still match.
+func classifyWorkingCopyError(owner, name, base string, err error) error {
+	if errors.Is(err, os.ErrNotExist) {
+		return errNoWorkingCopy(owner, name, base)
+	}
+	return err
+}
 
 type runnableAgent struct {
 	ID         string

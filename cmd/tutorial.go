@@ -103,11 +103,11 @@ Step 9. Stop the run
 
 Step 10. Edit a tracked file
 
-  Resources you clone are tracked locally, similar to git.
-  Edit the root agent instruction, then inspect local state:
+  Resources you clone are tracked locally, similar to git. Locate
+  the root agent's CLAUDE.md inside the working copy, edit it,
+  then check what changed:
 
-    Open ~/.clier/workspace/@clier/hello-claude/@clier/hello-claude/CLAUDE.md
-    clier status @clier/hello-claude    Check what changed
+    clier status @clier/hello-claude
 
 Step 11. Try sync flows
 

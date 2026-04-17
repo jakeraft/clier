@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
+	"path/filepath"
 
 	"github.com/jakeraft/clier/internal/config"
 	"github.com/spf13/cobra"
@@ -46,6 +48,7 @@ func newConfigSetCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newConfigSetServerURLCmd())
 	cmd.AddCommand(newConfigSetDashboardURLCmd())
+	cmd.AddCommand(newConfigSetWorkspaceDirCmd())
 	return cmd
 }
 
@@ -64,6 +67,46 @@ func newConfigSetServerURLCmd() *cobra.Command {
 			}
 
 			cfg.ServerURL = args[0]
+			if err := config.Save(configPath(), cfg); err != nil {
+				return err
+			}
+
+			resolved, err := config.Resolve(cfg)
+			if err != nil {
+				return err
+			}
+
+			return printJSON(resolved)
+		},
+	}
+}
+
+func newConfigSetWorkspaceDirCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "workspace-dir <absolute-path>",
+		Short: "Set the workspace directory (must be absolute)",
+		Long: `Set the workspace directory where clier owns the per-team
+working copies and the central .runs/ store.
+
+The path must be absolute so that all clier commands work
+identically regardless of the user's current directory. Relative
+paths are rejected.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			path := args[0]
+			if !filepath.IsAbs(path) {
+				return fmt.Errorf("workspace_dir must be an absolute path: %q", path)
+			}
+
+			cfg, err := loadRawConfig()
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return err
+			}
+			if cfg == nil {
+				cfg = &config.File{}
+			}
+
+			cfg.WorkspaceDir = path
 			if err := config.Save(configPath(), cfg); err != nil {
 				return err
 			}
