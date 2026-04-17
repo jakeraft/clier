@@ -28,13 +28,32 @@ That's why I built Clier. I think agents are most productive when used interacti
 brew install jakeraft/tap/clier
 ```
 
+### Just explore Clier resources
+
+```bash
+clier open dashboard
+```
+
+Opens the dashboard in your browser. Browse teams, skills, and docs in read-only mode.
+
+<table>
+  <tr>
+    <td><img src="assets/docs.png" alt="Docs" /></td>
+    <td><img src="assets/home.png" alt="Popular teams" /></td>
+  </tr>
+  <tr>
+    <td><img src="assets/resources.png" alt="Resource list" /></td>
+    <td><img src="assets/team.png" alt="Team detail" /></td>
+  </tr>
+</table>
+
+### Full control using the CLI
+
 Open your CLI agent and say:
 
 ```
-I want to try clier. Explore the CLI and walk me through the tutorial.
+I want to try clier. Explore the clier CLI using "clier --help" and walk me through the tutorial.
 ```
-
-<!-- TODO: embed demo.gif of the hello-claude flow here -->
 
 Under the hood, the agent drives. Steps marked **(you)** need your hands on the keyboard.
 
