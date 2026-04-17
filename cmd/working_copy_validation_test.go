@@ -104,7 +104,7 @@ func TestValidateWorkingCopy_MissingFileFails(t *testing.T) {
 		Teams: []appworkspace.StoredTeamState{{
 			Owner:    "jakeraft",
 			Name:     "reviewer",
-			LocalDir: "reviewer",
+			LocalDir: appworkspace.AgentWorkspaceLocalPath("jakeraft", "reviewer"),
 			Projection: appworkspace.TeamProjection{
 				Name:      "reviewer",
 				AgentType: "claude",

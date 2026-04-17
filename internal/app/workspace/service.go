@@ -1009,12 +1009,8 @@ func assignLocalDirs(agents []agentEntry, previous *Manifest) map[string]string 
 				continue
 			}
 		}
-		base := sanitizeRepoDirName(agent.name)
+		base := AgentWorkspaceLocalPath(agent.owner, agent.name)
 		candidate := base
-		if taken[candidate] {
-			ownerPart := sanitizeRepoDirName(agent.owner)
-			candidate = base + "__" + ownerPart
-		}
 		for i := 2; taken[candidate]; i++ {
 			candidate = fmt.Sprintf("%s__%d", base, i)
 		}

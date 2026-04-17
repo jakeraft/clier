@@ -93,7 +93,7 @@ Step 10. Edit a tracked file locally
   Resources you clone are tracked locally, similar to git.
   Edit the root agent instruction, then inspect local state:
 
-    Open hello-claude/CLAUDE.md in your editor
+    Open @clier/hello-claude/CLAUDE.md in your editor
     clier status                Check what changed
 
 Step 11. Try sync flows

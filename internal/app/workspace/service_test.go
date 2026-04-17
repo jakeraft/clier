@@ -51,7 +51,7 @@ func TestMaterializeResolvedTeam_TracksNestedTeamsRecursively(t *testing.T) {
 		t.Fatalf("tracked resources should include %s", wantGrandchild)
 	}
 
-	agentDir := filepath.Join(base, "coder")
+	agentDir := filepath.Join(base, "bob", "coder")
 	if _, err := os.Stat(filepath.Join(agentDir, "AGENTS.md")); err != nil {
 		t.Fatalf("stat AGENTS.md: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestRemoveStaleManagedFiles_RemovesDroppedTrackedAndGeneratedFiles(t *testi
 	svc := NewService(nil, fs, nil)
 
 	oldTracked := teamTrackedPath("alice", "lead")
-	oldGenerated := filepath.ToSlash(filepath.Join("coder", ".clier", "bob-coder-team-protocol.md"))
+	oldGenerated := filepath.ToSlash(filepath.Join("bob", "coder", ".clier", "bob-coder-team-protocol.md"))
 
 	if err := fs.EnsureFile(filepath.Join(base, filepath.FromSlash(oldTracked)), []byte("tracked")); err != nil {
 		t.Fatalf("EnsureFile(tracked): %v", err)

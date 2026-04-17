@@ -43,7 +43,7 @@ func TestCollectRunnableAgents_WalksNestedChildrenRecursively(t *testing.T) {
 				Owner:    "bob",
 				Name:     "coder",
 				Version:  1,
-				LocalDir: "coder",
+				LocalDir: appworkspace.AgentWorkspaceLocalPath("bob", "coder"),
 				Projection: appworkspace.TeamProjection{
 					Name:      "coder",
 					AgentType: "codex",
@@ -63,7 +63,7 @@ func TestCollectRunnableAgents_WalksNestedChildrenRecursively(t *testing.T) {
 	if agents[0].ID != "bob/coder" {
 		t.Fatalf("agent ID = %q, want %q", agents[0].ID, "bob/coder")
 	}
-	if agents[0].LocalBase != "coder" {
-		t.Fatalf("localBase = %q, want %q", agents[0].LocalBase, "coder")
+	if agents[0].LocalBase != "bob/coder" {
+		t.Fatalf("localBase = %q, want %q", agents[0].LocalBase, "bob/coder")
 	}
 }

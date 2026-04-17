@@ -23,8 +23,13 @@ func AgentWorkspacePath(base, owner, name string) string {
 }
 
 func AgentWorkspaceLocalPath(owner, name string) string {
-	_ = owner
-	return sanitizeRepoDirName(name)
+	parts := []string{}
+	owner = strings.TrimSpace(owner)
+	if owner != "" {
+		parts = append(parts, sanitizeRepoDirName(owner))
+	}
+	parts = append(parts, sanitizeRepoDirName(name))
+	return filepath.ToSlash(filepath.Join(parts...))
 }
 
 func SkillLocalPath(localBase, owner, name string) string {
