@@ -123,6 +123,14 @@ Step 11. Try sync flows
     clier pull @clier/hello-claude --force
     clier push @clier/hello-claude
 
+Step 12. Tear it down
+
+  clier remove @clier/hello-claude
+
+  Removes the working copy and every run plan that points to it.
+  Refuses if there are uncommitted changes or a run is still
+  running — push/revert or stop those first.
+
 Tip: Use "clier <command> --help" for details on each command.`, hintField),
 	}
 	cmd.RunE = func(c *cobra.Command, args []string) error {

@@ -109,13 +109,14 @@ Get started:
   clier list --kind team       Browse what others have built
 
 Core workflow:
-  clier create team              Define an agent or compose a team
-  clier fork <owner/name>        Fork a resource to customize it
-  clier clone <owner/name>       Download a local working copy
+  clier create team                Define an agent or compose a team
+  clier fork <owner/name>          Fork a resource to customize it
+  clier clone <owner/name>         Download a local working copy
   clier run start <owner/name>     Launch a working copy in tmux
   clier run tell --to <owner/name> Send instructions to an agent
   clier run attach <run-id>        Watch agents in real time
-  clier open dashboard           Open the dashboard in a browser
+  clier remove <owner/name>        Delete a working copy and its runs
+  clier open dashboard             Open the dashboard in a browser
 
 For agent consumers:
   clier output is shaped for agents to parse. Some commands include

@@ -37,68 +37,7 @@ and attach to watch them work.`,
 	cmd.AddCommand(newRunAttachCmd())
 	cmd.AddCommand(newRunTellCmd())
 	cmd.AddCommand(newRunNoteCmd())
-	cmd.AddCommand(newRunPruneCmd())
 	return cmd
-}
-
-func newRunPruneCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "prune",
-		Short: "Delete run plans whose working copy no longer exists",
-		Long: `Scan <workspace_dir>/.runs/ and remove any stopped plan
-whose WorkingCopyPath no longer points to an existing directory.
-
-Plans whose status is "running" are kept and reported in the
-"kept_running" output array — the agent should call clier run stop
-on each before re-running prune to actually remove them.
-
-Plans for working copies that still exist are left alone.`,
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			dir := runsDir()
-			entries, err := os.ReadDir(dir)
-			if err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					return printJSON(map[string]any{"pruned": []string{}, "kept_running": []string{}})
-				}
-				return fmt.Errorf("read runs dir: %w", err)
-			}
-
-			pruned := make([]string, 0)
-			keptRunning := make([]string, 0)
-			for _, entry := range entries {
-				name := entry.Name()
-				if entry.IsDir() || !strings.HasSuffix(name, ".json") {
-					continue
-				}
-				path := filepath.Join(dir, name)
-				plan, err := apprun.LoadPlanFromPath(path)
-				if err != nil {
-					continue
-				}
-				if plan.WorkingCopyPath == "" {
-					continue
-				}
-				if _, err := os.Stat(plan.WorkingCopyPath); err == nil {
-					continue
-				} else if !errors.Is(err, os.ErrNotExist) {
-					return fmt.Errorf("stat working copy %s: %w", plan.WorkingCopyPath, err)
-				}
-				if plan.Status == apprun.StatusRunning {
-					keptRunning = append(keptRunning, plan.RunID)
-					continue
-				}
-				if err := os.Remove(path); err != nil {
-					return fmt.Errorf("remove %s: %w", path, err)
-				}
-				pruned = append(pruned, plan.RunID)
-			}
-			return printJSON(map[string]any{
-				"pruned":       pruned,
-				"kept_running": keptRunning,
-			})
-		},
-	}
 }
 
 func newRunListCmd() *cobra.Command {
@@ -106,26 +45,9 @@ func newRunListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List runs across all working copies",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			dir := runsDir()
-			entries, err := os.ReadDir(dir)
+			runs, err := apprun.ListPlans(runsDir())
 			if err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					return printJSON([]*apprun.RunPlan{})
-				}
-				return fmt.Errorf("read runs dir: %w", err)
-			}
-
-			runs := make([]*apprun.RunPlan, 0)
-			for _, entry := range entries {
-				name := entry.Name()
-				if entry.IsDir() || !strings.HasSuffix(name, ".json") {
-					continue
-				}
-				plan, err := apprun.LoadPlanFromPath(filepath.Join(dir, name))
-				if err != nil {
-					return err
-				}
-				runs = append(runs, plan)
+				return err
 			}
 			slices.SortFunc(runs, func(a, b *apprun.RunPlan) int {
 				return b.StartedAt.Compare(a.StartedAt)

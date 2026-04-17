@@ -2,9 +2,11 @@ package run
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // RunsDirName is the subdirectory under WorkspaceDir that holds all run
@@ -46,4 +48,33 @@ func LoadPlanFromPath(path string) (*RunPlan, error) {
 		return nil, fmt.Errorf("unmarshal plan: %w", err)
 	}
 	return &plan, nil
+}
+
+// ListPlans returns every loadable run plan in runsDir. Corrupt or
+// unparseable files are silently skipped so a single bad file cannot
+// brick scanning commands. A missing runsDir returns an empty slice
+// (no error). Callers that need filtering (by working copy, status,
+// etc.) should iterate the returned slice — this is the single
+// scan-policy entry point for the runs directory.
+func ListPlans(runsDir string) ([]*RunPlan, error) {
+	entries, err := os.ReadDir(runsDir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return []*RunPlan{}, nil
+		}
+		return nil, fmt.Errorf("read runs dir: %w", err)
+	}
+	plans := make([]*RunPlan, 0, len(entries))
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".json") {
+			continue
+		}
+		plan, err := LoadPlanFromPath(filepath.Join(runsDir, name))
+		if err != nil {
+			continue
+		}
+		plans = append(plans, plan)
+	}
+	return plans, nil
 }
