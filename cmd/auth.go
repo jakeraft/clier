@@ -137,7 +137,7 @@ func authStatusResult(creds *auth.Credentials, user *api.UserResponse, userErr e
 		return "Not logged in.", false
 	}
 	if userErr == nil && user != nil {
-		return fmt.Sprintf("Logged in as %s", user.Name), true
+		return "Logged in as " + user.Name, true
 	}
 	var apiErr *api.Error
 	if errors.As(userErr, &apiErr) && (apiErr.StatusCode == http.StatusUnauthorized || apiErr.StatusCode == http.StatusForbidden) {
@@ -160,4 +160,3 @@ func newAuthTokenCmd() *cobra.Command {
 		},
 	}
 }
-
