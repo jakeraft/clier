@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -111,19 +112,31 @@ func newAuthStatusCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			creds, loadErr := auth.Load(currentConfig().CredentialsPath)
 			if loadErr != nil {
-				return printAuthLoggedOutStatus()
+				fmt.Fprintln(os.Stderr, authStatusMessage(nil, nil, nil))
+				return nil
 			}
 
-			client := newAPIClient()
-			user, userErr := client.GetCurrentUser()
-			if userErr != nil {
-				return printAuthExpiredStatus(creds.Login)
-			}
-
-			fmt.Fprintf(os.Stderr, "Logged in as %s\n", user.Name)
+			user, userErr := newAPIClient().GetCurrentUser()
+			fmt.Fprintln(os.Stderr, authStatusMessage(creds, user, userErr))
 			return nil
 		},
 	}
+}
+
+// authStatusMessage reports the login state based on the stored credentials
+// and the server's response to a verification request.
+func authStatusMessage(creds *auth.Credentials, user *api.UserResponse, userErr error) string {
+	if creds == nil {
+		return "Not logged in."
+	}
+	if userErr == nil && user != nil {
+		return fmt.Sprintf("Logged in as %s", user.Name)
+	}
+	var apiErr *api.Error
+	if errors.As(userErr, &apiErr) && (apiErr.StatusCode == http.StatusUnauthorized || apiErr.StatusCode == http.StatusForbidden) {
+		return "Not logged in: stored token is invalid or expired.\nRun 'clier auth login' to re-authenticate."
+	}
+	return fmt.Sprintf("Unable to verify login for %s: %v", creds.Login, userErr)
 }
 
 func newAuthTokenCmd() *cobra.Command {
@@ -141,12 +154,3 @@ func newAuthTokenCmd() *cobra.Command {
 	}
 }
 
-func printAuthLoggedOutStatus() error {
-	fmt.Fprintln(os.Stderr, "Not logged in.")
-	return nil
-}
-
-func printAuthExpiredStatus(login string) error {
-	fmt.Fprintf(os.Stderr, "Logged in as %s (token may be expired)\n", login)
-	return nil
-}
