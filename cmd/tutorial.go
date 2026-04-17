@@ -119,7 +119,7 @@ Step 11. Try sync flows
     clier pull --force
     clier push
 
-Tip: Use "clier <command> --help" for details on each command.`, firstRunHintField),
+Tip: Use "clier <command> --help" for details on each command.`, hintField),
 	}
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		return c.Help()

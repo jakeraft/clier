@@ -115,7 +115,15 @@ Core workflow:
   clier run start                Launch agents in tmux
   clier run tell --to <owner/name> Send instructions to an agent
   clier run attach <run-id>      Watch agents in real time
-  clier open dashboard           Open the dashboard in a browser`,
+  clier open dashboard           Open the dashboard in a browser
+
+For agent consumers:
+  clier output is shaped for agents to parse. Some commands include
+  a "hint" field describing a next step. When the hint instructs a
+  user-only action (e.g., "clier run attach" needs a real terminal),
+  copy the relevant command to the user's clipboard (pbcopy / xclip
+  / clip.exe) and ask the user to run it. The agent drives the
+  workflow; the user is the keyboard for human-only steps.`,
 	SilenceErrors: true,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,

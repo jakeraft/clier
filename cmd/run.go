@@ -86,11 +86,11 @@ func newRunStartCmd() *cobra.Command {
 Agents start idle. Use run tell to send them instructions.
 
 On the first start in a fresh working copy, the JSON output includes
-a one-time "first_run_hint" field. Vendor CLIs (e.g., Codex) may
-show their own approval prompts in their pane on first launch.
-clier does not modify vendor configs on your behalf — ask the user
-to run "clier run attach <run-id>" from a normal terminal, approve
-those prompts, and detach (Ctrl-b d) before sending messages.`,
+a one-time "hint" field. Vendor CLIs (e.g., Codex) may show their
+own approval prompts in their pane on first launch. clier does not
+modify vendor configs on your behalf — ask the user to run
+"clier run attach <run-id>" from a normal terminal, approve those
+prompts, and detach (Ctrl-b d) before sending messages.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			base, err := resolveCurrentDir()
@@ -143,7 +143,7 @@ those prompts, and detach (Ctrl-b d) before sending messages.`,
 
 			result := map[string]any{"run_id": runID, "session": plan.Session}
 			if hint, mark := firstRunHint(manifest, runID); hint != "" {
-				result[firstRunHintField] = hint
+				result[hintField] = hint
 				manifest.FirstRunAt = mark
 				// Best-effort persist: if the manifest write fails, the
 				// hint reappears on the next run — no data loss, just a
@@ -155,9 +155,10 @@ those prompts, and detach (Ctrl-b d) before sending messages.`,
 	}
 }
 
-// firstRunHintField is the JSON key used in run start output and
-// referenced in tutorial / docs. Keep callers in sync via this constant.
-const firstRunHintField = "first_run_hint"
+// hintField is the JSON key for the optional next-step hint that
+// commands may emit when state warrants it. Shared by run.go output,
+// tutorial / docs references, and the root help convention.
+const hintField = "hint"
 
 // firstRunHint returns the one-time hint and the timestamp to mark on
 // the manifest when this is the workspace's first start. Returns ("", nil)

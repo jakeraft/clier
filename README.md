@@ -18,7 +18,7 @@ Even as developers, we're most productive using these agents interactively in th
 
 **3. Deep, multi-agent teams** — Compose agents into teams, then nest teams inside teams. No depth limit.
 
-**4. Agent-first** — Every command and output is shaped for agents to parse and act on. You talk to agents in their terminal, not click buttons on a dashboard.
+**4. Agent-first** — Every command and output is shaped for agents to parse and act on. You talk to agents in their terminal, not click buttons on a dashboard. When clier needs you (the human) for a step only you can do, the agent copies the command to your clipboard and asks.
 
 **5. Built on real terminals** — tmux gives each agent its own isolated window. You observe, steer, and intervene in real time.
 
