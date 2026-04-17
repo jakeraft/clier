@@ -14,6 +14,9 @@ import (
 )
 
 // sessionName generates a tmux-safe session name from a name and run ID.
+// The runID suffix uses the last 8 characters (the random hex part of
+// "<timestamp>-<hex>") so two runs started the same day do not collide
+// on the timestamp prefix.
 func sessionName(name, runID string) string {
 	n := strings.NewReplacer(".", "-", ":", "-", " ", "-", "/", "-").Replace(name)
 	if runes := []rune(n); len(runes) > 20 {
@@ -21,7 +24,7 @@ func sessionName(name, runID string) string {
 	}
 	short := runID
 	if len(short) > 8 {
-		short = short[:8]
+		short = short[len(short)-8:]
 	}
 	return n + "-" + short
 }
@@ -57,6 +60,24 @@ func buildFullCommand(env map[string]string, command, cwd string) string {
 
 func shellQuote(v string) string {
 	return "'" + strings.ReplaceAll(v, "'", `'"'"'`) + "'"
+}
+
+// rejectIfRunActive returns an error if a running plan already targets
+// the given working copy. Same-directory concurrent runs would let two
+// vendor processes mutate the same agent files at once, so we block
+// the second start and tell the agent to stop the first run (or fork
+// the team into a separate working copy if real parallelism is needed).
+func rejectIfRunActive(base string) error {
+	plans, err := apprun.ListPlans(runsDir())
+	if err != nil {
+		return err
+	}
+	for _, p := range plans {
+		if p.WorkingCopyPath == base && p.Status == apprun.StatusRunning {
+			return fmt.Errorf("run %s is already running for this working copy; clier run stop %s first (or fork the team to run in parallel)", p.RunID, p.RunID)
+		}
+	}
+	return nil
 }
 
 // resolveRunPlan loads a run plan by run-id from the central runs directory.

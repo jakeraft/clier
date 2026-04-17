@@ -91,6 +91,9 @@ prompts, and detach (Ctrl-b d) before sending messages.`,
 			if err := validateWorkingCopy(base, manifest); err != nil {
 				return err
 			}
+			if err := rejectIfRunActive(base); err != nil {
+				return err
+			}
 
 			runID, err := newRunID()
 			if err != nil {

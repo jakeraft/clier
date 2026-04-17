@@ -8,19 +8,19 @@
 
 Running multi-agent teams is tricky. Many tools have tried to solve this, but most of them just wrap already-powerful agents behind their own API and dashboard, then chase upstream to keep parity — leaving you with a layer that hides what the agent does and still lags whatever vendors ship next. And even when a harness actually works — the right roles, skills, and team shape — it tends to stay as one team's private know-how while every new team starts from scratch.
 
-I think agents are most productive when used interactively in their own CLI. Clier extends that to teams:
+That's why I built Clier. I think agents are most productive when used interactively in their own CLI, and Clier extends that to teams:
 
-**1. Native, not wrapped** — Agents run their own CLI directly, and you see exactly what they see.
+**1. Native, not wrapped** — Agents run their own CLI directly. You see exactly what they see.
 
-**2. Per-agent harness** — Each agent gets its own instruction, workspace, skills, and settings. You control what it sees and does.
+**2. Agent-first** — Commands and outputs are shaped for agents to parse. The agent drives, not a dashboard.
 
-**3. Deep, multi-agent teams** — Compose agents into teams, then nest teams inside teams. No depth limit.
+**3. Real terminals** — tmux gives each agent its own window. Observe, steer, and intervene live.
 
-**4. Agent-first** — Every command and output is shaped for agents to parse and act on. The agent drives, not a dashboard; you watch from the terminal.
+**4. Per-agent harness** — Each agent has its own instruction, workspace, skills, and settings. You control what it sees and does.
 
-**5. Real terminals** — tmux gives each agent its own isolated window. You observe, steer, and intervene in real time.
+**5. Deep, multi-agent teams** — Compose agents into teams, then nest teams inside teams. No depth limit.
 
-**6. Shareable harnesses** — Publish your agents, skills, and teams; fork someone else's. Everything is versioned, so you build on top instead of starting over.
+**6. Shareable harnesses** — Publish your agents, skills, and teams; fork someone else's. Everything is versioned, so you build on top, not from scratch.
 
 ## Quick Start
 
@@ -34,18 +34,22 @@ Open your CLI agent and say:
 I want to try clier. Explore the CLI and walk me through the tutorial.
 ```
 
-Under the hood, your agent will:
+Under the hood, the agent drives. Steps marked **(you)** need your hands on the keyboard:
 
 ```bash
 clier --help                                # explore available commands
 clier tutorial                              # read the tutorial steps
-clier auth login                            # authenticate with GitHub
+clier auth status
+```
+your agents says "Please login"
+
+```bash
 clier clone @clier/hello-claude             # download to ~/.clier/workspace/@clier/hello-claude/
 clier run start @clier/hello-claude         # launch agents in tmux
 clier run tell --run <run-id> \
   --to @clier/hello-claude \
   "Have both team members greet each other and report the result."
-clier run attach <run-id>                   # watch agents in real time
+clier run attach <run-id>                   # (you) watch agents in real time
 ```
 
 ## License
