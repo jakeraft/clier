@@ -70,7 +70,7 @@ func TestRemoveStaleManagedFiles_RemovesDroppedTrackedAndGeneratedFiles(t *testi
 	svc := NewService(nil, fs, nil)
 
 	oldTracked := teamTrackedPath("alice", "lead")
-	oldGenerated := filepath.ToSlash(filepath.Join("bob.coder", ".clier", "bob-coder-team-protocol.md"))
+	oldGenerated := filepath.ToSlash(filepath.Join("bob.coder", ".clier", "bob.coder-team-protocol.md"))
 
 	if err := fs.EnsureFile(filepath.Join(base, filepath.FromSlash(oldTracked)), []byte("tracked")); err != nil {
 		t.Fatalf("EnsureFile(tracked): %v", err)

@@ -32,11 +32,12 @@ func quoteOrEmpty(s string) string {
 	return `"` + s + `"`
 }
 
-// ResourceDirName returns the flat single-segment directory name for a
+// ResourceDirName returns the flat single-segment local key for a
 // resource identified by (owner, name). Owner and name are joined with
 // "." so that namespaced resources project into one directory level.
-// This keeps materialized layouts compatible with tools (e.g., Claude
-// Code's skill scanner) that only look one level deep.
+// This is the single source of truth for any local-only unique key
+// derived from a resource ID — directories, manifest entries, generated
+// filenames — so on-disk layout stays consistent.
 func ResourceDirName(owner, name string) string {
 	owner = strings.TrimSpace(owner)
 	name = sanitizeRepoDirName(name)
@@ -44,6 +45,17 @@ func ResourceDirName(owner, name string) string {
 		return name
 	}
 	return sanitizeRepoDirName(owner) + "." + name
+}
+
+// ResourceDirNameFromID returns the local key for a resource identified
+// by its wire-form ID ("owner/name"). Falls back to sanitizing the raw
+// id when the input does not parse as owner/name.
+func ResourceDirNameFromID(id string) string {
+	owner, name, err := SplitResourceID(id)
+	if err != nil {
+		return sanitizeRepoDirName(id)
+	}
+	return ResourceDirName(owner, name)
 }
 
 func AgentWorkspacePath(base, owner, name string) string {

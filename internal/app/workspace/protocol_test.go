@@ -85,7 +85,7 @@ func TestBuildAgentFacingTeamProtocol_UsesProfessionalCommunicationTone(t *testi
 func TestComposeInstruction_Claude_InjectsImportLines(t *testing.T) {
 	content := "You are a reviewer.\n"
 	composed := ComposeInstruction("claude", "jakeraft/reviewer", content)
-	if !strings.HasPrefix(composed, "@.clier/work-log-protocol.md\n@.clier/jakeraft-reviewer-team-protocol.md") {
+	if !strings.HasPrefix(composed, "@.clier/work-log-protocol.md\n@.clier/jakeraft.reviewer-team-protocol.md") {
 		t.Fatalf("claude compose should inject @import lines:\n%s", composed)
 	}
 	stripped := StripInstructionPrelude("claude", "jakeraft/reviewer", composed)

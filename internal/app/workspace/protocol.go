@@ -22,7 +22,7 @@ func WorkLogProtocolImportPath() string {
 }
 
 func TeamProtocolFileName(agentID string) string {
-	return sanitizeRepoDirName(agentID) + "-team-protocol.md"
+	return ResourceDirNameFromID(agentID) + "-team-protocol.md"
 }
 
 func TeamProtocolImportPath(agentID string) string {
