@@ -196,7 +196,7 @@ func configureCommandGroups() {
 		&cobra.Group{ID: rootGroupWorkspace, Title: "Workspace"},
 		&cobra.Group{ID: rootGroupSettings, Title: "Settings"},
 	)
-	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true, GroupID: rootGroupSettings})
+	rootCmd.SetHelpCommandGroupID(rootGroupSettings)
 }
 
 // filterUserCommands removes agent-only subcommands from "run" in user context.
@@ -257,7 +257,6 @@ func newAgentRootCmd(teamScoped bool) *cobra.Command {
 	} else {
 		root.Long = "Use `clier run note` to record a work log entry."
 	}
-	root.SetHelpCommand(&cobra.Command{Hidden: true})
 	root.SetHelpTemplate(`{{with (or .Long .Short)}}{{.}}
 {{end}}{{if or .Runnable .HasSubCommands}}{{if .HasSubCommands}}
 Usage:

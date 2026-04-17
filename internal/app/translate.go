@@ -6,11 +6,17 @@ package app
 
 import (
 	"errors"
+	"regexp"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/domain"
 )
+
+// cobra emits errors of the form: unknown command "foo" for "clier"
+// We surface these as KindUnknownCommand so users get a clear hint
+// instead of the catch-all "internal error" message.
+var cobraUnknownCommandRE = regexp.MustCompile(`^unknown command "([^"]*)"`)
 
 // reasonToKind maps server-side reason enum values to domain Kinds.
 // Verified for completeness against the OpenAPI Reason enum by
@@ -62,6 +68,14 @@ func Translate(err error) error {
 	}
 	if api.IsConnRefused(err) {
 		return &domain.Fault{Kind: domain.KindServerUnreachable, Cause: err}
+	}
+
+	if m := cobraUnknownCommandRE.FindStringSubmatch(err.Error()); m != nil {
+		return &domain.Fault{
+			Kind:    domain.KindUnknownCommand,
+			Subject: map[string]string{"command": m[1]},
+			Cause:   err,
+		}
 	}
 
 	return &domain.Fault{Kind: domain.KindInternal, Cause: err}

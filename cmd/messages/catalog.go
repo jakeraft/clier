@@ -93,6 +93,11 @@ var catalog = map[domain.Kind]Template{
 		Format:     "invalid request: %s",
 		FormatArgs: []string{"detail"},
 	},
+	domain.KindUnknownCommand: {
+		Format:     "unknown command: %q",
+		FormatArgs: []string{"command"},
+		HintFormat: "run 'clier --help' to see available commands",
+	},
 	domain.KindNotTeamResource: {
 		Format: "this resource is not a team",
 	},
