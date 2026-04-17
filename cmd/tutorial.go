@@ -61,7 +61,7 @@ Step 4. Clone the team
   clier clone @clier/hello-claude
 
   Downloads the working copy to
-  ~/.clier/workspace/@clier/hello-claude/. No cd is needed.
+  ~/.clier/workspace/@clier.hello-claude/. No cd is needed.
 
 Step 5. Inspect the working copy
 

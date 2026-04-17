@@ -31,20 +31,28 @@ func quoteOrEmpty(s string) string {
 	return `"` + s + `"`
 }
 
+// ResourceDirName returns the flat single-segment directory name for a
+// resource identified by (owner, name). Owner and name are joined with
+// "." so that namespaced resources project into one directory level.
+// This keeps materialized layouts compatible with tools (e.g., Claude
+// Code's skill scanner) that only look one level deep.
+func ResourceDirName(owner, name string) string {
+	owner = strings.TrimSpace(owner)
+	name = sanitizeRepoDirName(name)
+	if owner == "" {
+		return name
+	}
+	return sanitizeRepoDirName(owner) + "." + name
+}
+
 func AgentWorkspacePath(base, owner, name string) string {
 	return filepath.Join(base, filepath.FromSlash(AgentWorkspaceLocalPath(owner, name)))
 }
 
 func AgentWorkspaceLocalPath(owner, name string) string {
-	parts := []string{}
-	owner = strings.TrimSpace(owner)
-	if owner != "" {
-		parts = append(parts, sanitizeRepoDirName(owner))
-	}
-	parts = append(parts, sanitizeRepoDirName(name))
-	return filepath.ToSlash(filepath.Join(parts...))
+	return filepath.ToSlash(ResourceDirName(owner, name))
 }
 
 func SkillLocalPath(localBase, owner, name string) string {
-	return filepath.ToSlash(filepath.Join(localBase, owner, name, "SKILL.md"))
+	return filepath.ToSlash(filepath.Join(localBase, ResourceDirName(owner, name), "SKILL.md"))
 }

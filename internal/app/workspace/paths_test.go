@@ -11,8 +11,8 @@ func TestAgentWorkspaceLocalPath(t *testing.T) {
 		agent string
 		want  string
 	}{
-		{name: "owner and agent", owner: "@clier", agent: "hello-codex", want: "@clier/hello-codex"},
-		{name: "sanitized", owner: "team ops", agent: "review squad", want: "team-ops/review-squad"},
+		{name: "owner and agent", owner: "@clier", agent: "hello-codex", want: "@clier.hello-codex"},
+		{name: "sanitized", owner: "team ops", agent: "review squad", want: "team-ops.review-squad"},
 		{name: "missing owner", owner: "", agent: "solo", want: "solo"},
 	}
 

@@ -35,7 +35,7 @@ func TestSaveManifest(t *testing.T) {
 			Kind:          string(api.KindSkill),
 			Owner:         "jakeraft",
 			Name:          "reviewer",
-			LocalPath:     "lead/.claude/skills/jakeraft/reviewer/SKILL.md",
+			LocalPath:     "lead/.claude/skills/jakeraft.reviewer/SKILL.md",
 			RemoteVersion: &resourceVersion,
 			BaseHash:      "def456",
 			Editable:      true,

@@ -9,7 +9,7 @@ import (
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
 )
 
-func TestMaterializeAgent_WritesSkillsUnderOwnerAndName(t *testing.T) {
+func TestMaterializeAgent_WritesSkillsUnderFlatDirName(t *testing.T) {
 	t.Parallel()
 
 	base := t.TempDir()
@@ -33,7 +33,7 @@ func TestMaterializeAgent_WritesSkillsUnderOwnerAndName(t *testing.T) {
 		t.Fatalf("MaterializeAgent: %v", err)
 	}
 
-	skillPath := filepath.Join(base, ".claude", "skills", "alice", "reviewer", "SKILL.md")
+	skillPath := filepath.Join(base, ".claude", "skills", "alice.reviewer", "SKILL.md")
 	data, err := os.ReadFile(skillPath)
 	if err != nil {
 		t.Fatalf("ReadFile(%s): %v", skillPath, err)

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
+	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
@@ -20,10 +21,7 @@ func runsDir() string {
 
 // workingCopyPath returns the canonical absolute path for a team's working copy.
 func workingCopyPath(owner, name string) string {
-	if owner == "" {
-		return filepath.Join(workspaceDir(), name)
-	}
-	return filepath.Join(workspaceDir(), owner, name)
+	return filepath.Join(workspaceDir(), appworkspace.ResourceDirName(owner, name))
 }
 
 // validateOwner rejects owner names that would collide with internal

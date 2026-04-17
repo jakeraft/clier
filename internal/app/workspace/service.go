@@ -886,7 +886,7 @@ func appendAgentTrackedResources(tracked *[]TrackedResource, generated *[]string
 			AgentType:     agentType,
 			Owner:         skillRef.Owner,
 			Name:          skillRef.Name,
-			LocalPath:     filepath.ToSlash(filepath.Join(localBase, profile.SettingsDir, profile.SkillsDir, skillRef.Owner, skillRef.Name, "SKILL.md")),
+			LocalPath:     SkillLocalPath(filepath.ToSlash(filepath.Join(localBase, profile.SettingsDir, profile.SkillsDir)), skillRef.Owner, skillRef.Name),
 			RemoteVersion: intPtr(skillRef.Version),
 			Editable:      true,
 		})
@@ -997,7 +997,7 @@ func (s *Service) trackedResourceHash(base string, manifest *Manifest, resource 
 }
 
 func teamTrackedPath(owner, name string) string {
-	return ".clier/" + ResourceID(owner, name) + ".team"
+	return ".clier/" + ResourceDirName(owner, name) + ".team"
 }
 
 func assignLocalDirs(agents []agentEntry, previous *Manifest) map[string]string {
