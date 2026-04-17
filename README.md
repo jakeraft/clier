@@ -6,21 +6,21 @@
 
 ## Why Clier?
 
-Running multiple AI agents across different roles and repos gets messy fast. Most tools solve this by wrapping already-powerful services like Claude Code and Codex behind their own API and dashboard, then spending most of their effort chasing upstream just to keep parity with what the underlying CLI already does. You end up with a layer that hides what the agent actually does, and still lags whatever vendors ship next.
+Running multiple AI agents across different roles and repos gets messy fast. Most tools solve this by wrapping already-powerful services like Claude Code and Codex behind their own API and dashboard, then chasing upstream just to keep parity with what the underlying agents already do. You get a layer that hides what the agent does, and still lags whatever vendors ship next.
 
-Clier takes the opposite path: use them as-is. Each agent runs its own native CLI exactly as its vendor ships it, and Clier wraps a transparent harness around it — scoping its role, workspace, skills, and teammates.
+Even as developers, we're most productive using these agents interactively in their CLI — not through a wrapped API. Clier extends that to teams: use them as-is. Each agent runs its native CLI as shipped, wrapped in a transparent harness that scopes its role, workspace, skills, and teammates. And since the agent — not a dashboard — does the work, every Clier command and output is shaped for agents to parse and act on, with you watching in the terminal.
 
 ## How it works
 
-**1. Per-agent harness** — Each agent is harnessed with its own instruction, workspace, skills, and settings. You control what each agent sees and does.
+**1. Native, not wrapped** — No API wrappers between you and the agent. Agents run their own CLI directly, and you see exactly what they see.
 
-**2. Deep, multi-agent teams** — No depth limit. Build hierarchies with agents in a single team.
+**2. Per-agent harness** — Each agent gets its own instruction, workspace, skills, and settings. You control what it sees and does.
 
-**3. Native, not wrapped** — No API wrappers hiding your tools. Agents run their own CLI directly. You see exactly what the agent sees.
+**3. Deep, multi-agent teams** — Compose agents into teams, then nest teams inside teams. No depth limit.
 
-**4. Agent-first** — Every command, output, and hint is designed for agents to parse and act on. You talk to agents in their terminal, not click buttons.
+**4. Agent-first** — Every command and output is shaped for agents to parse and act on. You talk to agents in their terminal, not click buttons on a dashboard.
 
-**5. Built on real terminals** — tmux gives each agent its own isolated terminal window. You observe, steer, and intervene in real time.
+**5. Built on real terminals** — tmux gives each agent its own isolated window. You observe, steer, and intervene in real time.
 
 ## Quick Start
 
