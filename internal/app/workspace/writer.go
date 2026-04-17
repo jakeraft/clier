@@ -86,7 +86,7 @@ func (w *Writer) MaterializeAgent(base string, projection *TeamProjection, agent
 		if err != nil {
 			return fmt.Errorf("resolve skill %s/%s: %w", skillRef.Owner, skillRef.Name, err)
 		}
-		skillPath := filepath.FromSlash(SkillLocalPath(filepath.ToSlash(paths.skillsDir), skillRef.Owner, skillRef.Name))
+		skillPath := SkillFilePath(paths.skillsDir, skillRef.Owner, skillRef.Name)
 		if err := w.writeFile(skillPath, content); err != nil {
 			return fmt.Errorf("write skill %s: %w", skillRef.Name, err)
 		}

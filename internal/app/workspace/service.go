@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -886,7 +887,7 @@ func appendAgentTrackedResources(tracked *[]TrackedResource, generated *[]string
 			AgentType:     agentType,
 			Owner:         skillRef.Owner,
 			Name:          skillRef.Name,
-			LocalPath:     SkillLocalPath(filepath.ToSlash(filepath.Join(localBase, profile.SettingsDir, profile.SkillsDir)), skillRef.Owner, skillRef.Name),
+			LocalPath:     SkillLocalPath(path.Join(localBase, profile.SettingsDir, profile.SkillsDir), skillRef.Owner, skillRef.Name),
 			RemoteVersion: intPtr(skillRef.Version),
 			Editable:      true,
 		})

@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -53,6 +54,14 @@ func AgentWorkspaceLocalPath(owner, name string) string {
 	return filepath.ToSlash(ResourceDirName(owner, name))
 }
 
+// SkillLocalPath returns the slash-joined path for storage in
+// TrackedResource.LocalPath. Use SkillFilePath for native filesystem
+// operations.
 func SkillLocalPath(localBase, owner, name string) string {
-	return filepath.ToSlash(filepath.Join(localBase, ResourceDirName(owner, name), "SKILL.md"))
+	return path.Join(localBase, ResourceDirName(owner, name), "SKILL.md")
+}
+
+// SkillFilePath returns the native OS path for materializing a skill on disk.
+func SkillFilePath(skillsDir, owner, name string) string {
+	return filepath.Join(skillsDir, ResourceDirName(owner, name), "SKILL.md")
 }
