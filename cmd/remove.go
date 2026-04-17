@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 
 	apprun "github.com/jakeraft/clier/internal/app/run"
@@ -20,7 +19,7 @@ func newRemoveCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "remove <owner/name>",
 		Short: "Remove a working copy and its run plans",
-		Long: `Remove the working copy at <workspace_dir>/<owner>/<name>/
+		Long: `Remove the working copy at <workspace_dir>/<owner>.<name>/
 together with every run plan in <workspace_dir>/.runs/ that points
 to it.
 
@@ -87,12 +86,6 @@ Refused when:
 			}
 			if err := os.RemoveAll(base); err != nil {
 				return fmt.Errorf("remove working copy %s: %w", base, err)
-			}
-			// Best-effort: drop the owner directory if it became empty.
-			// os.Remove fails on non-empty dirs, which is exactly what
-			// we want here (other teams under the same owner survive).
-			if owner != "" {
-				_ = os.Remove(filepath.Join(workspaceDir(), owner))
 			}
 
 			return printJSON(map[string]any{

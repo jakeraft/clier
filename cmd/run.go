@@ -62,7 +62,7 @@ func newRunStartCmd() *cobra.Command {
 		Use:   "start <owner/name>",
 		Short: "Launch a working copy in tmux",
 		Long: `Start all agents for the working copy at
-<workspace_dir>/<owner>/<name>/.
+<workspace_dir>/<owner>.<name>/.
 
 Agents start idle. Use run tell to send them instructions.
 

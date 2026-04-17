@@ -19,7 +19,7 @@ func newCloneCmd() *cobra.Command {
 		Use:   "clone <owner/name>",
 		Short: "Download a local working copy",
 		Long: `Download a team from the server into the canonical workspace
-location at <workspace_dir>/<owner>/<name>/.
+location at <workspace_dir>/<owner>.<name>/.
 
 The workspace directory defaults to ~/.clier/workspace and can be
 overridden via the workspace_dir field in ~/.clier/config.json.

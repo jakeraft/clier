@@ -16,7 +16,7 @@ func newPullCmd() *cobra.Command {
 		Use:   "pull <owner/name>",
 		Short: "Pull latest changes for a working copy",
 		Long: `Pull the latest version of tracked resources for a working copy at
-<workspace_dir>/<owner>/<name>/, updating local projections and
+<workspace_dir>/<owner>.<name>/, updating local projections and
 materialized files. Fails if local modifications exist unless
 --force is used.`,
 		GroupID: rootGroupWorkspace,

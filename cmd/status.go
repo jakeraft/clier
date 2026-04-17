@@ -13,7 +13,7 @@ func newStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status <owner/name>",
 		Short: "Show a working copy's status",
-		Long: `Show the status of a working copy at <workspace_dir>/<owner>/<name>/.
+		Long: `Show the status of a working copy at <workspace_dir>/<owner>.<name>/.
 
 Displays which tracked resources have local modifications and any
 runs spawned from this working copy.`,

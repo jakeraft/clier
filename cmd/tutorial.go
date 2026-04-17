@@ -28,7 +28,7 @@ The team you start with:
   └── hello-codex (child, Codex)
 
 clier owns the working-copy layout — every clone lives at
-<workspace_dir>/<owner>/<name>/ (default workspace_dir is
+<workspace_dir>/<owner>.<name>/ (default workspace_dir is
 ~/.clier/workspace). Run subcommands work from any cwd; identify
 working copies with <owner>/<name> and runs with their run-id.
 

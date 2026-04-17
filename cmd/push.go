@@ -14,7 +14,7 @@ func newPushCmd() *cobra.Command {
 		Use:   "push <owner/name>",
 		Short: "Push tracked local changes for a working copy",
 		Long: `Push locally modified resources to the server for the working copy
-at <workspace_dir>/<owner>/<name>/. Only resources that have changed
+at <workspace_dir>/<owner>.<name>/. Only resources that have changed
 since the last pull/clone are sent. Fails if the remote version has
 changed (pull first to resolve).`,
 		GroupID: rootGroupWorkspace,
