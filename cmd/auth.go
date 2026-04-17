@@ -107,36 +107,43 @@ func newAuthLogoutCmd() *cobra.Command {
 
 func newAuthStatusCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "status",
-		Short: "Show login status",
+		Use:          "status",
+		Short:        "Show login status",
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			creds, loadErr := auth.Load(currentConfig().CredentialsPath)
-			if loadErr != nil {
-				fmt.Fprintln(os.Stderr, authStatusMessage(nil, nil, nil))
-				return nil
+			creds, _ := auth.Load(currentConfig().CredentialsPath)
+			var (
+				user    *api.UserResponse
+				userErr error
+			)
+			if creds != nil {
+				user, userErr = newAPIClient().GetCurrentUser()
 			}
-
-			user, userErr := newAPIClient().GetCurrentUser()
-			fmt.Fprintln(os.Stderr, authStatusMessage(creds, user, userErr))
+			msg, ok := authStatusResult(creds, user, userErr)
+			fmt.Fprintln(os.Stderr, msg)
+			if !ok {
+				return errSilent
+			}
 			return nil
 		},
 	}
 }
 
-// authStatusMessage reports the login state based on the stored credentials
-// and the server's response to a verification request.
-func authStatusMessage(creds *auth.Credentials, user *api.UserResponse, userErr error) string {
+// authStatusResult reports the login state based on the stored credentials
+// and the server's response to a verification request. The boolean is true
+// only when the server has confirmed the token is valid.
+func authStatusResult(creds *auth.Credentials, user *api.UserResponse, userErr error) (string, bool) {
 	if creds == nil {
-		return "Not logged in."
+		return "Not logged in.", false
 	}
 	if userErr == nil && user != nil {
-		return fmt.Sprintf("Logged in as %s", user.Name)
+		return fmt.Sprintf("Logged in as %s", user.Name), true
 	}
 	var apiErr *api.Error
 	if errors.As(userErr, &apiErr) && (apiErr.StatusCode == http.StatusUnauthorized || apiErr.StatusCode == http.StatusForbidden) {
-		return "Not logged in: stored token is invalid or expired.\nRun 'clier auth login' to re-authenticate."
+		return "Not logged in: stored token is invalid or expired.\nRun 'clier auth login' to re-authenticate.", false
 	}
-	return fmt.Sprintf("Unable to verify login for %s: %v", creds.Login, userErr)
+	return fmt.Sprintf("Unable to verify login for %s: %v", creds.Login, userErr), false
 }
 
 func newAuthTokenCmd() *cobra.Command {

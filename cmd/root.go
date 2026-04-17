@@ -125,6 +125,11 @@ Core workflow:
 // errSubcommandRequired is returned by parent commands called without a subcommand.
 var errSubcommandRequired = errors.New("subcommand required")
 
+// errSilent signals exit code 1 without any additional "Error:" prefix.
+// Use when the command has already printed a user-facing message and just
+// needs the process to exit non-zero.
+var errSilent = errors.New("silent exit")
+
 // subcommandRequired prints help and returns errSubcommandRequired (exit 1).
 func subcommandRequired(cmd *cobra.Command, _ []string) error {
 	cmd.SilenceErrors = true
@@ -142,7 +147,7 @@ func Execute() {
 		filterUserCommands()
 	}
 	if err := cmd.Execute(); err != nil {
-		if !errors.Is(err, errSubcommandRequired) {
+		if !errors.Is(err, errSubcommandRequired) && !errors.Is(err, errSilent) {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		}
 		os.Exit(1)

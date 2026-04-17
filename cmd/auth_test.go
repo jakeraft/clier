@@ -10,59 +10,74 @@ import (
 	"github.com/jakeraft/clier/internal/auth"
 )
 
-func TestAuthStatusMessage_NotLoggedIn(t *testing.T) {
-	got := authStatusMessage(nil, nil, nil)
-	if got != "Not logged in." {
-		t.Fatalf("got %q", got)
+func TestAuthStatusResult_NotLoggedIn(t *testing.T) {
+	msg, ok := authStatusResult(nil, nil, nil)
+	if ok {
+		t.Fatal("ok = true for missing credentials, want false")
+	}
+	if msg != "Not logged in." {
+		t.Fatalf("msg = %q", msg)
 	}
 }
 
-func TestAuthStatusMessage_LoggedIn(t *testing.T) {
+func TestAuthStatusResult_LoggedIn(t *testing.T) {
 	creds := &auth.Credentials{Login: "jakeraft"}
 	user := &api.UserResponse{Name: "jakeraft"}
-	got := authStatusMessage(creds, user, nil)
-	if got != "Logged in as jakeraft" {
-		t.Fatalf("got %q", got)
+	msg, ok := authStatusResult(creds, user, nil)
+	if !ok {
+		t.Fatal("ok = false for server-confirmed login, want true")
+	}
+	if msg != "Logged in as jakeraft" {
+		t.Fatalf("msg = %q", msg)
 	}
 }
 
-func TestAuthStatusMessage_TokenInvalid(t *testing.T) {
+func TestAuthStatusResult_TokenInvalid(t *testing.T) {
 	creds := &auth.Credentials{Login: "jakeraft"}
 	for _, code := range []int{http.StatusUnauthorized, http.StatusForbidden} {
 		err := &api.Error{StatusCode: code, Body: "unauthorized"}
-		got := authStatusMessage(creds, nil, err)
-		if !strings.Contains(got, "invalid or expired") {
-			t.Errorf("status %d: got %q, want message about invalid/expired token", code, got)
+		msg, ok := authStatusResult(creds, nil, err)
+		if ok {
+			t.Errorf("status %d: ok = true, want false for invalid token", code)
 		}
-		if strings.Contains(got, "may be expired") {
-			t.Errorf("status %d: got %q, should not contain ambiguous wording", code, got)
+		if !strings.Contains(msg, "invalid or expired") {
+			t.Errorf("status %d: msg = %q, want explicit invalid/expired wording", code, msg)
 		}
-		if !strings.Contains(got, "clier auth login") {
-			t.Errorf("status %d: got %q, want re-auth instruction", code, got)
+		if strings.Contains(msg, "may be expired") {
+			t.Errorf("status %d: msg = %q, should not contain ambiguous wording", code, msg)
+		}
+		if !strings.Contains(msg, "clier auth login") {
+			t.Errorf("status %d: msg = %q, want re-auth instruction", code, msg)
 		}
 	}
 }
 
-func TestAuthStatusMessage_ServerUnreachable(t *testing.T) {
+func TestAuthStatusResult_ServerUnreachable(t *testing.T) {
 	creds := &auth.Credentials{Login: "jakeraft"}
 	netErr := errors.New("do: dial tcp: connection refused")
-	got := authStatusMessage(creds, nil, netErr)
-	if !strings.Contains(got, "Unable to verify login for jakeraft") {
-		t.Errorf("got %q, want unreachable message including login", got)
+	msg, ok := authStatusResult(creds, nil, netErr)
+	if ok {
+		t.Fatal("ok = true for network error, want false")
 	}
-	if !strings.Contains(got, "connection refused") {
-		t.Errorf("got %q, want to surface underlying error", got)
+	if !strings.Contains(msg, "Unable to verify login for jakeraft") {
+		t.Errorf("msg = %q, want unreachable message including login", msg)
+	}
+	if !strings.Contains(msg, "connection refused") {
+		t.Errorf("msg = %q, want to surface underlying error", msg)
 	}
 }
 
-func TestAuthStatusMessage_ServerError5xx(t *testing.T) {
+func TestAuthStatusResult_ServerError5xx(t *testing.T) {
 	creds := &auth.Credentials{Login: "jakeraft"}
 	apiErr := &api.Error{StatusCode: http.StatusInternalServerError, Body: "boom"}
-	got := authStatusMessage(creds, nil, apiErr)
-	if !strings.Contains(got, "Unable to verify login") {
-		t.Errorf("got %q, want unreachable wording for 5xx", got)
+	msg, ok := authStatusResult(creds, nil, apiErr)
+	if ok {
+		t.Fatal("ok = true for 5xx, want false")
 	}
-	if strings.Contains(got, "invalid or expired") {
-		t.Errorf("got %q, 5xx should not be reported as invalid token", got)
+	if !strings.Contains(msg, "Unable to verify login") {
+		t.Errorf("msg = %q, want unreachable wording for 5xx", msg)
+	}
+	if strings.Contains(msg, "invalid or expired") {
+		t.Errorf("msg = %q, 5xx should not be reported as invalid token", msg)
 	}
 }
