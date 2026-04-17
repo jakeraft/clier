@@ -15,22 +15,28 @@ type ProtocolAgent struct {
 	Name  string
 }
 
-const workLogProtocolFileName = "work-log-protocol.md"
+const (
+	workLogProtocolFileName = "work-log-protocol.md"
+	teamProtocolFileName    = "team-protocol.md"
+)
 
 func WorkLogProtocolImportPath() string {
 	return filepath.ToSlash(filepath.Join(".clier", workLogProtocolFileName))
 }
 
-func TeamProtocolFileName(agentID string) string {
-	return ResourceDirNameFromID(agentID) + "-team-protocol.md"
+// TeamProtocolFileName returns the basename of the per-agent team protocol
+// file. Each agent has its own .clier/ directory, so the filename does not
+// need to encode the agent identity.
+func TeamProtocolFileName() string {
+	return teamProtocolFileName
 }
 
-func TeamProtocolImportPath(agentID string) string {
-	return filepath.ToSlash(filepath.Join(".clier", TeamProtocolFileName(agentID)))
+func TeamProtocolImportPath() string {
+	return filepath.ToSlash(filepath.Join(".clier", TeamProtocolFileName()))
 }
 
-func TeamProtocolImportLine(agentID string) string {
-	return "@" + TeamProtocolImportPath(agentID)
+func TeamProtocolImportLine() string {
+	return "@" + TeamProtocolImportPath()
 }
 
 func TeamWorkLogProtocolImportLine() string {
@@ -41,41 +47,41 @@ func TeamWorkLogProtocolImportLine() string {
 // Claude: injects @import lines (native import syntax).
 // Codex: injects plain-text reference lines (agent reads files when needed).
 // Both agents use the same file structure; only the reference format differs.
-func ComposeInstruction(agentType, agentID, content string) string {
+func ComposeInstruction(agentType, content string) string {
 	switch agentType {
 	case "codex":
-		return composeCodexInstruction(agentID, content)
+		return composeCodexInstruction(content)
 	default:
-		return composeClaudeInstruction(agentID, content)
+		return composeClaudeInstruction(content)
 	}
 }
 
-// StripInstructionPrelude removes the agent-specific protocol prelude for push.
-func StripInstructionPrelude(agentType, agentID, content string) string {
+// StripInstructionPrelude removes the protocol prelude for push.
+func StripInstructionPrelude(agentType, content string) string {
 	switch agentType {
 	case "codex":
-		return stripCodexInstructionPrelude(agentID, content)
+		return stripCodexInstructionPrelude(content)
 	default:
-		return stripClaudeInstructionPrelude(agentID, content)
+		return stripClaudeInstructionPrelude(content)
 	}
 }
 
-func composeClaudeInstruction(agentID, content string) string {
+func composeClaudeInstruction(content string) string {
 	content = strings.TrimLeft(content, "\n")
 	workLogLine := TeamWorkLogProtocolImportLine()
-	teamLine := TeamProtocolImportLine(agentID)
+	teamLine := TeamProtocolImportLine()
 	if content == "" {
 		return workLogLine + "\n" + teamLine + "\n"
 	}
 	return workLogLine + "\n" + teamLine + "\n\n" + content
 }
 
-func stripClaudeInstructionPrelude(agentID, content string) string {
+func stripClaudeInstructionPrelude(content string) string {
 	prefixes := []string{
-		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(agentID) + "\n\n",
-		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine(agentID) + "\n",
-		TeamProtocolImportLine(agentID) + "\n\n",
-		TeamProtocolImportLine(agentID) + "\n",
+		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine() + "\n\n",
+		TeamWorkLogProtocolImportLine() + "\n" + TeamProtocolImportLine() + "\n",
+		TeamProtocolImportLine() + "\n\n",
+		TeamProtocolImportLine() + "\n",
 	}
 	for _, prefix := range prefixes {
 		if stripped, ok := strings.CutPrefix(content, prefix); ok {
@@ -91,26 +97,26 @@ func CodexWorkLogReferenceLine() string {
 }
 
 // CodexTeamProtocolReferenceLine returns the reference line for team protocol in Codex instruction files.
-func CodexTeamProtocolReferenceLine(agentID string) string {
-	return "Read " + TeamProtocolImportPath(agentID) + " for team coordination."
+func CodexTeamProtocolReferenceLine() string {
+	return "Read " + TeamProtocolImportPath() + " for team coordination."
 }
 
-func composeCodexInstruction(agentID, content string) string {
+func composeCodexInstruction(content string) string {
 	content = strings.TrimLeft(content, "\n")
 	workLogLine := CodexWorkLogReferenceLine()
-	teamLine := CodexTeamProtocolReferenceLine(agentID)
+	teamLine := CodexTeamProtocolReferenceLine()
 	if content == "" {
 		return workLogLine + "\n" + teamLine + "\n"
 	}
 	return workLogLine + "\n" + teamLine + "\n\n" + content
 }
 
-func stripCodexInstructionPrelude(agentID, content string) string {
+func stripCodexInstructionPrelude(content string) string {
 	prefixes := []string{
-		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine(agentID) + "\n\n",
-		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine(agentID) + "\n",
-		CodexTeamProtocolReferenceLine(agentID) + "\n\n",
-		CodexTeamProtocolReferenceLine(agentID) + "\n",
+		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine() + "\n\n",
+		CodexWorkLogReferenceLine() + "\n" + CodexTeamProtocolReferenceLine() + "\n",
+		CodexTeamProtocolReferenceLine() + "\n\n",
+		CodexTeamProtocolReferenceLine() + "\n",
 	}
 	for _, prefix := range prefixes {
 		if stripped, ok := strings.CutPrefix(content, prefix); ok {

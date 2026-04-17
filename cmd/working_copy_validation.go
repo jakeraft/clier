@@ -53,7 +53,7 @@ func validateAgentCopy(base string, agent runnableAgent) error {
 	required := []string{
 		filepath.Join(base, profile.InstructionFile),
 		filepath.Join(base, ".clier", "work-log-protocol.md"),
-		filepath.Join(base, ".clier", appworkspace.TeamProtocolFileName(agent.ID)),
+		filepath.Join(base, ".clier", appworkspace.TeamProtocolFileName()),
 	}
 	for _, path := range required {
 		if err := requireCopyPath(path); err != nil {

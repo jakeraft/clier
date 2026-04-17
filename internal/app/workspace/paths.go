@@ -47,17 +47,6 @@ func ResourceDirName(owner, name string) string {
 	return sanitizeRepoDirName(owner) + "." + name
 }
 
-// ResourceDirNameFromID returns the local key for a resource identified
-// by its wire-form ID ("owner/name"). Falls back to sanitizing the raw
-// id when the input does not parse as owner/name.
-func ResourceDirNameFromID(id string) string {
-	owner, name, err := SplitResourceID(id)
-	if err != nil {
-		return sanitizeRepoDirName(id)
-	}
-	return ResourceDirName(owner, name)
-}
-
 func AgentWorkspacePath(base, owner, name string) string {
 	return filepath.Join(base, filepath.FromSlash(AgentWorkspaceLocalPath(owner, name)))
 }

@@ -12,7 +12,6 @@ import (
 func TestValidateWorkingCopy_AgentTeam(t *testing.T) {
 	agentName := "reviewer"
 	agentOwner := "jakeraft"
-	agentID := agentOwner + "/" + agentName
 	base := t.TempDir()
 
 	// Create required files for the agent.
@@ -20,7 +19,7 @@ func TestValidateWorkingCopy_AgentTeam(t *testing.T) {
 	required := []string{
 		filepath.Join(agentBase, "CLAUDE.md"),
 		filepath.Join(agentBase, ".clier", "work-log-protocol.md"),
-		filepath.Join(agentBase, ".clier", appworkspace.TeamProtocolFileName(agentID)),
+		filepath.Join(agentBase, ".clier", appworkspace.TeamProtocolFileName()),
 	}
 	for _, path := range required {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

@@ -38,7 +38,7 @@ func NewWriter(fs FileMaterializer, git GitRepo, resourceMap map[string]*api.Res
 }
 
 // MaterializeAgent writes local-clone files for a team that runs as an agent.
-func (w *Writer) MaterializeAgent(base string, projection *TeamProjection, agentID string) error {
+func (w *Writer) MaterializeAgent(base string, projection *TeamProjection) error {
 	profile, err := domain.ProfileFor(projection.AgentType)
 	if err != nil {
 		return err
@@ -58,12 +58,12 @@ func (w *Writer) MaterializeAgent(base string, projection *TeamProjection, agent
 		if err != nil {
 			return fmt.Errorf("resolve instruction %s/%s: %w", projection.InstructionRef.Owner, projection.InstructionRef.Name, err)
 		}
-		composed := ComposeInstruction(projection.AgentType, agentID, content)
+		composed := ComposeInstruction(projection.AgentType, content)
 		if err := w.writeFile(paths.instructionFile, composed); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}
 	} else {
-		composed := ComposeInstruction(projection.AgentType, agentID, "")
+		composed := ComposeInstruction(projection.AgentType, "")
 		if err := w.writeFile(paths.instructionFile, composed); err != nil {
 			return fmt.Errorf("write %s: %w", profile.InstructionFile, err)
 		}

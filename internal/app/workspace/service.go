@@ -149,14 +149,14 @@ func (s *Service) materializeResolvedTeam(base string, root *api.ResolvedResourc
 	for _, agent := range agents {
 		agent.localBase = localDirs[agent.id]
 		agentBase := filepath.Join(base, filepath.FromSlash(agent.localBase))
-		if err := writer.MaterializeAgent(agentBase, agent.projection, agent.id); err != nil {
+		if err := writer.MaterializeAgent(agentBase, agent.projection); err != nil {
 			return nil, fmt.Errorf("materialize agent %s: %w", agent.id, err)
 		}
 
 		relations := buildPeerRelations(agent.id, allKeys)
 		self := agentsByKey[agent.id]
 		protocol := BuildAgentFacingTeamProtocol(rootProjection.Name, self, relations, agentsByKey)
-		protocolPath := filepath.Join(agentBase, ".clier", TeamProtocolFileName(agent.id))
+		protocolPath := filepath.Join(agentBase, ".clier", TeamProtocolFileName())
 		if err := s.fs.EnsureFile(protocolPath, []byte(protocol)); err != nil {
 			return nil, fmt.Errorf("write protocol for %s: %w", agent.id, err)
 		}
@@ -164,7 +164,7 @@ func (s *Service) materializeResolvedTeam(base string, root *api.ResolvedResourc
 		profile, _ := domain.ProfileFor(agent.projection.AgentType)
 		generated = append(generated,
 			filepath.ToSlash(filepath.Join(agent.localBase, ".clier", "work-log-protocol.md")),
-			filepath.ToSlash(filepath.Join(agent.localBase, ".clier", TeamProtocolFileName(agent.id))),
+			filepath.ToSlash(filepath.Join(agent.localBase, ".clier", TeamProtocolFileName())),
 		)
 		appendAgentTrackedResources(&tracked, &generated, agent.projection, agent.localBase, profile)
 	}
@@ -770,11 +770,10 @@ func (s *Service) serverInstructionContent(base string, manifest *Manifest, reso
 	if agentType == "" {
 		agentType = "claude"
 	}
-	agent, ok := manifest.AgentForLocalPath(resource.LocalPath)
-	if !ok {
+	if _, ok := manifest.AgentForLocalPath(resource.LocalPath); !ok {
 		return "", internalFault("derive agent id from %s: no matching local dir in state", resource.LocalPath)
 	}
-	return StripInstructionPrelude(agentType, ResourceID(agent.Owner, agent.Name), content), nil
+	return StripInstructionPrelude(agentType, content), nil
 }
 
 // --- Helpers ---

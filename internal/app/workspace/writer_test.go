@@ -28,7 +28,7 @@ func TestMaterializeAgent_WritesSkillsUnderFlatDirName(t *testing.T) {
 			Owner: "alice",
 			Name:  "reviewer",
 		}},
-	}, "jakeraft/coder")
+	})
 	if err != nil {
 		t.Fatalf("MaterializeAgent: %v", err)
 	}
