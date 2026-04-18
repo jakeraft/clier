@@ -24,6 +24,7 @@ func newConfigCmd() *cobra.Command {
 		RunE:    subcommandRequired,
 	}
 	cmd.AddCommand(newConfigViewCmd())
+	cmd.AddCommand(newConfigGetCmd())
 	cmd.AddCommand(newConfigSetCmd())
 	return cmd
 }
@@ -52,6 +53,58 @@ func newConfigSetCmd() *cobra.Command {
 	cmd.AddCommand(newConfigSetDashboardURLCmd())
 	cmd.AddCommand(newConfigSetWorkspaceDirCmd())
 	return cmd
+}
+
+func newConfigGetCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "get",
+		Short: "Get a config value",
+		RunE:  subcommandRequired,
+	}
+	cmd.AddCommand(newConfigGetServerURLCmd())
+	cmd.AddCommand(newConfigGetDashboardURLCmd())
+	cmd.AddCommand(newConfigGetCredentialsPathCmd())
+	cmd.AddCommand(newConfigGetWorkspaceDirCmd())
+	return cmd
+}
+
+func newConfigGetServerURLCmd() *cobra.Command {
+	return newConfigGetValueCmd("server-url", "server_url", func(cfg *config.File) string {
+		return cfg.ServerURL
+	})
+}
+
+func newConfigGetDashboardURLCmd() *cobra.Command {
+	return newConfigGetValueCmd("dashboard-url", "dashboard_url", func(cfg *config.File) string {
+		return cfg.DashboardURL
+	})
+}
+
+func newConfigGetCredentialsPathCmd() *cobra.Command {
+	return newConfigGetValueCmd("credentials-path", "credentials_path", func(cfg *config.File) string {
+		return cfg.CredentialsPath
+	})
+}
+
+func newConfigGetWorkspaceDirCmd() *cobra.Command {
+	return newConfigGetValueCmd("workspace-dir", "workspace_dir", func(cfg *config.File) string {
+		return cfg.WorkspaceDir
+	})
+}
+
+func newConfigGetValueCmd(use, key string, getter func(*config.File) string) *cobra.Command {
+	return &cobra.Command{
+		Use:   use,
+		Short: "Get the " + key + " value",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := loadConfig()
+			if err != nil {
+				return err
+			}
+			return present.Success(cmd.OutOrStdout(), view.ConfigValueOf(key, getter(cfg)))
+		},
+	}
 }
 
 func newConfigSetServerURLCmd() *cobra.Command {

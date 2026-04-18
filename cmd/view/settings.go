@@ -9,6 +9,11 @@ type Config struct {
 	WorkspaceDir    string `json:"workspace_dir"`
 }
 
+type ConfigValue struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 type DashboardOpenResult struct {
 	Status string `json:"status"`
 	URL    string `json:"url"`
@@ -21,6 +26,10 @@ func ConfigOf(cfg *config.File) Config {
 		CredentialsPath: cfg.CredentialsPath,
 		WorkspaceDir:    cfg.WorkspaceDir,
 	}
+}
+
+func ConfigValueOf(key, value string) ConfigValue {
+	return ConfigValue{Key: key, Value: value}
 }
 
 func DashboardOpenOf(url string) DashboardOpenResult {

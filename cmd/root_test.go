@@ -101,6 +101,33 @@ func TestSplitVersionedResourceID(t *testing.T) {
 	}
 }
 
+func TestSplitVersionedResourceID_OrgOwnerWithoutVersion(t *testing.T) {
+	t.Parallel()
+
+	owner, name, version, err := splitVersionedResourceID("@clier/hello-claude")
+	if err != nil {
+		t.Fatalf("splitVersionedResourceID org owner without version: %v", err)
+	}
+	if owner != "@clier" || name != "hello-claude" || version != nil {
+		t.Fatalf("got %q/%q@%v, want org owner/name with nil version", owner, name, version)
+	}
+}
+
+func TestSplitVersionedResourceID_OrgOwnerWithVersion(t *testing.T) {
+	t.Parallel()
+
+	owner, name, version, err := splitVersionedResourceID("@clier/hello-claude@7")
+	if err != nil {
+		t.Fatalf("splitVersionedResourceID org owner with version: %v", err)
+	}
+	if owner != "@clier" || name != "hello-claude" {
+		t.Fatalf("got %q/%q", owner, name)
+	}
+	if version == nil || *version != 7 {
+		t.Fatalf("version = %v, want 7", version)
+	}
+}
+
 func commandNames(cmds []*cobra.Command) []string {
 	names := make([]string, 0, len(cmds))
 	for _, cmd := range cmds {

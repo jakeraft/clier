@@ -4,6 +4,7 @@ import remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 
 type RemoteCatalogClient interface {
 	GetResource(owner, name string) (*remoteapi.ResourceResponse, error)
+	GetResourceVersion(owner, name string, version int) (*remoteapi.ResourceVersionResponse, error)
 	ListResources(owner string, opts remoteapi.ListOptions) (*remoteapi.ListResponse, error)
 	ListPublicResources(opts remoteapi.ListOptions) (*remoteapi.ListResponse, error)
 	ListResourceVersions(owner, name string) ([]remoteapi.ResourceVersionResponse, error)
@@ -29,6 +30,10 @@ func New(client RemoteCatalogClient) *Service {
 
 func (s *Service) GetResource(owner, name string) (*remoteapi.ResourceResponse, error) {
 	return s.client.GetResource(owner, name)
+}
+
+func (s *Service) GetResourceVersion(owner, name string, version int) (*remoteapi.ResourceVersionResponse, error) {
+	return s.client.GetResourceVersion(owner, name, version)
 }
 
 func (s *Service) ListResources(owner string, opts remoteapi.ListOptions) (*remoteapi.ListResponse, error) {

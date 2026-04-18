@@ -10,6 +10,14 @@ func ResourceOf(resp *remoteapi.ResourceResponse) remoteapi.ResourceResponse {
 	return out
 }
 
+func ResourceVersionOf(resp *remoteapi.ResourceVersionResponse) remoteapi.ResourceVersionResponse {
+	out := *resp
+	if out.Refs == nil {
+		out.Refs = []remoteapi.ResolvedRef{}
+	}
+	return out
+}
+
 func ResourceListOf(resp *remoteapi.ListResponse) remoteapi.ListResponse {
 	out := remoteapi.ListResponse{
 		Items: make([]remoteapi.ResourceResponse, 0, len(resp.Items)),

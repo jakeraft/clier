@@ -28,8 +28,9 @@ func SplitResourceID(id string) (owner, name string, err error) {
 
 func SplitVersionedResourceID(id string) (owner, name string, version *int, err error) {
 	raw := strings.TrimSpace(id)
+	slash := strings.LastIndex(raw, "/")
 	at := strings.LastIndex(raw, "@")
-	if at < 0 {
+	if at < 0 || at <= slash {
 		owner, name, err = SplitResourceID(raw)
 		return owner, name, nil, err
 	}
