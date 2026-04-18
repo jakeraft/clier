@@ -40,6 +40,11 @@ func (c *Client) ResolveTeam(owner, name string) (*ResolveResponse, error) {
 	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/teams/%s/resolve", owner, name), &r)
 }
 
+func (c *Client) ResolveTeamVersion(owner, name string, version int) (*ResolveResponse, error) {
+	var r ResolveResponse
+	return &r, c.get(fmt.Sprintf("/api/v1/orgs/%s/teams/%s/versions/%d/resolve", owner, name, version), &r)
+}
+
 // --- Generic Write ---
 
 func (c *Client) CreateResource(kind ResourceKind, owner string, body any) (*ResourceResponse, error) {

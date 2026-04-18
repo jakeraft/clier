@@ -16,7 +16,7 @@ func init() {
 
 func newCloneCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "clone <owner/name>",
+		Use:   "clone <owner/name[@version]>",
 		Short: "Download a local working copy",
 		Long: `Download a team from the server into the canonical workspace
 location at <workspace_dir>/<owner>.<name>/.
@@ -24,12 +24,14 @@ location at <workspace_dir>/<owner>.<name>/.
 The workspace directory defaults to ~/.clier/workspace and can be
 overridden via the workspace_dir field in ~/.clier/config.json.
 
-Use push/pull to sync changes, and run start to launch agents.`,
+Use push/pull to sync changes, and run start to launch agents.
+
+Append @<version> to clone a specific team version.`,
 		GroupID: rootGroupWorkspace,
-		Args:    requireOneArg("clier clone <owner/name>"),
+		Args:    requireOneArg("clier clone <owner/name[@version]>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := newAPIClient()
-			owner, name, err := splitResourceID(args[0])
+			owner, name, version, err := splitVersionedResourceID(args[0])
 			if err != nil {
 				return err
 			}
@@ -52,18 +54,16 @@ Use push/pull to sync changes, and run start to launch agents.`,
 			}
 
 			svc := appworkspace.NewService(client, newFileMaterializer(), newGitRepo())
-			manifest, err := svc.Clone(base, owner, name)
+			var manifest *appworkspace.Manifest
+			if version != nil {
+				manifest, err = svc.CloneVersion(base, owner, name, *version)
+			} else {
+				manifest, err = svc.Clone(base, owner, name)
+			}
 			if err != nil {
 				return err
 			}
-			return printJSON(map[string]any{
-				"status": "cloned",
-				"kind":   manifest.Kind,
-				"owner":  manifest.Owner,
-				"name":   manifest.Name,
-				"dir":    base,
-				"state":  appworkspace.ManifestPath(base),
-			})
+			return printJSON(cloneResultPayload(base, manifest))
 		},
 	}
 }

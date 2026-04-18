@@ -34,7 +34,7 @@ changed (pull first to resolve).`,
 			if err != nil {
 				return classifyWorkingCopyError(owner, name, base, err)
 			}
-			return printJSON(result)
+			return printJSON(pushResultPayload(result))
 		},
 	}
 }

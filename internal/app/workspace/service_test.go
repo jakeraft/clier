@@ -1,6 +1,8 @@
 package workspace
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -204,6 +206,7 @@ func TestPull_PreservesFirstRunAt(t *testing.T) {
 
 	cloned := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
 	firstRun := time.Date(2026, 4, 10, 12, 0, 0, 0, time.UTC)
+	rootProjection := TeamProjection{Name: "solo", AgentType: "claude"}
 	pre := &Manifest{
 		Kind:       string(api.KindTeam),
 		Owner:      "org",
@@ -211,11 +214,27 @@ func TestPull_PreservesFirstRunAt(t *testing.T) {
 		ClonedAt:   cloned,
 		FirstRunAt: &firstRun,
 		RootResource: TrackedResource{
-			Kind:      string(api.KindTeam),
-			Owner:     "org",
-			Name:      "solo",
-			LocalPath: teamTrackedPath("org", "solo"),
-			Editable:  true,
+			Kind:          string(api.KindTeam),
+			Owner:         "org",
+			Name:          "solo",
+			LocalPath:     teamTrackedPath("org", "solo"),
+			RemoteVersion: intPtr(1),
+			BaseHash:      hashTeamProjectionForTest(t, rootProjection),
+			Editable:      true,
+		},
+		Teams: []StoredTeamState{
+			{Owner: "org", Name: "solo", Version: 1, Projection: rootProjection},
+		},
+		TrackedResources: []TrackedResource{
+			{
+				Kind:          string(api.KindTeam),
+				Owner:         "org",
+				Name:          "solo",
+				LocalPath:     teamTrackedPath("org", "solo"),
+				RemoteVersion: intPtr(1),
+				BaseHash:      hashTeamProjectionForTest(t, rootProjection),
+				Editable:      true,
+			},
 		},
 	}
 	if err := SaveManifest(fs, base, pre); err != nil {
@@ -247,14 +266,20 @@ func TestPull_PreservesFirstRunAt(t *testing.T) {
 		t.Fatalf("Pull: %v", err)
 	}
 
-	if pulled.FirstRunAt == nil {
+	if pulled.Status != PullStatusAlreadyUpToDate {
+		t.Fatalf("Pull status = %q, want already_up_to_date", pulled.Status)
+	}
+	if len(pulled.Resources) != 0 {
+		t.Fatalf("Pull resources = %+v, want empty", pulled.Resources)
+	}
+	if pulled.Manifest.FirstRunAt == nil {
 		t.Fatal("Pull dropped FirstRunAt from returned manifest")
 	}
-	if !pulled.FirstRunAt.Equal(firstRun) {
-		t.Fatalf("returned FirstRunAt = %v, want %v", pulled.FirstRunAt, firstRun)
+	if !pulled.Manifest.FirstRunAt.Equal(firstRun) {
+		t.Fatalf("returned FirstRunAt = %v, want %v", pulled.Manifest.FirstRunAt, firstRun)
 	}
-	if !pulled.ClonedAt.Equal(cloned) {
-		t.Fatalf("returned ClonedAt = %v, want %v", pulled.ClonedAt, cloned)
+	if !pulled.Manifest.ClonedAt.Equal(cloned) {
+		t.Fatalf("returned ClonedAt = %v, want %v", pulled.Manifest.ClonedAt, cloned)
 	}
 
 	reloaded, err := LoadManifest(fs, base)
@@ -263,5 +288,533 @@ func TestPull_PreservesFirstRunAt(t *testing.T) {
 	}
 	if reloaded.FirstRunAt == nil || !reloaded.FirstRunAt.Equal(firstRun) {
 		t.Fatalf("persisted FirstRunAt = %v, want %v", reloaded.FirstRunAt, firstRun)
+	}
+}
+
+func TestPull_ReportsChangedResources(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	fs := filesystem.New()
+
+	rootProjection := TeamProjection{
+		Name:      "solo",
+		AgentType: "claude",
+		InstructionRef: &ResourceRefProjection{
+			Owner:   "org",
+			Name:    "prompt",
+			Version: 1,
+		},
+	}
+	pre := &Manifest{
+		Kind:     string(api.KindTeam),
+		Owner:    "org",
+		Name:     "solo",
+		ClonedAt: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+		RootResource: TrackedResource{
+			Kind:          string(api.KindTeam),
+			Owner:         "org",
+			Name:          "solo",
+			LocalPath:     teamTrackedPath("org", "solo"),
+			RemoteVersion: intPtr(1),
+			BaseHash:      hashTeamProjectionForTest(t, rootProjection),
+			Editable:      true,
+		},
+		Teams: []StoredTeamState{
+			{Owner: "org", Name: "solo", Version: 1, LocalDir: "org.solo", Projection: rootProjection},
+		},
+		TrackedResources: []TrackedResource{
+			{
+				Kind:          string(api.KindTeam),
+				Owner:         "org",
+				Name:          "solo",
+				LocalPath:     teamTrackedPath("org", "solo"),
+				RemoteVersion: intPtr(1),
+				BaseHash:      hashTeamProjectionForTest(t, rootProjection),
+				Editable:      true,
+			},
+			{
+				Kind:          string(api.KindInstruction),
+				AgentType:     "claude",
+				Owner:         "org",
+				Name:          "prompt",
+				LocalPath:     "org.solo/CLAUDE.md",
+				RemoteVersion: intPtr(1),
+				Editable:      true,
+			},
+		},
+	}
+	if err := SaveManifest(fs, base, pre); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
+	}
+	if err := fs.EnsureFile(filepath.Join(base, "org.solo", "CLAUDE.md"), []byte("hello")); err != nil {
+		t.Fatalf("EnsureFile: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1/orgs/org/teams/solo/resolve" {
+			_ = json.NewEncoder(w).Encode(api.ResolveResponse{
+				Root: api.ResolvedResource{
+					Kind:      string(api.KindTeam),
+					OwnerName: "org",
+					Name:      "solo",
+					Version:   2,
+					Snapshot:  []byte(`{"agent_type":"claude","command":"claude","refs":[{"rel_type":"instruction","target_owner":"org","target_name":"prompt","target_version":2}]}`),
+				},
+				Resources: []api.ResolvedResource{
+					{
+						Kind:      string(api.KindInstruction),
+						OwnerName: "org",
+						Name:      "prompt",
+						Version:   2,
+						Snapshot:  []byte(`{"content":"updated"}`),
+					},
+				},
+			})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	svc := NewService(api.NewClient(server.URL, ""), fs, nil)
+	pulled, err := svc.Pull(base, true)
+	if err != nil {
+		t.Fatalf("Pull: %v", err)
+	}
+
+	if pulled.Status != PullStatusPulled {
+		t.Fatalf("Pull status = %q, want pulled", pulled.Status)
+	}
+	if len(pulled.Resources) != 2 {
+		t.Fatalf("Pull resources len = %d, want 2 (%+v)", len(pulled.Resources), pulled.Resources)
+	}
+
+	got := map[string]PullResourceChange{}
+	for _, change := range pulled.Resources {
+		got[change.Name] = change
+	}
+	if got["solo"].From == nil || *got["solo"].From != 1 || got["solo"].To == nil || *got["solo"].To != 2 {
+		t.Fatalf("solo change = %+v, want 1->2", got["solo"])
+	}
+	if got["prompt"].From == nil || *got["prompt"].From != 1 || got["prompt"].To == nil || *got["prompt"].To != 2 {
+		t.Fatalf("prompt change = %+v, want 1->2", got["prompt"])
+	}
+}
+
+func TestFetch_PreviewsChangesWithoutWriting(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	fs := filesystem.New()
+
+	rootProjection := TeamProjection{
+		Name:      "solo",
+		AgentType: "claude",
+		InstructionRef: &ResourceRefProjection{
+			Owner:   "org",
+			Name:    "prompt",
+			Version: 1,
+		},
+	}
+	pre := &Manifest{
+		Kind:     string(api.KindTeam),
+		Owner:    "org",
+		Name:     "solo",
+		ClonedAt: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+		RootResource: TrackedResource{
+			Kind:          string(api.KindTeam),
+			Owner:         "org",
+			Name:          "solo",
+			LocalPath:     teamTrackedPath("org", "solo"),
+			RemoteVersion: intPtr(1),
+			BaseHash:      hashTeamProjectionForTest(t, rootProjection),
+			Editable:      true,
+		},
+		Teams: []StoredTeamState{
+			{Owner: "org", Name: "solo", Version: 1, LocalDir: "org.solo", Projection: rootProjection},
+		},
+		TrackedResources: []TrackedResource{
+			{
+				Kind:          string(api.KindTeam),
+				Owner:         "org",
+				Name:          "solo",
+				LocalPath:     teamTrackedPath("org", "solo"),
+				RemoteVersion: intPtr(1),
+				BaseHash:      hashTeamProjectionForTest(t, rootProjection),
+				Editable:      true,
+			},
+			{
+				Kind:          string(api.KindInstruction),
+				AgentType:     "claude",
+				Owner:         "org",
+				Name:          "prompt",
+				LocalPath:     "org.solo/CLAUDE.md",
+				RemoteVersion: intPtr(1),
+				BaseHash:      hashStringForTest("hello"),
+				Editable:      true,
+			},
+		},
+	}
+	if err := SaveManifest(fs, base, pre); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
+	}
+	if err := fs.EnsureFile(filepath.Join(base, "org.solo", "CLAUDE.md"), []byte("hello")); err != nil {
+		t.Fatalf("EnsureFile: %v", err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1/orgs/org/teams/solo/resolve" {
+			_ = json.NewEncoder(w).Encode(api.ResolveResponse{
+				Root: api.ResolvedResource{
+					Kind:      string(api.KindTeam),
+					OwnerName: "org",
+					Name:      "solo",
+					Version:   2,
+					Snapshot:  []byte(`{"agent_type":"claude","command":"claude","refs":[{"rel_type":"instruction","target_owner":"org","target_name":"prompt","target_version":2}]}`),
+				},
+				Resources: []api.ResolvedResource{
+					{
+						Kind:      string(api.KindInstruction),
+						OwnerName: "org",
+						Name:      "prompt",
+						Version:   2,
+						Snapshot:  []byte(`{"content":"updated"}`),
+					},
+				},
+			})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	svc := NewService(api.NewClient(server.URL, ""), fs, nil)
+	result, err := svc.Fetch(base)
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+
+	if result.Status != FetchStatusUpdatesAvailable {
+		t.Fatalf("Fetch status = %q, want updates_available", result.Status)
+	}
+	if len(result.Resources) != 2 {
+		t.Fatalf("Fetch resources len = %d, want 2 (%+v)", len(result.Resources), result.Resources)
+	}
+
+	data, err := fs.ReadFile(filepath.Join(base, "org.solo", "CLAUDE.md"))
+	if err != nil {
+		t.Fatalf("ReadFile after fetch: %v", err)
+	}
+	if string(data) != "hello" {
+		t.Fatalf("local file content = %q, want unchanged hello", string(data))
+	}
+
+	reloaded, err := LoadManifest(fs, base)
+	if err != nil {
+		t.Fatalf("LoadManifest after fetch: %v", err)
+	}
+	if reloaded.RootResource.RemoteVersion == nil || *reloaded.RootResource.RemoteVersion != 1 {
+		t.Fatalf("saved root version = %v, want unchanged 1", reloaded.RootResource.RemoteVersion)
+	}
+	promptTracked, ok := reloaded.FindTrackedResource("org.solo/CLAUDE.md")
+	if !ok || promptTracked.RemoteVersion == nil || *promptTracked.RemoteVersion != 1 {
+		t.Fatalf("saved prompt tracked = %+v, want unchanged version 1", promptTracked)
+	}
+}
+
+func TestPush_ReportsDirectAndCascadeUpdates(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	fs := filesystem.New()
+
+	rootProjection := TeamProjection{
+		Name:      "solo",
+		AgentType: "claude",
+		Command:   "claude",
+		InstructionRef: &ResourceRefProjection{
+			Owner:   "org",
+			Name:    "prompt",
+			Version: 1,
+		},
+	}
+	pre := &Manifest{
+		Kind:     string(api.KindTeam),
+		Owner:    "org",
+		Name:     "solo",
+		ClonedAt: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+		RootResource: TrackedResource{
+			Kind:          string(api.KindTeam),
+			Owner:         "org",
+			Name:          "solo",
+			LocalPath:     teamTrackedPath("org", "solo"),
+			RemoteVersion: intPtr(1),
+			BaseHash:      hashTeamProjectionForTest(t, rootProjection),
+			Editable:      true,
+		},
+		Teams: []StoredTeamState{
+			{Owner: "org", Name: "solo", Version: 1, LocalDir: "org.solo", Projection: rootProjection},
+		},
+		TrackedResources: []TrackedResource{
+			{
+				Kind:          string(api.KindTeam),
+				Owner:         "org",
+				Name:          "solo",
+				LocalPath:     teamTrackedPath("org", "solo"),
+				RemoteVersion: intPtr(1),
+				BaseHash:      hashTeamProjectionForTest(t, rootProjection),
+				Editable:      true,
+			},
+			{
+				Kind:          string(api.KindInstruction),
+				AgentType:     "claude",
+				Owner:         "org",
+				Name:          "prompt",
+				LocalPath:     "org.solo/CLAUDE.md",
+				RemoteVersion: intPtr(1),
+				BaseHash:      hashStringForTest("old prompt"),
+				Editable:      true,
+			},
+		},
+	}
+	if err := SaveManifest(fs, base, pre); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
+	}
+	if err := fs.EnsureFile(filepath.Join(base, "org.solo", "CLAUDE.md"), []byte("updated prompt")); err != nil {
+		t.Fatalf("EnsureFile: %v", err)
+	}
+
+	promptVersion := 1
+	teamVersion := 1
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/v1/orgs/org/resources/prompt":
+			_ = json.NewEncoder(w).Encode(api.ResourceResponse{
+				Kind: string(api.KindInstruction),
+				Metadata: api.ResourceMetadata{
+					Name:          "prompt",
+					OwnerName:     "org",
+					LatestVersion: promptVersion,
+				},
+			})
+		case "/api/v1/orgs/org/resources/solo":
+			_ = json.NewEncoder(w).Encode(api.ResourceResponse{
+				Kind: string(api.KindTeam),
+				Metadata: api.ResourceMetadata{
+					Name:          "solo",
+					OwnerName:     "org",
+					LatestVersion: teamVersion,
+				},
+			})
+		case "/api/v1/orgs/org/instructions/prompt":
+			var body api.ContentWriteRequest
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatalf("decode prompt update: %v", err)
+			}
+			if body.Content != "updated prompt" {
+				t.Fatalf("prompt content = %q, want updated prompt", body.Content)
+			}
+			promptVersion = 2
+			_ = json.NewEncoder(w).Encode(api.ResourceResponse{
+				Kind: string(api.KindInstruction),
+				Metadata: api.ResourceMetadata{
+					Name:          "prompt",
+					OwnerName:     "org",
+					LatestVersion: promptVersion,
+				},
+			})
+		case "/api/v1/orgs/org/teams/solo":
+			var body api.TeamWriteRequest
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Fatalf("decode team update: %v", err)
+			}
+			if body.Instruction == nil || body.Instruction.Version != 2 {
+				t.Fatalf("team instruction ref = %+v, want version 2", body.Instruction)
+			}
+			teamVersion = 2
+			_ = json.NewEncoder(w).Encode(api.ResourceResponse{
+				Kind: string(api.KindTeam),
+				Metadata: api.ResourceMetadata{
+					Name:          "solo",
+					OwnerName:     "org",
+					LatestVersion: teamVersion,
+				},
+			})
+		case "/api/v1/orgs/org/teams/solo/resolve":
+			_ = json.NewEncoder(w).Encode(api.ResolveResponse{
+				Root: api.ResolvedResource{
+					Kind:      string(api.KindTeam),
+					OwnerName: "org",
+					Name:      "solo",
+					Version:   teamVersion,
+					Snapshot:  []byte(`{"agent_type":"claude","command":"claude","refs":[{"rel_type":"instruction","target_owner":"org","target_name":"prompt","target_version":2}]}`),
+				},
+				Resources: []api.ResolvedResource{
+					{
+						Kind:      string(api.KindInstruction),
+						OwnerName: "org",
+						Name:      "prompt",
+						Version:   promptVersion,
+						Snapshot:  []byte(`{"content":"updated prompt"}`),
+					},
+				},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	svc := NewService(api.NewClient(server.URL, ""), fs, nil)
+	result, err := svc.Push(base)
+	if err != nil {
+		t.Fatalf("Push: %v", err)
+	}
+
+	if result.Status != PushStatusPushed {
+		t.Fatalf("Push status = %q, want pushed", result.Status)
+	}
+	if len(result.Pushed) != 2 {
+		t.Fatalf("Push pushed len = %d, want 2 (%+v)", len(result.Pushed), result.Pushed)
+	}
+
+	got := map[string]PushResourceChange{}
+	for _, change := range result.Pushed {
+		got[change.Name] = change
+	}
+
+	prompt := got["prompt"]
+	if prompt.Kind != string(api.KindInstruction) || prompt.Owner != "org" || prompt.Reason != PushReasonLocalEdit {
+		t.Fatalf("prompt push = %+v", prompt)
+	}
+	if prompt.From == nil || *prompt.From != 1 || prompt.To == nil || *prompt.To != 2 {
+		t.Fatalf("prompt versions = %+v, want 1->2", prompt)
+	}
+
+	solo := got["solo"]
+	if solo.Kind != string(api.KindTeam) || solo.Owner != "org" || solo.Reason != PushReasonRefCascade {
+		t.Fatalf("solo push = %+v", solo)
+	}
+	if solo.From == nil || *solo.From != 1 || solo.To == nil || *solo.To != 2 {
+		t.Fatalf("solo versions = %+v, want 1->2", solo)
+	}
+
+	reloaded, err := LoadManifest(fs, base)
+	if err != nil {
+		t.Fatalf("LoadManifest after push: %v", err)
+	}
+	root, ok := reloaded.FindTeam("org", "solo")
+	if !ok || root.Version != 2 {
+		t.Fatalf("reloaded root team = %+v, want version 2", root)
+	}
+	promptTracked, ok := reloaded.FindTrackedResource("org.solo/CLAUDE.md")
+	if !ok || promptTracked.RemoteVersion == nil || *promptTracked.RemoteVersion != 2 {
+		t.Fatalf("reloaded prompt tracked = %+v, want version 2", promptTracked)
+	}
+}
+
+func hashStringForTest(content string) string {
+	sum := sha256.Sum256([]byte(content))
+	return hex.EncodeToString(sum[:])
+}
+
+func TestCloneVersion_UsesVersionedResolveEndpoint(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	fs := filesystem.New()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Path == "/api/v1/orgs/org/teams/solo/versions/7/resolve" {
+			_ = json.NewEncoder(w).Encode(api.ResolveResponse{
+				Root: api.ResolvedResource{
+					Kind:      string(api.KindTeam),
+					OwnerName: "org",
+					Name:      "solo",
+					Version:   7,
+					Snapshot:  []byte(`{"agent_type":"claude","command":"claude"}`),
+				},
+				Resources: []api.ResolvedResource{},
+			})
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer server.Close()
+
+	svc := NewService(api.NewClient(server.URL, ""), fs, nil)
+	manifest, err := svc.CloneVersion(base, "org", "solo", 7)
+	if err != nil {
+		t.Fatalf("CloneVersion: %v", err)
+	}
+
+	if manifest.RootResource.RemoteVersion == nil || *manifest.RootResource.RemoteVersion != 7 {
+		t.Fatalf("root version = %v, want 7", manifest.RootResource.RemoteVersion)
+	}
+	reloaded, err := LoadManifest(fs, base)
+	if err != nil {
+		t.Fatalf("LoadManifest after clone: %v", err)
+	}
+	if reloaded.RootResource.RemoteVersion == nil || *reloaded.RootResource.RemoteVersion != 7 {
+		t.Fatalf("saved root version = %v, want 7", reloaded.RootResource.RemoteVersion)
+	}
+}
+
+func TestPush_NoChangesReturnsEmptyPushedList(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	fs := filesystem.New()
+
+	rootProjection := TeamProjection{Name: "solo", AgentType: "claude"}
+	manifest := &Manifest{
+		Kind:     string(api.KindTeam),
+		Owner:    "org",
+		Name:     "solo",
+		ClonedAt: time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC),
+		RootResource: TrackedResource{
+			Kind:          string(api.KindTeam),
+			Owner:         "org",
+			Name:          "solo",
+			LocalPath:     teamTrackedPath("org", "solo"),
+			RemoteVersion: intPtr(1),
+			BaseHash:      hashTeamProjectionForTest(t, rootProjection),
+			Editable:      true,
+		},
+		Teams: []StoredTeamState{
+			{Owner: "org", Name: "solo", Version: 1, Projection: rootProjection},
+		},
+		TrackedResources: []TrackedResource{
+			{
+				Kind:          string(api.KindTeam),
+				Owner:         "org",
+				Name:          "solo",
+				LocalPath:     teamTrackedPath("org", "solo"),
+				RemoteVersion: intPtr(1),
+				BaseHash:      hashTeamProjectionForTest(t, rootProjection),
+				Editable:      true,
+			},
+		},
+	}
+	if err := SaveManifest(fs, base, manifest); err != nil {
+		t.Fatalf("SaveManifest: %v", err)
+	}
+
+	svc := NewService(nil, fs, nil)
+	result, err := svc.Push(base)
+	if err != nil {
+		t.Fatalf("Push: %v", err)
+	}
+	if result.Status != PushStatusNoChanges {
+		t.Fatalf("Push status = %q, want %q", result.Status, PushStatusNoChanges)
+	}
+	if result.Pushed == nil || len(result.Pushed) != 0 {
+		t.Fatalf("Push pushed = %+v, want empty slice", result.Pushed)
 	}
 }

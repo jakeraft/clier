@@ -124,13 +124,14 @@ Refine and share:
   clier create team                         Define a new team
   clier fork <owner/name>                   Fork an existing resource to your namespace
   clier status <owner/name>                 Show local modifications
+  clier fetch <owner/name>                  Preview remote updates
   clier push <owner/name>                   Publish your refinements
   clier pull <owner/name>                   Sync the latest from the registry
   clier open dashboard                      Open the dashboard in a browser
 
 For agent consumers:
   clier output is shaped for agents to parse. Some commands include
-  a "hint" field describing a next step. When the hint instructs a
+  a "hint" field describing guidance or a next step. When the hint instructs a
   user-only action (e.g., "clier run attach" needs a real terminal),
   copy the relevant command to the user's clipboard (pbcopy / xclip
   / clip.exe) and ask the user to run it. The agent drives the
@@ -241,6 +242,10 @@ func resolveOwner(explicit string) (string, error) {
 
 func splitResourceID(id string) (owner, name string, err error) {
 	return appworkspace.SplitResourceID(id)
+}
+
+func splitVersionedResourceID(id string) (owner, name string, version *int, err error) {
+	return appworkspace.SplitVersionedResourceID(id)
 }
 
 func newAgentRootCmd(teamScoped bool) *cobra.Command {

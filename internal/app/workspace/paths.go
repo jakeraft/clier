@@ -3,6 +3,7 @@ package workspace
 import (
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/jakeraft/clier/internal/domain"
@@ -23,6 +24,38 @@ func SplitResourceID(id string) (owner, name string, err error) {
 		}
 	}
 	return parts[0], parts[1], nil
+}
+
+func SplitVersionedResourceID(id string) (owner, name string, version *int, err error) {
+	raw := strings.TrimSpace(id)
+	at := strings.LastIndex(raw, "@")
+	if at < 0 {
+		owner, name, err = SplitResourceID(raw)
+		return owner, name, nil, err
+	}
+	if at == 0 || at == len(raw)-1 {
+		return "", "", nil, &domain.Fault{
+			Kind: domain.KindInvalidArgument,
+			Subject: map[string]string{
+				"detail": "expected <owner/name>@<version>, got " + quoteOrEmpty(id),
+			},
+		}
+	}
+
+	owner, name, err = SplitResourceID(strings.TrimSpace(raw[:at]))
+	if err != nil {
+		return "", "", nil, err
+	}
+	parsed, convErr := strconv.Atoi(strings.TrimSpace(raw[at+1:]))
+	if convErr != nil || parsed <= 0 {
+		return "", "", nil, &domain.Fault{
+			Kind: domain.KindInvalidArgument,
+			Subject: map[string]string{
+				"detail": "expected positive version in " + quoteOrEmpty(id),
+			},
+		}
+	}
+	return owner, name, intPtr(parsed), nil
 }
 
 func quoteOrEmpty(s string) string {

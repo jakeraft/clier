@@ -6,19 +6,18 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(newPullCmd())
+	rootCmd.AddCommand(newFetchCmd())
 }
 
-func newPullCmd() *cobra.Command {
-	var force bool
+func newFetchCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "fetch <owner/name>",
+		Short: "Preview remote changes for a working copy",
+		Long: `Preview which tracked resources would change if you pulled the
+latest version of a working copy at <workspace_dir>/<owner>.<name>/.
 
-	cmd := &cobra.Command{
-		Use:   "pull <owner/name>",
-		Short: "Pull latest changes for a working copy",
-		Long: `Pull the latest version of tracked resources for a working copy at
-<workspace_dir>/<owner>.<name>/, updating local projections and
-materialized files. Fails if local modifications exist unless
---force is used.`,
+This command compares against the latest remote team state without
+writing local files.`,
 		GroupID: rootGroupWorkspace,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -32,13 +31,11 @@ materialized files. Fails if local modifications exist unless
 			base := workingCopyPath(owner, name)
 
 			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
-			result, err := svc.Pull(base, force)
+			result, err := svc.Fetch(base)
 			if err != nil {
 				return classifyWorkingCopyError(owner, name, base, err)
 			}
-			return printJSON(pullResultPayload(base, result))
+			return printJSON(fetchResultPayload(base, result))
 		},
 	}
-	cmd.Flags().BoolVar(&force, "force", false, "Overwrite local changes in tracked files")
-	return cmd
 }

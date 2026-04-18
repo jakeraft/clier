@@ -25,6 +25,7 @@ type Service struct {
 type Status struct {
 	WorkingCopy WorkingCopyStatus `json:"working_copy"`
 	Local       string            `json:"local"`
+	Summary     StatusSummary     `json:"summary"`
 	Tracked     []TrackedStatus   `json:"tracked"`
 	Runs        RunStatusSummary  `json:"runs"`
 }
@@ -46,6 +47,7 @@ type TrackedStatus struct {
 	PinnedVersion *int   `json:"pinned_version,omitempty"`
 	LatestVersion *int   `json:"latest_version,omitempty"`
 	Remote        string `json:"remote,omitempty"`
+	Hint          string `json:"hint,omitempty"`
 }
 
 type RunStatusSummary struct {
@@ -54,10 +56,44 @@ type RunStatusSummary struct {
 	Stopped int `json:"stopped"`
 }
 
+type StatusSummary struct {
+	Modified    int `json:"modified"`
+	Behind      int `json:"behind"`
+	PinOutdated int `json:"pin_outdated"`
+	Clean       int `json:"clean"`
+}
+
+type PullResult struct {
+	Status    string               `json:"status"`
+	Resources []PullResourceChange `json:"resources,omitempty"`
+	Manifest  *Manifest            `json:"-"`
+}
+
+type PullResourceChange struct {
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+	From *int   `json:"from,omitempty"`
+	To   *int   `json:"to,omitempty"`
+}
+
+type FetchResult struct {
+	Status    string               `json:"status"`
+	Resources []PullResourceChange `json:"resources,omitempty"`
+	Manifest  *Manifest            `json:"-"`
+}
+
 type PushResult struct {
-	Status          string `json:"status"`
-	Pushed          int    `json:"pushed"`
-	PulledAfterPush bool   `json:"pulled_after_push"`
+	Status string               `json:"status"`
+	Pushed []PushResourceChange `json:"pushed"`
+}
+
+type PushResourceChange struct {
+	Kind   string `json:"kind"`
+	Owner  string `json:"owner"`
+	Name   string `json:"name"`
+	From   *int   `json:"from,omitempty"`
+	To     *int   `json:"to,omitempty"`
+	Reason string `json:"reason"`
 }
 
 func NewService(client *api.Client, fs FileMaterializer, git GitRepo) *Service {
@@ -84,9 +120,19 @@ func (s *Service) Clone(base, owner, name string) (*Manifest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolve team %s/%s: %w", owner, name, err)
 	}
+	return s.cloneResolved(base, &resolved.Root, resolved.Resources)
+}
 
-	resourceMap := buildResourceMap(resolved.Resources)
-	root := &resolved.Root
+func (s *Service) CloneVersion(base, owner, name string, version int) (*Manifest, error) {
+	resolved, err := s.client.ResolveTeamVersion(owner, name, version)
+	if err != nil {
+		return nil, fmt.Errorf("resolve team %s/%s@%d: %w", owner, name, version, err)
+	}
+	return s.cloneResolved(base, &resolved.Root, resolved.Resources)
+}
+
+func (s *Service) cloneResolved(base string, root *api.ResolvedResource, resources []api.ResolvedResource) (*Manifest, error) {
+	resourceMap := buildResourceMap(resources)
 	manifest, err := s.materializeResolvedTeam(base, root, resourceMap, nil)
 	if err != nil {
 		return nil, err
@@ -224,7 +270,7 @@ func (s *Service) collectResolvedEntries(rootOwner string, rootVersion int, root
 
 // --- Pull ---
 
-func (s *Service) Pull(base string, force bool) (*Manifest, error) {
+func (s *Service) Pull(base string, force bool) (*PullResult, error) {
 	manifest, err := LoadManifest(s.fs, base)
 	if err != nil {
 		return nil, err
@@ -233,10 +279,40 @@ func (s *Service) Pull(base string, force bool) (*Manifest, error) {
 	if err != nil {
 		return nil, err
 	}
+	changes := diffTrackedResourceVersions(manifest, pulled)
 	if err := SaveManifest(s.fs, base, pulled); err != nil {
 		return nil, err
 	}
-	return pulled, nil
+	status := PullStatusPulled
+	if len(changes) == 0 {
+		status = PullStatusAlreadyUpToDate
+	}
+	return &PullResult{
+		Status:    status,
+		Resources: changes,
+		Manifest:  pulled,
+	}, nil
+}
+
+func (s *Service) Fetch(base string) (*FetchResult, error) {
+	manifest, err := LoadManifest(s.fs, base)
+	if err != nil {
+		return nil, err
+	}
+	preview, err := s.fetchTarget(manifest)
+	if err != nil {
+		return nil, err
+	}
+	changes := diffTrackedResourceVersions(manifest, preview)
+	status := FetchStatusUpdatesAvailable
+	if len(changes) == 0 {
+		status = PullStatusAlreadyUpToDate
+	}
+	return &FetchResult{
+		Status:    status,
+		Resources: changes,
+		Manifest:  preview,
+	}, nil
 }
 
 func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Manifest, error) {
@@ -279,6 +355,14 @@ func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Mani
 	return pulled, nil
 }
 
+func (s *Service) fetchTarget(manifest *Manifest) (*Manifest, error) {
+	resolved, err := s.client.ResolveTeam(manifest.Owner, manifest.Name)
+	if err != nil {
+		return nil, fmt.Errorf("resolve team %s/%s: %w", manifest.Owner, manifest.Name, err)
+	}
+	return s.previewResolvedManifest(&resolved.Root, resolved.Resources, manifest)
+}
+
 // --- Status ---
 
 func (s *Service) Status(base, runsDir string) (*Status, error) {
@@ -294,10 +378,15 @@ func (s *Service) Status(base, runsDir string) (*Status, error) {
 	if err != nil {
 		return nil, err
 	}
-	local := "clean"
+	local := LocalStatusClean
 	if modifiedCount > 0 {
-		local = "modified"
+		local = LocalStatusModified
 	}
+	latestTeamVersions, err := s.latestTeamTrackedVersions(manifest)
+	if err != nil {
+		return nil, err
+	}
+	pullHint := PullHint(manifest.Owner, manifest.Name)
 	// Check remote versions — deduplicate by owner/name to avoid redundant API calls.
 	type remoteVersion struct {
 		latest int
@@ -323,7 +412,7 @@ func (s *Service) Status(base, runsDir string) (*Status, error) {
 		}
 		rv := remoteCache[key]
 		if rv.err != nil {
-			continue
+			return nil, fmt.Errorf("get resource %s/%s: %w", tr.Owner, tr.Name, rv.err)
 		}
 		idx, ok := trackedIndex[manifest.TrackedResources[i].LocalPath]
 		if !ok {
@@ -332,10 +421,19 @@ func (s *Service) Status(base, runsDir string) (*Status, error) {
 		pinned := *tr.RemoteVersion
 		tracked[idx].PinnedVersion = &pinned
 		tracked[idx].LatestVersion = &rv.latest
-		if pinned < rv.latest {
-			tracked[idx].Remote = "behind"
-		} else {
-			tracked[idx].Remote = "up-to-date"
+		desired, hasDesired := latestTeamVersions[manifest.TrackedResources[i].LocalPath]
+		switch {
+		case hasDesired && pinned < desired:
+			tracked[idx].Remote = RemoteStatusBehind
+			tracked[idx].Hint = pullHint
+		case hasDesired && pinned == desired && pinned < rv.latest:
+			tracked[idx].Remote = RemoteStatusPinOutdated
+			tracked[idx].Hint = PinOutdatedHint()
+		case pinned < rv.latest:
+			tracked[idx].Remote = RemoteStatusBehind
+			tracked[idx].Hint = pullHint
+		default:
+			tracked[idx].Remote = RemoteStatusUpToDate
 		}
 	}
 
@@ -348,11 +446,37 @@ func (s *Service) Status(base, runsDir string) (*Status, error) {
 			ClonedAt: manifest.ClonedAt,
 		},
 		Local:   local,
+		Summary: summarizeTrackedStatuses(tracked),
 		Tracked: tracked,
 		Runs:    runs,
 	}
 
 	return status, nil
+}
+
+func (s *Service) latestTeamTrackedVersions(manifest *Manifest) (map[string]int, error) {
+	root, err := s.client.GetResource(manifest.Owner, manifest.Name)
+	if err != nil {
+		return nil, err
+	}
+	resolved, err := s.client.ResolveTeamVersion(manifest.Owner, manifest.Name, root.Metadata.LatestVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	preview, err := s.previewResolvedManifest(&resolved.Root, resolved.Resources, manifest)
+	if err != nil {
+		return nil, err
+	}
+
+	versions := make(map[string]int, len(preview.TrackedResources))
+	for _, resource := range preview.TrackedResources {
+		if resource.RemoteVersion == nil {
+			continue
+		}
+		versions[resource.LocalPath] = *resource.RemoteVersion
+	}
+	return versions, nil
 }
 
 // --- Push ---
@@ -367,10 +491,15 @@ func (s *Service) Push(base string) (*PushResult, error) {
 		return nil, err
 	}
 	if len(modified) == 0 {
-		return &PushResult{Status: "no_changes", Pushed: 0, PulledAfterPush: false}, nil
+		return &PushResult{Status: PushStatusNoChanges, Pushed: []PushResourceChange{}}, nil
 	}
 
-	pushed := 0
+	originallyModified := make(map[string]bool, len(modified))
+	for _, resource := range modified {
+		originallyModified[resource.LocalPath] = true
+	}
+
+	pushed := make([]PushResourceChange, 0, len(modified))
 	targetName := manifest.Name
 	pushedPaths := map[string]bool{}
 
@@ -382,12 +511,12 @@ func (s *Service) Push(base string) (*PushResult, error) {
 		if err != nil {
 			return nil, err
 		}
-		pushed++
 		pushedPaths[resource.LocalPath] = true
 		if updated != nil {
 			if resource.LocalPath == manifest.RootResource.LocalPath {
 				targetName = updated.Metadata.Name
 			}
+			pushed = append(pushed, buildPushResourceChange(resource, updated.Metadata.LatestVersion, PushReasonLocalEdit))
 			s.applyPushedResourceVersion(manifest, resource, updated.Metadata.LatestVersion)
 			if err := s.recordPushedResourceState(base, manifest, resource); err != nil {
 				return nil, err
@@ -415,13 +544,17 @@ func (s *Service) Push(base string) (*PushResult, error) {
 			if err != nil {
 				return nil, err
 			}
-			pushed++
 			pushedPaths[resource.LocalPath] = true
 			progress = true
 			if updated != nil {
 				if resource.LocalPath == manifest.RootResource.LocalPath {
 					targetName = updated.Metadata.Name
 				}
+				reason := PushReasonRefCascade
+				if originallyModified[resource.LocalPath] {
+					reason = PushReasonLocalEdit
+				}
+				pushed = append(pushed, buildPushResourceChange(resource, updated.Metadata.LatestVersion, reason))
 				s.applyPushedResourceVersion(manifest, resource, updated.Metadata.LatestVersion)
 				if err := s.recordPushedResourceState(base, manifest, resource); err != nil {
 					return nil, err
@@ -460,7 +593,7 @@ func (s *Service) Push(base string) (*PushResult, error) {
 	if err := SaveManifest(s.fs, base, pulled); err != nil {
 		return nil, err
 	}
-	return &PushResult{Status: "pushed", Pushed: pushed, PulledAfterPush: true}, nil
+	return &PushResult{Status: PushStatusPushed, Pushed: pushed}, nil
 }
 
 func (s *Service) pushTrackedResource(base string, manifest *Manifest, resource TrackedResource) (*api.ResourceResponse, error) {
@@ -712,9 +845,9 @@ func (s *Service) trackedStatuses(base string, manifest *Manifest) ([]TrackedSta
 		if err != nil {
 			return nil, 0, err
 		}
-		local := "clean"
+		local := LocalStatusClean
 		if sum != resource.BaseHash {
-			local = "modified"
+			local = LocalStatusModified
 			modifiedCount++
 		}
 		statuses = append(statuses, TrackedStatus{
@@ -864,7 +997,7 @@ func appendAgentTrackedResources(tracked *[]TrackedResource, generated *[]string
 			RemoteVersion: intPtr(projection.InstructionRef.Version),
 			Editable:      true,
 		})
-	} else {
+	} else if generated != nil {
 		*generated = append(*generated, filepath.ToSlash(filepath.Join(localBase, profile.InstructionFile)))
 	}
 
@@ -957,6 +1090,157 @@ func (s *Service) populateBaseHashes(base string, manifest *Manifest) error {
 
 func intPtr(v int) *int {
 	return &v
+}
+
+func summarizeTrackedStatuses(tracked []TrackedStatus) StatusSummary {
+	var summary StatusSummary
+	for _, resource := range tracked {
+		switch {
+		case resource.Local == LocalStatusModified:
+			summary.Modified++
+		case resource.Remote == RemoteStatusBehind:
+			summary.Behind++
+		case resource.Remote == RemoteStatusPinOutdated:
+			summary.PinOutdated++
+		default:
+			summary.Clean++
+		}
+	}
+	return summary
+}
+
+func buildPushResourceChange(resource TrackedResource, latest int, reason string) PushResourceChange {
+	return PushResourceChange{
+		Kind:   resource.Kind,
+		Owner:  resource.Owner,
+		Name:   resource.Name,
+		From:   trackedRemoteVersion(resource, true),
+		To:     intPtr(latest),
+		Reason: reason,
+	}
+}
+
+func (s *Service) previewResolvedManifest(root *api.ResolvedResource, resources []api.ResolvedResource, previous *Manifest) (*Manifest, error) {
+	resourceMap := buildResourceMap(resources)
+	rootProjection := teamProjectionFromResolved(root)
+	teams, agents, err := s.collectResolvedEntries(root.OwnerName, root.Version, rootProjection, resourceMap)
+	if err != nil {
+		return nil, err
+	}
+	localDirs := assignLocalDirs(agents, previous)
+
+	tracked := make([]TrackedResource, 0, len(teams))
+	storedTeams := make([]StoredTeamState, 0, len(teams))
+	for _, team := range teams {
+		localDir := localDirs[team.id]
+		storedTeams = append(storedTeams, StoredTeamState{
+			Owner:      team.owner,
+			Name:       team.name,
+			Version:    team.version,
+			LocalDir:   localDir,
+			Projection: *team.projection,
+		})
+		tracked = append(tracked, TrackedResource{
+			Kind:          string(api.KindTeam),
+			AgentType:     team.projection.AgentType,
+			Owner:         team.owner,
+			Name:          team.name,
+			LocalPath:     teamTrackedPath(team.owner, team.name),
+			RemoteVersion: intPtr(team.version),
+			Editable:      true,
+		})
+	}
+	for _, agent := range agents {
+		profile, err := domain.ProfileFor(agent.projection.AgentType)
+		if err != nil {
+			continue
+		}
+		appendAgentTrackedResources(&tracked, nil, agent.projection, localDirs[agent.id], profile)
+	}
+
+	preview := &Manifest{
+		Kind:             string(api.KindTeam),
+		Owner:            root.OwnerName,
+		Name:             rootProjection.Name,
+		RootResource:     tracked[0],
+		Teams:            storedTeams,
+		TrackedResources: tracked,
+	}
+	if previous != nil {
+		preview.ClonedAt = previous.ClonedAt
+		preview.FirstRunAt = previous.FirstRunAt
+	}
+	return preview, nil
+}
+
+func diffTrackedResourceVersions(previous, next *Manifest) []PullResourceChange {
+	prevByPath := make(map[string]TrackedResource, len(previous.TrackedResources))
+	pathSet := make(map[string]struct{}, len(previous.TrackedResources)+len(next.TrackedResources))
+	for _, resource := range previous.TrackedResources {
+		prevByPath[resource.LocalPath] = resource
+		pathSet[resource.LocalPath] = struct{}{}
+	}
+
+	nextByPath := make(map[string]TrackedResource, len(next.TrackedResources))
+	for _, resource := range next.TrackedResources {
+		nextByPath[resource.LocalPath] = resource
+		pathSet[resource.LocalPath] = struct{}{}
+	}
+
+	paths := make([]string, 0, len(pathSet))
+	for path := range pathSet {
+		paths = append(paths, path)
+	}
+	slices.Sort(paths)
+
+	changes := make([]PullResourceChange, 0)
+	for _, path := range paths {
+		prev, prevOK := prevByPath[path]
+		curr, currOK := nextByPath[path]
+
+		prevVersion := trackedRemoteVersion(prev, prevOK)
+		currVersion := trackedRemoteVersion(curr, currOK)
+		if versionsEqual(prevVersion, currVersion) {
+			continue
+		}
+
+		changes = append(changes, PullResourceChange{
+			Kind: resourceKindForChange(prev, prevOK, curr, currOK),
+			Name: resourceNameForChange(prev, prevOK, curr, currOK),
+			From: prevVersion,
+			To:   currVersion,
+		})
+	}
+
+	return changes
+}
+
+func trackedRemoteVersion(resource TrackedResource, ok bool) *int {
+	if !ok || resource.RemoteVersion == nil {
+		return nil
+	}
+	return intPtr(*resource.RemoteVersion)
+}
+
+func resourceKindForChange(previous TrackedResource, previousOK bool, next TrackedResource, nextOK bool) string {
+	if previousOK {
+		return previous.Kind
+	}
+	return next.Kind
+}
+
+func resourceNameForChange(previous TrackedResource, previousOK bool, next TrackedResource, nextOK bool) string {
+	if previousOK {
+		return previous.Name
+	}
+	return next.Name
+}
+
+func versionsEqual(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
 }
 
 func normalizePaths(paths []string) []string {
