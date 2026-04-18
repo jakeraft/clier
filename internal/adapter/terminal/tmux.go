@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -55,13 +56,13 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
 	success := false
 	defer func() {
 		if !success {
-			_, _ = t.runFn("kill-session", "-t", sess)
+			t.bestEffortKillSession(sess)
 		}
 	}()
 
 	// Force base-index 0 on this session so window indices are predictable,
 	// regardless of user's global tmux config.
-	_, _ = t.runFn("set-option", "-t", sess, "base-index", "0")
+	t.bestEffortSetSessionBaseIndex(sess)
 
 	for i, m := range plan.Agents {
 		win := strconv.Itoa(i)
@@ -83,10 +84,23 @@ func (t *TmuxTerminal) Launch(plan *apprun.RunPlan) error {
 			continue
 		}
 		if err := t.waitReady(sess, strconv.Itoa(i), 60*time.Second, m.AgentType); err != nil {
+			var sessionGone *ErrSessionGone
+			if errors.As(err, &sessionGone) {
+				return err
+			}
+			if errors.Is(err, errReadyTimeout) {
+				return &domain.Fault{
+					Kind:    domain.KindRunStartTimeout,
+					Subject: map[string]string{"agent": m.ID},
+					Cause:   err,
+				}
+			}
 			return &domain.Fault{
-				Kind:    domain.KindRunStartTimeout,
-				Subject: map[string]string{"agent": m.ID},
-				Cause:   err,
+				Kind: domain.KindInternal,
+				Subject: map[string]string{
+					"detail": "wait for agent " + m.ID + " readiness",
+				},
+				Cause: err,
 			}
 		}
 	}
@@ -113,7 +127,7 @@ func (t *TmuxTerminal) Terminate(plan *apprun.RunPlan) error {
 	sess := plan.Session
 	// Gracefully exit each agent before killing the session.
 	t.exitAllWindows(sess, plan.Agents)
-	_, _ = t.runFn("kill-session", "-t", sess)
+	t.bestEffortKillSession(sess)
 	return nil
 }
 
@@ -175,7 +189,10 @@ func (t *TmuxTerminal) waitReady(sess, win string, timeout time.Duration, agentT
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		title, err := t.runFn("display-message", "-p", "-t", target, "#{pane_title}")
-		if err == nil && strings.Contains(title, profile.ReadyMarker) {
+		if err != nil {
+			return wrapSessionError(sess, fmt.Errorf("display pane title: %w", err))
+		}
+		if strings.Contains(title, profile.ReadyMarker) {
 			return nil
 		}
 		t.sleep(500 * time.Millisecond)
@@ -187,7 +204,7 @@ func (t *TmuxTerminal) waitReady(sess, win string, timeout time.Duration, agentT
 
 func (t *TmuxTerminal) sendKeys(sess, win, text string) error {
 	target := sess + ":" + win
-	_, _ = t.runFn("copy-mode", "-q", "-t", target)
+	t.bestEffortLeaveCopyMode(target)
 	if _, err := t.runFn("send-keys", "-l", "-t", target, text); err != nil {
 		return err
 	}
@@ -232,4 +249,16 @@ func wrapSessionError(sess string, err error) error {
 		return &ErrSessionGone{Session: sess}
 	}
 	return err
+}
+
+func (t *TmuxTerminal) bestEffortKillSession(sess string) {
+	_, _ = t.runFn("kill-session", "-t", sess)
+}
+
+func (t *TmuxTerminal) bestEffortSetSessionBaseIndex(sess string) {
+	_, _ = t.runFn("set-option", "-t", sess, "base-index", "0")
+}
+
+func (t *TmuxTerminal) bestEffortLeaveCopyMode(target string) {
+	_, _ = t.runFn("copy-mode", "-q", "-t", target)
 }

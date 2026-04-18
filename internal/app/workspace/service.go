@@ -3,7 +3,6 @@ package workspace
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"path"
 	"path/filepath"
@@ -11,92 +10,93 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jakeraft/clier/internal/adapter/api"
+	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	"github.com/jakeraft/clier/internal/domain"
+	storemanifest "github.com/jakeraft/clier/internal/store/manifest"
 )
 
 type Service struct {
-	client *api.Client
+	client RemoteWorkspaceClient
 	fs     FileMaterializer
 	git    GitRepo
 }
 
 type Status struct {
-	WorkingCopy WorkingCopyStatus `json:"working_copy"`
-	Local       string            `json:"local"`
-	Summary     StatusSummary     `json:"summary"`
-	Tracked     []TrackedStatus   `json:"tracked"`
-	Runs        RunStatusSummary  `json:"runs"`
+	WorkingCopy WorkingCopyStatus
+	Local       string
+	Summary     StatusSummary
+	Tracked     []TrackedStatus
+	Runs        RunStatusSummary
 }
 
 type WorkingCopyStatus struct {
-	Root     string    `json:"root"`
-	Kind     string    `json:"kind"`
-	Owner    string    `json:"owner"`
-	Name     string    `json:"name"`
-	ClonedAt time.Time `json:"cloned_at"`
+	Root     string
+	Kind     string
+	Owner    string
+	Name     string
+	ClonedAt time.Time
 }
 
 type TrackedStatus struct {
-	Kind          string `json:"kind"`
-	Owner         string `json:"owner"`
-	Name          string `json:"name"`
-	Path          string `json:"path"`
-	Local         string `json:"local"`
-	PinnedVersion *int   `json:"pinned_version,omitempty"`
-	LatestVersion *int   `json:"latest_version,omitempty"`
-	Remote        string `json:"remote,omitempty"`
-	Hint          string `json:"hint,omitempty"`
+	Kind          string
+	Owner         string
+	Name          string
+	Path          string
+	Local         string
+	PinnedVersion *int
+	LatestVersion *int
+	Remote        string
+	Hint          string
 }
 
 type RunStatusSummary struct {
-	Total   int `json:"total"`
-	Running int `json:"running"`
-	Stopped int `json:"stopped"`
+	Total   int
+	Running int
+	Stopped int
 }
 
 type StatusSummary struct {
-	Modified    int `json:"modified"`
-	Behind      int `json:"behind"`
-	PinOutdated int `json:"pin_outdated"`
-	Clean       int `json:"clean"`
+	Modified    int
+	Behind      int
+	PinOutdated int
+	Clean       int
 }
 
 type PullResult struct {
-	Status    string               `json:"status"`
-	Resources []PullResourceChange `json:"resources,omitempty"`
-	Manifest  *Manifest            `json:"-"`
+	Status    string
+	Resources []PullResourceChange
+	Manifest  *Manifest
 }
 
 type PullResourceChange struct {
-	Kind string `json:"kind"`
-	Name string `json:"name"`
-	From *int   `json:"from,omitempty"`
-	To   *int   `json:"to,omitempty"`
+	Kind string
+	Name string
+	From *int
+	To   *int
 }
 
 type FetchResult struct {
-	Status    string               `json:"status"`
-	Resources []PullResourceChange `json:"resources,omitempty"`
-	Manifest  *Manifest            `json:"-"`
+	Status    string
+	Resources []PullResourceChange
+	Manifest  *Manifest
 }
 
 type PushResult struct {
-	Status string               `json:"status"`
-	Pushed []PushResourceChange `json:"pushed"`
+	Status string
+	Pushed []PushResourceChange
 }
 
 type PushResourceChange struct {
-	Kind   string `json:"kind"`
-	Owner  string `json:"owner"`
-	Name   string `json:"name"`
-	From   *int   `json:"from,omitempty"`
-	To     *int   `json:"to,omitempty"`
-	Reason string `json:"reason"`
+	Kind   string
+	Owner  string
+	Name   string
+	From   *int
+	To     *int
+	Reason string
 }
 
-func NewService(client *api.Client, fs FileMaterializer, git GitRepo) *Service {
+func NewService(client RemoteWorkspaceClient, fs FileMaterializer, git GitRepo) *Service {
 	return &Service{client: client, fs: fs, git: git}
 }
 
@@ -131,21 +131,24 @@ func (s *Service) CloneVersion(base, owner, name string, version int) (*Manifest
 	return s.cloneResolved(base, &resolved.Root, resolved.Resources)
 }
 
-func (s *Service) cloneResolved(base string, root *api.ResolvedResource, resources []api.ResolvedResource) (*Manifest, error) {
+func (s *Service) cloneResolved(base string, root *remoteapi.ResolvedResource, resources []remoteapi.ResolvedResource) (*Manifest, error) {
 	resourceMap := buildResourceMap(resources)
 	manifest, err := s.materializeResolvedTeam(base, root, resourceMap, nil)
 	if err != nil {
 		return nil, err
 	}
 	manifest.ClonedAt = time.Now().UTC()
-	if err := SaveManifest(s.fs, base, manifest); err != nil {
+	if err := storemanifest.Save(s.fs, base, manifest); err != nil {
 		return nil, err
 	}
 	return manifest, nil
 }
 
-func (s *Service) materializeResolvedTeam(base string, root *api.ResolvedResource, resourceMap map[string]*api.ResolvedResource, previous *Manifest) (*Manifest, error) {
-	rootProjection := teamProjectionFromResolved(root)
+func (s *Service) materializeResolvedTeam(base string, root *remoteapi.ResolvedResource, resourceMap map[string]*remoteapi.ResolvedResource, previous *Manifest) (*Manifest, error) {
+	rootProjection, err := remoteapi.TeamProjectionFromResolved(root)
+	if err != nil {
+		return nil, err
+	}
 	teams, agents, err := s.collectResolvedEntries(root.OwnerName, root.Version, rootProjection, resourceMap)
 	if err != nil {
 		return nil, err
@@ -174,7 +177,7 @@ func (s *Service) materializeResolvedTeam(base string, root *api.ResolvedResourc
 			Projection: *team.projection,
 		})
 		tracked = append(tracked, TrackedResource{
-			Kind:          string(api.KindTeam),
+			Kind:          string(remoteapi.KindTeam),
 			AgentType:     team.projection.AgentType,
 			Owner:         team.owner,
 			Name:          team.name,
@@ -207,7 +210,10 @@ func (s *Service) materializeResolvedTeam(base string, root *api.ResolvedResourc
 			return nil, fmt.Errorf("write protocol for %s: %w", agent.id, err)
 		}
 
-		profile, _ := domain.ProfileFor(agent.projection.AgentType)
+		profile, err := domain.ProfileFor(agent.projection.AgentType)
+		if err != nil {
+			return nil, err
+		}
 		generated = append(generated,
 			filepath.ToSlash(filepath.Join(agent.localBase, ".clier", "work-log-protocol.md")),
 			filepath.ToSlash(filepath.Join(agent.localBase, ".clier", TeamProtocolFileName())),
@@ -216,7 +222,7 @@ func (s *Service) materializeResolvedTeam(base string, root *api.ResolvedResourc
 	}
 
 	manifest := &Manifest{
-		Kind:             string(api.KindTeam),
+		Kind:             string(remoteapi.KindTeam),
 		Owner:            root.OwnerName,
 		Name:             rootProjection.Name,
 		Teams:            storedTeams,
@@ -230,7 +236,7 @@ func (s *Service) materializeResolvedTeam(base string, root *api.ResolvedResourc
 	return manifest, nil
 }
 
-func (s *Service) collectResolvedEntries(rootOwner string, rootVersion int, rootProjection *TeamProjection, resourceMap map[string]*api.ResolvedResource) ([]teamEntry, []agentEntry, error) {
+func (s *Service) collectResolvedEntries(rootOwner string, rootVersion int, rootProjection *TeamProjection, resourceMap map[string]*remoteapi.ResolvedResource) ([]teamEntry, []agentEntry, error) {
 	var teams []teamEntry
 	var agents []agentEntry
 
@@ -244,7 +250,11 @@ func (s *Service) collectResolvedEntries(rootOwner string, rootVersion int, root
 			projection: projection,
 		}
 		teams = append(teams, entry)
-		if _, err := domain.ProfileFor(projection.AgentType); err == nil {
+		runnable, err := validateProjectionAgentType(projection.AgentType)
+		if err != nil {
+			return err
+		}
+		if runnable {
 			agents = append(agents, agentEntry{
 				teamEntry: entry,
 				localBase: AgentWorkspaceLocalPath(owner, projection.Name),
@@ -255,7 +265,11 @@ func (s *Service) collectResolvedEntries(rootOwner string, rootVersion int, root
 			if !ok {
 				return internalFault("resolve child team %s/%s: not found in resolve response", child.Owner, child.Name)
 			}
-			if err := walk(child.Owner, childResource.Version, teamProjectionFromResolved(childResource)); err != nil {
+			childProjection, err := remoteapi.TeamProjectionFromResolved(childResource)
+			if err != nil {
+				return err
+			}
+			if err := walk(child.Owner, childResource.Version, childProjection); err != nil {
 				return err
 			}
 		}
@@ -271,7 +285,7 @@ func (s *Service) collectResolvedEntries(rootOwner string, rootVersion int, root
 // --- Pull ---
 
 func (s *Service) Pull(base string, force bool) (*PullResult, error) {
-	manifest, err := LoadManifest(s.fs, base)
+	manifest, err := storemanifest.Load(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +294,7 @@ func (s *Service) Pull(base string, force bool) (*PullResult, error) {
 		return nil, err
 	}
 	changes := diffTrackedResourceVersions(manifest, pulled)
-	if err := SaveManifest(s.fs, base, pulled); err != nil {
+	if err := storemanifest.Save(s.fs, base, pulled); err != nil {
 		return nil, err
 	}
 	status := PullStatusPulled
@@ -295,7 +309,7 @@ func (s *Service) Pull(base string, force bool) (*PullResult, error) {
 }
 
 func (s *Service) Fetch(base string) (*FetchResult, error) {
-	manifest, err := LoadManifest(s.fs, base)
+	manifest, err := storemanifest.Load(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +380,7 @@ func (s *Service) fetchTarget(manifest *Manifest) (*Manifest, error) {
 // --- Status ---
 
 func (s *Service) Status(base, runsDir string) (*Status, error) {
-	manifest, err := LoadManifest(s.fs, base)
+	manifest, err := storemanifest.Load(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
@@ -482,7 +496,7 @@ func (s *Service) latestTeamTrackedVersions(manifest *Manifest) (map[string]int,
 // --- Push ---
 
 func (s *Service) Push(base string) (*PushResult, error) {
-	manifest, err := LoadManifest(s.fs, base)
+	manifest, err := storemanifest.Load(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +518,7 @@ func (s *Service) Push(base string) (*PushResult, error) {
 	pushedPaths := map[string]bool{}
 
 	for _, resource := range modified {
-		if !resource.Editable || api.ResourceKind(resource.Kind) == api.KindTeam {
+		if !resource.Editable || remoteapi.ResourceKind(resource.Kind) == remoteapi.KindTeam {
 			continue
 		}
 		updated, err := s.pushTrackedResource(base, manifest, resource)
@@ -527,7 +541,7 @@ func (s *Service) Push(base string) (*PushResult, error) {
 	for {
 		progress := false
 		for _, resource := range manifest.TrackedResources {
-			if !resource.Editable || api.ResourceKind(resource.Kind) != api.KindTeam {
+			if !resource.Editable || remoteapi.ResourceKind(resource.Kind) != remoteapi.KindTeam {
 				continue
 			}
 			if pushedPaths[resource.LocalPath] {
@@ -567,7 +581,7 @@ func (s *Service) Push(base string) (*PushResult, error) {
 	}
 
 	for _, resource := range manifest.TrackedResources {
-		if !resource.Editable || api.ResourceKind(resource.Kind) != api.KindTeam {
+		if !resource.Editable || remoteapi.ResourceKind(resource.Kind) != remoteapi.KindTeam {
 			continue
 		}
 		modified, _, err := s.teamPushState(base, manifest, resource)
@@ -590,13 +604,13 @@ func (s *Service) Push(base string) (*PushResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := SaveManifest(s.fs, base, pulled); err != nil {
+	if err := storemanifest.Save(s.fs, base, pulled); err != nil {
 		return nil, err
 	}
 	return &PushResult{Status: PushStatusPushed, Pushed: pushed}, nil
 }
 
-func (s *Service) pushTrackedResource(base string, manifest *Manifest, resource TrackedResource) (*api.ResourceResponse, error) {
+func (s *Service) pushTrackedResource(base string, manifest *Manifest, resource TrackedResource) (*remoteapi.ResourceResponse, error) {
 	kind, body, err := s.preparePushBody(base, manifest, resource)
 	if err != nil {
 		return nil, err
@@ -644,7 +658,7 @@ func (s *Service) applyPushedResourceVersion(manifest *Manifest, resource Tracke
 		manifest.TrackedResources[i].RemoteVersion = intPtr(latest)
 	}
 
-	if resource.Kind == string(api.KindTeam) {
+	if resource.Kind == string(remoteapi.KindTeam) {
 		if manifest.RootResource.Kind == resource.Kind && manifest.RootResource.Owner == resource.Owner && manifest.RootResource.Name == resource.Name {
 			manifest.RootResource.RemoteVersion = intPtr(latest)
 		}
@@ -664,16 +678,16 @@ func (s *Service) applyPushedResourceVersion(manifest *Manifest, resource Tracke
 
 	for i := range manifest.Teams {
 		projection := &manifest.Teams[i].Projection
-		if resource.Kind == string(api.KindInstruction) && projection.InstructionRef != nil &&
+		if resource.Kind == string(remoteapi.KindInstruction) && projection.InstructionRef != nil &&
 			projection.InstructionRef.Owner == resource.Owner && projection.InstructionRef.Name == resource.Name {
 			projection.InstructionRef.Version = latest
 		}
-		if (resource.Kind == string(api.KindClaudeSettings) || resource.Kind == string(api.KindCodexSettings)) &&
+		if (resource.Kind == string(remoteapi.KindClaudeSettings) || resource.Kind == string(remoteapi.KindCodexSettings)) &&
 			projection.SettingsRef != nil &&
 			projection.SettingsRef.Owner == resource.Owner && projection.SettingsRef.Name == resource.Name {
 			projection.SettingsRef.Version = latest
 		}
-		if resource.Kind == string(api.KindSkill) {
+		if resource.Kind == string(remoteapi.KindSkill) {
 			for j := range projection.Skills {
 				skill := &projection.Skills[j]
 				if skill.Owner == resource.Owner && skill.Name == resource.Name {
@@ -705,10 +719,10 @@ func (s *Service) recordPushedResourceState(base string, manifest *Manifest, res
 }
 
 // preparePushBody builds the request body for a single tracked resource.
-func (s *Service) preparePushBody(base string, manifest *Manifest, r TrackedResource) (api.ResourceKind, any, error) {
-	kind := api.ResourceKind(r.Kind)
+func (s *Service) preparePushBody(base string, manifest *Manifest, r TrackedResource) (remoteapi.ResourceKind, any, error) {
+	kind := remoteapi.ResourceKind(r.Kind)
 	switch kind {
-	case api.KindTeam:
+	case remoteapi.KindTeam:
 		team, ok := manifest.FindTeam(r.Owner, r.Name)
 		if !ok {
 			return "", nil, internalFault("team state %s/%s not found", r.Owner, r.Name)
@@ -723,12 +737,12 @@ func (s *Service) preparePushBody(base string, manifest *Manifest, r TrackedReso
 		if err != nil {
 			return "", nil, err
 		}
-		return kind, api.ContentWriteRequest{Name: r.Name, Content: content}, nil
+		return kind, remoteapi.ContentWriteRequest{Name: r.Name, Content: content}, nil
 	}
 }
 
 // pushResource checks the remote version and uploads the resource.
-func (s *Service) pushResource(r TrackedResource, kind api.ResourceKind, body any) (*api.ResourceResponse, error) {
+func (s *Service) pushResource(r TrackedResource, kind remoteapi.ResourceKind, body any) (*remoteapi.ResourceResponse, error) {
 	current, err := s.client.GetResource(r.Owner, r.Name)
 	if err != nil {
 		return nil, err
@@ -747,8 +761,8 @@ func (s *Service) pushResource(r TrackedResource, kind api.ResourceKind, body an
 }
 
 // readContentForPush reads a content resource from disk, stripping the prelude for instruction kinds.
-func (s *Service) readContentForPush(base string, manifest *Manifest, kind api.ResourceKind, r TrackedResource) (string, error) {
-	if api.IsInstructionKind(string(kind)) {
+func (s *Service) readContentForPush(base string, manifest *Manifest, kind remoteapi.ResourceKind, r TrackedResource) (string, error) {
+	if remoteapi.IsInstructionKind(string(kind)) {
 		return s.serverInstructionContent(base, manifest, r)
 	}
 	data, err := s.fs.ReadFile(filepath.Join(base, filepath.FromSlash(r.LocalPath)))
@@ -760,8 +774,8 @@ func (s *Service) readContentForPush(base string, manifest *Manifest, kind api.R
 
 // teamMutationFromProjection builds a TeamWriteRequest from a TeamProjection,
 // resolving the team's own agent fields and its children.
-func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.TeamWriteRequest, error) {
-	req := &api.TeamWriteRequest{
+func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*remoteapi.TeamWriteRequest, error) {
+	req := &remoteapi.TeamWriteRequest{
 		Name:       projection.Name,
 		Command:    projection.Command,
 		GitRepoURL: projection.GitRepoURL,
@@ -774,7 +788,7 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 			return nil, fmt.Errorf("resolve agent profile: %w", err)
 		}
 		if projection.InstructionRef != nil {
-			ref := &api.ResourceRefRequest{
+			ref := &remoteapi.ResourceRefRequest{
 				Owner:   projection.InstructionRef.Owner,
 				Name:    projection.InstructionRef.Name,
 				Version: projection.InstructionRef.Version,
@@ -782,7 +796,7 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 			req.SetInstructionRef(ref)
 		}
 		if projection.SettingsRef != nil {
-			ref := &api.ResourceRefRequest{
+			ref := &remoteapi.ResourceRefRequest{
 				Owner:   projection.SettingsRef.Owner,
 				Name:    projection.SettingsRef.Name,
 				Version: projection.SettingsRef.Version,
@@ -792,9 +806,9 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 	}
 
 	// Skills
-	skillRefs := make([]api.ResourceRefRequest, 0, len(projection.Skills))
+	skillRefs := make([]remoteapi.ResourceRefRequest, 0, len(projection.Skills))
 	for _, skillRef := range projection.Skills {
-		skillRefs = append(skillRefs, api.ResourceRefRequest{
+		skillRefs = append(skillRefs, remoteapi.ResourceRefRequest{
 			Owner:   skillRef.Owner,
 			Name:    skillRef.Name,
 			Version: skillRef.Version,
@@ -803,9 +817,9 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 	req.Skills = skillRefs
 
 	// Children
-	children := make([]api.ChildRefRequest, 0, len(projection.Children))
+	children := make([]remoteapi.ChildRefRequest, 0, len(projection.Children))
 	for _, child := range projection.Children {
-		children = append(children, api.ChildRefRequest{
+		children = append(children, remoteapi.ChildRefRequest{
 			Owner:        child.Owner,
 			Name:         child.Name,
 			ChildVersion: child.ChildVersion,
@@ -819,7 +833,7 @@ func (s *Service) teamMutationFromProjection(projection *TeamProjection) (*api.T
 // --- Modified / Tracked ---
 
 func (s *Service) ModifiedTrackedResources(base string) ([]TrackedResource, error) {
-	manifest, err := LoadManifest(s.fs, base)
+	manifest, err := storemanifest.Load(s.fs, base)
 	if err != nil {
 		return nil, err
 	}
@@ -870,15 +884,12 @@ func (s *Service) runSummary(base, runsDir string) (RunStatusSummary, error) {
 	if runsDir == "" {
 		return RunStatusSummary{}, nil
 	}
-	plans, err := apprun.ListPlans(runsDir)
+	plans, err := apprun.NewRepository(runsDir).ListForWorkingCopy(base)
 	if err != nil {
 		return RunStatusSummary{}, err
 	}
 	var summary RunStatusSummary
 	for _, plan := range plans {
-		if plan.WorkingCopyPath != base {
-			continue
-		}
 		summary.Total++
 		if plan.Status == apprun.StatusRunning {
 			summary.Running++
@@ -912,74 +923,13 @@ func (s *Service) serverInstructionContent(base string, manifest *Manifest, reso
 // --- Helpers ---
 
 // buildResourceMap indexes resolved resources by owner/name for O(1) lookup.
-func buildResourceMap(resources []api.ResolvedResource) map[string]*api.ResolvedResource {
-	m := make(map[string]*api.ResolvedResource, len(resources))
+func buildResourceMap(resources []remoteapi.ResolvedResource) map[string]*remoteapi.ResolvedResource {
+	m := make(map[string]*remoteapi.ResolvedResource, len(resources))
 	for i := range resources {
 		r := &resources[i]
 		m[teamKey(r.OwnerName, r.Name)] = r
 	}
 	return m
-}
-
-// snapshotRef represents a ref entry embedded in a resolve snapshot.
-type snapshotRef struct {
-	RelType       string `json:"rel_type"`
-	TargetName    string `json:"target_name"`
-	TargetOwner   string `json:"target_owner"`
-	TargetVersion int    `json:"target_version"`
-	AgentType     string `json:"agent_type,omitempty"`
-	Command       string `json:"command,omitempty"`
-}
-
-// snapshotWithRefs is the common wrapper for snapshots that contain refs.
-type snapshotWithRefs struct {
-	Refs []snapshotRef `json:"refs"`
-}
-
-// teamProjectionFromResolved builds a TeamProjection from a ResolvedResource
-// (used during Clone and Pull with ResolveTeam responses).
-func teamProjectionFromResolved(r *api.ResolvedResource) *TeamProjection {
-	projection := &TeamProjection{
-		Name:     r.Name,
-		Skills:   make([]ResourceRefProjection, 0),
-		Children: make([]ChildProjection, 0),
-	}
-
-	// Decode spec fields from snapshot.
-	if spec, err := decodeSnapshot[api.TeamSpec](r.Snapshot); err == nil {
-		projection.AgentType = spec.AgentType
-		projection.Command = spec.Command
-		projection.GitRepoURL = spec.GitRepoURL
-		for _, child := range spec.Children {
-			projection.Children = append(projection.Children, ChildProjection{
-				Owner:        child.Owner,
-				Name:         child.Name,
-				ChildVersion: child.Version,
-			})
-		}
-	}
-
-	// Decode refs from snapshot for instruction, settings, skill references.
-	var refs snapshotWithRefs
-	if err := decodeSnapshotInto(r.Snapshot, &refs); err == nil {
-		for _, ref := range refs.Refs {
-			rp := ResourceRefProjection{
-				Owner:   ref.TargetOwner,
-				Name:    ref.TargetName,
-				Version: ref.TargetVersion,
-			}
-			switch ref.RelType {
-			case string(api.KindInstruction):
-				projection.InstructionRef = &rp
-			case string(api.KindClaudeSettings), string(api.KindCodexSettings):
-				projection.SettingsRef = &rp
-			case string(api.KindSkill):
-				projection.Skills = append(projection.Skills, rp)
-			}
-		}
-	}
-
-	return projection
 }
 
 // appendAgentTrackedResources adds tracked resources and generated files for
@@ -1015,7 +965,7 @@ func appendAgentTrackedResources(tracked *[]TrackedResource, generated *[]string
 
 	for _, skillRef := range projection.Skills {
 		*tracked = append(*tracked, TrackedResource{
-			Kind:          string(api.KindSkill),
+			Kind:          string(remoteapi.KindSkill),
 			AgentType:     agentType,
 			Owner:         skillRef.Owner,
 			Name:          skillRef.Name,
@@ -1120,9 +1070,12 @@ func buildPushResourceChange(resource TrackedResource, latest int, reason string
 	}
 }
 
-func (s *Service) previewResolvedManifest(root *api.ResolvedResource, resources []api.ResolvedResource, previous *Manifest) (*Manifest, error) {
+func (s *Service) previewResolvedManifest(root *remoteapi.ResolvedResource, resources []remoteapi.ResolvedResource, previous *Manifest) (*Manifest, error) {
 	resourceMap := buildResourceMap(resources)
-	rootProjection := teamProjectionFromResolved(root)
+	rootProjection, err := remoteapi.TeamProjectionFromResolved(root)
+	if err != nil {
+		return nil, err
+	}
 	teams, agents, err := s.collectResolvedEntries(root.OwnerName, root.Version, rootProjection, resourceMap)
 	if err != nil {
 		return nil, err
@@ -1141,7 +1094,7 @@ func (s *Service) previewResolvedManifest(root *api.ResolvedResource, resources 
 			Projection: *team.projection,
 		})
 		tracked = append(tracked, TrackedResource{
-			Kind:          string(api.KindTeam),
+			Kind:          string(remoteapi.KindTeam),
 			AgentType:     team.projection.AgentType,
 			Owner:         team.owner,
 			Name:          team.name,
@@ -1153,13 +1106,13 @@ func (s *Service) previewResolvedManifest(root *api.ResolvedResource, resources 
 	for _, agent := range agents {
 		profile, err := domain.ProfileFor(agent.projection.AgentType)
 		if err != nil {
-			continue
+			return nil, err
 		}
 		appendAgentTrackedResources(&tracked, nil, agent.projection, localDirs[agent.id], profile)
 	}
 
 	preview := &Manifest{
-		Kind:             string(api.KindTeam),
+		Kind:             string(remoteapi.KindTeam),
 		Owner:            root.OwnerName,
 		Name:             rootProjection.Name,
 		RootResource:     tracked[0],
@@ -1205,8 +1158,8 @@ func diffTrackedResourceVersions(previous, next *Manifest) []PullResourceChange 
 		}
 
 		changes = append(changes, PullResourceChange{
-			Kind: resourceKindForChange(prev, prevOK, curr, currOK),
-			Name: resourceNameForChange(prev, prevOK, curr, currOK),
+			Kind: resourceKindForChange(prev, prevOK, curr),
+			Name: resourceNameForChange(prev, prevOK, curr),
 			From: prevVersion,
 			To:   currVersion,
 		})
@@ -1222,14 +1175,14 @@ func trackedRemoteVersion(resource TrackedResource, ok bool) *int {
 	return intPtr(*resource.RemoteVersion)
 }
 
-func resourceKindForChange(previous TrackedResource, previousOK bool, next TrackedResource, nextOK bool) string {
+func resourceKindForChange(previous TrackedResource, previousOK bool, next TrackedResource) string {
 	if previousOK {
 		return previous.Kind
 	}
 	return next.Kind
 }
 
-func resourceNameForChange(previous TrackedResource, previousOK bool, next TrackedResource, nextOK bool) string {
+func resourceNameForChange(previous TrackedResource, previousOK bool, next TrackedResource) string {
 	if previousOK {
 		return previous.Name
 	}
@@ -1262,7 +1215,7 @@ func (s *Service) fileHash(path string) (string, error) {
 }
 
 func (s *Service) trackedResourceHash(base string, manifest *Manifest, resource TrackedResource) (string, error) {
-	if api.ResourceKind(resource.Kind) == api.KindTeam {
+	if remoteapi.ResourceKind(resource.Kind) == remoteapi.KindTeam {
 		if manifest == nil {
 			return "", internalFault("team hash requires manifest state")
 		}
@@ -1270,7 +1223,7 @@ func (s *Service) trackedResourceHash(base string, manifest *Manifest, resource 
 		if !ok {
 			return "", internalFault("team state %s/%s not found", resource.Owner, resource.Name)
 		}
-		data, err := json.Marshal(team.Projection)
+		data, err := MarshalTeamProjection(team.Projection)
 		if err != nil {
 			return "", fmt.Errorf("marshal team projection %s/%s: %w", resource.Owner, resource.Name, err)
 		}

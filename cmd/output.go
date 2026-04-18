@@ -17,12 +17,3 @@
 // process exits with code 1. Messages are user-facing — they avoid
 // raw HTTP status codes and never leak terminal-multiplexer internals.
 package cmd
-
-import (
-	"encoding/json"
-	"os"
-)
-
-func printJSON(v any) error {
-	return json.NewEncoder(os.Stdout).Encode(v)
-}

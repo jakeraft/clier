@@ -1,7 +1,9 @@
 package cmd
 
 import (
-	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
+	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -22,12 +24,15 @@ func newListCmd() *cobra.Command {
 		GroupID: rootGroupResources,
 		Args:    cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
+			svc, err := newRemoteCatalogService()
+			if err != nil {
+				return err
+			}
 			var starredPtr *bool
 			if cmd.Flags().Changed("starred") {
 				starredPtr = &starred
 			}
-			opts := api.ListOptions{
+			opts := remoteapi.ListOptions{
 				Kind:    kind,
 				Query:   query,
 				Uses:    uses,
@@ -39,30 +44,33 @@ func newListCmd() *cobra.Command {
 			}
 
 			if mine {
-				owner := currentLogin()
+				owner, err := currentLogin()
+				if err != nil {
+					return err
+				}
 				if owner == "" {
 					return &domain.Fault{Kind: domain.KindLoginRequired}
 				}
-				items, err := client.ListResources(owner, opts)
+				items, err := svc.ListResources(owner, opts)
 				if err != nil {
 					return err
 				}
-				return printJSON(items)
+				return present.Success(cmd.OutOrStdout(), view.ResourceListOf(items))
 			}
 
 			if len(args) == 1 {
-				items, err := client.ListResources(args[0], opts)
+				items, err := svc.ListResources(args[0], opts)
 				if err != nil {
 					return err
 				}
-				return printJSON(items)
+				return present.Success(cmd.OutOrStdout(), view.ResourceListOf(items))
 			}
 
-			items, err := client.ListPublicResources(opts)
+			items, err := svc.ListPublicResources(opts)
 			if err != nil {
 				return err
 			}
-			return printJSON(items)
+			return present.Success(cmd.OutOrStdout(), view.ResourceListOf(items))
 		},
 	}
 	cmd.Flags().StringVar(&kind, "kind", "", "Filter by resource kind (team, skill, instruction, claude-setting, codex-setting)")

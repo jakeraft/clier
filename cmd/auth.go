@@ -1,14 +1,12 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	"time"
 
-	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
 	"github.com/jakeraft/clier/internal/auth"
-	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -36,55 +34,23 @@ func newAuthLoginCmd() *cobra.Command {
 		Use:   "login",
 		Short: "Log in with GitHub",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-
-			resp, err := client.RequestDeviceCode()
+			svc, err := newRemoteAuthService()
 			if err != nil {
-				return fmt.Errorf("failed to start login: %w", err)
+				return err
 			}
-
-			fmt.Fprintf(os.Stderr, "! First, copy your one-time code: %s\n", resp.UserCode)
-			fmt.Fprintf(os.Stderr, "Then open: %s\n", resp.VerificationURI)
-			fmt.Fprintf(os.Stderr, "Waiting for authentication...\n")
-
-			interval := time.Duration(resp.Interval) * time.Second
-			if interval == 0 {
-				interval = 5 * time.Second
+			cfg, err := currentConfig()
+			if err != nil {
+				return err
 			}
-			deadline := time.Now().Add(time.Duration(resp.ExpiresIn) * time.Second)
-
-			for time.Now().Before(deadline) {
-				time.Sleep(interval)
-
-				poll, err := client.PollDeviceAuth(resp.DeviceCode)
-				if err != nil {
-					// Server may return an error for authorization_pending (RFC 8628).
-					// Continue polling unless it's a non-retryable error.
-					var apiErr *api.Error
-					if errors.As(err, &apiErr) && apiErr.StatusCode < 500 {
-						continue
-					}
-					return fmt.Errorf("poll failed: %w", err)
-				}
-
-				if poll.AccessToken != "" && poll.User != nil {
-					creds := &auth.Credentials{
-						Token: poll.AccessToken,
-						Login: poll.User.Name,
-					}
-					if err := auth.Save(currentConfig().CredentialsPath, creds); err != nil {
-						return fmt.Errorf("failed to save credentials: %w", err)
-					}
-					fmt.Fprintf(os.Stderr, "Logged in as %s\n", poll.User.Name)
-					return nil
-				}
-
-				if poll.Status == "slow_down" {
-					interval += 5 * time.Second
-				}
+			user, err := svc.Login(cfg.CredentialsPath, func(prompt auth.LoginPrompt) {
+				fmt.Fprintf(os.Stderr, "! First, copy your one-time code: %s\n", prompt.UserCode)
+				fmt.Fprintf(os.Stderr, "Then open: %s\n", prompt.VerificationURI)
+				fmt.Fprintf(os.Stderr, "Waiting for authentication...\n")
+			})
+			if err != nil {
+				return err
 			}
-
-			return &domain.Fault{Kind: domain.KindAuthTimeout}
+			return present.Success(cmd.OutOrStdout(), view.AuthLoginOf(user.Name))
 		},
 	}
 }
@@ -94,13 +60,18 @@ func newAuthLogoutCmd() *cobra.Command {
 		Use:   "logout",
 		Short: "Log out",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-			_ = client.Logout() // best-effort server-side logout
-			if err := auth.Delete(currentConfig().CredentialsPath); err != nil {
+			svc, err := newRemoteAuthService()
+			if err != nil {
 				return err
 			}
-			fmt.Fprintln(os.Stderr, "Logged out.")
-			return nil
+			cfg, err := currentConfig()
+			if err != nil {
+				return err
+			}
+			if err := svc.Logout(cfg.CredentialsPath); err != nil {
+				return err
+			}
+			return present.Success(cmd.OutOrStdout(), view.AuthLogoutOf())
 		},
 	}
 }
@@ -111,20 +82,19 @@ func newAuthStatusCmd() *cobra.Command {
 		Short:        "Show login status",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			creds, _ := auth.Load(currentConfig().CredentialsPath)
-			if creds == nil {
-				return &domain.Fault{Kind: domain.KindAuthRequired}
-			}
-			user, err := newAPIClient().GetCurrentUser()
+			svc, err := newRemoteAuthService()
 			if err != nil {
-				// app.Translate (middleware) maps the underlying api.Error
-				// or connection failure to the right Kind; the catalog
-				// renders the user-visible message from there.
 				return err
 			}
-			return printJSON(map[string]string{
-				"login": user.Name,
-			})
+			cfg, err := currentConfig()
+			if err != nil {
+				return err
+			}
+			user, err := svc.Status(cfg.CredentialsPath)
+			if err != nil {
+				return err
+			}
+			return present.Success(cmd.OutOrStdout(), view.AuthStatusOf(user.Name))
 		},
 	}
 }
@@ -134,12 +104,19 @@ func newAuthTokenCmd() *cobra.Command {
 		Use:   "token",
 		Short: "Print the current access token",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			creds, err := auth.Load(currentConfig().CredentialsPath)
+			svc, err := newRemoteAuthService()
 			if err != nil {
 				return err
 			}
-			fmt.Println(creds.Token)
-			return nil
+			cfg, err := currentConfig()
+			if err != nil {
+				return err
+			}
+			token, err := svc.Token(cfg.CredentialsPath)
+			if err != nil {
+				return err
+			}
+			return present.Success(cmd.OutOrStdout(), view.AuthTokenOf(token))
 		},
 	}
 }

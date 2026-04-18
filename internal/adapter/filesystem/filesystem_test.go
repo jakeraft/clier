@@ -82,3 +82,24 @@ func TestLocalFS_MkdirTempAndRemoveAll(t *testing.T) {
 		t.Fatalf("temp dir not removed")
 	}
 }
+
+func TestLocalFS_Rename(t *testing.T) {
+	t.Parallel()
+	lfs := New()
+	dir := t.TempDir()
+	from := filepath.Join(dir, "from", "a.txt")
+	to := filepath.Join(dir, "to", "b.txt")
+
+	if err := lfs.EnsureFile(from, []byte("x")); err != nil {
+		t.Fatalf("EnsureFile: %v", err)
+	}
+	if err := lfs.Rename(from, to); err != nil {
+		t.Fatalf("Rename: %v", err)
+	}
+	if _, err := os.Stat(to); err != nil {
+		t.Fatalf("renamed file missing: %v", err)
+	}
+	if _, err := os.Stat(from); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("source should be gone, got %v", err)
+	}
+}

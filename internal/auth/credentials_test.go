@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/jakeraft/clier/internal/domain"
 )
 
 func TestSaveAndLoad(t *testing.T) {
@@ -35,6 +37,23 @@ func TestLoad_NotExists(t *testing.T) {
 	_, err := Load("/nonexistent/path")
 	if err == nil {
 		t.Fatal("expected error")
+	}
+	var fault *domain.Fault
+	if !errors.As(err, &fault) || fault.Kind != domain.KindAuthRequired {
+		t.Fatalf("got %v, want auth_required fault", err)
+	}
+}
+
+func TestLoad_ReadFailureIsNotDowngradedToAuthRequired(t *testing.T) {
+	dir := t.TempDir()
+
+	_, err := Load(dir)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var fault *domain.Fault
+	if errors.As(err, &fault) && fault.Kind == domain.KindAuthRequired {
+		t.Fatalf("read failure should not be downgraded to auth_required: %v", err)
 	}
 }
 

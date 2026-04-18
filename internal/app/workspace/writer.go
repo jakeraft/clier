@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/jakeraft/clier/internal/adapter/api"
+	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
@@ -29,11 +29,11 @@ func resolveAgentPaths(base string, profile domain.AgentProfile) agentPaths {
 type Writer struct {
 	fs          FileMaterializer
 	git         GitRepo
-	resourceMap map[string]*api.ResolvedResource
+	resourceMap map[string]*remoteapi.ResolvedResource
 }
 
 // NewWriter creates a Writer backed by a pre-built resource map.
-func NewWriter(fs FileMaterializer, git GitRepo, resourceMap map[string]*api.ResolvedResource) *Writer {
+func NewWriter(fs FileMaterializer, git GitRepo, resourceMap map[string]*remoteapi.ResolvedResource) *Writer {
 	return &Writer{fs: fs, git: git, resourceMap: resourceMap}
 }
 
@@ -103,11 +103,11 @@ func (w *Writer) resolveContent(owner, name string) (string, error) {
 	if !ok {
 		return "", internalFault("resource %s not found in resolve map", key)
 	}
-	spec, err := decodeSnapshot[api.ContentSpec](r.Snapshot)
+	content, err := remoteapi.ContentFromResolved(r)
 	if err != nil {
-		return "", fmt.Errorf("decode content %s: %w", key, err)
+		return "", fmt.Errorf("resolve content %s: %w", key, err)
 	}
-	return spec.Content, nil
+	return content, nil
 }
 
 func (w *Writer) writeFile(path, content string) error {

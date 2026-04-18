@@ -3,7 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
+	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +37,10 @@ func newCreateTeamCmd() *cobra.Command {
 		Use:   "team",
 		Short: "Create a new team",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
+			svc, err := newRemoteCatalogService()
+			if err != nil {
+				return err
+			}
 			owner, err := resolveOwner(ownerFlag)
 			if err != nil {
 				return err
@@ -60,7 +65,7 @@ func newCreateTeamCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			body := api.TeamWriteRequest{
+			body := remoteapi.TeamWriteRequest{
 				Name:           name,
 				Command:        command,
 				GitRepoURL:     repo,
@@ -71,11 +76,11 @@ func newCreateTeamCmd() *cobra.Command {
 				Children:       childRefs,
 				Summary:        summary,
 			}
-			resp, err := client.CreateResource(api.KindTeam, owner, body)
+			resp, err := svc.CreateResource(remoteapi.KindTeam, owner, body)
 			if err != nil {
 				return err
 			}
-			return printJSON(resp)
+			return present.Success(cmd.OutOrStdout(), view.ResourceOf(resp))
 		},
 	}
 	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
@@ -99,12 +104,15 @@ func newCreateSkillCmd() *cobra.Command {
 		Use:   "skill",
 		Short: "Create a new skill",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
+			svc, err := newRemoteCatalogService()
+			if err != nil {
+				return err
+			}
 			owner, err := resolveOwner(ownerFlag)
 			if err != nil {
 				return err
 			}
-			resp, err := client.CreateResource(api.KindSkill, owner, api.ContentWriteRequest{
+			resp, err := svc.CreateResource(remoteapi.KindSkill, owner, remoteapi.ContentWriteRequest{
 				Name:    name,
 				Content: content,
 				Summary: summary,
@@ -112,7 +120,7 @@ func newCreateSkillCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return printJSON(resp)
+			return present.Success(cmd.OutOrStdout(), view.ResourceOf(resp))
 		},
 	}
 	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
@@ -131,12 +139,15 @@ func newCreateInstructionCmd() *cobra.Command {
 		Use:   "instruction",
 		Short: "Create a new instruction resource",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
+			svc, err := newRemoteCatalogService()
+			if err != nil {
+				return err
+			}
 			owner, err := resolveOwner(ownerFlag)
 			if err != nil {
 				return err
 			}
-			resp, err := client.CreateResource(api.KindInstruction, owner, api.ContentWriteRequest{
+			resp, err := svc.CreateResource(remoteapi.KindInstruction, owner, remoteapi.ContentWriteRequest{
 				Name:    name,
 				Content: content,
 				Summary: summary,
@@ -144,7 +155,7 @@ func newCreateInstructionCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return printJSON(resp)
+			return present.Success(cmd.OutOrStdout(), view.ResourceOf(resp))
 		},
 	}
 	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
@@ -163,12 +174,15 @@ func newCreateClaudeSettingsCmd() *cobra.Command {
 		Use:   "claude-settings",
 		Short: "Create a new Claude settings resource",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
+			svc, err := newRemoteCatalogService()
+			if err != nil {
+				return err
+			}
 			owner, err := resolveOwner(ownerFlag)
 			if err != nil {
 				return err
 			}
-			resp, err := client.CreateResource(api.KindClaudeSettings, owner, api.ContentWriteRequest{
+			resp, err := svc.CreateResource(remoteapi.KindClaudeSettings, owner, remoteapi.ContentWriteRequest{
 				Name:    name,
 				Content: content,
 				Summary: summary,
@@ -176,7 +190,7 @@ func newCreateClaudeSettingsCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return printJSON(resp)
+			return present.Success(cmd.OutOrStdout(), view.ResourceOf(resp))
 		},
 	}
 	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")
@@ -194,18 +208,21 @@ func newCreateCodexSettingsCmd() *cobra.Command {
 		Use:   "codex-settings",
 		Short: "Create a new Codex settings resource",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
+			svc, err := newRemoteCatalogService()
+			if err != nil {
+				return err
+			}
 			owner, err := resolveOwner(ownerFlag)
 			if err != nil {
 				return err
 			}
-			resp, err := client.CreateResource(api.KindCodexSettings, owner, api.ContentWriteRequest{
+			resp, err := svc.CreateResource(remoteapi.KindCodexSettings, owner, remoteapi.ContentWriteRequest{
 				Name: name, Content: content, Summary: summary,
 			})
 			if err != nil {
 				return err
 			}
-			return printJSON(resp)
+			return present.Success(cmd.OutOrStdout(), view.ResourceOf(resp))
 		},
 	}
 	cmd.Flags().StringVar(&ownerFlag, "owner", "", "Resource owner (defaults to logged-in user)")

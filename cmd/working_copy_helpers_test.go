@@ -53,9 +53,9 @@ func TestCollectRunnableAgents_WalksNestedChildrenRecursively(t *testing.T) {
 		},
 	}
 
-	agents, err := collectRunnableAgents(state)
+	agents, err := appworkspace.CollectRunnableAgents(state)
 	if err != nil {
-		t.Fatalf("collectRunnableAgents: %v", err)
+		t.Fatalf("CollectRunnableAgents: %v", err)
 	}
 	if len(agents) != 1 {
 		t.Fatalf("len(agents) = %d, want 1", len(agents))

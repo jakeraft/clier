@@ -3,7 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
+	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/spf13/cobra"
 )
 
@@ -18,23 +20,26 @@ func newDeleteCmd() *cobra.Command {
 		GroupID: rootGroupResources,
 		Args:    requireOneArg("clier delete <owner/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
+			svc, err := newRemoteCatalogService()
+			if err != nil {
+				return err
+			}
 			owner, name, err := splitResourceID(args[0])
 			if err != nil {
 				return err
 			}
 
 			// Detect kind via GET.
-			res, err := client.GetResource(owner, name)
+			res, err := svc.GetResource(owner, name)
 			if err != nil {
 				return fmt.Errorf("look up resource %q: %w", args[0], err)
 			}
-			kind := api.ResourceKind(res.Kind)
+			kind := remoteapi.ResourceKind(res.Kind)
 
-			if err := client.DeleteResource(kind, owner, name); err != nil {
+			if err := svc.DeleteResource(kind, owner, name); err != nil {
 				return err
 			}
-			return printJSON(map[string]string{"deleted": args[0]})
+			return present.Success(cmd.OutOrStdout(), view.DeletedOf(args[0]))
 		},
 	}
 }

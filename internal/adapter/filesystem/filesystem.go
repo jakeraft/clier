@@ -39,6 +39,13 @@ func (f *LocalFS) MkdirTemp(pattern string) (string, error) {
 	return os.MkdirTemp("", pattern)
 }
 
+func (f *LocalFS) Rename(oldPath, newPath string) error {
+	if err := os.MkdirAll(filepath.Dir(newPath), 0755); err != nil {
+		return err
+	}
+	return os.Rename(oldPath, newPath)
+}
+
 func (f *LocalFS) RemoveAll(path string) error {
 	return os.RemoveAll(path)
 }

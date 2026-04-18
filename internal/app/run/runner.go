@@ -1,8 +1,8 @@
 package run
 
 import (
+	"errors"
 	"fmt"
-	"os"
 )
 
 // Launcher starts a run from a persisted RunPlan.
@@ -10,27 +10,34 @@ type Launcher interface {
 	Launch(plan *RunPlan) error
 }
 
+type RunnerStore interface {
+	Save(plan *RunPlan) error
+	Delete(runID string) error
+}
+
 // Runner handles RunPlan creation and execution.
 type Runner struct {
 	launcher Launcher
+	store    RunnerStore
 }
 
 // NewRunner creates a Runner with the given launcher adapter.
-func NewRunner(launcher Launcher) *Runner {
-	return &Runner{launcher: launcher}
+func NewRunner(launcher Launcher, store RunnerStore) *Runner {
+	return &Runner{launcher: launcher, store: store}
 }
 
-// Run creates a RunPlan from the given agent plans, saves it to
-// <runsDir>/<runID>.json, and launches via tmux.
-func (r *Runner) Run(runsDir, workingCopyPath, runID, sessionName string, plans []AgentTerminal) (*RunPlan, error) {
+// Run creates a RunPlan, persists it, and launches via tmux.
+func (r *Runner) Run(workingCopyPath, runID, sessionName string, plans []AgentTerminal) (*RunPlan, error) {
 	plan := NewPlan(runID, sessionName, workingCopyPath, plans)
 
-	if err := SavePlan(runsDir, runID, plan); err != nil {
+	if err := r.store.Save(plan); err != nil {
 		return nil, fmt.Errorf("save plan: %w", err)
 	}
 
 	if err := r.launcher.Launch(plan); err != nil {
-		_ = os.Remove(PlanPath(runsDir, runID))
+		if removeErr := r.store.Delete(runID); removeErr != nil {
+			return nil, fmt.Errorf("launch: %w", errors.Join(err, fmt.Errorf("remove plan: %w", removeErr)))
+		}
 		return nil, fmt.Errorf("launch: %w", err)
 	}
 

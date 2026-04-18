@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"path/filepath"
 
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
 	"github.com/jakeraft/clier/internal/config"
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
@@ -35,7 +37,7 @@ func newConfigViewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return printJSON(cfg)
+			return present.Success(cmd.OutOrStdout(), view.ConfigOf(cfg))
 		},
 	}
 }
@@ -67,7 +69,11 @@ func newConfigSetServerURLCmd() *cobra.Command {
 			}
 
 			cfg.ServerURL = args[0]
-			if err := config.Save(configPath(), cfg); err != nil {
+			path, err := configPath()
+			if err != nil {
+				return err
+			}
+			if err := config.Save(path, cfg); err != nil {
 				return err
 			}
 
@@ -76,7 +82,7 @@ func newConfigSetServerURLCmd() *cobra.Command {
 				return err
 			}
 
-			return printJSON(resolved)
+			return present.Success(cmd.OutOrStdout(), view.ConfigOf(resolved))
 		},
 	}
 }
@@ -110,7 +116,11 @@ paths are rejected.`,
 			}
 
 			cfg.WorkspaceDir = path
-			if err := config.Save(configPath(), cfg); err != nil {
+			configFilePath, err := configPath()
+			if err != nil {
+				return err
+			}
+			if err := config.Save(configFilePath, cfg); err != nil {
 				return err
 			}
 
@@ -119,7 +129,7 @@ paths are rejected.`,
 				return err
 			}
 
-			return printJSON(resolved)
+			return present.Success(cmd.OutOrStdout(), view.ConfigOf(resolved))
 		},
 	}
 }
@@ -139,7 +149,11 @@ func newConfigSetDashboardURLCmd() *cobra.Command {
 			}
 
 			cfg.DashboardURL = args[0]
-			if err := config.Save(configPath(), cfg); err != nil {
+			path, err := configPath()
+			if err != nil {
+				return err
+			}
+			if err := config.Save(path, cfg); err != nil {
 				return err
 			}
 
@@ -148,7 +162,7 @@ func newConfigSetDashboardURLCmd() *cobra.Command {
 				return err
 			}
 
-			return printJSON(resolved)
+			return present.Success(cmd.OutOrStdout(), view.ConfigOf(resolved))
 		},
 	}
 }

@@ -14,6 +14,7 @@ import (
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
+	storemanifest "github.com/jakeraft/clier/internal/store/manifest"
 )
 
 func TestMaterializeResolvedTeam_TracksNestedTeamsRecursively(t *testing.T) {
@@ -237,7 +238,7 @@ func TestPull_PreservesFirstRunAt(t *testing.T) {
 			},
 		},
 	}
-	if err := SaveManifest(fs, base, pre); err != nil {
+	if err := storemanifest.Save(fs, base, pre); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 
@@ -282,7 +283,7 @@ func TestPull_PreservesFirstRunAt(t *testing.T) {
 		t.Fatalf("returned ClonedAt = %v, want %v", pulled.Manifest.ClonedAt, cloned)
 	}
 
-	reloaded, err := LoadManifest(fs, base)
+	reloaded, err := storemanifest.Load(fs, base)
 	if err != nil {
 		t.Fatalf("LoadManifest after pull: %v", err)
 	}
@@ -344,7 +345,7 @@ func TestPull_ReportsChangedResources(t *testing.T) {
 			},
 		},
 	}
-	if err := SaveManifest(fs, base, pre); err != nil {
+	if err := storemanifest.Save(fs, base, pre); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 	if err := fs.EnsureFile(filepath.Join(base, "org.solo", "CLAUDE.md"), []byte("hello")); err != nil {
@@ -457,7 +458,7 @@ func TestFetch_PreviewsChangesWithoutWriting(t *testing.T) {
 			},
 		},
 	}
-	if err := SaveManifest(fs, base, pre); err != nil {
+	if err := storemanifest.Save(fs, base, pre); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 	if err := fs.EnsureFile(filepath.Join(base, "org.solo", "CLAUDE.md"), []byte("hello")); err != nil {
@@ -512,7 +513,7 @@ func TestFetch_PreviewsChangesWithoutWriting(t *testing.T) {
 		t.Fatalf("local file content = %q, want unchanged hello", string(data))
 	}
 
-	reloaded, err := LoadManifest(fs, base)
+	reloaded, err := storemanifest.Load(fs, base)
 	if err != nil {
 		t.Fatalf("LoadManifest after fetch: %v", err)
 	}
@@ -580,7 +581,7 @@ func TestPush_ReportsDirectAndCascadeUpdates(t *testing.T) {
 			},
 		},
 	}
-	if err := SaveManifest(fs, base, pre); err != nil {
+	if err := storemanifest.Save(fs, base, pre); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 	if err := fs.EnsureFile(filepath.Join(base, "org.solo", "CLAUDE.md"), []byte("updated prompt")); err != nil {
@@ -704,7 +705,7 @@ func TestPush_ReportsDirectAndCascadeUpdates(t *testing.T) {
 		t.Fatalf("solo versions = %+v, want 1->2", solo)
 	}
 
-	reloaded, err := LoadManifest(fs, base)
+	reloaded, err := storemanifest.Load(fs, base)
 	if err != nil {
 		t.Fatalf("LoadManifest after push: %v", err)
 	}
@@ -757,7 +758,7 @@ func TestCloneVersion_UsesVersionedResolveEndpoint(t *testing.T) {
 	if manifest.RootResource.RemoteVersion == nil || *manifest.RootResource.RemoteVersion != 7 {
 		t.Fatalf("root version = %v, want 7", manifest.RootResource.RemoteVersion)
 	}
-	reloaded, err := LoadManifest(fs, base)
+	reloaded, err := storemanifest.Load(fs, base)
 	if err != nil {
 		t.Fatalf("LoadManifest after clone: %v", err)
 	}
@@ -802,7 +803,7 @@ func TestPush_NoChangesReturnsEmptyPushedList(t *testing.T) {
 			},
 		},
 	}
-	if err := SaveManifest(fs, base, manifest); err != nil {
+	if err := storemanifest.Save(fs, base, manifest); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
 	apprun "github.com/jakeraft/clier/internal/app/run"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/domain"
@@ -45,14 +46,18 @@ func newRunListCmd() *cobra.Command {
 		Use:   "list",
 		Short: "List runs across all working copies",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runs, err := apprun.ListPlans(runsDir())
+			repo, err := newRunRepository()
+			if err != nil {
+				return err
+			}
+			runs, err := repo.List()
 			if err != nil {
 				return err
 			}
 			slices.SortFunc(runs, func(a, b *apprun.RunPlan) int {
 				return b.StartedAt.Compare(a.StartedAt)
 			})
-			return printJSON(runs)
+			return present.Success(cmd.OutOrStdout(), view.RunListOf(runs))
 		},
 	}
 }
@@ -81,14 +86,17 @@ prompts, and detach (Ctrl-b d) before sending messages.`,
 			if err := validateOwner(owner); err != nil {
 				return err
 			}
-			base := workingCopyPath(owner, name)
+			base, err := workingCopyPath(owner, name)
+			if err != nil {
+				return err
+			}
 
 			fs := newFileMaterializer()
 			manifest, err := appworkspace.LoadManifest(fs, base)
 			if err != nil {
 				return classifyWorkingCopyError(owner, name, base, err)
 			}
-			if err := validateWorkingCopy(base, manifest); err != nil {
+			if err := appworkspace.ValidateWorkingCopy(base, manifest, fs, newGitRepo()); err != nil {
 				return err
 			}
 			if err := rejectIfRunActive(base); err != nil {
@@ -100,7 +108,7 @@ prompts, and detach (Ctrl-b d) before sending messages.`,
 				return err
 			}
 
-			agents, err := collectRunnableAgents(manifest)
+			agents, err := appworkspace.CollectRunnableAgents(manifest)
 			if err != nil {
 				return err
 			}
@@ -121,22 +129,24 @@ prompts, and detach (Ctrl-b d) before sending messages.`,
 					Command:   fullCommand,
 				})
 			}
-			runner := apprun.NewRunner(newTerminal())
-			plan, err := runner.Run(runsDir(), base, runID, runName, terminalPlans)
+			repo, err := newRunRepository()
+			if err != nil {
+				return err
+			}
+			runner := apprun.NewRunner(newTerminal(), repo)
+			plan, err := runner.Run(base, runID, runName, terminalPlans)
 			if err != nil {
 				return err
 			}
 
-			result := map[string]any{"run_id": runID, "session": plan.Session}
-			if hint, mark := firstRunHint(manifest, runID); hint != "" {
-				result[hintField] = hint
-				manifest.FirstRunAt = mark
-				// Best-effort persist: if the manifest write fails, the
-				// hint reappears on the next run — no data loss, just a
-				// duplicate hint. Failing the run for this would be worse.
-				_ = appworkspace.SaveManifest(fs, base, manifest)
+			var hintText *string
+			if text := appworkspace.MarkFirstRun(manifest, runID, time.Now); text != "" {
+				hintText = &text
+				if err := appworkspace.SaveManifest(fs, base, manifest); err != nil {
+					return err
+				}
 			}
-			return printJSON(result)
+			return present.Success(cmd.OutOrStdout(), view.RunStartOf(runID, plan.Session, hintText))
 		},
 	}
 }
@@ -145,21 +155,6 @@ prompts, and detach (Ctrl-b d) before sending messages.`,
 // commands may emit when state warrants it. Shared by run.go output,
 // tutorial / docs references, and the root help convention.
 const hintField = "hint"
-
-// firstRunHint returns the one-time hint and the timestamp to mark on
-// the manifest when this is the workspace's first start. Returns ("", nil)
-// if FirstRunAt is already set.
-func firstRunHint(manifest *appworkspace.Manifest, runID string) (string, *time.Time) {
-	if manifest.FirstRunAt != nil {
-		return "", nil
-	}
-	now := time.Now().UTC()
-	text := fmt.Sprintf(
-		"First start in this workspace. Before sending messages, ask your user to run 'clier run attach %s' from a normal terminal and approve any one-time vendor prompts (e.g., Codex's directory trust), then detach (Ctrl-b d).",
-		runID,
-	)
-	return text, &now
-}
 
 func newRunViewCmd() *cobra.Command {
 	return &cobra.Command{
@@ -171,7 +166,7 @@ func newRunViewCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return printJSON(plan)
+			return present.Success(cmd.OutOrStdout(), view.RunDetailOf(plan))
 		},
 	}
 }
@@ -187,13 +182,16 @@ func newRunStopCmd() *cobra.Command {
 				return err
 			}
 
-			svc := apprun.New(newTerminal(), newPlanStore())
+			svc, err := newRunOrchestrator()
+			if err != nil {
+				return err
+			}
 
 			if err := svc.Stop(plan); err != nil {
 				return err
 			}
 
-			return printJSON(map[string]string{"stopped": plan.RunID})
+			return present.Success(cmd.OutOrStdout(), view.RunStopOf(plan.RunID))
 		},
 	}
 }
@@ -277,18 +275,16 @@ Examples:
 				toAgent = &toAgentName
 			}
 
-			svc := apprun.New(newTerminal(), newPlanStore())
+			svc, err := newRunOrchestrator()
+			if err != nil {
+				return err
+			}
 
 			if err := svc.Send(plan, fromAgent, toAgent, content); err != nil {
 				return err
 			}
 
-			return printJSON(map[string]any{
-				"status": "delivered",
-				"from":   fromAgent,
-				"to":     toAgent,
-				"run":    runID,
-			})
+			return present.Success(cmd.OutOrStdout(), view.RunTellOf(runID, fromAgent, toAgent))
 		},
 	}
 	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to "+envClierRunID+")")
@@ -324,21 +320,16 @@ appended to the run file under <workspace_dir>/.runs/.`,
 				return err
 			}
 
-			svc := apprun.New(newTerminal(), newPlanStore())
+			svc, err := newRunOrchestrator()
+			if err != nil {
+				return err
+			}
 
 			if err := svc.Note(plan, agentName, content); err != nil {
 				return err
 			}
 
-			var agentVal any
-			if agentName != nil {
-				agentVal = *agentName
-			}
-			return printJSON(map[string]any{
-				"status": "posted",
-				"agent":  agentVal,
-				"run":    runID,
-			})
+			return present.Success(cmd.OutOrStdout(), view.RunNoteOf(runID, agentName))
 		},
 	}
 	cmd.Flags().StringVar(&runFlag, "run", "", "Run ID (defaults to "+envClierRunID+")")

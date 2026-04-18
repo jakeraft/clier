@@ -218,6 +218,21 @@ func TestTmuxTerminal_WaitReady_Timeout(t *testing.T) {
 	}
 }
 
+func TestTmuxTerminal_WaitReady_SessionGone(t *testing.T) {
+	runner := &fakeRunner{
+		errByPrefix: map[string]error{
+			"display-message": errors.New("session not found"),
+		},
+	}
+	tm := &TmuxTerminal{runFn: runner.run, sleep: func(time.Duration) {}}
+
+	err := tm.waitReady("sess", "0", time.Second, "claude")
+	var gone *ErrSessionGone
+	if !errors.As(err, &gone) {
+		t.Fatalf("expected ErrSessionGone, got %v", err)
+	}
+}
+
 func hasCall(calls []string, substr string) bool {
 	for _, c := range calls {
 		if strings.Contains(c, substr) {

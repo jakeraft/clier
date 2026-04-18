@@ -3,7 +3,6 @@ package workspace
 import (
 	"errors"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
 	"github.com/jakeraft/clier/internal/domain"
+	storemanifest "github.com/jakeraft/clier/internal/store/manifest"
 )
 
 func TestSaveManifest(t *testing.T) {
@@ -42,16 +42,16 @@ func TestSaveManifest(t *testing.T) {
 		}},
 	}
 
-	if err := SaveManifest(filesystem.New(), base, meta); err != nil {
+	if err := storemanifest.Save(filesystem.New(), base, meta); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 
-	path := filepath.Join(base, ".clier", ManifestFile)
+	path := storemanifest.Path(base)
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("stat manifest file: %v", err)
 	}
 
-	loaded, err := LoadManifest(filesystem.New(), base)
+	loaded, err := storemanifest.Load(filesystem.New(), base)
 	if err != nil {
 		t.Fatalf("LoadManifest: %v", err)
 	}
@@ -95,10 +95,10 @@ func TestManifest_AgentTeamClone(t *testing.T) {
 		}},
 	}
 
-	if err := SaveManifest(filesystem.New(), base, meta); err != nil {
+	if err := storemanifest.Save(filesystem.New(), base, meta); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
-	loaded, err := LoadManifest(filesystem.New(), base)
+	loaded, err := storemanifest.Load(filesystem.New(), base)
 	if err != nil {
 		t.Fatalf("LoadManifest: %v", err)
 	}
@@ -154,10 +154,10 @@ func TestManifest_CompositeTeamClone(t *testing.T) {
 		},
 	}
 
-	if err := SaveManifest(filesystem.New(), base, meta); err != nil {
+	if err := storemanifest.Save(filesystem.New(), base, meta); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
-	loaded, err := LoadManifest(filesystem.New(), base)
+	loaded, err := storemanifest.Load(filesystem.New(), base)
 	if err != nil {
 		t.Fatalf("LoadManifest: %v", err)
 	}
@@ -180,11 +180,11 @@ func TestLoadManifest_RejectsOutdatedFormat(t *testing.T) {
 
 	// Write a manifest with format 0 (simulating a legacy clone).
 	data := []byte(`{"format":0,"kind":"team","owner":"jakeraft","name":"reviewer"}`)
-	if err := fs.EnsureFile(ManifestPath(base), data); err != nil {
+	if err := fs.EnsureFile(storemanifest.Path(base), data); err != nil {
 		t.Fatalf("write legacy manifest: %v", err)
 	}
 
-	_, err := LoadManifest(fs, base)
+	_, err := storemanifest.Load(fs, base)
 	if err == nil {
 		t.Fatal("expected error for outdated manifest format")
 	}
@@ -205,11 +205,11 @@ func TestLoadManifest_RejectsNewerFormat(t *testing.T) {
 
 	// Write a manifest with a future format version.
 	data := []byte(`{"format":999,"kind":"team","owner":"jakeraft","name":"reviewer"}`)
-	if err := fs.EnsureFile(ManifestPath(base), data); err != nil {
+	if err := fs.EnsureFile(storemanifest.Path(base), data); err != nil {
 		t.Fatalf("write future manifest: %v", err)
 	}
 
-	_, err := LoadManifest(fs, base)
+	_, err := storemanifest.Load(fs, base)
 	if err == nil {
 		t.Fatal("expected error for newer manifest format")
 	}
@@ -226,7 +226,7 @@ func TestLoadManifest_RequiresManifestPath(t *testing.T) {
 	t.Parallel()
 
 	base := t.TempDir()
-	if _, err := LoadManifest(filesystem.New(), base); err == nil {
+	if _, err := storemanifest.Load(filesystem.New(), base); err == nil {
 		t.Fatalf("expected manifest lookup to fail without state.json")
 	}
 }
@@ -251,10 +251,10 @@ func TestManifest_FirstRunAtRoundTrip(t *testing.T) {
 		},
 	}
 
-	if err := SaveManifest(fs, base, meta); err != nil {
+	if err := storemanifest.Save(fs, base, meta); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
-	loaded, err := LoadManifest(fs, base)
+	loaded, err := storemanifest.Load(fs, base)
 	if err != nil {
 		t.Fatalf("LoadManifest: %v", err)
 	}
@@ -284,10 +284,10 @@ func TestManifest_FirstRunAtOmittedWhenNil(t *testing.T) {
 		},
 	}
 
-	if err := SaveManifest(fs, base, meta); err != nil {
+	if err := storemanifest.Save(fs, base, meta); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
-	data, err := os.ReadFile(filepath.Join(base, ".clier", ManifestFile))
+	data, err := os.ReadFile(storemanifest.Path(base))
 	if err != nil {
 		t.Fatalf("read manifest: %v", err)
 	}

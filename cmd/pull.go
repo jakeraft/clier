@@ -1,7 +1,8 @@
 package cmd
 
 import (
-	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
 	"github.com/spf13/cobra"
 )
 
@@ -29,14 +30,19 @@ materialized files. Fails if local modifications exist unless
 			if err := validateOwner(owner); err != nil {
 				return err
 			}
-			base := workingCopyPath(owner, name)
-
-			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
+			base, err := workingCopyPath(owner, name)
+			if err != nil {
+				return err
+			}
+			svc, err := newWorkspaceOrchestrator()
+			if err != nil {
+				return err
+			}
 			result, err := svc.Pull(base, force)
 			if err != nil {
 				return classifyWorkingCopyError(owner, name, base, err)
 			}
-			return printJSON(pullResultPayload(base, result))
+			return present.Success(cmd.OutOrStdout(), view.PullResultOf(base, result))
 		},
 	}
 	cmd.Flags().BoolVar(&force, "force", false, "Overwrite local changes in tracked files")

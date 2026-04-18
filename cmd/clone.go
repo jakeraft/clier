@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
@@ -30,7 +32,6 @@ Append @<version> to clone a specific team version.`,
 		GroupID: rootGroupWorkspace,
 		Args:    requireOneArg("clier clone <owner/name[@version]>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
 			owner, name, version, err := splitVersionedResourceID(args[0])
 			if err != nil {
 				return err
@@ -39,7 +40,10 @@ Append @<version> to clone a specific team version.`,
 				return err
 			}
 
-			base := workingCopyPath(owner, name)
+			base, err := workingCopyPath(owner, name)
+			if err != nil {
+				return err
+			}
 			if _, err := os.Stat(base); err == nil {
 				return &domain.Fault{
 					Kind: domain.KindCloneDestExists,
@@ -53,7 +57,10 @@ Append @<version> to clone a specific team version.`,
 				return fmt.Errorf("stat clone destination: %w", err)
 			}
 
-			svc := appworkspace.NewService(client, newFileMaterializer(), newGitRepo())
+			svc, err := newWorkspaceOrchestrator()
+			if err != nil {
+				return err
+			}
 			var manifest *appworkspace.Manifest
 			if version != nil {
 				manifest, err = svc.CloneVersion(base, owner, name, *version)
@@ -63,7 +70,7 @@ Append @<version> to clone a specific team version.`,
 			if err != nil {
 				return err
 			}
-			return printJSON(cloneResultPayload(base, manifest))
+			return present.Success(cmd.OutOrStdout(), view.CloneResultOf(base, manifest))
 		},
 	}
 }

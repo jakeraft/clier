@@ -69,16 +69,18 @@ func shellQuote(v string) string {
 // the second start and tell the agent to stop the first run (or fork
 // the team into a separate working copy if real parallelism is needed).
 func rejectIfRunActive(base string) error {
-	plans, err := apprun.ListPlans(runsDir())
+	repo, err := newRunRepository()
 	if err != nil {
 		return err
 	}
-	for _, p := range plans {
-		if p.WorkingCopyPath == base && p.Status == apprun.StatusRunning {
-			return &domain.Fault{
-				Kind:    domain.KindRunAlreadyRunning,
-				Subject: map[string]string{"run_id": p.RunID},
-			}
+	plan, found, err := repo.FindRunningForWorkingCopy(base)
+	if err != nil {
+		return err
+	}
+	if found {
+		return &domain.Fault{
+			Kind:    domain.KindRunAlreadyRunning,
+			Subject: map[string]string{"run_id": plan.RunID},
 		}
 	}
 	return nil
@@ -86,7 +88,11 @@ func rejectIfRunActive(base string) error {
 
 // resolveRunPlan loads a run plan by run-id from the central runs directory.
 func resolveRunPlan(runID string) (*apprun.RunPlan, error) {
-	plan, err := apprun.LoadPlan(runsDir(), runID)
+	repo, err := newRunRepository()
+	if err != nil {
+		return nil, err
+	}
+	plan, err := repo.Load(runID)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, &domain.Fault{
@@ -105,19 +111,6 @@ func resolveRunPlan(runID string) (*apprun.RunPlan, error) {
 		}
 	}
 	return plan, nil
-}
-
-// globalPlanStore implements apprun.PlanStore by writing to the central runs dir.
-type globalPlanStore struct {
-	dir string
-}
-
-func newPlanStore() *globalPlanStore {
-	return &globalPlanStore{dir: runsDir()}
-}
-
-func (s *globalPlanStore) Save(plan *apprun.RunPlan) error {
-	return apprun.SavePlan(s.dir, plan.RunID, plan)
 }
 
 func newRunID() (string, error) {

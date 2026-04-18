@@ -45,8 +45,8 @@ func TestValidateWorkingCopy_AgentTeam(t *testing.T) {
 			},
 		}},
 	}
-	if err := validateWorkingCopy(base, meta); err != nil {
-		t.Fatalf("validateWorkingCopy: %v", err)
+	if err := appworkspace.ValidateWorkingCopy(base, meta, newFileMaterializer(), newGitRepo()); err != nil {
+		t.Fatalf("ValidateWorkingCopy: %v", err)
 	}
 }
 
@@ -68,7 +68,7 @@ func TestValidateWorkingCopy_MissingFileFails(t *testing.T) {
 			},
 		}},
 	}
-	if err := validateWorkingCopy(base, meta); err == nil {
+	if err := appworkspace.ValidateWorkingCopy(base, meta, newFileMaterializer(), newGitRepo()); err == nil {
 		t.Fatalf("expected validation error for incomplete local clone")
 	}
 }

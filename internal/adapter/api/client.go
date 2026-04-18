@@ -60,7 +60,10 @@ func (c *Client) do(method, path string, body any, result any) error {
 		_ = resp.Body.Close()
 	}()
 	if resp.StatusCode >= 400 {
-		b, _ := io.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("read error response: %w", err)
+		}
 		return &Error{StatusCode: resp.StatusCode, Body: string(b), Status: parseStatus(b)}
 	}
 	if result != nil {

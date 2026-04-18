@@ -2,17 +2,18 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 
 	"github.com/jakeraft/clier/cmd/middleware"
 	"github.com/jakeraft/clier/cmd/present"
-	"github.com/jakeraft/clier/internal/adapter/api"
+	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
 	adaptergit "github.com/jakeraft/clier/internal/adapter/git"
 	"github.com/jakeraft/clier/internal/adapter/terminal"
 	"github.com/jakeraft/clier/internal/app"
+	"github.com/jakeraft/clier/internal/app/catalog"
+	apprun "github.com/jakeraft/clier/internal/app/run"
 	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
 	"github.com/jakeraft/clier/internal/auth"
 	"github.com/jakeraft/clier/internal/config"
@@ -27,17 +28,23 @@ const (
 	rootGroupSettings  = "settings"
 )
 
-// newAPIClient creates an API client.
+// newRemoteClient creates the thin client used for clier-server calls.
 // Token is loaded from credentials if available, empty otherwise.
-func newAPIClient() *api.Client {
-	cfg := currentConfig()
+func newRemoteClient() (*remoteapi.Client, error) {
+	cfg, err := currentConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	token := ""
-	creds, err := auth.Load(cfg.CredentialsPath)
-	if err == nil {
+	creds, err := loadOptionalCredentials(cfg.CredentialsPath)
+	if err != nil {
+		return nil, err
+	}
+	if creds != nil {
 		token = creds.Token
 	}
-	return api.NewClient(cfg.ServerURL, token)
+	return remoteapi.NewClient(cfg.ServerURL, token), nil
 }
 
 func loadRawConfig() (*config.File, error) {
@@ -64,22 +71,20 @@ func loadConfig() (*config.File, error) {
 	return config.Resolve(raw)
 }
 
-func currentConfig() *config.File {
+func currentConfig() (*config.File, error) {
 	cfg, err := loadConfig()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to load clier config: %v\n", err)
-		os.Exit(1)
+		return nil, err
 	}
-	return cfg
+	return cfg, nil
 }
 
-func configPath() string {
+func configPath() (string, error) {
 	path, err := config.DefaultPath()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to resolve clier config path: %v\n", err)
-		os.Exit(1)
+		return "", err
 	}
-	return path
+	return path, nil
 }
 
 func newFileMaterializer() *filesystem.LocalFS {
@@ -92,6 +97,54 @@ func newGitRepo() *adaptergit.ExecGit {
 
 func newTerminal() *terminal.TmuxTerminal {
 	return terminal.NewTmuxTerminal()
+}
+
+func newWorkspaceOrchestrator() (*appworkspace.Service, error) {
+	client, err := newRemoteClient()
+	if err != nil {
+		return nil, err
+	}
+	return appworkspace.NewService(client, newFileMaterializer(), newGitRepo()), nil
+}
+
+func newWorkspaceOrchestratorWithFS(fs appworkspace.FileMaterializer) (*appworkspace.Service, error) {
+	client, err := newRemoteClient()
+	if err != nil {
+		return nil, err
+	}
+	return appworkspace.NewService(client, fs, newGitRepo()), nil
+}
+
+func newRemoteCatalogService() (*catalog.Service, error) {
+	client, err := newRemoteClient()
+	if err != nil {
+		return nil, err
+	}
+	return catalog.New(client), nil
+}
+
+func newRemoteAuthService() (*auth.Service, error) {
+	client, err := newRemoteClient()
+	if err != nil {
+		return nil, err
+	}
+	return auth.NewService(client), nil
+}
+
+func newRunOrchestrator() (*apprun.Service, error) {
+	repo, err := newRunRepository()
+	if err != nil {
+		return nil, err
+	}
+	return apprun.New(newTerminal(), repo), nil
+}
+
+func newRunRepository() (*apprun.Repository, error) {
+	runPlansDir, err := runsDir()
+	if err != nil {
+		return nil, err
+	}
+	return apprun.NewRepository(runPlansDir), nil
 }
 
 // SetVersion sets the CLI version string shown by --version.
@@ -220,12 +273,19 @@ func filterUserCommands() {
 }
 
 // currentLogin returns the logged-in user's login, or empty string if not logged in.
-func currentLogin() string {
-	creds, err := auth.Load(currentConfig().CredentialsPath)
+func currentLogin() (string, error) {
+	cfg, err := currentConfig()
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return creds.Login
+	creds, err := loadOptionalCredentials(cfg.CredentialsPath)
+	if err != nil {
+		return "", err
+	}
+	if creds == nil {
+		return "", nil
+	}
+	return creds.Login, nil
 }
 
 // resolveOwner returns the explicit owner if set, otherwise falls back to logged-in user.
@@ -233,11 +293,27 @@ func resolveOwner(explicit string) (string, error) {
 	if explicit != "" {
 		return explicit, nil
 	}
-	login := currentLogin()
+	login, err := currentLogin()
+	if err != nil {
+		return "", err
+	}
 	if login == "" {
 		return "", &domain.Fault{Kind: domain.KindOwnerRequired}
 	}
 	return login, nil
+}
+
+func loadOptionalCredentials(path string) (*auth.Credentials, error) {
+	creds, err := auth.Load(path)
+	if err == nil {
+		return creds, nil
+	}
+
+	var fault *domain.Fault
+	if errors.As(err, &fault) && fault.Kind == domain.KindAuthRequired {
+		return nil, nil
+	}
+	return nil, err
 }
 
 func splitResourceID(id string) (owner, name string, err error) {

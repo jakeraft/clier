@@ -3,7 +3,9 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
+	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/spf13/cobra"
 )
 
@@ -21,24 +23,27 @@ Not required for running — use clone to run any resource directly.`,
 		GroupID: rootGroupResources,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
+			svc, err := newRemoteCatalogService()
+			if err != nil {
+				return err
+			}
 			owner, name, err := splitResourceID(args[0])
 			if err != nil {
 				return err
 			}
 
 			// Detect kind via GET.
-			res, err := client.GetResource(owner, name)
+			res, err := svc.GetResource(owner, name)
 			if err != nil {
 				return fmt.Errorf("look up resource %q: %w", args[0], err)
 			}
-			kind := api.ResourceKind(res.Kind)
+			kind := remoteapi.ResourceKind(res.Kind)
 
-			resp, err := client.ForkResource(kind, owner, name)
+			resp, err := svc.ForkResource(kind, owner, name)
 			if err != nil {
 				return err
 			}
-			return printJSON(resp)
+			return present.Success(cmd.OutOrStdout(), view.ResourceOf(resp))
 		},
 	}
 }

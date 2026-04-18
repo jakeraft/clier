@@ -1,13 +1,8 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-	"strconv"
-
-	apprun "github.com/jakeraft/clier/internal/app/run"
-	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
-	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
 	"github.com/spf13/cobra"
 )
 
@@ -39,60 +34,25 @@ Refused when:
 			if err := validateOwner(owner); err != nil {
 				return err
 			}
-			base := workingCopyPath(owner, name)
-
+			base, err := workingCopyPath(owner, name)
+			if err != nil {
+				return err
+			}
 			fs := newFileMaterializer()
-			if _, err := appworkspace.LoadManifest(fs, base); err != nil {
+			svc, err := newWorkspaceOrchestratorWithFS(fs)
+			if err != nil {
+				return err
+			}
+			repo, err := newRunRepository()
+			if err != nil {
+				return err
+			}
+			removedRuns, err := svc.Remove(base, repo)
+			if err != nil {
 				return classifyWorkingCopyError(owner, name, base, err)
 			}
 
-			svc := appworkspace.NewService(newAPIClient(), fs, newGitRepo())
-			modified, err := svc.ModifiedTrackedResources(base)
-			if err != nil {
-				return err
-			}
-			if len(modified) > 0 {
-				return &domain.Fault{
-					Kind:    domain.KindWorkspaceDirty,
-					Subject: map[string]string{"modified": strconv.Itoa(len(modified))},
-				}
-			}
-
-			plans, err := apprun.ListPlans(runsDir())
-			if err != nil {
-				return err
-			}
-			var owned []*apprun.RunPlan
-			for _, p := range plans {
-				if p.WorkingCopyPath == base {
-					owned = append(owned, p)
-				}
-			}
-			for _, p := range owned {
-				if p.Status == apprun.StatusRunning {
-					return &domain.Fault{
-						Kind:    domain.KindRunBlocksRemove,
-						Subject: map[string]string{"run_id": p.RunID},
-					}
-				}
-			}
-
-			removedRuns := make([]string, 0, len(owned))
-			for _, p := range owned {
-				if err := os.Remove(apprun.PlanPath(runsDir(), p.RunID)); err != nil {
-					return fmt.Errorf("remove run plan %s: %w", p.RunID, err)
-				}
-				removedRuns = append(removedRuns, p.RunID)
-			}
-			if err := os.RemoveAll(base); err != nil {
-				return fmt.Errorf("remove working copy %s: %w", base, err)
-			}
-
-			return printJSON(map[string]any{
-				"status":       "removed",
-				"removed":      base,
-				"removed_runs": removedRuns,
-			})
+			return present.Success(cmd.OutOrStdout(), view.RemoveResultOf(base, removedRuns))
 		},
 	}
 }

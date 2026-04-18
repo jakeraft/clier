@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
+	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -14,15 +16,15 @@ func init() {
 	rootCmd.AddCommand(newEditCmd())
 }
 
-var kindAllowedFlags = map[api.ResourceKind]map[string]bool{
-	api.KindTeam:           {"summary": true, "command": true, "repo": true, "instruction": true, "claude-settings": true, "codex-settings": true, "skill": true, "child": true},
-	api.KindSkill:          {"summary": true, "content": true},
-	api.KindInstruction:    {"summary": true, "content": true},
-	api.KindClaudeSettings: {"summary": true, "content": true},
-	api.KindCodexSettings:  {"summary": true, "content": true},
+var kindAllowedFlags = map[remoteapi.ResourceKind]map[string]bool{
+	remoteapi.KindTeam:           {"summary": true, "command": true, "repo": true, "instruction": true, "claude-settings": true, "codex-settings": true, "skill": true, "child": true},
+	remoteapi.KindSkill:          {"summary": true, "content": true},
+	remoteapi.KindInstruction:    {"summary": true, "content": true},
+	remoteapi.KindClaudeSettings: {"summary": true, "content": true},
+	remoteapi.KindCodexSettings:  {"summary": true, "content": true},
 }
 
-func validateEditFlags(cmd *cobra.Command, kind api.ResourceKind) error {
+func validateEditFlags(cmd *cobra.Command, kind remoteapi.ResourceKind) error {
 	allowed := kindAllowedFlags[kind]
 	var invalid []string
 	cmd.Flags().Visit(func(f *pflag.Flag) {
@@ -53,18 +55,21 @@ via a GET request, and only the flags you provide are sent as changes.`,
 		GroupID: rootGroupResources,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
+			svc, err := newRemoteCatalogService()
+			if err != nil {
+				return err
+			}
 			owner, name, err := splitResourceID(args[0])
 			if err != nil {
 				return err
 			}
 
 			// Detect kind via GET.
-			res, err := client.GetResource(owner, name)
+			res, err := svc.GetResource(owner, name)
 			if err != nil {
 				return fmt.Errorf("look up resource %q: %w", args[0], err)
 			}
-			kind := api.ResourceKind(res.Kind)
+			kind := remoteapi.ResourceKind(res.Kind)
 
 			// Validate that only kind-appropriate flags are used.
 			if err := validateEditFlags(cmd, kind); err != nil {
@@ -72,8 +77,8 @@ via a GET request, and only the flags you provide are sent as changes.`,
 			}
 
 			switch kind {
-			case api.KindTeam:
-				body := api.TeamPatchRequest{}
+			case remoteapi.KindTeam:
+				body := remoteapi.TeamPatchRequest{}
 				if cmd.Flags().Changed("command") {
 					body.Command = &command
 				}
@@ -118,25 +123,25 @@ via a GET request, and only the flags you provide are sent as changes.`,
 					}
 					body.Children = parsed
 				}
-				resp, err := client.PatchResource(api.KindTeam, owner, name, &body)
+				resp, err := svc.PatchResource(remoteapi.KindTeam, owner, name, &body)
 				if err != nil {
 					return err
 				}
-				return printJSON(resp)
+				return present.Success(cmd.OutOrStdout(), view.ResourceOf(resp))
 
-			case api.KindSkill, api.KindInstruction, api.KindClaudeSettings, api.KindCodexSettings:
-				body := api.ContentPatchRequest{}
+			case remoteapi.KindSkill, remoteapi.KindInstruction, remoteapi.KindClaudeSettings, remoteapi.KindCodexSettings:
+				body := remoteapi.ContentPatchRequest{}
 				if cmd.Flags().Changed("content") {
 					body.Content = &content
 				}
 				if cmd.Flags().Changed("summary") {
 					body.Summary = &summary
 				}
-				resp, err := client.PatchResource(kind, owner, name, &body)
+				resp, err := svc.PatchResource(kind, owner, name, &body)
 				if err != nil {
 					return err
 				}
-				return printJSON(resp)
+				return present.Success(cmd.OutOrStdout(), view.ResourceOf(resp))
 
 			default:
 				return &domain.Fault{

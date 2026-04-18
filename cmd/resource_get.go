@@ -1,6 +1,10 @@
 package cmd
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
+	"github.com/spf13/cobra"
+)
 
 func init() {
 	rootCmd.AddCommand(newGetCmd())
@@ -13,16 +17,19 @@ func newGetCmd() *cobra.Command {
 		GroupID: rootGroupResources,
 		Args:    requireOneArg("clier get <owner/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
+			svc, err := newRemoteCatalogService()
+			if err != nil {
+				return err
+			}
 			owner, name, err := splitResourceID(args[0])
 			if err != nil {
 				return err
 			}
-			item, err := client.GetResource(owner, name)
+			item, err := svc.GetResource(owner, name)
 			if err != nil {
 				return err
 			}
-			return printJSON(item)
+			return present.Success(cmd.OutOrStdout(), view.ResourceOf(item))
 		},
 	}
 }

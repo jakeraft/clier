@@ -1,6 +1,13 @@
 package run
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	storerunplan "github.com/jakeraft/clier/internal/store/runplan"
+)
 
 func TestPlan_SaveLoadAndMutate(t *testing.T) {
 	t.Parallel()
@@ -15,11 +22,11 @@ func TestPlan_SaveLoadAndMutate(t *testing.T) {
 	}
 	plan.MarkStopped()
 
-	if err := SavePlan(base, plan.RunID, plan); err != nil {
+	if err := storerunplan.Save(base, plan.RunID, plan); err != nil {
 		t.Fatalf("save plan: %v", err)
 	}
 
-	loaded, err := LoadPlan(base, plan.RunID)
+	loaded, err := storerunplan.Load(base, plan.RunID)
 	if err != nil {
 		t.Fatalf("load plan: %v", err)
 	}
@@ -37,5 +44,22 @@ func TestPlan_SaveLoadAndMutate(t *testing.T) {
 	}
 	if loaded.StoppedAt == nil {
 		t.Fatal("StoppedAt = nil, want timestamp")
+	}
+}
+
+func TestListPlans_FailsOnCorruptPlan(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	if err := os.WriteFile(filepath.Join(base, "broken.json"), []byte("{not-json"), 0o644); err != nil {
+		t.Fatalf("write corrupt plan: %v", err)
+	}
+
+	_, err := storerunplan.List(base)
+	if err == nil {
+		t.Fatal("expected corrupt plan to fail scan")
+	}
+	if !strings.Contains(err.Error(), "broken.json") {
+		t.Fatalf("error should mention broken file, got %v", err)
 	}
 }

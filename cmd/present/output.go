@@ -52,6 +52,14 @@ func Emit(w io.Writer, err error) {
 	}})
 }
 
+// Success writes the command's success payload to stdout.
+// Callers must pass a top-level JSON object payload.
+func Success(w io.Writer, payload any) error {
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	return enc.Encode(payload)
+}
+
 func pruneSubject(subject map[string]string, message string) map[string]string {
 	if len(subject) == 0 {
 		return nil

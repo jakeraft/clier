@@ -3,7 +3,9 @@ package cmd
 import (
 	"strconv"
 
-	"github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
+	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/spf13/cobra"
 )
 
@@ -34,13 +36,16 @@ func newOrgCreateCmd() *cobra.Command {
 		Short: "Create a new organization",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-
-			resp, err := client.CreateOrg(api.CreateOrgRequest{Name: args[0]})
+			svc, err := newRemoteCatalogService()
 			if err != nil {
 				return err
 			}
-			return printJSON(resp)
+
+			resp, err := svc.CreateOrg(remoteapi.CreateOrgRequest{Name: args[0]})
+			if err != nil {
+				return err
+			}
+			return present.Success(cmd.OutOrStdout(), view.OrgOf(resp))
 		},
 	}
 }
@@ -51,12 +56,15 @@ func newOrgDeleteCmd() *cobra.Command {
 		Short: "Delete an organization",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-
-			if err := client.DeleteOrg(args[0]); err != nil {
+			svc, err := newRemoteCatalogService()
+			if err != nil {
 				return err
 			}
-			return printJSON(map[string]string{"deleted": args[0]})
+
+			if err := svc.DeleteOrg(args[0]); err != nil {
+				return err
+			}
+			return present.Success(cmd.OutOrStdout(), view.DeletedOf(args[0]))
 		},
 	}
 }
@@ -67,13 +75,16 @@ func newOrgListCmd() *cobra.Command {
 		Short: "List your organizations",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-
-			orgs, err := client.ListMyOrgs()
+			svc, err := newRemoteCatalogService()
 			if err != nil {
 				return err
 			}
-			return printJSON(orgs)
+
+			orgs, err := svc.ListMyOrgs()
+			if err != nil {
+				return err
+			}
+			return present.Success(cmd.OutOrStdout(), view.ItemsOf(orgs))
 		},
 	}
 }
@@ -84,13 +95,16 @@ func newOrgMembersCmd() *cobra.Command {
 		Short: "List organization members",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-
-			members, err := client.ListOrgMembers(args[0])
+			svc, err := newRemoteCatalogService()
 			if err != nil {
 				return err
 			}
-			return printJSON(members)
+
+			members, err := svc.ListOrgMembers(args[0])
+			if err != nil {
+				return err
+			}
+			return present.Success(cmd.OutOrStdout(), view.ItemsOf(members))
 		},
 	}
 }
@@ -103,20 +117,18 @@ func newOrgInviteCmd() *cobra.Command {
 		Short: "Invite a user to an organization",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
+			svc, err := newRemoteCatalogService()
+			if err != nil {
+				return err
+			}
 
-			if err := client.InviteOrgMember(args[0], api.InviteMemberRequest{
+			if err := svc.InviteOrgMember(args[0], remoteapi.InviteMemberRequest{
 				Name: args[1],
 				Role: role,
 			}); err != nil {
 				return err
 			}
-			return printJSON(map[string]string{
-				"status": "invited",
-				"org":    args[0],
-				"user":   args[1],
-				"role":   strconv.Itoa(role),
-			})
+			return present.Success(cmd.OutOrStdout(), view.OrgInviteOf(args[0], args[1], strconv.Itoa(role)))
 		},
 	}
 	cmd.Flags().IntVar(&role, "role", 0, "Member role (0=member, 1=admin)")
@@ -129,16 +141,15 @@ func newOrgRemoveCmd() *cobra.Command {
 		Short: "Remove a user from an organization",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client := newAPIClient()
-
-			if err := client.RemoveOrgMember(args[0], args[1]); err != nil {
+			svc, err := newRemoteCatalogService()
+			if err != nil {
 				return err
 			}
-			return printJSON(map[string]string{
-				"status":  "removed",
-				"org":     args[0],
-				"removed": args[1],
-			})
+
+			if err := svc.RemoveOrgMember(args[0], args[1]); err != nil {
+				return err
+			}
+			return present.Success(cmd.OutOrStdout(), view.OrgRemoveOf(args[0], args[1]))
 		},
 	}
 }

@@ -4,11 +4,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jakeraft/clier/internal/adapter/api"
+	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func parseOptionalResourceRefRequest(raw string) (*api.ResourceRefRequest, error) {
+func parseOptionalResourceRefRequest(raw string) (*remoteapi.ResourceRefRequest, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return nil, nil
@@ -36,11 +36,11 @@ func parseOptionalResourceRefRequest(raw string) (*api.ResourceRefRequest, error
 			Cause:   err,
 		}
 	}
-	return &api.ResourceRefRequest{Owner: owner, Name: name, Version: version}, nil
+	return &remoteapi.ResourceRefRequest{Owner: owner, Name: name, Version: version}, nil
 }
 
-func parseResourceRefSlice(specs []string) ([]api.ResourceRefRequest, error) {
-	refs := make([]api.ResourceRefRequest, 0, len(specs))
+func parseResourceRefSlice(specs []string) ([]remoteapi.ResourceRefRequest, error) {
+	refs := make([]remoteapi.ResourceRefRequest, 0, len(specs))
 	for _, spec := range specs {
 		ref, err := parseOptionalResourceRefRequest(spec)
 		if err != nil {
@@ -57,8 +57,8 @@ func parseResourceRefSlice(specs []string) ([]api.ResourceRefRequest, error) {
 	return refs, nil
 }
 
-func parseChildRefSpecs(specs []string) ([]api.ChildRefRequest, error) {
-	children := make([]api.ChildRefRequest, 0, len(specs))
+func parseChildRefSpecs(specs []string) ([]remoteapi.ChildRefRequest, error) {
+	children := make([]remoteapi.ChildRefRequest, 0, len(specs))
 	for _, spec := range specs {
 		ref, err := parseOptionalResourceRefRequest(spec)
 		if err != nil {
@@ -74,7 +74,7 @@ func parseChildRefSpecs(specs []string) ([]api.ChildRefRequest, error) {
 				Subject: map[string]string{"detail": "invalid --child " + quote(spec) + ": child ref must not be empty"},
 			}
 		}
-		children = append(children, api.ChildRefRequest{
+		children = append(children, remoteapi.ChildRefRequest{
 			Owner: ref.Owner, Name: ref.Name, ChildVersion: ref.Version,
 		})
 	}

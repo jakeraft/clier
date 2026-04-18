@@ -10,18 +10,30 @@ import (
 )
 
 // workspaceDir returns the resolved workspace root from config.
-func workspaceDir() string {
-	return currentConfig().WorkspaceDir
+func workspaceDir() (string, error) {
+	cfg, err := currentConfig()
+	if err != nil {
+		return "", err
+	}
+	return cfg.WorkspaceDir, nil
 }
 
 // runsDir returns the central directory holding all run plans.
-func runsDir() string {
-	return filepath.Join(workspaceDir(), apprun.RunsDirName)
+func runsDir() (string, error) {
+	root, err := workspaceDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, apprun.RunsDirName), nil
 }
 
 // workingCopyPath returns the canonical absolute path for a team's working copy.
-func workingCopyPath(owner, name string) string {
-	return filepath.Join(workspaceDir(), appworkspace.ResourceDirName(owner, name))
+func workingCopyPath(owner, name string) (string, error) {
+	root, err := workspaceDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, appworkspace.ResourceDirName(owner, name)), nil
 }
 
 // validateOwner rejects owner names that would collide with internal

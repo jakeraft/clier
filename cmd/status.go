@@ -1,7 +1,8 @@
 package cmd
 
 import (
-	appworkspace "github.com/jakeraft/clier/internal/app/workspace"
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
 	"github.com/spf13/cobra"
 )
 
@@ -27,14 +28,23 @@ runs spawned from this working copy.`,
 			if err := validateOwner(owner); err != nil {
 				return err
 			}
-			base := workingCopyPath(owner, name)
-
-			svc := appworkspace.NewService(newAPIClient(), newFileMaterializer(), newGitRepo())
-			status, err := svc.Status(base, runsDir())
+			base, err := workingCopyPath(owner, name)
+			if err != nil {
+				return err
+			}
+			runPlansDir, err := runsDir()
+			if err != nil {
+				return err
+			}
+			svc, err := newWorkspaceOrchestrator()
+			if err != nil {
+				return err
+			}
+			status, err := svc.Status(base, runPlansDir)
 			if err != nil {
 				return classifyWorkingCopyError(owner, name, base, err)
 			}
-			return printJSON(status)
+			return present.Success(cmd.OutOrStdout(), view.StatusResultOf(status))
 		},
 	}
 }

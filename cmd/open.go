@@ -1,10 +1,11 @@
 package cmd
 
 import (
-	"fmt"
 	"os/exec"
 	"runtime"
 
+	"github.com/jakeraft/clier/cmd/present"
+	"github.com/jakeraft/clier/cmd/view"
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -29,10 +30,15 @@ func newOpenDashboardCmd() *cobra.Command {
 		Use:   "dashboard",
 		Short: "Open the dashboard in a browser",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg := currentConfig()
+			cfg, err := currentConfig()
+			if err != nil {
+				return err
+			}
 			url := cfg.DashboardURL
-			fmt.Printf("Opening %s\n", url)
-			return openBrowser(url)
+			if err := openBrowser(url); err != nil {
+				return err
+			}
+			return present.Success(cmd.OutOrStdout(), view.DashboardOpenOf(url))
 		},
 	}
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
+	storemanifest "github.com/jakeraft/clier/internal/store/manifest"
 )
 
 func TestStatus_AssignsRemoteVersionsAfterSortingTrackedPaths(t *testing.T) {
@@ -58,7 +59,7 @@ func TestStatus_AssignsRemoteVersionsAfterSortingTrackedPaths(t *testing.T) {
 			},
 		},
 	}
-	if err := SaveManifest(fs, base, manifest); err != nil {
+	if err := storemanifest.Save(fs, base, manifest); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 
@@ -201,7 +202,7 @@ func TestStatus_DistinguishesBehindFromPinOutdated(t *testing.T) {
 			},
 		},
 	}
-	if err := SaveManifest(fs, base, manifest); err != nil {
+	if err := storemanifest.Save(fs, base, manifest); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 
@@ -325,7 +326,7 @@ func TestStatus_FailsWhenLatestTeamComparisonFails(t *testing.T) {
 			},
 		},
 	}
-	if err := SaveManifest(fs, base, manifest); err != nil {
+	if err := storemanifest.Save(fs, base, manifest); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 
@@ -397,7 +398,7 @@ func TestStatus_FailsWhenTrackedResourceLookupFails(t *testing.T) {
 			},
 		},
 	}
-	if err := SaveManifest(fs, base, manifest); err != nil {
+	if err := storemanifest.Save(fs, base, manifest); err != nil {
 		t.Fatalf("SaveManifest: %v", err)
 	}
 
@@ -442,9 +443,9 @@ func TestStatus_FailsWhenTrackedResourceLookupFails(t *testing.T) {
 func hashTeamProjectionForTest(t *testing.T, projection TeamProjection) string {
 	t.Helper()
 
-	data, err := json.Marshal(projection)
+	data, err := MarshalTeamProjection(projection)
 	if err != nil {
-		t.Fatalf("json.Marshal: %v", err)
+		t.Fatalf("MarshalTeamProjection: %v", err)
 	}
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])

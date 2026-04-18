@@ -20,7 +20,10 @@ type Credentials struct {
 func Load(path string) (*Credentials, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, &domain.Fault{Kind: domain.KindAuthRequired, Cause: err}
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, &domain.Fault{Kind: domain.KindAuthRequired, Cause: err}
+		}
+		return nil, fmt.Errorf("read credentials: %w", err)
 	}
 	var c Credentials
 	if err := json.Unmarshal(data, &c); err != nil {
