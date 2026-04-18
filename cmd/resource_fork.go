@@ -16,9 +16,10 @@ func init() {
 func newForkCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "fork <owner/name>",
-		Short: "Fork a resource to customize it",
-		Long: `Create a server-side fork of another owner's resource.
+		Short: "Fork the latest version of a resource",
+		Long: `Create a server-side fork of another owner's latest resource version.
 The copy lives in your namespace and can be edited independently.
+Fork only accepts <owner/name>; historical versions are not fork targets.
 Not required for running — use clone to run any resource directly.`,
 		GroupID: rootGroupResources,
 		Args:    cobra.ExactArgs(1),

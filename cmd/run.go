@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/jakeraft/clier/cmd/present"
 	"github.com/jakeraft/clier/cmd/view"
@@ -71,12 +70,9 @@ func newRunStartCmd() *cobra.Command {
 
 Agents start idle. Use run tell to send them instructions.
 
-On the first start in a fresh working copy, the JSON output includes
-a one-time "hint" field. Vendor CLIs (e.g., Codex) may show their
-own approval prompts in their pane on first launch. clier does not
-modify vendor configs on your behalf — ask the user to run
-"clier run attach <run-id>" from a normal terminal, approve those
-prompts, and detach (Ctrl-b d) before sending messages.`,
+Vendor CLIs may still show their own approval prompts in their pane on
+first launch. Use "clier run attach <run-id>" from a normal terminal
+when you need to inspect or approve those prompts.`,
 		Args: requireOneArg("clier run start <owner/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			owner, name, err := splitResourceID(args[0])
@@ -138,23 +134,10 @@ prompts, and detach (Ctrl-b d) before sending messages.`,
 			if err != nil {
 				return err
 			}
-
-			var hintText *string
-			if text := appworkspace.MarkFirstRun(manifest, runID, time.Now); text != "" {
-				hintText = &text
-				if err := appworkspace.SaveManifest(fs, base, manifest); err != nil {
-					return err
-				}
-			}
-			return present.Success(cmd.OutOrStdout(), view.RunStartOf(runID, plan.Session, hintText))
+			return present.Success(cmd.OutOrStdout(), view.RunStartOf(runID, plan.Session))
 		},
 	}
 }
-
-// hintField is the JSON key for the optional next-step hint that
-// commands may emit when state warrants it. Shared by run.go output,
-// tutorial / docs references, and the root help convention.
-const hintField = "hint"
 
 func newRunViewCmd() *cobra.Command {
 	return &cobra.Command{

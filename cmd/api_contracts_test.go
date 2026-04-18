@@ -35,6 +35,19 @@ func TestParseOptionalResourceRefRequest_MissingVersionReturnsError(t *testing.T
 	}
 }
 
+func TestParseOptionalResourceRefRequest_WithoutVersionReturnsError(t *testing.T) {
+	t.Parallel()
+
+	_, err := parseOptionalResourceRefRequest("@clier/hello-codex")
+	if err == nil {
+		t.Fatal("expected error for ref without version")
+	}
+	var f *domain.Fault
+	if !errors.As(err, &f) || f.Kind != domain.KindInvalidResourceRef {
+		t.Fatalf("expected KindInvalidResourceRef, got %v", err)
+	}
+}
+
 func TestParseChildRefSpecs(t *testing.T) {
 	t.Parallel()
 

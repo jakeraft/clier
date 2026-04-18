@@ -14,25 +14,31 @@ func ResourceID(owner, name string) string {
 }
 
 func SplitResourceID(id string) (owner, name string, err error) {
-	parts := strings.SplitN(strings.TrimSpace(id), "/", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+	owner, name, version, err := parseResourceID(id)
+	if err != nil {
+		return "", "", err
+	}
+	if version != nil {
 		return "", "", &domain.Fault{
 			Kind: domain.KindInvalidArgument,
 			Subject: map[string]string{
-				"detail": "expected <owner/name>, got " + quoteOrEmpty(id),
+				"detail": "expected <owner/name> without @<version>, got " + quoteOrEmpty(id),
 			},
 		}
 	}
-	return parts[0], parts[1], nil
+	return owner, name, nil
 }
 
 func SplitVersionedResourceID(id string) (owner, name string, version *int, err error) {
+	return parseResourceID(id)
+}
+
+func parseResourceID(id string) (owner, name string, version *int, err error) {
 	raw := strings.TrimSpace(id)
 	slash := strings.LastIndex(raw, "/")
 	at := strings.LastIndex(raw, "@")
 	if at < 0 || at <= slash {
-		owner, name, err = SplitResourceID(raw)
-		return owner, name, nil, err
+		return splitRequiredResourceID(raw, id)
 	}
 	if at == 0 || at == len(raw)-1 {
 		return "", "", nil, &domain.Fault{
@@ -42,8 +48,7 @@ func SplitVersionedResourceID(id string) (owner, name string, version *int, err 
 			},
 		}
 	}
-
-	owner, name, err = SplitResourceID(strings.TrimSpace(raw[:at]))
+	owner, name, _, err = splitRequiredResourceID(strings.TrimSpace(raw[:at]), id)
 	if err != nil {
 		return "", "", nil, err
 	}
@@ -57,6 +62,19 @@ func SplitVersionedResourceID(id string) (owner, name string, version *int, err 
 		}
 	}
 	return owner, name, intPtr(parsed), nil
+}
+
+func splitRequiredResourceID(raw, original string) (owner, name string, version *int, err error) {
+	parts := strings.SplitN(strings.TrimSpace(raw), "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", nil, &domain.Fault{
+			Kind: domain.KindInvalidArgument,
+			Subject: map[string]string{
+				"detail": "expected <owner/name>, got " + quoteOrEmpty(original),
+			},
+		}
+	}
+	return parts[0], parts[1], nil, nil
 }
 
 func quoteOrEmpty(s string) string {

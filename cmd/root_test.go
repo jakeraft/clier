@@ -32,6 +32,26 @@ func TestNewAgentRootCmd_StandaloneScope(t *testing.T) {
 	}
 }
 
+func TestUserRoot_RunCommandsIncludeNote(t *testing.T) {
+	t.Helper()
+
+	var run *cobra.Command
+	for _, cmd := range rootCmd.Commands() {
+		if cmd.Name() == "run" {
+			run = cmd
+			break
+		}
+	}
+	if run == nil {
+		t.Fatal("run command not found on user root")
+	}
+
+	got := strings.Join(commandNames(run.Commands()), ",")
+	if !strings.Contains(got, "note") {
+		t.Fatalf("user root run commands = %v, want note to be visible", commandNames(run.Commands()))
+	}
+}
+
 func TestNewAgentRootCmd_TeamScope(t *testing.T) {
 	root := newAgentRootCmd(true)
 
@@ -71,6 +91,9 @@ func TestSplitResourceID(t *testing.T) {
 
 	if _, _, err := splitResourceID("todo-team"); err == nil {
 		t.Fatal("expected missing owner to fail")
+	}
+	if _, _, err := splitResourceID("jakeraft/todo-team@7"); err == nil {
+		t.Fatal("expected versioned ref to fail for splitResourceID")
 	}
 }
 
@@ -125,6 +148,21 @@ func TestSplitVersionedResourceID_OrgOwnerWithVersion(t *testing.T) {
 	}
 	if version == nil || *version != 7 {
 		t.Fatalf("version = %v, want 7", version)
+	}
+}
+
+func TestForkHelp_DescribesLatestOnly(t *testing.T) {
+	t.Parallel()
+
+	fork := newForkCmd()
+	if fork.Use != "fork <owner/name>" {
+		t.Fatalf("fork use = %q", fork.Use)
+	}
+	if !strings.Contains(fork.Short, "latest") {
+		t.Fatalf("fork short = %q, want latest-only wording", fork.Short)
+	}
+	if !strings.Contains(fork.Long, "historical versions are not fork targets") {
+		t.Fatalf("fork long help should explain latest-only behavior:\n%s", fork.Long)
 	}
 }
 

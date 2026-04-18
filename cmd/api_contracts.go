@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"strconv"
 	"strings"
 
 	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
@@ -13,30 +12,15 @@ func parseOptionalResourceRefRequest(raw string) (*remoteapi.ResourceRefRequest,
 	if raw == "" {
 		return nil, nil
 	}
-	at := strings.LastIndex(raw, "@")
-	if at <= 0 || at == len(raw)-1 {
-		return nil, &domain.Fault{
-			Kind:    domain.KindInvalidResourceRef,
-			Subject: map[string]string{"ref": raw},
-		}
-	}
-	owner, name, err := splitResourceID(strings.TrimSpace(raw[:at]))
-	if err != nil {
+	owner, name, version, err := splitVersionedResourceID(raw)
+	if err != nil || version == nil {
 		return nil, &domain.Fault{
 			Kind:    domain.KindInvalidResourceRef,
 			Subject: map[string]string{"ref": raw},
 			Cause:   err,
 		}
 	}
-	version, err := strconv.Atoi(strings.TrimSpace(raw[at+1:]))
-	if err != nil {
-		return nil, &domain.Fault{
-			Kind:    domain.KindInvalidResourceRef,
-			Subject: map[string]string{"ref": raw},
-			Cause:   err,
-		}
-	}
-	return &remoteapi.ResourceRefRequest{Owner: owner, Name: name, Version: version}, nil
+	return &remoteapi.ResourceRefRequest{Owner: owner, Name: name, Version: *version}, nil
 }
 
 func parseResourceRefSlice(specs []string) ([]remoteapi.ResourceRefRequest, error) {

@@ -53,7 +53,6 @@ type Manifest struct {
 	Owner            string
 	Name             string
 	ClonedAt         time.Time
-	FirstRunAt       *time.Time
 	RootResource     TrackedResource
 	Teams            []TeamState
 	TrackedResources []TrackedResource

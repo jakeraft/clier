@@ -31,7 +31,6 @@ type record struct {
 	Owner            string            `json:"owner"`
 	Name             string            `json:"name"`
 	ClonedAt         time.Time         `json:"cloned_at"`
-	FirstRunAt       *time.Time        `json:"first_run_at,omitempty"`
 	RootResource     trackedRecord     `json:"root_resource"`
 	Teams            []teamStateRecord `json:"teams,omitempty"`
 	TrackedResources []trackedRecord   `json:"tracked_resources,omitempty"`
@@ -144,7 +143,6 @@ func recordFromDomain(manifest *domainworkspace.Manifest) record {
 		Owner:            manifest.Owner,
 		Name:             manifest.Name,
 		ClonedAt:         manifest.ClonedAt,
-		FirstRunAt:       manifest.FirstRunAt,
 		RootResource:     trackedRecordFromDomain(manifest.RootResource),
 		Teams:            teams,
 		TrackedResources: tracked,
@@ -173,7 +171,6 @@ func (r record) toDomain() *domainworkspace.Manifest {
 		Owner:            r.Owner,
 		Name:             r.Name,
 		ClonedAt:         r.ClonedAt,
-		FirstRunAt:       r.FirstRunAt,
 		RootResource:     r.RootResource.toDomain(),
 		Teams:            teams,
 		TrackedResources: tracked,

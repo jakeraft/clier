@@ -13,7 +13,6 @@ type RunList struct {
 type RunStartResult struct {
 	RunID   string `json:"run_id"`
 	Session string `json:"session"`
-	Hint    string `json:"hint,omitempty"`
 }
 
 type RunStopResult struct {
@@ -93,15 +92,11 @@ func RunListOf(plans []*apprun.RunPlan) RunList {
 	return RunList{Items: items}
 }
 
-func RunStartOf(runID, session string, hint *string) RunStartResult {
-	result := RunStartResult{
+func RunStartOf(runID, session string) RunStartResult {
+	return RunStartResult{
 		RunID:   runID,
 		Session: session,
 	}
-	if hint != nil {
-		result.Hint = *hint
-	}
-	return result
 }
 
 func RunStopOf(runID string) RunStopResult {

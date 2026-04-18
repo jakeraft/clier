@@ -342,7 +342,7 @@ func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Mani
 			}
 			slices.Sort(paths)
 			return nil, &domain.Fault{
-				Kind:    domain.KindWorkspaceDirty,
+				Kind:    domain.KindPullBlockedDirty,
 				Subject: map[string]string{"modified": strings.Join(paths, ", ")},
 			}
 		}
@@ -362,7 +362,6 @@ func (s *Service) pullTarget(base string, manifest *Manifest, force bool) (*Mani
 		return nil, err
 	}
 	pulled.ClonedAt = manifest.ClonedAt
-	pulled.FirstRunAt = manifest.FirstRunAt
 	if err := s.removeStaleManagedFiles(base, manifest, pulled); err != nil {
 		return nil, err
 	}
@@ -1121,7 +1120,6 @@ func (s *Service) previewResolvedManifest(root *remoteapi.ResolvedResource, reso
 	}
 	if previous != nil {
 		preview.ClonedAt = previous.ClonedAt
-		preview.FirstRunAt = previous.FirstRunAt
 	}
 	return preview, nil
 }

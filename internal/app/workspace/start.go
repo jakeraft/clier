@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/domain"
@@ -83,18 +82,6 @@ func ValidateWorkingCopy(base string, manifest *Manifest, fs FileMaterializer, g
 		}
 	}
 	return nil
-}
-
-func MarkFirstRun(manifest *Manifest, runID string, now func() time.Time) string {
-	if manifest.FirstRunAt != nil {
-		return ""
-	}
-	mark := now().UTC()
-	manifest.FirstRunAt = &mark
-	return fmt.Sprintf(
-		"First start in this workspace. Before sending messages, ask your user to run 'clier run attach %s' from a normal terminal and approve any one-time vendor prompts (e.g., Codex's directory trust), then detach (Ctrl-b d).",
-		runID,
-	)
 }
 
 func validateProjectionAgentType(agentType string) (bool, error) {

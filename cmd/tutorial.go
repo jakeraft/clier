@@ -1,10 +1,6 @@
 package cmd
 
-import (
-	"fmt"
-
-	"github.com/spf13/cobra"
-)
+import "github.com/spf13/cobra"
 
 func init() {
 	rootCmd.AddCommand(newTutorialCmd())
@@ -15,7 +11,7 @@ func newTutorialCmd() *cobra.Command {
 		Use:     "tutorial",
 		Short:   "Walk through the hello-claude team",
 		GroupID: rootGroupSettings,
-		Long: fmt.Sprintf(`Walk through the built-in @clier/hello-claude team.
+		Long: `Walk through the built-in @clier/hello-claude team.
 
 The tutorial has two phases:
 
@@ -76,11 +72,9 @@ Step 6. Start the team
 
   This launches both members in tmux. Note the run ID.
 
-  On the first start in a fresh working copy, the output includes a
-  one-time %q field. Vendor CLIs (e.g., Codex) may show their own
-  approval prompts in their pane on first launch. Run
-  "clier run attach <run-id>" from your terminal, approve those
-  prompts, and detach (Ctrl-b d) before sending messages.
+  If a vendor CLI shows its own approval prompt on first launch,
+  run "clier run attach <run-id>" from your terminal, approve it,
+  and detach (Ctrl-b d) before sending messages.
 
 Step 7. Ask hello-claude to greet
 
@@ -124,6 +118,9 @@ Step 11. Fork the team into your namespace
 
   clier fork @clier/hello-claude
   → creates <yourname>/hello-claude
+
+  fork always copies the latest version. Historical versions can be
+  inspected or referenced, but they are not valid fork targets.
 
 Step 12. Fork the instruction so you own the prompt text
 
@@ -184,7 +181,7 @@ Collaborating without forking — clier org
 
     clier org --help          create, invite, list, members
 
-Tip: Use "clier <command> --help" for details on each command.`, hintField),
+Tip: Use "clier <command> --help" for details on each command.`,
 	}
 	cmd.RunE = func(c *cobra.Command, args []string) error {
 		return c.Help()

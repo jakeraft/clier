@@ -134,6 +134,11 @@ var catalog = map[domain.Kind]Template{
 		FormatArgs: []string{"modified"},
 		HintFormat: "push or revert before removing",
 	},
+	domain.KindPullBlockedDirty: {
+		Format:     "working copy has uncommitted changes (%s modified)",
+		FormatArgs: []string{"modified"},
+		HintFormat: "push or revert before pulling",
+	},
 	domain.KindWorkingCopyMissing: {
 		Format:     "no working copy at %s",
 		FormatArgs: []string{"path"},

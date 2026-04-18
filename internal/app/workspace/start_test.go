@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/jakeraft/clier/internal/adapter/api"
 	"github.com/jakeraft/clier/internal/adapter/filesystem"
@@ -32,26 +31,6 @@ func TestCollectRunnableAgents_RejectsUnknownAgentType(t *testing.T) {
 	var fault *domain.Fault
 	if !errors.As(err, &fault) || fault.Kind != domain.KindUnsupportedKind {
 		t.Fatalf("expected unsupported kind fault, got %v", err)
-	}
-}
-
-func TestMarkFirstRun_MarksOnce(t *testing.T) {
-	t.Parallel()
-
-	manifest := &Manifest{}
-	now := time.Date(2026, 4, 18, 1, 2, 3, 0, time.UTC)
-
-	hint := MarkFirstRun(manifest, "run-123", func() time.Time { return now })
-	if hint == "" {
-		t.Fatal("expected hint on first mark")
-	}
-	if manifest.FirstRunAt == nil || !manifest.FirstRunAt.Equal(now) {
-		t.Fatalf("FirstRunAt = %v, want %v", manifest.FirstRunAt, now)
-	}
-
-	hint = MarkFirstRun(manifest, "run-123", time.Now)
-	if hint != "" {
-		t.Fatalf("expected empty hint on second mark, got %q", hint)
 	}
 }
 

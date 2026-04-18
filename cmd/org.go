@@ -20,7 +20,7 @@ func newOrgCmd() *cobra.Command {
 		Use:     "org",
 		Short:   "Manage organizations",
 		GroupID: rootGroupSettings,
-		Long:    `Create, delete, and manage organization membership.`,
+		Long:    `Create, delete, and manage organization membership. After creation, organization handles are referenced as @<org-name>.`,
 		RunE:    subcommandRequired,
 	}
 	cmd.AddCommand(newOrgCreateCmd())
@@ -38,6 +38,7 @@ func newOrgCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <name>",
 		Short: "Create a new organization",
+		Long:  `Create a new organization. After creation, use the resulting @<name> handle with org members, invite, remove, and delete.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			svc, err := newRemoteCatalogService()
@@ -66,7 +67,7 @@ func newOrgCreateCmd() *cobra.Command {
 
 func newOrgDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <name>",
+		Use:   "delete <@org-name>",
 		Short: "Delete an organization",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -105,7 +106,7 @@ func newOrgListCmd() *cobra.Command {
 
 func newOrgMembersCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "members <org-name>",
+		Use:   "members <@org-name>",
 		Short: "List organization members",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -127,7 +128,7 @@ func newOrgInviteCmd() *cobra.Command {
 	var role int
 
 	cmd := &cobra.Command{
-		Use:   "invite <org-name> <user-name>",
+		Use:   "invite <@org-name> <user-name>",
 		Short: "Invite a user to an organization",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -151,7 +152,7 @@ func newOrgInviteCmd() *cobra.Command {
 
 func newOrgRemoveCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "remove <org-name> <user-name>",
+		Use:   "remove <@org-name> <user-name>",
 		Short: "Remove a user from an organization",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {

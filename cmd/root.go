@@ -175,20 +175,12 @@ Try a team:
 
 Refine and share:
   clier create team                         Define a new team
-  clier fork <owner/name>                   Fork an existing resource to your namespace
+  clier fork <owner/name>                   Fork the latest resource version to your namespace
   clier status <owner/name>                 Show local modifications
   clier fetch <owner/name>                  Preview remote updates
   clier push <owner/name>                   Publish your refinements
   clier pull <owner/name>                   Sync the latest from the registry
   clier open dashboard                      Open the dashboard in a browser
-
-For agent consumers:
-  clier output is shaped for agents to parse. Some commands include
-  a "hint" field describing guidance or a next step. When the hint instructs a
-  user-only action (e.g., "clier run attach" needs a real terminal),
-  copy the relevant command to the user's clipboard (pbcopy / xclip
-  / clip.exe) and ask the user to run it. The agent drives the
-  workflow; the user is the keyboard for human-only steps.
 
 Output conventions:
   - JSON object on stdout, snake_case fields across all commands.
@@ -222,8 +214,6 @@ func Execute() {
 	cmd := rootCmd
 	if isAgentMode() {
 		cmd = newAgentRootCmd(isTeamAgent())
-	} else {
-		filterUserCommands()
 	}
 
 	middleware.Apply(cmd, middleware.Chain(
@@ -251,25 +241,6 @@ func configureCommandGroups() {
 		&cobra.Group{ID: rootGroupSettings, Title: "Settings"},
 	)
 	rootCmd.SetHelpCommandGroupID(rootGroupSettings)
-}
-
-// filterUserCommands removes agent-only subcommands from "run" in user context.
-func filterUserCommands() {
-	agentOnly := map[string]bool{cmdNameNote: true}
-	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == cmdNameRun {
-			var keep []*cobra.Command
-			for _, sub := range cmd.Commands() {
-				if !agentOnly[sub.Name()] {
-					keep = append(keep, sub)
-				}
-			}
-			cmd.ResetCommands()
-			for _, sub := range keep {
-				cmd.AddCommand(sub)
-			}
-		}
-	}
 }
 
 // currentLogin returns the logged-in user's login, or empty string if not logged in.
