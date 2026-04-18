@@ -155,15 +155,16 @@ type ChildRefRequest struct {
 // --- Org Types ---
 
 type CreateOrgRequest struct {
-	Name string `json:"name"`
+	Name            string          `json:"name"`
+	NamespaceAccess NamespaceAccess `json:"namespace_access"`
 }
 
 type OrgResponse struct {
-	Name       string    `json:"name"`
-	Visibility int       `json:"visibility"`
-	AvatarURL  string    `json:"avatar_url,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	Name            string          `json:"name"`
+	NamespaceAccess NamespaceAccess `json:"namespace_access"`
+	AvatarURL       string          `json:"avatar_url,omitempty"`
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
 }
 
 type OrgMemberResponse struct {
@@ -175,6 +176,13 @@ type InviteMemberRequest struct {
 	Name string `json:"name"`
 	Role int    `json:"role"`
 }
+
+type NamespaceAccess int
+
+const (
+	NamespaceAccessPublic NamespaceAccess = iota
+	NamespaceAccessPrivate
+)
 
 // --- Resource Kind ---
 

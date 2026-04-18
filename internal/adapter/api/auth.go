@@ -17,14 +17,13 @@ type DevicePollResponse struct {
 }
 
 type UserResponse struct {
-	Name       string    `json:"name"`
-	Email      string    `json:"email,omitempty"`
-	AvatarURL  string    `json:"avatar_url,omitempty"`
-	GitHubID   *int64    `json:"github_id,omitempty"`
-	Type       int       `json:"type"`
-	Visibility int       `json:"visibility"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	Email     string    `json:"email,omitempty"`
+	AvatarURL string    `json:"avatar_url,omitempty"`
+	GitHubID  *int64    `json:"github_id,omitempty"`
+	Type      int       `json:"type"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func (c *Client) RequestDeviceCode() (*DeviceCodeResponse, error) {

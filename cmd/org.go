@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/jakeraft/clier/cmd/present"
 	"github.com/jakeraft/clier/cmd/view"
 	remoteapi "github.com/jakeraft/clier/internal/adapter/api"
+	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +33,9 @@ func newOrgCmd() *cobra.Command {
 }
 
 func newOrgCreateCmd() *cobra.Command {
-	return &cobra.Command{
+	var namespaceAccess string
+
+	cmd := &cobra.Command{
 		Use:   "create <name>",
 		Short: "Create a new organization",
 		Args:  cobra.ExactArgs(1),
@@ -41,13 +45,23 @@ func newOrgCreateCmd() *cobra.Command {
 				return err
 			}
 
-			resp, err := svc.CreateOrg(remoteapi.CreateOrgRequest{Name: args[0]})
+			access, err := parseNamespaceAccess(namespaceAccess)
+			if err != nil {
+				return err
+			}
+
+			resp, err := svc.CreateOrg(remoteapi.CreateOrgRequest{
+				Name:            args[0],
+				NamespaceAccess: access,
+			})
 			if err != nil {
 				return err
 			}
 			return present.Success(cmd.OutOrStdout(), view.OrgOf(resp))
 		},
 	}
+	cmd.Flags().StringVar(&namespaceAccess, "namespace-access", "public", "Namespace access for the organization (public|private)")
+	return cmd
 }
 
 func newOrgDeleteCmd() *cobra.Command {
@@ -151,5 +165,21 @@ func newOrgRemoveCmd() *cobra.Command {
 			}
 			return present.Success(cmd.OutOrStdout(), view.OrgRemoveOf(args[0], args[1]))
 		},
+	}
+}
+
+func parseNamespaceAccess(raw string) (remoteapi.NamespaceAccess, error) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", "public":
+		return remoteapi.NamespaceAccessPublic, nil
+	case "private":
+		return remoteapi.NamespaceAccessPrivate, nil
+	default:
+		return 0, &domain.Fault{
+			Kind: domain.KindInvalidArgument,
+			Subject: map[string]string{
+				"detail": `namespace-access must be "public" or "private"`,
+			},
+		}
 	}
 }
