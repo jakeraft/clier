@@ -614,7 +614,8 @@ func (s *Service) pushTrackedResource(base string, manifest *Manifest, resource 
 	if err != nil {
 		return nil, err
 	}
-	return s.pushResource(resource, kind, body)
+	workspace := manifest.RootResource.Owner + "/" + manifest.RootResource.Name
+	return s.pushResource(resource, kind, body, workspace)
 }
 
 func (s *Service) teamPushState(base string, manifest *Manifest, resource TrackedResource) (modified bool, blocked bool, err error) {
@@ -741,7 +742,10 @@ func (s *Service) preparePushBody(base string, manifest *Manifest, r TrackedReso
 }
 
 // pushResource checks the remote version and uploads the resource.
-func (s *Service) pushResource(r TrackedResource, kind remoteapi.ResourceKind, body any) (*remoteapi.ResourceResponse, error) {
+// workspace identifies the containing working copy (owner/name of the
+// root team) so conflict hints can point the user back at a path they
+// can actually clier-pull.
+func (s *Service) pushResource(r TrackedResource, kind remoteapi.ResourceKind, body any, workspace string) (*remoteapi.ResourceResponse, error) {
 	current, err := s.client.GetResource(r.Owner, r.Name)
 	if err != nil {
 		return nil, err
@@ -753,6 +757,7 @@ func (s *Service) pushResource(r TrackedResource, kind remoteapi.ResourceKind, b
 				"resource_kind": r.Kind,
 				"owner":         r.Owner,
 				"name":          r.Name,
+				"workspace":     workspace,
 			},
 		}
 	}

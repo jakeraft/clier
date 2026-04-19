@@ -18,7 +18,6 @@ type ResourceResponse struct {
 type ResourceMetadata struct {
 	Name           string    `json:"name"`
 	Summary        string    `json:"summary"`
-	Visibility     int       `json:"visibility"`
 	RefCount       int       `json:"ref_count"`
 	StarCount      int       `json:"star_count"`
 	Starred        bool      `json:"starred"`
@@ -30,13 +29,16 @@ type ResourceMetadata struct {
 }
 
 type ResolvedRef struct {
-	TargetVersion  int    `json:"target_version"`
-	RelType        string `json:"rel_type"`
-	Name           string `json:"name"`
-	OwnerName      string `json:"owner_name"`
-	AgentType      string `json:"agent_type,omitempty"`
-	Command        string `json:"command,omitempty"`
-	OwnerAvatarURL string `json:"owner_avatar_url,omitempty"`
+	TargetVersion      int    `json:"target_version"`
+	RelType            string `json:"rel_type"`
+	Name               string `json:"name"`
+	OwnerName          string `json:"owner_name"`
+	AgentType          string `json:"agent_type,omitempty"`
+	Command            string `json:"command,omitempty"`
+	OwnerAvatarURL     string `json:"owner_avatar_url,omitempty"`
+	Deleted            bool   `json:"deleted,omitempty"`
+	UnavailableReason  string `json:"unavailable_reason,omitempty"`
+	UnavailableMessage string `json:"unavailable_message,omitempty"`
 }
 
 type ListResponse struct {

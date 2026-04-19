@@ -113,8 +113,8 @@ func (t *TmuxTerminal) Send(plan *apprun.RunPlan, agentName string, text string)
 	agent, ok := plan.FindAgent(agentName)
 	if !ok {
 		return &domain.Fault{
-			Kind:    domain.KindInternal,
-			Subject: map[string]string{"detail": "agent " + agentName + " not found in run plan"},
+			Kind:    domain.KindAgentNotInRun,
+			Subject: map[string]string{"agent": agentName},
 		}
 	}
 	if err := t.sendKeys(plan.Session, strconv.Itoa(agent.Window), text); err != nil {
@@ -138,8 +138,8 @@ func (t *TmuxTerminal) Attach(plan *apprun.RunPlan, agentName *string) error {
 		agent, ok := plan.FindAgent(*agentName)
 		if !ok {
 			return &domain.Fault{
-				Kind:    domain.KindInternal,
-				Subject: map[string]string{"detail": "agent " + *agentName + " not found in run plan"},
+				Kind:    domain.KindAgentNotInRun,
+				Subject: map[string]string{"agent": *agentName},
 			}
 		}
 		if _, err := t.runFn("select-window", "-t", sess+":"+strconv.Itoa(agent.Window)); err != nil {

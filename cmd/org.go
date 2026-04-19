@@ -61,7 +61,8 @@ func newOrgCreateCmd() *cobra.Command {
 			return present.Success(cmd.OutOrStdout(), view.OrgOf(resp))
 		},
 	}
-	cmd.Flags().StringVar(&namespaceAccess, "namespace-access", "public", "Namespace access for the organization (public|private)")
+	cmd.Flags().StringVar(&namespaceAccess, "namespace-access", "", "Namespace access for the organization (public|private)")
+	_ = cmd.MarkFlagRequired("namespace-access")
 	return cmd
 }
 
@@ -147,6 +148,7 @@ func newOrgInviteCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().IntVar(&role, "role", 0, "Member role (0=member, 1=admin)")
+	_ = cmd.MarkFlagRequired("role")
 	return cmd
 }
 
@@ -171,7 +173,7 @@ func newOrgRemoveCmd() *cobra.Command {
 
 func parseNamespaceAccess(raw string) (remoteapi.NamespaceAccess, error) {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "", "public":
+	case "public":
 		return remoteapi.NamespaceAccessPublic, nil
 	case "private":
 		return remoteapi.NamespaceAccessPrivate, nil

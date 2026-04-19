@@ -13,7 +13,6 @@ package middleware
 import (
 	"fmt"
 
-	"github.com/jakeraft/clier/internal/app"
 	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
@@ -83,14 +82,5 @@ func Recover(next RunE) RunE {
 			}
 		}()
 		return next(c, args)
-	}
-}
-
-// Translate normalizes any adapter-level error into a domain.Fault via
-// app.Translate. After this middleware, the presenter only ever sees
-// Faults.
-func Translate(next RunE) RunE {
-	return func(c *cobra.Command, args []string) error {
-		return app.Translate(next(c, args))
 	}
 }

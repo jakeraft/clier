@@ -54,6 +54,9 @@ func (c *Client) do(method, path string, body any, result any) error {
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		if IsConnRefused(err) {
+			return &ConnRefusedError{Cause: err}
+		}
 		return fmt.Errorf("do: %w", err)
 	}
 	defer func() {

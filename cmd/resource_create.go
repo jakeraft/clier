@@ -94,6 +94,7 @@ func newCreateTeamCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&children, "child", nil, "Child team ref as <owner/name>@<version>; repeat for each child")
 	cmd.Flags().StringVar(&summary, "summary", "", "Short description")
 	_ = cmd.MarkFlagRequired("name")
+	_ = cmd.MarkFlagRequired("command")
 	return cmd
 }
 

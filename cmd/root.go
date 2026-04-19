@@ -216,18 +216,12 @@ func Execute() {
 		cmd = newAgentRootCmd(isTeamAgent())
 	}
 
-	middleware.Apply(cmd, middleware.Chain(
-		middleware.Recover,
-		middleware.Translate,
-	))
+	middleware.Apply(cmd, middleware.Recover)
 
 	if err := cmd.Execute(); err != nil {
 		if errors.Is(err, errSubcommandRequired) || errors.Is(err, errSilent) {
 			os.Exit(1)
 		}
-		// Args validators run outside RunE, so flag/positional failures
-		// bypass the middleware chain. Translate once more here so the
-		// presenter always sees a domain.Fault.
 		present.Emit(os.Stderr, app.Translate(err))
 		os.Exit(1)
 	}

@@ -188,11 +188,16 @@ var catalog = map[domain.Kind]Template{
 		Format:     "this command requires login",
 		HintFormat: "run 'clier auth login' to sign in",
 	},
+	domain.KindAgentNotInRun: {
+		Format:     "agent %s is not in the current run plan",
+		FormatArgs: []string{"agent"},
+		HintFormat: "run 'clier run view <run-id>' to see available agents",
+	},
 	domain.KindRemoteChanged: {
 		Format:     "remote %s %s/%s has changed",
 		FormatArgs: []string{"resource_kind", "owner", "name"},
-		HintFormat: "pull before pushing: 'clier pull %s/%s'",
-		HintArgs:   []string{"owner", "name"},
+		HintFormat: "pull before pushing: 'clier pull %s'",
+		HintArgs:   []string{"workspace"},
 	},
 	domain.KindManifestIncompatible: {
 		Format:     "local clone manifest is incompatible (format %s, expected %s)",

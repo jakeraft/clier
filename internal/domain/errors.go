@@ -45,6 +45,7 @@ const (
 	KindRunInactive             Kind = "run_inactive"
 	KindRunAlreadyRunning       Kind = "run_already_running"
 	KindRunBlocksRemove         Kind = "run_blocks_remove"
+	KindAgentNotInRun           Kind = "agent_not_in_run"
 	KindWorkspaceDirty          Kind = "workspace_dirty"
 	KindPullBlockedDirty        Kind = "pull_blocked_dirty"
 	KindWorkingCopyMissing      Kind = "working_copy_missing"
@@ -96,6 +97,7 @@ func AllKinds() []Kind {
 		KindRunInactive,
 		KindRunAlreadyRunning,
 		KindRunBlocksRemove,
+		KindAgentNotInRun,
 		KindWorkspaceDirty,
 		KindPullBlockedDirty,
 		KindWorkingCopyMissing,

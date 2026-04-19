@@ -17,7 +17,7 @@ func TestParseNamespaceAccess(t *testing.T) {
 		want    remoteapi.NamespaceAccess
 		wantErr domain.Kind
 	}{
-		{name: "default empty is public", input: "", want: remoteapi.NamespaceAccessPublic},
+		{name: "empty rejected", input: "", wantErr: domain.KindInvalidArgument},
 		{name: "public", input: "public", want: remoteapi.NamespaceAccessPublic},
 		{name: "private", input: "private", want: remoteapi.NamespaceAccessPrivate},
 		{name: "trim and case fold", input: " Private ", want: remoteapi.NamespaceAccessPrivate},

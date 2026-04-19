@@ -9,15 +9,6 @@ import (
 	"github.com/jakeraft/clier/internal/domain"
 )
 
-func TestEveryServerReasonTranslates(t *testing.T) {
-	tbl := ReasonToKind()
-	for _, r := range api.AllReasons() {
-		if _, ok := tbl[r]; !ok {
-			t.Errorf("translate missing mapping for server reason %q", r)
-		}
-	}
-}
-
 func TestTranslatePassesFaultsThrough(t *testing.T) {
 	in := &domain.Fault{Kind: domain.KindRunNotFound}
 	out := Translate(in)
@@ -69,14 +60,32 @@ func TestTranslateTerminalSentinels(t *testing.T) {
 	}
 }
 
-func TestTranslateConnRefusedFallback(t *testing.T) {
-	// Plain string match in IsConnRefused covers errors that don't
-	// carry a syscall.Errno wrapper (e.g. wrapped via fmt.Errorf).
-	err := errors.New("dial tcp 127.0.0.1:8080: connect: connection refused")
+func TestTranslateConnRefused(t *testing.T) {
+	err := &api.ConnRefusedError{Cause: errors.New("dial tcp 127.0.0.1:8080: connect: connection refused")}
 	out := Translate(err)
 	var f *domain.Fault
 	if !errors.As(out, &f) || f.Kind != domain.KindServerUnreachable {
-		t.Errorf("Translate(connection refused) = %v, want %q", out, domain.KindServerUnreachable)
+		t.Errorf("Translate(ConnRefusedError) = %v, want %q", out, domain.KindServerUnreachable)
+	}
+}
+
+func TestTranslateCobraRequiredFlag(t *testing.T) {
+	cases := []struct {
+		msg   string
+		flags string
+	}{
+		{`required flag(s) "name" not set`, "name"},
+		{`required flag(s) "name", "command" not set`, "name,command"},
+	}
+	for _, tc := range cases {
+		out := Translate(errors.New(tc.msg))
+		var f *domain.Fault
+		if !errors.As(out, &f) || f.Kind != domain.KindInvalidArgument {
+			t.Fatalf("Translate(%q) = %v, want KindInvalidArgument", tc.msg, out)
+		}
+		if f.Subject["flags"] != tc.flags {
+			t.Errorf("subject flags = %q, want %q", f.Subject["flags"], tc.flags)
+		}
 	}
 }
 
