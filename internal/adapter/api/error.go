@@ -30,6 +30,7 @@ const (
 	ReasonNotOrgMember            Reason = "NOT_ORG_MEMBER"
 	ReasonNotOrgOwner             Reason = "NOT_ORG_OWNER"
 	ReasonNotTeamResource         Reason = "NOT_TEAM_RESOURCE"
+	ReasonResourceInUse           Reason = "RESOURCE_IN_USE"
 	ReasonInternal                Reason = "INTERNAL"
 )
 
@@ -55,6 +56,7 @@ func AllReasons() []Reason {
 		ReasonNotOrgMember,
 		ReasonNotOrgOwner,
 		ReasonNotTeamResource,
+		ReasonResourceInUse,
 		ReasonInternal,
 	}
 }
@@ -69,17 +71,27 @@ type Status struct {
 
 // StatusDetails carries structured context about the failed resource.
 type StatusDetails struct {
-	Kind    string        `json:"kind,omitempty"`
-	Owner   string        `json:"owner,omitempty"`
-	Name    string        `json:"name,omitempty"`
-	Version int           `json:"version,omitempty"`
-	Causes  []StatusCause `json:"causes,omitempty"`
+	Kind       string         `json:"kind,omitempty"`
+	Owner      string         `json:"owner,omitempty"`
+	Name       string         `json:"name,omitempty"`
+	Version    int            `json:"version,omitempty"`
+	Causes     []StatusCause  `json:"causes,omitempty"`
+	Dependents []DependentRef `json:"dependents,omitempty"`
 }
 
 // StatusCause describes a single field-level validation cause.
 type StatusCause struct {
 	Field   string `json:"field,omitempty"`
 	Message string `json:"message"`
+}
+
+// DependentRef points to a resource that references the target of a
+// delete request, preventing its removal.
+type DependentRef struct {
+	Kind    string `json:"kind,omitempty"`
+	Owner   string `json:"owner"`
+	Name    string `json:"name"`
+	RelType string `json:"rel_type,omitempty"`
 }
 
 // errorEnvelope mirrors the server ErrorResponse wrapper.

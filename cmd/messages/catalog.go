@@ -101,6 +101,10 @@ var catalog = map[domain.Kind]Template{
 	domain.KindNotTeamResource: {
 		Format: "this resource is not a team",
 	},
+	domain.KindResourceInUse: {
+		Format:     "cannot delete %s/%s: still referenced by %s",
+		FormatArgs: []string{"owner", "name", "detail"},
+	},
 
 	domain.KindCloneDestExists: {
 		Format:     "clone destination already exists: %s",

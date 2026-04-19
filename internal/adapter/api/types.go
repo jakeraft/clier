@@ -16,29 +16,37 @@ type ResourceResponse struct {
 }
 
 type ResourceMetadata struct {
-	Name           string    `json:"name"`
-	Summary        string    `json:"summary"`
-	RefCount       int       `json:"ref_count"`
-	StarCount      int       `json:"star_count"`
-	Starred        bool      `json:"starred"`
-	OwnerName      string    `json:"owner_name"`
-	OwnerType      int       `json:"owner_type"`
-	OwnerAvatarURL string    `json:"owner_avatar_url,omitempty"`
-	LatestVersion  int       `json:"latest_version,omitempty"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	Name           string          `json:"name"`
+	Summary        string          `json:"summary"`
+	Access         NamespaceAccess `json:"access"`
+	RefCount       int             `json:"ref_count"`
+	ForkCount      int             `json:"fork_count"`
+	StarCount      int             `json:"star_count"`
+	Starred        bool            `json:"starred"`
+	OwnerName      string          `json:"owner_name"`
+	OwnerType      int             `json:"owner_type"`
+	OwnerAvatarURL string          `json:"owner_avatar_url,omitempty"`
+	LatestVersion  int             `json:"latest_version,omitempty"`
+	UpdatedAt      time.Time       `json:"updated_at"`
+	ForkedFrom     *ForkOrigin     `json:"forked_from,omitempty"`
+}
+
+// ForkOrigin identifies the upstream resource that the current resource
+// was forked from. Populated by the server's deep-fork lineage tracking.
+type ForkOrigin struct {
+	OwnerName string `json:"owner_name"`
+	Name      string `json:"name"`
+	Version   int    `json:"version"`
 }
 
 type ResolvedRef struct {
-	TargetVersion      int    `json:"target_version"`
-	RelType            string `json:"rel_type"`
-	Name               string `json:"name"`
-	OwnerName          string `json:"owner_name"`
-	AgentType          string `json:"agent_type,omitempty"`
-	Command            string `json:"command,omitempty"`
-	OwnerAvatarURL     string `json:"owner_avatar_url,omitempty"`
-	Deleted            bool   `json:"deleted,omitempty"`
-	UnavailableReason  string `json:"unavailable_reason,omitempty"`
-	UnavailableMessage string `json:"unavailable_message,omitempty"`
+	TargetVersion  int    `json:"target_version"`
+	RelType        string `json:"rel_type"`
+	Name           string `json:"name"`
+	OwnerName      string `json:"owner_name"`
+	AgentType      string `json:"agent_type,omitempty"`
+	Command        string `json:"command,omitempty"`
+	OwnerAvatarURL string `json:"owner_avatar_url,omitempty"`
 }
 
 type ListResponse struct {

@@ -38,6 +38,7 @@ const (
 	KindInvalidArgument   Kind = "invalid_argument"
 	KindUnknownCommand    Kind = "unknown_command"
 	KindNotTeamResource   Kind = "not_team_resource"
+	KindResourceInUse     Kind = "resource_in_use"
 
 	// Local workspace / runtime faults.
 	KindCloneDestExists         Kind = "clone_dest_exists"
@@ -92,6 +93,7 @@ func AllKinds() []Kind {
 		KindInvalidArgument,
 		KindUnknownCommand,
 		KindNotTeamResource,
+		KindResourceInUse,
 		KindCloneDestExists,
 		KindRunNotFound,
 		KindRunInactive,

@@ -70,6 +70,7 @@ var reasonToKind = map[Reason]domain.Kind{
 	ReasonNotOrgMember:            domain.KindNotOrgMember,
 	ReasonNotOrgOwner:             domain.KindNotOrgOwner,
 	ReasonNotTeamResource:         domain.KindNotTeamResource,
+	ReasonResourceInUse:           domain.KindResourceInUse,
 	ReasonInternal:                domain.KindInternal,
 }
 
@@ -98,6 +99,9 @@ func subjectFromStatus(s *Status) map[string]string {
 		if len(s.Details.Causes) > 0 {
 			out["detail"] = joinCauses(s.Details.Causes)
 		}
+		if _, ok := out["detail"]; !ok && len(s.Details.Dependents) > 0 {
+			out["detail"] = joinDependents(s.Details.Dependents)
+		}
 	}
 	if _, ok := out["detail"]; !ok && s.Message != "" {
 		out["detail"] = s.Message
@@ -106,6 +110,18 @@ func subjectFromStatus(s *Status) map[string]string {
 		return nil
 	}
 	return out
+}
+
+func joinDependents(deps []DependentRef) string {
+	parts := make([]string, 0, len(deps))
+	for _, d := range deps {
+		label := d.Owner + "/" + d.Name
+		if d.Kind != "" {
+			label = d.Kind + " " + label
+		}
+		parts = append(parts, label)
+	}
+	return strings.Join(parts, ", ")
 }
 
 func joinCauses(causes []StatusCause) string {
