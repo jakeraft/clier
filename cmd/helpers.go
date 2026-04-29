@@ -74,19 +74,20 @@ func newRunner() (*runner.Runner, error) {
 	}), nil
 }
 
-// splitTeamID accepts both "namespace/name" and "namespace.name" so users
-// pasting from URLs (slash) or workspace ids (dot) work either way.
+// splitTeamID parses "namespace/name" — the canonical team URL form on the
+// server and dashboard. The workspace-flat slug "namespace.name" is only
+// used inside the runtime layer (tmux window names, agent IDs); operators
+// always type the slash form.
 func splitTeamID(raw string) (namespace, name string, err error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return "", "", errors.New("team ID is required (format: namespace/name)")
 	}
-	for _, sep := range []string{"/", "."} {
-		if i := strings.Index(raw, sep); i > 0 && i < len(raw)-1 {
-			return raw[:i], raw[i+1:], nil
-		}
+	i := strings.Index(raw, "/")
+	if i <= 0 || i >= len(raw)-1 {
+		return "", "", fmt.Errorf("invalid team ID %q (expected namespace/name)", raw)
 	}
-	return "", "", fmt.Errorf("invalid team ID %q (expected namespace/name)", raw)
+	return raw[:i], raw[i+1:], nil
 }
 
 // readContent returns content from arg[0] or stdin (when empty/missing).

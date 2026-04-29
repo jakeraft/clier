@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -72,7 +73,8 @@ func New(d Deps) *Runner {
 
 // Start resolves the team into a RunManifest, clones each mount under the
 // run scratch dir, launches one tmux window per agent, and persists the
-// resulting plan.
+// resulting plan. Failures at any step roll back tmux state and remove the
+// run scratch dir so a retry leaves no debris.
 func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 	manifest, err := r.api.ResolveTeam(namespace, name)
 	if err != nil {
@@ -89,6 +91,16 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 	sessionName := "clier-" + runID
 	runDir := r.store.RunDir(runID)
 	mountsDir := r.store.MountsDir(runID)
+
+	success := false
+	defer func() {
+		if success {
+			return
+		}
+		// Roll back partial tmux + filesystem state so a retry starts clean.
+		_ = r.tmux.KillSession(sessionName)
+		_ = os.RemoveAll(runDir)
+	}()
 
 	planMounts := make([]runplan.Mount, 0, len(manifest.Mounts))
 	for _, m := range manifest.Mounts {
@@ -125,7 +137,6 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 			windowIdx, werr = r.tmux.NewWindow(sessionName, spec.ID, absCwd)
 		}
 		if werr != nil {
-			r.bestEffortKill(sessionName)
 			return nil, fmt.Errorf("create tmux window for %s: %w", spec.ID, werr)
 		}
 		plan.Agents = append(plan.Agents, runplan.Agent{
@@ -143,22 +154,20 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 	for _, agent := range plan.Agents {
 		line := joinCommandLine(agent.Command, agent.Args)
 		if err := r.tmux.SendLine(sessionName, agent.Window, line); err != nil {
-			r.bestEffortKill(sessionName)
 			return nil, fmt.Errorf("launch %s: %w", agent.ID, err)
 		}
 	}
 
 	for _, agent := range plan.Agents {
 		if err := r.waitReady(sessionName, agent); err != nil {
-			r.bestEffortKill(sessionName)
 			return nil, err
 		}
 	}
 
 	if err := r.store.Save(plan); err != nil {
-		r.bestEffortKill(sessionName)
 		return nil, fmt.Errorf("save run plan: %w", err)
 	}
+	success = true
 	return plan, nil
 }
 
@@ -166,6 +175,10 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 // the run plan. fromAgent is optional: when present, the message is
 // prefixed with `[Message from <fromAgent>] ` so the recipient sees the
 // origin in their TUI.
+//
+// Refuses delivery when the tmux session is gone — without this guard the
+// send-keys lands in whatever shell prompt happens to occupy that window
+// after the agent crashed.
 func (r *Runner) Tell(runID string, fromAgent *string, toAgent string, content string) error {
 	plan, err := r.store.Load(runID)
 	if err != nil {
@@ -173,6 +186,13 @@ func (r *Runner) Tell(runID string, fromAgent *string, toAgent string, content s
 	}
 	if plan.Status != runplan.StatusRunning {
 		return fmt.Errorf("run %s is not active (status=%s)", runID, plan.Status)
+	}
+	alive, err := r.tmux.HasSession(plan.SessionName)
+	if err != nil {
+		return fmt.Errorf("inspect tmux session: %w", err)
+	}
+	if !alive {
+		return &tmux.ErrSessionGone{Session: plan.SessionName}
 	}
 	agent, ok := plan.FindAgent(toAgent)
 	if !ok {
@@ -268,10 +288,6 @@ func (r *Runner) gracefulExit(plan *runplan.Plan) {
 		}
 		_ = r.tmux.SendLine(plan.SessionName, agent.Window, profile.exitCommand)
 	}
-}
-
-func (r *Runner) bestEffortKill(session string) {
-	_ = r.tmux.KillSession(session)
 }
 
 func defaultRunID() (string, error) {

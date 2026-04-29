@@ -7,7 +7,13 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
+
+// requestTimeout caps every API call so a hung server can't freeze the CLI.
+// Long enough for cold cold-cache resolves; short enough that operators
+// notice and Ctrl-C themselves rather than waiting forever.
+const requestTimeout = 30 * time.Second
 
 // Client is a thin HTTP client for clier-server. Authentication is a single
 // bearer token presented on every request; an empty token sends no
@@ -22,7 +28,7 @@ func New(baseURL, token string) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(baseURL, "/"),
 		token:   token,
-		http:    &http.Client{},
+		http:    &http.Client{Timeout: requestTimeout},
 	}
 }
 

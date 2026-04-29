@@ -27,14 +27,14 @@ is composed server-side and arrives as agent-type-specific args — the CLI
 is vendor-blind.
 
 Get started:
-  clier auth login                 Log in via GitHub device flow
-  clier run start <ns/name>        Launch a team in tmux
-  clier run attach <run-id>        Watch and intervene in real time
-  clier run tell --to <agent> ...  Message an agent
-  clier run stop <run-id>          Tear the run down
+  clier auth login                          Log in via GitHub device flow
+  clier run start <namespace/name>          Launch a team in tmux
+  clier run attach <run-id>                 Watch and intervene in real time
+  clier run tell --run <id> --to <agent>    Message an agent
+  clier run stop <run-id>                   Tear the run down
 
-Output is line-delimited JSON on stdout for every successful command.
-Errors print a single line on stderr and exit non-zero.`
+Output is JSON on stdout for every successful command. Errors print a
+single line on stderr and exit non-zero. Browse teams in the dashboard.`
 
 // SetVersion configures the --version string. Called from main.go so the
 // build pipeline can stamp it.

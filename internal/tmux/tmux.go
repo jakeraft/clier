@@ -40,12 +40,27 @@ func (e *ErrSessionGone) Error() string {
 
 // Real shells out to the `tmux` binary. send-keys sleeps 300ms between the
 // literal text and Enter — Claude Code's Ink TUI swallows Enter without it.
+//
+// Both `sleep` and `run` are injectable so tests can run the orchestration
+// without a real tmux server.
 type Real struct {
 	sleep func(d time.Duration)
+	run   func(args ...string) (string, error)
 }
 
 func New() *Real {
-	return &Real{sleep: time.Sleep}
+	r := &Real{sleep: time.Sleep}
+	r.run = realRun
+	return r
+}
+
+func realRun(args ...string) (string, error) {
+	cmd := exec.Command("tmux", args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("tmux %s: %w: %s", args[0], err, strings.TrimSpace(string(out)))
+	}
+	return strings.TrimSpace(string(out)), nil
 }
 
 func (r *Real) NewSession(session, windowName, cwd string) (int, error) {
@@ -152,15 +167,6 @@ func (r *Real) currentWindowIndex(session string) (int, error) {
 		return 0, fmt.Errorf("parse window index %q: %w", out, err)
 	}
 	return idx, nil
-}
-
-func (r *Real) run(args ...string) (string, error) {
-	cmd := exec.Command("tmux", args...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("tmux %s: %w: %s", args[0], err, strings.TrimSpace(string(out)))
-	}
-	return strings.TrimSpace(string(out)), nil
 }
 
 func wrapSessionGone(session string, err error) error {
