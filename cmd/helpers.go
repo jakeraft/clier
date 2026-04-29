@@ -1,122 +1,106 @@
 package cmd
 
 import (
-	"crypto/rand"
-	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
-	"sort"
 	"strings"
-	"time"
 
-	apprun "github.com/jakeraft/clier/internal/app/run"
-	"github.com/jakeraft/clier/internal/domain"
+	"github.com/jakeraft/clier/internal/api"
+	"github.com/jakeraft/clier/internal/auth"
+	"github.com/jakeraft/clier/internal/config"
+	"github.com/jakeraft/clier/internal/git"
+	"github.com/jakeraft/clier/internal/runner"
+	"github.com/jakeraft/clier/internal/runplan"
+	"github.com/jakeraft/clier/internal/tmux"
 )
 
-// sessionName generates a tmux-safe session name from a name and run ID.
-// The runID suffix uses the last 8 characters (the random hex part of
-// "<timestamp>-<hex>") so two runs started the same day do not collide
-// on the timestamp prefix.
-func sessionName(name, runID string) string {
-	n := strings.NewReplacer(".", "-", ":", "-", " ", "-", "/", "-").Replace(name)
-	if runes := []rune(n); len(runes) > 20 {
-		n = string(runes[:20])
-	}
-	short := runID
-	if len(short) > 8 {
-		short = short[len(short)-8:]
-	}
-	return n + "-" + short
+// emit writes a value as compact JSON to w, followed by a newline.
+// All success output goes through this so agents can parse the CLI
+// uniformly.
+func emit(w io.Writer, v any) error {
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+	return enc.Encode(v)
 }
 
-// buildAgentEnv returns the environment variables for an agent.
-func buildAgentEnv(runID, agentID, teamID string) map[string]string {
-	env := map[string]string{
-		envClierRunID:         runID,
-		envClierAgentName:     agentID,
-		envClierAgent:         "true",
-		"GIT_AUTHOR_NAME":     agentID,
-		"GIT_AUTHOR_EMAIL":    "noreply@clier.com",
-		"GIT_COMMITTER_NAME":  agentID,
-		"GIT_COMMITTER_EMAIL": "noreply@clier.com",
-	}
-	if teamID != "" {
-		env[envClierTeamName] = teamID
-	}
-	return env
+// loadConfig returns the resolved Paths bundle (env-overridable).
+func loadConfig() (*config.Paths, error) {
+	return config.Default()
 }
 
-// buildFullCommand assembles a shell command with env exports, cd, and the agent command.
-func buildFullCommand(env map[string]string, command, cwd string) string {
-	var parts []string
-	for k, v := range env {
-		parts = append(parts, fmt.Sprintf("export %s=%s", k, shellQuote(v)))
+// loadCredentials returns credentials or (nil, nil) when not logged in.
+func loadCredentials(path string) (*auth.Credentials, error) {
+	creds, err := auth.LoadCredentials(path)
+	if errors.Is(err, auth.ErrNotLoggedIn) {
+		return nil, nil
 	}
-	sort.Strings(parts) // deterministic order
-	parts = append(parts, "cd "+shellQuote(cwd))
-	parts = append(parts, command)
-	return strings.Join(parts, " &&\n")
+	return creds, err
 }
 
-func shellQuote(v string) string {
-	return "'" + strings.ReplaceAll(v, "'", `'"'"'`) + "'"
-}
-
-// rejectIfRunActive returns an error if a running plan already targets
-// the given working copy. Same-directory concurrent runs would let two
-// vendor processes mutate the same agent files at once, so we block
-// the second start and tell the agent to stop the first run (or fork
-// the team into a separate working copy if real parallelism is needed).
-func rejectIfRunActive(base string) error {
-	repo, err := newRunRepository()
+// newAPIClient returns an api.Client preloaded with the persisted token
+// (empty string if logged out).
+func newAPIClient() (*api.Client, *config.Paths, error) {
+	cfg, err := loadConfig()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	plan, found, err := repo.FindRunningForWorkingCopy(base)
+	creds, err := loadCredentials(cfg.CredentialsPath)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	if found {
-		return &domain.Fault{
-			Kind:    domain.KindRunAlreadyRunning,
-			Subject: map[string]string{"run_id": plan.RunID},
-		}
+	token := ""
+	if creds != nil {
+		token = creds.Token
 	}
-	return nil
+	return api.New(cfg.ServerURL, token), cfg, nil
 }
 
-// resolveRunPlan loads a run plan by run-id from the central runs directory.
-func resolveRunPlan(runID string) (*apprun.RunPlan, error) {
-	repo, err := newRunRepository()
+// newRunner wires the orchestrator with real adapters.
+func newRunner() (*runner.Runner, error) {
+	client, cfg, err := newAPIClient()
 	if err != nil {
 		return nil, err
 	}
-	plan, err := repo.Load(runID)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, &domain.Fault{
-				Kind:    domain.KindRunNotFound,
-				Subject: map[string]string{"run_id": runID},
-			}
-		}
-		return nil, fmt.Errorf("load run plan: %w", err)
-	}
-	if plan.RunID != "" && plan.RunID != runID {
-		return nil, &domain.Fault{
-			Kind: domain.KindInternal,
-			Subject: map[string]string{
-				"detail": "run plan for " + runID + " reports run id " + plan.RunID,
-			},
-		}
-	}
-	return plan, nil
+	store := runplan.NewStore(cfg.RunsDir)
+	return runner.New(runner.Deps{
+		API:   client,
+		Git:   git.New(),
+		Tmux:  tmux.New(),
+		Store: store,
+	}), nil
 }
 
-func newRunID() (string, error) {
-	var suffix [4]byte
-	if _, err := rand.Read(suffix[:]); err != nil {
-		return "", fmt.Errorf("generate run id: %w", err)
+// splitTeamID accepts both "namespace/name" and "namespace.name" so users
+// pasting from URLs (slash) or workspace ids (dot) work either way.
+func splitTeamID(raw string) (namespace, name string, err error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", "", errors.New("team ID is required (format: namespace/name)")
 	}
-	return time.Now().UTC().Format("20060102T150405") + "-" + hex.EncodeToString(suffix[:]), nil
+	for _, sep := range []string{"/", "."} {
+		if i := strings.Index(raw, sep); i > 0 && i < len(raw)-1 {
+			return raw[:i], raw[i+1:], nil
+		}
+	}
+	return "", "", fmt.Errorf("invalid team ID %q (expected namespace/name)", raw)
+}
+
+// readContent returns content from arg[0] or stdin (when empty/missing).
+func readContent(args []string) (string, error) {
+	if len(args) > 0 && args[0] != "-" {
+		return args[0], nil
+	}
+	b, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return "", err
+	}
+	content := strings.TrimSpace(string(b))
+	if content == "" {
+		return "", errors.New("message content is empty")
+	}
+	return content, nil
 }

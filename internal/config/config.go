@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/user"
@@ -9,97 +8,44 @@ import (
 	"strings"
 )
 
-const dotDir = ".clier"
-const DefaultServerURL = "http://localhost:8080"
-const DefaultDashboardURL = "http://localhost:5173"
+const (
+	dotDir              = ".clier"
+	DefaultServerURL    = "http://localhost:8080"
+	DefaultDashboardURL = "http://localhost:5173"
+	envServerURL        = "CLIER_SERVER_URL"
+	envDashboardURL     = "CLIER_DASHBOARD_URL"
+)
 
-// File stores user-configurable CLI settings.
-type File struct {
-	ServerURL       string `json:"server_url,omitempty"`
-	DashboardURL    string `json:"dashboard_url,omitempty"`
-	CredentialsPath string `json:"credentials_path,omitempty"`
-	WorkspaceDir    string `json:"workspace_dir,omitempty"`
+// Paths bundles every filesystem path and remote URL the CLI needs.
+// Server URL and dashboard URL fall back to the local-dev defaults so the
+// out-of-the-box `make dev` setup works without a config file.
+type Paths struct {
+	BaseDir         string // ~/.clier
+	CredentialsPath string // ~/.clier/credentials.json
+	RunsDir         string // ~/.clier/runs
+	ServerURL       string
+	DashboardURL    string
 }
 
-func defaultBaseDir() (string, error) {
+// Default returns the canonical config rooted at the current user's home.
+func Default() (*Paths, error) {
 	u, err := user.Current()
 	if err != nil {
-		return "", fmt.Errorf("get current user: %w", err)
+		return nil, fmt.Errorf("get current user: %w", err)
 	}
-	return filepath.Join(u.HomeDir, dotDir), nil
-}
-
-// DefaultPath returns the default ~/.clier/config.json location.
-func DefaultPath() (string, error) {
-	base, err := defaultBaseDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(base, "config.json"), nil
-}
-
-// Resolve fills missing config values with defaults and normalizes URLs.
-func Resolve(cfg *File) (*File, error) {
-	base, err := defaultBaseDir()
-	if err != nil {
-		return nil, err
-	}
-
-	out := &File{
-		ServerURL:       DefaultServerURL,
-		DashboardURL:    DefaultDashboardURL,
+	base := filepath.Join(u.HomeDir, dotDir)
+	return &Paths{
+		BaseDir:         base,
 		CredentialsPath: filepath.Join(base, "credentials.json"),
-		WorkspaceDir:    filepath.Join(base, "workspace"),
-	}
-	if cfg == nil {
-		return out, nil
-	}
-
-	if cfg.ServerURL != "" {
-		out.ServerURL = normalizeServerURL(cfg.ServerURL)
-	}
-	if cfg.DashboardURL != "" {
-		out.DashboardURL = normalizeServerURL(cfg.DashboardURL)
-	}
-	if cfg.CredentialsPath != "" {
-		out.CredentialsPath = cfg.CredentialsPath
-	}
-	if cfg.WorkspaceDir != "" {
-		out.WorkspaceDir = cfg.WorkspaceDir
-	}
-
-	return out, nil
+		RunsDir:         filepath.Join(base, "runs"),
+		ServerURL:       envOr(envServerURL, DefaultServerURL),
+		DashboardURL:    envOr(envDashboardURL, DefaultDashboardURL),
+	}, nil
 }
 
-// Load reads config.json from the given path.
-func Load(path string) (*File, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+func envOr(key, fallback string) string {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		return strings.TrimRight(v, "/")
 	}
-
-	var cfg File
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("corrupted config file: %w", err)
-	}
-
-	return &cfg, nil
-}
-
-// Save writes config.json to the given path with 0600 permission.
-func Save(path string, cfg *File) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-
-	data, err := json.Marshal(cfg)
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(path, data, 0o600)
-}
-
-func normalizeServerURL(raw string) string {
-	return strings.TrimRight(strings.TrimSpace(raw), "/")
+	return fallback
 }

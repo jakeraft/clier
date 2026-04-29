@@ -1,12 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"os/exec"
 	"runtime"
 
-	"github.com/jakeraft/clier/cmd/present"
-	"github.com/jakeraft/clier/cmd/view"
-	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -16,10 +14,11 @@ func init() {
 
 func newOpenCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "open",
-		Short:   "Open clier resources in a browser",
-		GroupID: rootGroupSettings,
-		RunE:    subcommandRequired,
+		Use:   "open",
+		Short: "Open clier surfaces in the browser",
+		RunE: func(c *cobra.Command, _ []string) error {
+			return c.Help()
+		},
 	}
 	cmd.AddCommand(newOpenDashboardCmd())
 	return cmd
@@ -28,9 +27,9 @@ func newOpenCmd() *cobra.Command {
 func newOpenDashboardCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "dashboard",
-		Short: "Open the dashboard in a browser",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := currentConfig()
+		Short: "Open the dashboard in the default browser",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := loadConfig()
 			if err != nil {
 				return err
 			}
@@ -38,23 +37,22 @@ func newOpenDashboardCmd() *cobra.Command {
 			if err := openBrowser(url); err != nil {
 				return err
 			}
-			return present.Success(cmd.OutOrStdout(), view.DashboardOpenOf(url))
+			return emit(cmd.OutOrStdout(), map[string]any{"opened": url})
 		},
 	}
 }
 
 func openBrowser(url string) error {
+	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		return exec.Command("open", url).Start()
+		cmd = exec.Command("open", url)
 	case "linux":
-		return exec.Command("xdg-open", url).Start()
+		cmd = exec.Command("xdg-open", url)
 	case "windows":
-		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
 	default:
-		return &domain.Fault{
-			Kind:    domain.KindUnsupportedPlatform,
-			Subject: map[string]string{"platform": runtime.GOOS},
-		}
+		return fmt.Errorf("unsupported platform: %s", runtime.GOOS)
 	}
+	return cmd.Start()
 }

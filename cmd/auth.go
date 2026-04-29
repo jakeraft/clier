@@ -1,12 +1,13 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
-	"github.com/jakeraft/clier/cmd/present"
-	"github.com/jakeraft/clier/cmd/view"
+	"github.com/jakeraft/clier/internal/api"
 	"github.com/jakeraft/clier/internal/auth"
+	"github.com/jakeraft/clier/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -16,41 +17,38 @@ func init() {
 
 func newAuthCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "auth",
-		Short:   "Log in and manage credentials",
-		GroupID: rootGroupSettings,
-		Long:    `Log in and manage credentials for accessing clier resources.`,
-		RunE:    subcommandRequired,
+		Use:   "auth",
+		Short: "Log in and manage credentials",
+		RunE: func(c *cobra.Command, _ []string) error {
+			return c.Help()
+		},
 	}
-	cmd.AddCommand(newAuthLoginCmd())
-	cmd.AddCommand(newAuthLogoutCmd())
-	cmd.AddCommand(newAuthStatusCmd())
-	cmd.AddCommand(newAuthTokenCmd())
+	cmd.AddCommand(newAuthLoginCmd(), newAuthLogoutCmd(), newAuthStatusCmd())
 	return cmd
 }
 
 func newAuthLoginCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "login",
-		Short: "Log in with GitHub",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			svc, err := newRemoteAuthService()
+		Short: "Log in via GitHub device flow",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := loadConfig()
 			if err != nil {
 				return err
 			}
-			cfg, err := currentConfig()
-			if err != nil {
-				return err
-			}
-			user, err := svc.Login(cfg.CredentialsPath, func(prompt auth.LoginPrompt) {
-				fmt.Fprintf(os.Stderr, "! First, copy your one-time code: %s\n", prompt.UserCode)
+			// Public endpoint — no token needed for device flow.
+			client := api.New(cfg.ServerURL, "")
+			ns, err := auth.Login(client, cfg.CredentialsPath, func(prompt auth.LoginPrompt) {
+				fmt.Fprintf(os.Stderr, "First, copy your one-time code: %s\n", prompt.UserCode)
 				fmt.Fprintf(os.Stderr, "Then open: %s\n", prompt.VerificationURI)
-				fmt.Fprintf(os.Stderr, "Waiting for authentication...\n")
+				fmt.Fprintln(os.Stderr, "Waiting for confirmation...")
 			})
 			if err != nil {
 				return err
 			}
-			return present.Success(cmd.OutOrStdout(), view.AuthLoginOf(user.Name))
+			return emit(cmd.OutOrStdout(), map[string]any{
+				"login": ns.Name,
+			})
 		},
 	}
 }
@@ -58,65 +56,72 @@ func newAuthLoginCmd() *cobra.Command {
 func newAuthLogoutCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "logout",
-		Short: "Log out",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			svc, err := newRemoteAuthService()
+		Short: "Revoke the current session",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			client, cfg, err := newAPIClient()
 			if err != nil {
 				return err
 			}
-			cfg, err := currentConfig()
+			creds, err := loadCredentials(cfg.CredentialsPath)
 			if err != nil {
 				return err
 			}
-			if err := svc.Logout(cfg.CredentialsPath); err != nil {
+			if creds == nil {
+				return emit(cmd.OutOrStdout(), map[string]any{"logged_out": true})
+			}
+			// Best-effort server revoke — even if the network is down we still
+			// remove the local token so the user is fully logged out.
+			if err := client.AuthLogout(); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: server logout failed: %s\n", err)
+			}
+			if err := auth.DeleteCredentials(cfg.CredentialsPath); err != nil {
 				return err
 			}
-			return present.Success(cmd.OutOrStdout(), view.AuthLogoutOf())
+			return emit(cmd.OutOrStdout(), map[string]any{"logged_out": true})
 		},
 	}
 }
 
 func newAuthStatusCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:          "status",
-		Short:        "Show login status",
-		SilenceUsage: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			svc, err := newRemoteAuthService()
+		Use:   "status",
+		Short: "Show login status",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := loadConfig()
 			if err != nil {
 				return err
 			}
-			cfg, err := currentConfig()
+			creds, err := loadCredentials(cfg.CredentialsPath)
 			if err != nil {
 				return err
 			}
-			user, err := svc.Status(cfg.CredentialsPath)
+			if creds == nil {
+				return emit(cmd.OutOrStdout(), authStatus(cfg, false, "", ""))
+			}
+			client := api.New(cfg.ServerURL, creds.Token)
+			ns, err := client.AuthMe()
 			if err != nil {
+				var apiErr *api.Error
+				if errors.As(err, &apiErr) && apiErr.StatusCode == 401 {
+					return emit(cmd.OutOrStdout(), authStatus(cfg, false, creds.Login, "session_expired"))
+				}
 				return err
 			}
-			return present.Success(cmd.OutOrStdout(), view.AuthStatusOf(user.Name))
+			return emit(cmd.OutOrStdout(), authStatus(cfg, true, ns.Name, ""))
 		},
 	}
 }
 
-func newAuthTokenCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "token",
-		Short: "Print the current access token",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			svc, err := newRemoteAuthService()
-			if err != nil {
-				return err
-			}
-			cfg, err := currentConfig()
-			if err != nil {
-				return err
-			}
-			token, err := svc.Token(cfg.CredentialsPath)
-			if err != nil {
-				return err
-			}
-			return present.Success(cmd.OutOrStdout(), view.AuthTokenOf(token))
-		},
+func authStatus(cfg *config.Paths, loggedIn bool, login, reason string) map[string]any {
+	out := map[string]any{
+		"logged_in":  loggedIn,
+		"server_url": cfg.ServerURL,
 	}
+	if login != "" {
+		out["login"] = login
+	}
+	if reason != "" {
+		out["reason"] = reason
+	}
+	return out
 }

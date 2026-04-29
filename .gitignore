@@ -54,3 +54,4 @@ ui/dist/
 
 # Local demo recording assets (vhs / asciinema)
 demo/
+bin/
