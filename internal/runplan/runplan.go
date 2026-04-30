@@ -14,22 +14,22 @@ const (
 	StatusRunning = "running"
 	StatusStopped = "stopped"
 
-	planFileName  = "run.json"
-	mountsDirName = "mounts"
+	planFileName = "run.json"
 )
 
 // ErrRunNotFound is returned when no run plan exists for the given runID.
 var ErrRunNotFound = errors.New("run not found")
 
-// Plan is everything `clier run` needs to drive a started session — what was
-// cloned, where it lives, and what's been said to whom.
+// Plan is everything `clier run` needs to drive a started session — what
+// was cloned, where it lives, and what's been said to whom. Mirrors the
+// agent-grouped RunManifest (ADR-0002 §2) so post-stop introspection
+// (`clier run view`) can show the same shape that mint emitted.
 type Plan struct {
 	RunID       string     `json:"run_id"`
 	SessionName string     `json:"session_name"`
 	RunDir      string     `json:"run_dir"`
 	Namespace   string     `json:"namespace"`
 	TeamName    string     `json:"team_name"`
-	Mounts      []Mount    `json:"mounts"`
 	Agents      []Agent    `json:"agents"`
 	Status      string     `json:"status"`
 	StartedAt   time.Time  `json:"started_at"`
@@ -37,26 +37,20 @@ type Plan struct {
 	Messages    []Message  `json:"messages,omitempty"`
 }
 
-// Mount is a clone destination on disk (resolved from RunManifest.Mount +
-// the run's scratch dir).
-type Mount struct {
-	Name       string `json:"name"`
-	GitRepoURL string `json:"git_repo_url"`
-	GitSubpath string `json:"git_subpath"`
-	LocalDir   string `json:"local_dir"`
-}
-
-// Agent is a single tmux window's spec, with the scratch-dir-resolved cwd
-// pre-baked so tell/attach/stop can run without re-deriving it.
+// Agent is a single tmux window's spec. The fs-resolved AbsCwd is baked
+// in so tell/attach/stop can run without re-deriving it; the source
+// fields (GitRepo*, ProtocolDest) are kept for retrospection.
 type Agent struct {
-	ID        string   `json:"id"`
-	Window    int      `json:"window"`
-	Mount     string   `json:"mount"`
-	Cwd       string   `json:"cwd"`
-	AbsCwd    string   `json:"abs_cwd"`
-	Command   string   `json:"command"`
-	Args      []string `json:"args"`
-	AgentType string   `json:"agent_type"`
+	ID           string   `json:"id"`
+	Window       int      `json:"window"`
+	AbsCwd       string   `json:"abs_cwd"`
+	GitRepoURL   string   `json:"git_repo_url"`
+	GitSubpath   string   `json:"git_subpath"`
+	GitDest      string   `json:"git_dest"`
+	ProtocolDest string   `json:"protocol_dest"`
+	Command      string   `json:"command"`
+	Args         []string `json:"args"`
+	AgentType    string   `json:"agent_type"`
 }
 
 // Message records a tell delivery — useful for `clier run view` audit.
@@ -108,14 +102,10 @@ func NewStore(rootDir string) *Store {
 	return &Store{root: rootDir}
 }
 
-// RunDir returns the per-run directory path (parent of run.json + mounts/).
+// RunDir returns the per-run directory path. Each agent's git.dest and
+// protocol.dest are relative to this path (ADR-0002 §6).
 func (s *Store) RunDir(runID string) string {
 	return filepath.Join(s.root, runID)
-}
-
-// MountsDir returns the absolute clones-base directory for a run.
-func (s *Store) MountsDir(runID string) string {
-	return filepath.Join(s.RunDir(runID), mountsDirName)
 }
 
 // Save writes run.json under the plan's RunDir, creating it if missing.
@@ -164,13 +154,25 @@ func (s *Store) List() ([]*Plan, error) {
 	return plans, nil
 }
 
-// PurgeMounts removes the cloned mounts for a run while leaving run.json
-// behind, so `clier run list` and `clier run view` keep working after stop.
-func (s *Store) PurgeMounts(runID string) error {
-	mounts := s.MountsDir(runID)
-	if err := os.RemoveAll(mounts); err != nil {
-		return fmt.Errorf("purge mounts: %w", err)
+// PurgeRunArtifacts removes every per-agent git clone destination plus
+// any protocol files, leaving run.json behind so `clier run list` and
+// `clier run view` keep working after stop.
+func (s *Store) PurgeRunArtifacts(plan *Plan) error {
+	for _, agent := range plan.Agents {
+		if agent.GitDest != "" {
+			if err := os.RemoveAll(filepath.Join(plan.RunDir, filepath.FromSlash(agent.GitDest))); err != nil {
+				return fmt.Errorf("purge git clone for %s: %w", agent.ID, err)
+			}
+		}
+		if agent.ProtocolDest != "" {
+			if err := os.RemoveAll(filepath.Join(plan.RunDir, filepath.FromSlash(agent.ProtocolDest))); err != nil {
+				return fmt.Errorf("purge protocol for %s: %w", agent.ID, err)
+			}
+		}
 	}
+	// Remove the protocols/ subdir if it ended up empty after the per-file
+	// removals — leaves a tidy `<run_dir>/{run.json}` for retrospection.
+	_ = os.Remove(filepath.Join(plan.RunDir, "protocols"))
 	return nil
 }
 

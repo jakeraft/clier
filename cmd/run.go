@@ -31,7 +31,7 @@ func newRunCmd() *cobra.Command {
 func newRunStartCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "start <namespace/name>",
-		Short: "Resolve, clone, and launch a team in tmux",
+		Short: "Mint a run, clone the team, and launch in tmux",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
@@ -54,9 +54,14 @@ func newRunStartCmd() *cobra.Command {
 func newRunTellCmd() *cobra.Command {
 	var runFlag, fromFlag, toFlag string
 	cmd := &cobra.Command{
-		Use:   "tell --run <id> --to <agent-id> [content]",
+		Use:   "tell --run <id> --to <agent-id> [--from <id>] [content]",
 		Short: "Send a message to an agent",
-		Args:  cobra.MaximumNArgs(1),
+		Long: `Send a message to an agent in a running tmux session.
+
+The protocol markdown the server emits at run start already embeds the
+fully-qualified ` + "`clier run tell --run <run-id> --to <peer>`" + ` invocation, so an
+agent inside the run can copy/paste that line verbatim.`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := readContent(args)
 			if err != nil {

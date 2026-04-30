@@ -10,19 +10,35 @@ import (
 	"testing"
 )
 
-func TestClientResolveTeam_decodesRunManifest(t *testing.T) {
+func TestClientMintRun_decodesRunManifest(t *testing.T) {
 	const body = `{
-		"mounts": [
-			{"name":"jakeraft.clier-qa-claude","git_repo_url":"https://github.com/jakeraft/clier-qa","git_subpath":"teams/clier-qa-claude"}
-		],
+		"run_id": "20260430-153045-abc12345",
 		"agents": [
-			{"id":"jakeraft.clier-qa-claude","window":0,"mount":"jakeraft.clier-qa-claude","cwd":"jakeraft.clier-qa-claude/teams/clier-qa-claude","command":"CLIER_AGENT= claude","args":["--append-system-prompt","# Team Protocol\n"],"agent_type":"claude"}
+			{
+				"id": "jakeraft.hello-clier",
+				"prepare": {
+					"git": {
+						"repo_url": "https://github.com/jakeraft/hello-clier",
+						"subpath": "",
+						"dest": "jakeraft.hello-clier"
+					},
+					"protocol": {
+						"content": "# Team Protocol\n\nYou are jakeraft.hello-clier",
+						"dest": "protocols/jakeraft.hello-clier.md"
+					}
+				},
+				"run": {
+					"agent_type": "claude",
+					"command": "claude",
+					"args": ["--append-system-prompt-file", "../protocols/jakeraft.hello-clier.md"]
+				}
+			}
 		]
 	}`
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/teams/jakeraft/clier-qa-claude/resolve" {
-			t.Errorf("unexpected path: %s", r.URL.Path)
+		if r.Method != http.MethodPost || r.URL.Path != "/api/v1/teams/jakeraft/hello-clier/runs" {
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
 		}
 		if r.Header.Get("Authorization") != "" {
 			t.Errorf("public endpoint should send no Authorization header, got %q", r.Header.Get("Authorization"))
@@ -32,37 +48,49 @@ func TestClientResolveTeam_decodesRunManifest(t *testing.T) {
 	defer srv.Close()
 
 	c := New(srv.URL, "")
-	got, err := c.ResolveTeam("jakeraft", "clier-qa-claude")
+	got, err := c.MintRun("jakeraft", "hello-clier")
 	if err != nil {
-		t.Fatalf("ResolveTeam: %v", err)
+		t.Fatalf("MintRun: %v", err)
 	}
-	if len(got.Mounts) != 1 || got.Mounts[0].Name != "jakeraft.clier-qa-claude" {
-		t.Errorf("mounts: %+v", got.Mounts)
+	if got.RunID != "20260430-153045-abc12345" {
+		t.Errorf("RunID: %q", got.RunID)
 	}
 	if len(got.Agents) != 1 {
 		t.Fatalf("agents: %+v", got.Agents)
 	}
 	a := got.Agents[0]
-	if a.AgentType != "claude" || len(a.Args) != 2 || a.Args[0] != "--append-system-prompt" {
-		t.Errorf("agent: %+v", a)
+	if a.ID != "jakeraft.hello-clier" {
+		t.Errorf("agent id: %q", a.ID)
 	}
-	if !strings.Contains(a.Args[1], "# Team Protocol") {
-		t.Errorf("args[1] should carry protocol markdown: %q", a.Args[1])
+	if a.Prepare.Git.Dest != "jakeraft.hello-clier" {
+		t.Errorf("git.dest: %q", a.Prepare.Git.Dest)
+	}
+	if a.Prepare.Protocol.Dest != "protocols/jakeraft.hello-clier.md" {
+		t.Errorf("protocol.dest: %q", a.Prepare.Protocol.Dest)
+	}
+	if a.Run.AgentType != "claude" || len(a.Run.Args) != 2 || a.Run.Args[0] != "--append-system-prompt-file" {
+		t.Errorf("run: %+v", a.Run)
+	}
+	if !strings.HasSuffix(a.Run.Args[1], "/protocols/jakeraft.hello-clier.md") {
+		t.Errorf("args[1] should be a relpath to the protocol file: %q", a.Run.Args[1])
+	}
+	if !strings.Contains(a.Prepare.Protocol.Content, "You are jakeraft.hello-clier") {
+		t.Errorf("protocol.content missing rendered body: %q", a.Prepare.Protocol.Content)
 	}
 }
 
-func TestClientResolveTeam_authBearerInjected(t *testing.T) {
+func TestClientMintRun_authBearerInjected(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer token-xyz" {
 			t.Errorf("expected Bearer token-xyz, got %q", r.Header.Get("Authorization"))
 		}
-		_, _ = io.WriteString(w, `{"mounts":[],"agents":[]}`)
+		_, _ = io.WriteString(w, `{"run_id":"x","agents":[]}`)
 	}))
 	defer srv.Close()
 
 	c := New(srv.URL, "token-xyz")
-	if _, err := c.ResolveTeam("ns", "team"); err != nil {
-		t.Fatalf("ResolveTeam: %v", err)
+	if _, err := c.MintRun("ns", "team"); err != nil {
+		t.Fatalf("MintRun: %v", err)
 	}
 }
 

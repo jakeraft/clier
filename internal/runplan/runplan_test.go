@@ -2,6 +2,7 @@ package runplan
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -16,25 +17,19 @@ func TestStoreSaveLoadRoundtrip(t *testing.T) {
 		SessionName: "clier-test-run",
 		RunDir:      store.RunDir("test-run"),
 		Namespace:   "jakeraft",
-		TeamName:    "clier-qa-claude",
-		Mounts: []Mount{
-			{
-				Name:       "jakeraft.clier-qa-claude",
-				GitRepoURL: "https://github.com/jakeraft/clier-qa",
-				GitSubpath: "teams/clier-qa-claude",
-				LocalDir:   filepath.Join(store.MountsDir("test-run"), "jakeraft.clier-qa-claude"),
-			},
-		},
+		TeamName:    "hello-clier",
 		Agents: []Agent{
 			{
-				ID:        "jakeraft.clier-qa-claude",
-				Window:    0,
-				Mount:     "jakeraft.clier-qa-claude",
-				Cwd:       "jakeraft.clier-qa-claude/teams/clier-qa-claude",
-				AbsCwd:    "/tmp/x",
-				Command:   "CLIER_AGENT= claude",
-				Args:      []string{"--append-system-prompt", "# Team Protocol\n"},
-				AgentType: "claude",
+				ID:           "jakeraft.hello-clier",
+				Window:       0,
+				AbsCwd:       "/tmp/x",
+				GitRepoURL:   "https://github.com/jakeraft/hello-clier",
+				GitSubpath:   "",
+				GitDest:      "jakeraft.hello-clier",
+				ProtocolDest: "protocols/jakeraft.hello-clier.md",
+				Command:      "claude --setting-sources project",
+				Args:         []string{"--append-system-prompt-file", "../protocols/jakeraft.hello-clier.md"},
+				AgentType:    "claude",
 			},
 		},
 		Status:    StatusRunning,
@@ -51,10 +46,10 @@ func TestStoreSaveLoadRoundtrip(t *testing.T) {
 	if loaded.RunID != plan.RunID {
 		t.Errorf("RunID: got %q, want %q", loaded.RunID, plan.RunID)
 	}
-	if len(loaded.Agents) != 1 || loaded.Agents[0].ID != "jakeraft.clier-qa-claude" {
+	if len(loaded.Agents) != 1 || loaded.Agents[0].ID != "jakeraft.hello-clier" {
 		t.Errorf("Agents: got %+v", loaded.Agents)
 	}
-	if loaded.Agents[0].Args[1] != "# Team Protocol\n" {
+	if loaded.Agents[0].Args[1] != "../protocols/jakeraft.hello-clier.md" {
 		t.Errorf("Agents[0].Args[1]: got %q", loaded.Agents[0].Args[1])
 	}
 }
@@ -91,31 +86,54 @@ func TestStoreListNewestFirst(t *testing.T) {
 	}
 }
 
-func TestPurgeMountsLeavesPlanJSON(t *testing.T) {
+// PurgeRunArtifacts wipes each agent's git clone destination + protocol
+// file, leaving run.json (so retrospection keeps working).
+func TestPurgeRunArtifactsLeavesPlanJSON(t *testing.T) {
 	root := t.TempDir()
 	store := NewStore(root)
-	plan := &Plan{RunID: "rid", RunDir: store.RunDir("rid"), StartedAt: time.Now()}
+	plan := &Plan{
+		RunID:     "rid",
+		RunDir:    store.RunDir("rid"),
+		StartedAt: time.Now(),
+		Agents: []Agent{
+			{
+				ID:           "ns.team",
+				GitDest:      "ns.team",
+				ProtocolDest: "protocols/ns.team.md",
+			},
+		},
+	}
 	if err := store.Save(plan); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
-	// Drop a fake mount tree.
-	mountsDir := store.MountsDir("rid")
-	if err := makeFile(filepath.Join(mountsDir, "x", "y"), "data"); err != nil {
-		t.Fatalf("makeFile: %v", err)
+	// Drop a fake clone tree + protocol file.
+	cloneFile := filepath.Join(plan.RunDir, "ns.team", "src", "main.go")
+	protoFile := filepath.Join(plan.RunDir, "protocols", "ns.team.md")
+	if err := makeFile(cloneFile, "package main"); err != nil {
+		t.Fatalf("makeFile clone: %v", err)
+	}
+	if err := makeFile(protoFile, "# protocol"); err != nil {
+		t.Fatalf("makeFile protocol: %v", err)
 	}
 
-	if err := store.PurgeMounts("rid"); err != nil {
-		t.Fatalf("PurgeMounts: %v", err)
+	if err := store.PurgeRunArtifacts(plan); err != nil {
+		t.Fatalf("PurgeRunArtifacts: %v", err)
 	}
 
+	if _, err := os.Stat(cloneFile); !os.IsNotExist(err) {
+		t.Errorf("clone tree should be gone, stat err: %v", err)
+	}
+	if _, err := os.Stat(protoFile); !os.IsNotExist(err) {
+		t.Errorf("protocol file should be gone, stat err: %v", err)
+	}
 	if _, err := store.Load("rid"); err != nil {
 		t.Errorf("expected plan to still load after purge, got %v", err)
 	}
 }
 
 func makeFile(path, contents string) error {
-	if err := mkdirParent(path); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	return writeFile(path, []byte(contents))
+	return os.WriteFile(path, []byte(contents), 0o644)
 }

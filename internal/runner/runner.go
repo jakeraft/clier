@@ -1,8 +1,6 @@
 package runner
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -35,29 +33,28 @@ func (e *ErrReadyTimeout) Error() string {
 // boots in <5s on a warm cache, <20s cold.
 const readyDeadline = 60 * time.Second
 
-// ResolverAPI is the narrow port the runner uses on the api package — only
-// ResolveTeam is needed. Defined here so tests can swap in a fake.
-type ResolverAPI interface {
-	ResolveTeam(namespace, name string) (*api.RunManifest, error)
+// RunsAPI is the narrow port the runner uses on the api package — only
+// MintRun is needed. Defined here so tests can swap in a fake.
+type RunsAPI interface {
+	MintRun(namespace, name string) (*api.RunManifest, error)
 }
 
 // Deps wires the runner with its collaborators. All four are required.
 type Deps struct {
-	API   ResolverAPI
+	API   RunsAPI
 	Git   git.Git
 	Tmux  tmux.Tmux
 	Store *runplan.Store
 }
 
-// Runner orchestrates the thin tmux flow: resolve → clone → tmux launch →
-// persist → tell/attach/stop.
+// Runner orchestrates the thin tmux flow: mint → write protocols → clone
+// → tmux launch → persist → tell/attach/stop.
 type Runner struct {
-	api   ResolverAPI
+	api   RunsAPI
 	git   git.Git
 	tmux  tmux.Tmux
 	store *runplan.Store
 	now   func() time.Time
-	newID func() (string, error)
 }
 
 func New(d Deps) *Runner {
@@ -67,30 +64,33 @@ func New(d Deps) *Runner {
 		tmux:  d.Tmux,
 		store: d.Store,
 		now:   time.Now,
-		newID: defaultRunID,
 	}
 }
 
-// Start resolves the team into a RunManifest, clones each mount under the
-// run scratch dir, launches one tmux window per agent, and persists the
-// resulting plan. Failures at any step roll back tmux state and remove the
-// run scratch dir so a retry leaves no debris.
+// Start mints a fresh RunManifest from the server, drops each agent's
+// rendered protocol on disk, clones each agent's git source, and
+// launches one tmux window per agent (ADR-0002 §7). Failures at any step
+// roll back tmux state and remove the run scratch dir so a retry leaves
+// no debris.
+//
+// RUN_ID is server-minted (ADR-0002 §3) — the CLI does not generate it.
+// `run.args` from the manifest is sent verbatim after per-item
+// shell-escape; the CLI does not substitute or rewrite tokens.
 func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
-	manifest, err := r.api.ResolveTeam(namespace, name)
+	manifest, err := r.api.MintRun(namespace, name)
 	if err != nil {
-		return nil, fmt.Errorf("resolve team %s/%s: %w", namespace, name, err)
+		return nil, fmt.Errorf("mint run for %s/%s: %w", namespace, name, err)
+	}
+	if manifest.RunID == "" {
+		return nil, fmt.Errorf("server returned empty run_id")
 	}
 	if len(manifest.Agents) == 0 {
 		return nil, fmt.Errorf("team %s/%s has no runnable agents", namespace, name)
 	}
 
-	runID, err := r.newID()
-	if err != nil {
-		return nil, fmt.Errorf("mint run id: %w", err)
-	}
+	runID := manifest.RunID
 	sessionName := "clier-" + runID
 	runDir := r.store.RunDir(runID)
-	mountsDir := r.store.MountsDir(runID)
 
 	success := false
 	defer func() {
@@ -102,18 +102,32 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 		_ = os.RemoveAll(runDir)
 	}()
 
-	planMounts := make([]runplan.Mount, 0, len(manifest.Mounts))
-	for _, m := range manifest.Mounts {
-		dest := filepath.Join(mountsDir, m.Name)
-		if err := r.git.Clone(m.GitRepoURL, dest); err != nil {
-			return nil, fmt.Errorf("clone mount %s: %w", m.Name, err)
+	// 1. Materialize per-agent prepare items (ADR-0002 §6 layout). Order:
+	//    write protocol files first, then clone — so a clone failure can
+	//    short-circuit without leaving inconsistent on-disk state.
+	if err := os.MkdirAll(runDir, 0o755); err != nil {
+		return nil, fmt.Errorf("create run dir: %w", err)
+	}
+	for _, spec := range manifest.Agents {
+		// prepare.protocol is omitted for inline-vendor agents (e.g. codex
+		// receives the protocol verbatim in run.args). Skip the write so
+		// no redundant file lands on disk for them.
+		if spec.Prepare.Protocol == nil {
+			continue
 		}
-		planMounts = append(planMounts, runplan.Mount{
-			Name:       m.Name,
-			GitRepoURL: m.GitRepoURL,
-			GitSubpath: m.GitSubpath,
-			LocalDir:   dest,
-		})
+		protoPath := filepath.Join(runDir, filepath.FromSlash(spec.Prepare.Protocol.Dest))
+		if err := os.MkdirAll(filepath.Dir(protoPath), 0o755); err != nil {
+			return nil, fmt.Errorf("create protocol dir for %s: %w", spec.ID, err)
+		}
+		if err := os.WriteFile(protoPath, []byte(spec.Prepare.Protocol.Content), 0o644); err != nil {
+			return nil, fmt.Errorf("write protocol for %s: %w", spec.ID, err)
+		}
+	}
+	for _, spec := range manifest.Agents {
+		dest := filepath.Join(runDir, filepath.FromSlash(spec.Prepare.Git.Dest))
+		if err := r.git.Clone(spec.Prepare.Git.RepoURL, dest); err != nil {
+			return nil, fmt.Errorf("clone for %s: %w", spec.ID, err)
+		}
 	}
 
 	plan := &runplan.Plan{
@@ -122,13 +136,17 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 		RunDir:      runDir,
 		Namespace:   namespace,
 		TeamName:    name,
-		Mounts:      planMounts,
 		Status:      runplan.StatusRunning,
 		StartedAt:   r.now(),
 	}
 
+	// 2. Open tmux session and one window per agent. agent's cwd =
+	//    git.dest [+ "/" + git.subpath] joined onto runDir.
 	for i, spec := range manifest.Agents {
-		absCwd := filepath.Join(mountsDir, filepath.FromSlash(spec.Cwd))
+		absCwd := filepath.Join(runDir, filepath.FromSlash(spec.Prepare.Git.Dest))
+		if spec.Prepare.Git.Subpath != "" {
+			absCwd = filepath.Join(absCwd, filepath.FromSlash(spec.Prepare.Git.Subpath))
+		}
 		var windowIdx int
 		var werr error
 		if i == 0 {
@@ -139,22 +157,54 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 		if werr != nil {
 			return nil, fmt.Errorf("create tmux window for %s: %w", spec.ID, werr)
 		}
+		var protocolDest string
+		if spec.Prepare.Protocol != nil {
+			protocolDest = spec.Prepare.Protocol.Dest
+		}
 		plan.Agents = append(plan.Agents, runplan.Agent{
-			ID:        spec.ID,
-			Window:    windowIdx,
-			Mount:     spec.Mount,
-			Cwd:       spec.Cwd,
-			AbsCwd:    absCwd,
-			Command:   spec.Command,
-			Args:      append([]string{}, spec.Args...),
-			AgentType: spec.AgentType,
+			ID:           spec.ID,
+			Window:       windowIdx,
+			AbsCwd:       absCwd,
+			GitRepoURL:   spec.Prepare.Git.RepoURL,
+			GitSubpath:   spec.Prepare.Git.Subpath,
+			GitDest:      spec.Prepare.Git.Dest,
+			ProtocolDest: protocolDest,
+			Command:      spec.Run.Command,
+			Args:         append([]string{}, spec.Run.Args...),
+			AgentType:    spec.Run.AgentType,
 		})
 	}
 
+	// 3. Send the launch line for each agent. command + args verbatim,
+	//    with only per-item shell-escape on args (ADR-0002 §9 send-keys).
 	for _, agent := range plan.Agents {
 		line := joinCommandLine(agent.Command, agent.Args)
 		if err := r.tmux.SendLine(sessionName, agent.Window, line); err != nil {
 			return nil, fmt.Errorf("launch %s: %w", agent.ID, err)
+		}
+	}
+
+	// 4. Auto-dismiss any vendor trust prompt before the readiness poll.
+	//    Codex 0.121+ blocks on "Do you trust this directory?" right
+	//    after launch (issue #19426 — no native skip flag); without this
+	//    every run halts until an operator attaches and presses 1+Enter.
+	//    Claude has no trust gate so its profile leaves trustResponse
+	//    blank.
+	for _, agent := range plan.Agents {
+		profile := profileFor(agent.AgentType)
+		if profile.trustResponse == "" {
+			continue
+		}
+		// Brief pause so the prompt has time to render before we send
+		// the keystroke. Polling for the prompt text is theoretically
+		// stronger but adds tmux capture-pane I/O for every codex
+		// launch; a fixed 3s delay covers cold-cache codex 0.125
+		// startup (cold node/npm boot routinely exceeds 1.5s on first
+		// run after a system restart, so the earlier 1.5s budget would
+		// race the prompt and silently leave the run blocked).
+		time.Sleep(3 * time.Second)
+		if err := r.tmux.SendLine(sessionName, agent.Window, profile.trustResponse); err != nil {
+			return nil, fmt.Errorf("auto-trust %s: %w", agent.ID, err)
 		}
 	}
 
@@ -171,8 +221,8 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 	return plan, nil
 }
 
-// Tell sends a message to the target agent's tmux window and records it in
-// the run plan. fromAgent is optional: when present, the message is
+// Tell sends a message to the target agent's tmux window and records it
+// in the run plan. fromAgent is optional: when present, the message is
 // prefixed with `[Message from <fromAgent>] ` so the recipient sees the
 // origin in their TUI.
 //
@@ -214,8 +264,8 @@ func (r *Runner) Tell(runID string, fromAgent *string, toAgent string, content s
 }
 
 // Stop kills the tmux session, marks the plan as stopped, and frees the
-// disk used by cloned mounts. The run plan json stays on disk so `clier
-// run view` keeps working post-stop.
+// disk used by cloned mounts and protocol files. The run plan json stays
+// on disk so `clier run view` keeps working post-stop.
 func (r *Runner) Stop(runID string) error {
 	plan, err := r.store.Load(runID)
 	if err != nil {
@@ -229,7 +279,7 @@ func (r *Runner) Stop(runID string) error {
 	if err := r.store.Save(plan); err != nil {
 		return fmt.Errorf("save stopped plan: %w", err)
 	}
-	return r.store.PurgeMounts(runID)
+	return r.store.PurgeRunArtifacts(plan)
 }
 
 // Attach hands control of stdin/stdout/stderr to a tmux attach. When
@@ -288,13 +338,4 @@ func (r *Runner) gracefulExit(plan *runplan.Plan) {
 		}
 		_ = r.tmux.SendLine(plan.SessionName, agent.Window, profile.exitCommand)
 	}
-}
-
-func defaultRunID() (string, error) {
-	timestamp := time.Now().Format("20060102-150405")
-	var b [4]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", err
-	}
-	return timestamp + "-" + hex.EncodeToString(b[:]), nil
 }

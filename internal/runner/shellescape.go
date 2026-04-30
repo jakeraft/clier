@@ -34,12 +34,13 @@ func isSafe(s string) bool {
 
 // joinCommandLine builds the full single-line invocation the CLI sends via
 // tmux send-keys: the verbatim server-supplied `command` followed by each
-// `args[]` token after per-item POSIX shell escape.
+// `args[]` token after per-item POSIX shell escape (ADR-0002 §9).
 //
-// The command string is intentionally NOT escaped — it is the team
-// author's literal shell expression (e.g. `CLIER_AGENT= claude --foo`) and
-// the server emits it verbatim. Args, in contrast, are protocol payloads
-// the CLI must hand off as a single argv item to the vendor binary.
+// `command` is intentionally NOT escaped — it is the team author's literal
+// shell expression (which may include vendor flags or env prefixes the
+// author wrote) and the server emits it verbatim. `args` items ARE
+// escaped so the receiving shell parses each as exactly one argv token,
+// no matter what bytes the server packed in.
 func joinCommandLine(command string, args []string) string {
 	if len(args) == 0 {
 		return command

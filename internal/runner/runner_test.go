@@ -2,6 +2,7 @@ package runner
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,7 +15,7 @@ type fakeAPI struct {
 	manifest *api.RunManifest
 }
 
-func (f *fakeAPI) ResolveTeam(namespace, name string) (*api.RunManifest, error) {
+func (f *fakeAPI) MintRun(namespace, name string) (*api.RunManifest, error) {
 	return f.manifest, nil
 }
 
@@ -26,6 +27,9 @@ type clone struct{ repoURL, dest string }
 
 func (g *fakeGit) Clone(repoURL, dest string) error {
 	g.clones = append(g.clones, clone{repoURL, dest})
+	// Pretend the clone created the directory so any post-clone fs work
+	// the runner does (none today, but defensive) sees it.
+	_ = os.MkdirAll(dest, 0o755)
 	return nil
 }
 
@@ -79,36 +83,43 @@ func (t *fakeTmux) PaneTitle(session string, idx int) (string, error) {
 
 func (t *fakeTmux) HasSession(session string) (bool, error) { return true, nil }
 
-func TestStartHappyPath_singleAgent(t *testing.T) {
-	manifest := &api.RunManifest{
-		Mounts: []api.Mount{
-			{
-				Name:       "jakeraft.clier-qa-claude",
-				GitRepoURL: "https://github.com/jakeraft/clier-qa",
-				GitSubpath: "teams/clier-qa-claude",
-			},
-		},
+func soloAgentManifest(runID, id string) *api.RunManifest {
+	return &api.RunManifest{
+		RunID: runID,
 		Agents: []api.AgentSpec{
 			{
-				ID:        "jakeraft.clier-qa-claude",
-				Window:    0,
-				Mount:     "jakeraft.clier-qa-claude",
-				Cwd:       "jakeraft.clier-qa-claude/teams/clier-qa-claude",
-				Command:   "CLIER_AGENT= claude --setting-sources project",
-				Args:      []string{"--append-system-prompt", "# Team Protocol\n"},
-				AgentType: "claude",
+				ID: id,
+				Prepare: api.AgentPrepare{
+					Git: api.GitPrepare{
+						RepoURL: "https://github.com/" + id,
+						Subpath: "",
+						Dest:    id,
+					},
+					Protocol: &api.ProtocolPrepare{
+						Content: "# Team Protocol\n\nrendered body for " + id,
+						Dest:    "protocols/" + id + ".md",
+					},
+				},
+				Run: api.AgentRun{
+					AgentType: "claude",
+					Command:   "claude --setting-sources project",
+					Args:      []string{"--append-system-prompt-file", "../protocols/" + id + ".md"},
+				},
 			},
 		},
 	}
+}
+
+func TestStartHappyPath_singleAgent(t *testing.T) {
+	manifest := soloAgentManifest("rid-1", "jakeraft.hello-clier")
 
 	root := t.TempDir()
 	store := runplan.NewStore(root)
 	gitFake := &fakeGit{}
 	tmuxFake := &fakeTmux{}
 	r := New(Deps{API: &fakeAPI{manifest: manifest}, Git: gitFake, Tmux: tmuxFake, Store: store})
-	r.newID = func() (string, error) { return "rid-1", nil }
 
-	plan, err := r.Start("jakeraft", "clier-qa-claude")
+	plan, err := r.Start("jakeraft", "hello-clier")
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -120,9 +131,19 @@ func TestStartHappyPath_singleAgent(t *testing.T) {
 		t.Errorf("SessionName: got %q", plan.SessionName)
 	}
 
-	wantCloneDest := filepath.Join(store.MountsDir("rid-1"), "jakeraft.clier-qa-claude")
+	wantCloneDest := filepath.Join(store.RunDir("rid-1"), "jakeraft.hello-clier")
 	if len(gitFake.clones) != 1 || gitFake.clones[0].dest != wantCloneDest {
 		t.Errorf("clones: got %+v, want one clone to %q", gitFake.clones, wantCloneDest)
+	}
+
+	// Protocol file dropped at <run>/protocols/<id>.md verbatim.
+	protoPath := filepath.Join(store.RunDir("rid-1"), "protocols", "jakeraft.hello-clier.md")
+	body, err := os.ReadFile(protoPath)
+	if err != nil {
+		t.Fatalf("read protocol file: %v", err)
+	}
+	if !strings.Contains(string(body), "rendered body for jakeraft.hello-clier") {
+		t.Errorf("protocol file body: %q", string(body))
 	}
 
 	gotKinds := []string{}
@@ -136,11 +157,11 @@ func TestStartHappyPath_singleAgent(t *testing.T) {
 
 	for _, op := range tmuxFake.ops {
 		if op.kind == "send" {
-			if !strings.Contains(op.value, "CLIER_AGENT= claude --setting-sources project") {
+			if !strings.Contains(op.value, "claude --setting-sources project") {
 				t.Errorf("send-keys missing command verbatim: %q", op.value)
 			}
-			if !strings.Contains(op.value, "'# Team Protocol\n'") {
-				t.Errorf("send-keys missing shell-escaped args: %q", op.value)
+			if !strings.Contains(op.value, "--append-system-prompt-file ../protocols/jakeraft.hello-clier.md") {
+				t.Errorf("send-keys missing file-path args: %q", op.value)
 			}
 		}
 	}
@@ -159,12 +180,24 @@ func TestStartHappyPath_singleAgent(t *testing.T) {
 
 func TestStartHappyPath_multiAgent(t *testing.T) {
 	manifest := &api.RunManifest{
-		Mounts: []api.Mount{
-			{Name: "ns.team", GitRepoURL: "https://example/repo", GitSubpath: ""},
-		},
+		RunID: "rid-2",
 		Agents: []api.AgentSpec{
-			{ID: "ns.a", Window: 0, Mount: "ns.team", Cwd: "ns.team", Command: "claude", Args: []string{}, AgentType: "claude"},
-			{ID: "ns.b", Window: 1, Mount: "ns.team", Cwd: "ns.team", Command: "claude", Args: []string{}, AgentType: "claude"},
+			{
+				ID: "ns.a",
+				Prepare: api.AgentPrepare{
+					Git:      api.GitPrepare{RepoURL: "https://example/a", Dest: "ns.a"},
+					Protocol: &api.ProtocolPrepare{Content: "p-a", Dest: "protocols/ns.a.md"},
+				},
+				Run: api.AgentRun{AgentType: "claude", Command: "claude", Args: []string{}},
+			},
+			{
+				ID: "ns.b",
+				Prepare: api.AgentPrepare{
+					Git:      api.GitPrepare{RepoURL: "https://example/b", Dest: "ns.b"},
+					Protocol: &api.ProtocolPrepare{Content: "p-b", Dest: "protocols/ns.b.md"},
+				},
+				Run: api.AgentRun{AgentType: "claude", Command: "claude", Args: []string{}},
+			},
 		},
 	}
 	r := New(Deps{
@@ -173,7 +206,6 @@ func TestStartHappyPath_multiAgent(t *testing.T) {
 		Tmux:  &fakeTmux{},
 		Store: runplan.NewStore(t.TempDir()),
 	})
-	r.newID = func() (string, error) { return "rid-2", nil }
 
 	plan, err := r.Start("ns", "team")
 	if err != nil {
@@ -187,15 +219,81 @@ func TestStartHappyPath_multiAgent(t *testing.T) {
 	}
 }
 
-func TestTellRecordsMessage(t *testing.T) {
+// Codex agents arrive with prepare.protocol == nil because their
+// rendered protocol travels inline in run.args. The runner must (a)
+// skip the protocol file write entirely (no zero-byte file dropped on
+// disk) and (b) auto-dismiss the vendor trust prompt by send-keys'ing
+// the per-vendor trustResponse — for codex that's "1". Both are core
+// to ADR-0002 §5/§7 and were the dominant new behavior in this PR, so
+// the absence of either branch in earlier tests was a real coverage
+// gap.
+func TestStartHappyPath_codexNilProtocol(t *testing.T) {
 	manifest := &api.RunManifest{
-		Mounts: []api.Mount{{Name: "ns.team", GitRepoURL: "x"}},
-		Agents: []api.AgentSpec{{ID: "ns.team", Mount: "ns.team", Cwd: "ns.team", Command: "claude", Args: []string{}, AgentType: "claude"}},
+		RunID: "rid-cx",
+		Agents: []api.AgentSpec{{
+			ID: "jakeraft.hello-codex",
+			Prepare: api.AgentPrepare{
+				Git: api.GitPrepare{
+					RepoURL: "https://github.com/jakeraft/hello-codex",
+					Dest:    "jakeraft.hello-codex",
+				},
+				// Protocol intentionally nil — codex inlines the
+				// protocol via run.args, so the manifest carries no
+				// prepare.protocol block.
+			},
+			Run: api.AgentRun{
+				AgentType: "codex",
+				Command:   "codex --dangerously-bypass-approvals-and-sandbox",
+				Args:      []string{"-c", "developer_instructions='''<rendered>'''"},
+			},
+		}},
 	}
+
+	store := runplan.NewStore(t.TempDir())
+	tmuxFake := &fakeTmux{}
+	r := New(Deps{
+		API:   &fakeAPI{manifest: manifest},
+		Git:   &fakeGit{},
+		Tmux:  tmuxFake,
+		Store: store,
+	})
+
+	plan, err := r.Start("jakeraft", "hello-codex")
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+
+	// (a) No protocol file should land on disk for codex.
+	protoPath := filepath.Join(store.RunDir("rid-cx"), "protocols", "jakeraft.hello-codex.md")
+	if _, err := os.Stat(protoPath); !os.IsNotExist(err) {
+		t.Errorf("expected no protocol file at %s, stat err: %v", protoPath, err)
+	}
+	// Plan record reflects the omission too.
+	if got := plan.Agents[0].ProtocolDest; got != "" {
+		t.Errorf("ProtocolDest: got %q, want empty", got)
+	}
+
+	// (b) Auto-trust send-keys ("1") should appear after the launch.
+	// Op order: new-session, send (launch), send (trust "1").
+	var sends []string
+	for _, op := range tmuxFake.ops {
+		if op.kind == "send" {
+			sends = append(sends, op.value)
+		}
+	}
+	if len(sends) != 2 {
+		t.Fatalf("send-keys count: got %d, want 2 (launch + trust); ops=%+v", len(sends), tmuxFake.ops)
+	}
+	if sends[1] != "1" {
+		t.Errorf("trust response: got %q, want %q", sends[1], "1")
+	}
+}
+
+func TestTellRecordsMessage(t *testing.T) {
+	manifest := soloAgentManifest("rid", "ns.team")
 	store := runplan.NewStore(t.TempDir())
 	tmuxFake := &fakeTmux{}
 	r := New(Deps{API: &fakeAPI{manifest: manifest}, Git: &fakeGit{}, Tmux: tmuxFake, Store: store})
-	r.newID = func() (string, error) { return "rid", nil }
 
 	if _, err := r.Start("ns", "team"); err != nil {
 		t.Fatalf("Start: %v", err)
@@ -210,13 +308,9 @@ func TestTellRecordsMessage(t *testing.T) {
 }
 
 func TestTellUnknownAgent(t *testing.T) {
-	manifest := &api.RunManifest{
-		Mounts: []api.Mount{{Name: "ns.team", GitRepoURL: "x"}},
-		Agents: []api.AgentSpec{{ID: "ns.team", Mount: "ns.team", Cwd: "ns.team", Command: "claude", Args: []string{}, AgentType: "claude"}},
-	}
+	manifest := soloAgentManifest("rid", "ns.team")
 	store := runplan.NewStore(t.TempDir())
 	r := New(Deps{API: &fakeAPI{manifest: manifest}, Git: &fakeGit{}, Tmux: &fakeTmux{}, Store: store})
-	r.newID = func() (string, error) { return "rid", nil }
 	if _, err := r.Start("ns", "team"); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
