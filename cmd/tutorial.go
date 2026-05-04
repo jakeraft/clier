@@ -8,182 +8,155 @@ func init() {
 
 func newTutorialCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "tutorial",
-		Short:   "Walk through the hello-claude team",
-		GroupID: rootGroupSettings,
-		Long: `Walk through the built-in @clier/hello-claude team.
-
-The tutorial has two phases:
-
-  Phase 1 — Run the canned team to verify the install (Steps 1–10)
-  Phase 2 — Fork it into your own namespace and iterate (Steps 11–19)
+		Use:   "tutorial",
+		Short: "Walk through your first multi-agent run",
+		Long: `Walk through clier end-to-end with the canned hello-clier ↔
+hello-codex team pair (jakeraft/hello-clier).
 
 The team you start with:
 
-  hello-claude (root, Claude)
-  └── hello-codex (child, Codex)
+  jakeraft/hello-clier (root, Claude)
+  └── jakeraft/hello-codex (child, Codex)
 
-clier owns the working-copy layout — every clone lives at
-<workspace_dir>/<owner>.<name>/ (default workspace_dir is
-~/.clier/workspace). Run subcommands work from any cwd; identify
-working copies with <owner>/<name> and runs with their run-id.
+Both repos are public on GitHub. The server sends the CLI a manifest
+describing each agent (what to clone, what protocol markdown to drop,
+how to launch in tmux), and the CLI executes that manifest verbatim.
+
+Browsing the catalog (team list / team get) and starting a run
+(run start) work without logging in — public repos are reachable
+anonymously. Login is only required to author teams (team create /
+update / delete) and to star (team star / unstar).
 
 ================================================================
 Phase 1 — Try the canned team
 ================================================================
 
-Step 1. Log in
+Step 1. (Optional) Log in
 
   clier auth login
 
-  Authenticate with GitHub via device flow.
+  Authenticates with GitHub via device flow. Skip this for now if you
+  only want to browse and run public teams.
 
-Step 2. See what's there in the dashboard
+Step 2. Open the dashboard for context
 
   clier open dashboard
 
-  Opens the configured dashboard URL (default http://localhost:5173).
-  This is the visual overview of teams, resources, and runs — get
-  a feel for the whole picture before diving into the CLI. Change
-  the URL with: clier config set dashboard-url <url>
+  Opens the configured dashboard URL (default http://localhost:5173,
+  override via CLIER_DASHBOARD_URL). The web UI is the canonical
+  surface for browsing the team catalog and previewing each team's
+  run manifest.
 
-Step 3. Explore the pre-loaded team from the CLI
+Step 3. Browse the catalog from the CLI
 
-  clier list --kind team
-  clier get @clier/hello-claude
+  clier team list --sort stars_desc
+  clier team get jakeraft/hello-clier
 
-Step 4. Clone the team
+  list defaults to sort=stars_desc (Popular). Add --q <substring>
+  for substring search, --namespace <ns> to scope, --page-token
+  <cursor> to paginate.
 
-  clier clone @clier/hello-claude
+Step 4. Start the team
 
-  Downloads the working copy to
-  ~/.clier/workspace/@clier.hello-claude/. No cd is needed.
+  clier run start jakeraft/hello-clier
 
-Step 5. Inspect the working copy
+  The server returns a fresh run_id; the CLI clones both repos,
+  writes the protocol file for hello-clier (claude reads it via
+  --append-system-prompt-file), and launches a tmux window per
+  agent. Note the run_id printed on stdout.
 
-  clier status @clier/hello-claude
+  codex's first launch shows a "Do you trust this directory?"
+  dialog; the runner auto-presses "1" so you do not have to attach
+  for it.
+
+Step 5. Ask the root agent to greet the peer
+
+  clier run tell --run <run-id> --to jakeraft.hello-clier <<'EOF'
+  Greet hello-codex and report back what you learned.
+  EOF
+
+  The agent IDs are workspace-flat slugs (namespace.team) — the
+  protocol markdown the server emitted at run start already embeds
+  the fully-qualified clier run tell line for every peer, so the
+  agent can copy/paste it verbatim.
+
+Step 6. Watch live, then detach
+
+  clier run attach <run-id>
+
+  Watch both agents in real time. Detach with Ctrl-b d to leave them
+  running.
+
+  --agent jakeraft.hello-codex selects a specific window first.
+
+Step 7. Inspect the local plan
+
   clier run list
+  clier run view <run-id>
 
-  You should see a clean working copy and no active runs yet.
+  All run state lives in ~/.clier/runs/<run-id>/run.json. list and
+  view never call the server.
 
-Step 6. Start the team
-
-  clier run start @clier/hello-claude
-
-  This launches both members in tmux. Note the run ID.
-
-  If a vendor CLI shows its own approval prompt on first launch,
-  run "clier run attach <run-id>" from your terminal, approve it,
-  and detach (Ctrl-b d) before sending messages.
-
-Step 7. Ask hello-claude to greet
-
-  clier run tell --run <run-id> --to @clier/hello-claude \
-    "Have both team members greet each other and report the result."
-
-Step 8. Watch and verify
-
-  clier run attach <run-id>        Watch agents in real time
-  clier run view <run-id>          Inspect messages and notes
-
-  Confirm both members participated and the greeting completed.
-
-Step 9. Stop the run
+Step 8. Stop the run
 
   clier run stop <run-id>
 
-Step 10. Tear down the canned team
-
-  clier remove @clier/hello-claude
-
-  Removes the working copy and any associated run plans. Phase 2
-  starts from a fresh fork in your own namespace.
+  Sends each agent's exit command, kills the tmux session, purges
+  the agent clones plus protocols/, and preserves run.json so
+  clier run view keeps working post-stop.
 
 ================================================================
-Phase 2 — Fork it and iterate
+Phase 2 — Make it your own
 ================================================================
 
-This is where clier's value loop lives: clone → use → refine →
-push → others pull. To make a team yours, fork it on the server,
-then clone the fork.
+Once Phase 1 works, register your own team that points at your own
+repo. clier never edits the repo — your repo is the source of truth
+for content. The server holds composition only (team metadata plus
+the protocol markdown template).
 
-About fork depth:
+Step 9. Create a team in your namespace
 
-  fork is shallow — it copies only the team itself into your
-  namespace. Leaf resources (instruction, settings, skills) and
-  child teams remain owned by the original author. To rewrite a
-  leaf, fork that leaf too and rewire your team to point at it.
+  clier team create <yourns>/my-agent \
+    --agent-type claude \
+    --command 'claude --setting-sources project --strict-mcp-config --dangerously-skip-permissions' \
+    --git-repo-url https://github.com/<yourns>/my-agent \
+    --description 'My first multi-agent team'
 
-Step 11. Fork the team into your namespace
+  Pass --subteam <ns/name> repeatedly to attach existing teams as
+  subteams (the server walks the graph at run start).
 
-  clier fork @clier/hello-claude
-  → creates <yourname>/hello-claude
+Step 10. Tweak the team
 
-  fork always copies the latest version. Historical versions can be
-  inspected or referenced, but they are not valid fork targets.
+  clier team update <yourns>/my-agent --description 'Updated copy'
 
-Step 12. Fork the instruction so you own the prompt text
+  Only the flags you pass are sent (JSON Merge Patch). Use
+  --patch-json '{"subteams":[{"namespace":"x","name":"y"}]}' for
+  complex bodies. Immutable fields (namespace / name / agent_type)
+  cannot be patched — use delete + create.
 
-  clier fork @clier/greeting-prompt
-  → creates <yourname>/greeting-prompt
+Step 11. Star teams you want to find later
 
-Step 13. Rewire your team to use your instruction
+  clier team star jakeraft/hello-clier
+  clier team list --sort stars_desc
 
-  clier edit <yourname>/hello-claude \
-    --instruction <yourname>/greeting-prompt@1
+  Stars are caller-aware — they show up only when you are logged in.
 
-  This bumps your team's version because its ref changed.
+Step 12. Run your team
 
-Step 14. Clone your fork
+  clier run start <yourns>/my-agent
 
-  clier clone <yourname>/hello-claude
-
-Step 15. Edit the prompt and check status
-
-  Locate CLAUDE.md inside the working copy and add your refinement.
-
-  clier status <yourname>/hello-claude
-  → "modified <yourname>/greeting-prompt"
-
-Step 16. Push your refinement
-
-  clier push <yourname>/hello-claude
-
-  Bumps <yourname>/greeting-prompt to v2 and your team's ref
-  follows.
-
-Step 17. Verify the version bump
-
-  clier get <yourname>/greeting-prompt
-  → latest_version: 2
-
-Step 18. Pull keeps you (and others) in sync
-
-  clier pull <yourname>/hello-claude
-
-  Anyone who has cloned your team can run pull to receive the
-  improvement. Iteration is now a true loop — keep refining and
-  pushing as you use the team.
-
-Step 19. Cleanup
-
-  clier remove <yourname>/hello-claude
+  Same flow as Step 4. Iterate by editing your repo, committing /
+  pushing, then re-running — clier-server clones at HEAD of the
+  default branch (main) on every mint, so each run sees your
+  latest commit.
 
 ================================================================
 Going further
 ================================================================
 
-Collaborating without forking — clier org
-
-  Members of the same organization share write access to that
-  owner's resources, so you can skip fork-rewire and iterate
-  together on a shared namespace. See:
-
-    clier org --help          create, invite, list, members
-
-Tip: Use "clier <command> --help" for details on each command.`,
+Use 'clier <command> --help' for details on each command.`,
 	}
-	cmd.RunE = func(c *cobra.Command, args []string) error {
+	cmd.RunE = func(c *cobra.Command, _ []string) error {
 		return c.Help()
 	}
 	return cmd

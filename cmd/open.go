@@ -1,12 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"os/exec"
 	"runtime"
 
-	"github.com/jakeraft/clier/cmd/present"
-	"github.com/jakeraft/clier/cmd/view"
-	"github.com/jakeraft/clier/internal/domain"
 	"github.com/spf13/cobra"
 )
 
@@ -16,10 +14,10 @@ func init() {
 
 func newOpenCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "open",
-		Short:   "Open clier resources in a browser",
-		GroupID: rootGroupSettings,
-		RunE:    subcommandRequired,
+		Use:   "open",
+		Short: "Open clier surfaces in your browser",
+		Args:  cobra.ArbitraryArgs,
+		RunE:  helpOrUnknown,
 	}
 	cmd.AddCommand(newOpenDashboardCmd())
 	return cmd
@@ -28,33 +26,48 @@ func newOpenCmd() *cobra.Command {
 func newOpenDashboardCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "dashboard",
-		Short: "Open the dashboard in a browser",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := currentConfig()
+		Short: "Open the dashboard URL in your default browser",
+		Long: `Open the configured dashboard URL with the OS-native browser
+launcher.
+
+Override via the CLIER_DASHBOARD_URL environment variable; default is
+http://localhost:5173 (local-dev).`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			cfg, err := loadConfig()
 			if err != nil {
 				return err
 			}
-			url := cfg.DashboardURL
-			if err := openBrowser(url); err != nil {
+			if err := openBrowser(cfg.DashboardURL); err != nil {
 				return err
 			}
-			return present.Success(cmd.OutOrStdout(), view.DashboardOpenOf(url))
+			return emit(cmd.OutOrStdout(), map[string]any{
+				"opened": cfg.DashboardURL,
+			})
 		},
 	}
 }
 
+// openBrowser launches the OS-native URL handler. macOS uses `open`,
+// Linux uses `xdg-open`, Windows uses `rundll32 url.dll,FileProtocolHandler`
+// — these are the well-trodden cross-platform invocations and avoid
+// pulling in a browser-launch dependency.
 func openBrowser(url string) error {
+	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		return exec.Command("open", url).Start()
+		cmd = exec.Command("open", url)
 	case "linux":
-		return exec.Command("xdg-open", url).Start()
+		cmd = exec.Command("xdg-open", url)
 	case "windows":
-		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
 	default:
-		return &domain.Fault{
-			Kind:    domain.KindUnsupportedPlatform,
-			Subject: map[string]string{"platform": runtime.GOOS},
-		}
+		return fmt.Errorf("open dashboard: unsupported OS %s — visit %s manually", runtime.GOOS, url)
 	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("launch browser: %w", err)
+	}
+	// Detach — we don't wait for the browser process to exit. The CLI
+	// returns immediately after the launcher has spawned the URL handler.
+	go func() { _ = cmd.Wait() }()
+	return nil
 }

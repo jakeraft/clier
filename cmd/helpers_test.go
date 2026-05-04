@@ -3,39 +3,61 @@ package cmd
 import (
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
 
-func TestBuildAgentEnv_OmitsTeamNameForStandaloneRuns(t *testing.T) {
-	env := buildAgentEnv("run-1", "jakeraft/tech-lead", "")
-
-	if env["CLIER_TEAM_NAME"] != "" {
-		t.Fatalf("CLIER_TEAM_NAME should be omitted for standalone runs, got %q", env["CLIER_TEAM_NAME"])
+func TestRequireOneArg_missingMessageHumanizesLabel(t *testing.T) {
+	cmd := &cobra.Command{Use: "view <run-id>"}
+	err := requireOneArg("<run-id>")(cmd, nil)
+	if err == nil {
+		t.Fatal("missing arg should error")
 	}
-	if env["CLIER_RUN_ID"] != "run-1" {
-		t.Fatalf("CLIER_RUN_ID = %q, want run-1", env["CLIER_RUN_ID"])
+	got := err.Error()
+	if !strings.Contains(got, "<run-id> is required") {
+		t.Errorf("missing message should name the label, got %q", got)
 	}
-	if env["CLIER_AGENT_NAME"] != "jakeraft/tech-lead" {
-		t.Fatalf("CLIER_AGENT_NAME = %q, want jakeraft/tech-lead", env["CLIER_AGENT_NAME"])
-	}
-}
-
-func TestBuildAgentEnv_SetsTeamNameForTeamRuns(t *testing.T) {
-	env := buildAgentEnv("run-1", "jakeraft/coder", "jakeraft/my-team")
-
-	if env["CLIER_TEAM_NAME"] != "jakeraft/my-team" {
-		t.Fatalf("CLIER_TEAM_NAME = %q, want jakeraft/my-team", env["CLIER_TEAM_NAME"])
+	if !strings.Contains(got, "Usage:") {
+		t.Errorf("missing message should embed usage hint, got %q", got)
 	}
 }
 
-func TestBuildFullCommand_QuotesShellSensitiveValues(t *testing.T) {
-	command := buildFullCommand(map[string]string{
-		"GIT_AUTHOR_NAME": "O'Brien",
-	}, "claude --dangerously-skip-permissions", "/tmp/owner's/workspace")
-
-	if !strings.Contains(command, "export GIT_AUTHOR_NAME='O'\"'\"'Brien'") {
-		t.Fatalf("expected quoted env value, got %q", command)
+func TestRequireOneArg_extraSurfacesCount(t *testing.T) {
+	cmd := &cobra.Command{Use: "stop <run-id>"}
+	err := requireOneArg("<run-id>")(cmd, []string{"a", "b"})
+	if err == nil {
+		t.Fatal("extra args should error")
 	}
-	if !strings.Contains(command, "cd '/tmp/owner'\"'\"'s/workspace'") {
-		t.Fatalf("expected quoted cwd, got %q", command)
+	if !strings.Contains(err.Error(), "got 2") {
+		t.Errorf("extra-arg error should report the count, got %q", err.Error())
+	}
+}
+
+func TestRequireOneArg_oneArgPasses(t *testing.T) {
+	cmd := &cobra.Command{Use: "view <run-id>"}
+	if err := requireOneArg("<run-id>")(cmd, []string{"x"}); err != nil {
+		t.Errorf("single arg should pass, got %v", err)
+	}
+}
+
+func TestReadContent_emptyArgRejected(t *testing.T) {
+	if _, err := readContent([]string{""}); err == nil {
+		t.Fatal("empty arg must reject before any downstream lookup")
+	}
+}
+
+func TestReadContent_whitespaceOnlyArgRejected(t *testing.T) {
+	if _, err := readContent([]string{"   \t\n  "}); err == nil {
+		t.Fatal("whitespace-only arg must reject (same contract as stdin path)")
+	}
+}
+
+func TestReadContent_nonEmptyArgPasses(t *testing.T) {
+	got, err := readContent([]string{"hello"})
+	if err != nil {
+		t.Fatalf("non-empty arg should pass: %v", err)
+	}
+	if got != "hello" {
+		t.Errorf("content: got %q want %q", got, "hello")
 	}
 }
