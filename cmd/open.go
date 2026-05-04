@@ -16,9 +16,8 @@ func newOpenCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "open",
 		Short: "Open clier surfaces in your browser",
-		RunE: func(c *cobra.Command, _ []string) error {
-			return c.Help()
-		},
+		Args:  cobra.ArbitraryArgs,
+		RunE:  helpOrUnknown,
 	}
 	cmd.AddCommand(newOpenDashboardCmd())
 	return cmd

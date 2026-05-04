@@ -13,9 +13,8 @@ func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Start, message, and stop tmux runs",
-		RunE: func(c *cobra.Command, _ []string) error {
-			return c.Help()
-		},
+		Args:  cobra.ArbitraryArgs,
+		RunE:  helpOrUnknown,
 	}
 	cmd.AddCommand(
 		newRunStartCmd(),
@@ -152,7 +151,13 @@ func newRunListCmd() *cobra.Command {
 			for _, p := range plans {
 				items = append(items, summary(p))
 			}
-			return emit(cmd.OutOrStdout(), map[string]any{"runs": items})
+			// Envelope shape mirrors `team list` (`{data: [...]}`) so a
+			// consumer parsing JSON output can share a single shape across
+			// every list endpoint (qa-20260504-130854-b542b5e9,
+			// claude.run.list-envelope-key-divergence — Trust 5). `meta` is
+			// omitted because run list is a CLI-local query (no cursor
+			// pagination); the data array is the canonical surface.
+			return emit(cmd.OutOrStdout(), map[string]any{"data": items})
 		},
 	}
 }

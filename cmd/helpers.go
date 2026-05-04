@@ -91,6 +91,27 @@ func splitTeamID(raw string) (namespace, name string, err error) {
 	return raw[:i], raw[i+1:], nil
 }
 
+// helpOrUnknown is the canonical RunE for command groups (auth / team /
+// run / open). Cobra's default for a group invoked with extra args is to
+// silently print the parent help on stdout with exit 0 — that contradicts
+// the root help's contract that errors print on stderr with non-zero
+// exit and makes typos / removed-surface probes look like success
+// (qa-20260504-130854-b542b5e9, claude.failures.subcommand-unknown-exits-zero
+// + codex.command-surface.nested-unknown-exits-zero — Trust 1 + 5).
+//
+// helpOrUnknown shows help when invoked with no args (the user just
+// typed `clier team`) and rejects with the same error shape the
+// top-level dispatch uses when extra args appear (`unknown command "X"
+// for "clier team"`). The wrapped *cobra.Command makes the message
+// suggestion-friendly (cobra renders "did you mean ..." automatically
+// against the registered subcommands).
+func helpOrUnknown(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return cmd.Help()
+	}
+	return fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath())
+}
+
 // requireOneArg is a cobra.Args validator that takes the place of
 // cobra.ExactArgs(1) so the missing/extra argument message matches the
 // rest of the CLI's tone. cobra.ExactArgs emits "accepts 1 arg(s),

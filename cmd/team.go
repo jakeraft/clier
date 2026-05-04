@@ -17,9 +17,8 @@ func newTeamCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "team",
 		Short: "Browse and manage teams on the server",
-		RunE: func(c *cobra.Command, _ []string) error {
-			return c.Help()
-		},
+		Args:  cobra.ArbitraryArgs,
+		RunE:  helpOrUnknown,
 	}
 	cmd.AddCommand(
 		newTeamListCmd(),

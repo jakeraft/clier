@@ -19,9 +19,8 @@ func newAuthCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth",
 		Short: "Log in and manage credentials",
-		RunE: func(c *cobra.Command, _ []string) error {
-			return c.Help()
-		},
+		Args:  cobra.ArbitraryArgs,
+		RunE:  helpOrUnknown,
 	}
 	cmd.AddCommand(newAuthLoginCmd(), newAuthLogoutCmd(), newAuthStatusCmd())
 	return cmd
@@ -35,11 +34,30 @@ func newAuthLoginCmd() *cobra.Command {
 
 Login is only required to author teams (team create / update / delete)
 or to star (team star / unstar). Browsing the catalog (team list /
-team get) and starting a public run (run start) work anonymously.`,
+team get) and starting a public run (run start) work anonymously.
+
+If a valid session already exists this command is a no-op — it prints
+the current login as JSON and exits 0 without starting a new device
+flow. Use 'clier auth logout' first to switch accounts.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := loadConfig()
 			if err != nil {
 				return err
+			}
+			// Already-logged-in fast path: validate the persisted session
+			// against the server. If it is still valid, no-op with a
+			// stderr note + the current login on stdout. Bypassing this
+			// check meant `auth login` while logged-in started a fresh
+			// device flow with no warning (qa-20260504-130854-b542b5e9,
+			// claude.auth.login-while-loggedin-no-warning — Trust 3).
+			if creds, err := loadCredentials(cfg.CredentialsPath); err == nil && creds != nil {
+				if ns, err := api.New(cfg.ServerURL, creds.Token).AuthMe(); err == nil {
+					fmt.Fprintf(os.Stderr, "note: already logged in as %s; run 'clier auth logout' first to switch accounts\n", ns.Name)
+					return emit(cmd.OutOrStdout(), map[string]any{"login": ns.Name})
+				}
+				// Persisted token rejected — fall through to a fresh
+				// device flow. The downstream Login call replaces the
+				// stale credential file on success.
 			}
 			// Public endpoint — no token needed for device flow.
 			client := api.New(cfg.ServerURL, "")
