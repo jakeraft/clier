@@ -48,7 +48,22 @@ type Error struct {
 // per-field violations (the server composes detail from errors[] so the
 // CLI does not have to). Falls back to the raw body when the payload
 // isn't ProblemDetails so no information is lost.
+//
+// 401 responses get the CLI-side "(run \"clier auth login\")" hint
+// appended. The server cannot name the recovery command — only the CLI
+// knows its own surface — so the hint lives here. Applies to every 401
+// regardless of code (missing session, expired session, rejected token)
+// because `clier auth login` is the same recovery for all of them.
+// (qa-20260504192453, errors.auth-required-no-remediation — Trust 3.)
 func (e *Error) Error() string {
+	base := e.summary()
+	if e.StatusCode == http.StatusUnauthorized {
+		return base + ` (run "clier auth login")`
+	}
+	return base
+}
+
+func (e *Error) summary() string {
 	p, ok := e.problem()
 	if !ok {
 		return fmt.Sprintf("server returned %d: %s", e.StatusCode, e.Body)

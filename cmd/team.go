@@ -50,12 +50,20 @@ func newTeamListCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// page-size: cmd.Flags().Changed lets the CLI tell apart "user
+			// passed --page-size N" from "user omitted the flag". omit ⇒
+			// nil ⇒ server default. Explicit 0 / negative ⇒ ptr ⇒ server
+			// 422 (don't silently swallow user input on the way out).
+			var pageSizePtr *int
+			if cmd.Flags().Changed("page-size") {
+				pageSizePtr = &pageSize
+			}
 			res, err := client.ListTeams(api.ListTeamsQuery{
 				Namespace: namespace,
 				AgentType: agentType,
 				Sort:      sort,
 				Q:         q,
-				PageSize:  pageSize,
+				PageSize:  pageSizePtr,
 				PageToken: pageToken,
 			})
 			if err != nil {
@@ -144,12 +152,17 @@ Edit the rendered protocol later via 'clier team update --protocol-file'
 			return emit(cmd.OutOrStdout(), team)
 		},
 	}
-	cmd.Flags().StringVar(&description, "description", "", "Team description")
-	cmd.Flags().StringVar(&agentType, "agent-type", "", "Agent type (claude|codex)")
-	cmd.Flags().StringVar(&command, "command", "", "Vendor binary + flags (verbatim send-keys)")
-	cmd.Flags().StringVar(&gitRepoURL, "git-repo-url", "", "GitHub HTTPS URL (https://github.com/owner/repo)")
-	cmd.Flags().StringVar(&gitSubpath, "git-subpath", "", "Repo-relative cwd offset (empty = repo root)")
-	cmd.Flags().StringSliceVar(&subteamRefs, "subteam", nil, "Direct child team (namespace/name); repeatable")
+	// `(required)` / `(optional)` suffixes are visible in `--help` output —
+	// the QA agent (qa-20260504192453, help.required-flags-not-marked) noted
+	// that cobra's MarkFlagRequired does not annotate the help text, so an
+	// agent reading `team create --help` cannot tell which flags are
+	// mandatory without provoking the failure. The marker is the contract.
+	cmd.Flags().StringVar(&agentType, "agent-type", "", "Agent type — claude | codex (required)")
+	cmd.Flags().StringVar(&command, "command", "", "Vendor binary + flags, verbatim send-keys (required)")
+	cmd.Flags().StringVar(&gitRepoURL, "git-repo-url", "", "GitHub HTTPS URL — https://github.com/owner/repo (required)")
+	cmd.Flags().StringVar(&description, "description", "", "Team description (optional)")
+	cmd.Flags().StringVar(&gitSubpath, "git-subpath", "", "Repo-relative cwd offset, empty = repo root (optional)")
+	cmd.Flags().StringSliceVar(&subteamRefs, "subteam", nil, "Direct child team — namespace/name, repeatable (optional)")
 	_ = cmd.MarkFlagRequired("agent-type")
 	_ = cmd.MarkFlagRequired("command")
 	_ = cmd.MarkFlagRequired("git-repo-url")

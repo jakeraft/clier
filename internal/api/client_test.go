@@ -223,11 +223,56 @@ func TestClientErrorFormat_emptyJsonBodyFallsBackToStatusText(t *testing.T) {
 }
 
 func TestClientErrorFormat_problemWithoutTitleUsesStatusText(t *testing.T) {
+	// 401 path also exercises the auth-login hint (see
+	// TestClientErrorFormat_401AppendsAuthLoginHint for the explicit case).
 	body := `{"detail":"missing session","code":"UNAUTHENTICATED"}`
 	e := &Error{StatusCode: 401, Body: body}
 	got := e.Error()
-	want := `401 Unauthorized: missing session`
+	want := `401 Unauthorized: missing session (run "clier auth login")`
 	if got != want {
 		t.Errorf("Error():\n got: %q\nwant: %q", got, want)
+	}
+}
+
+func TestClientErrorFormat_401AppendsAuthLoginHint(t *testing.T) {
+	// Every 401 — missing session, expired session, rejected token — gets
+	// the same recovery hint because `clier auth login` is the same fix
+	// for all of them. The CLI surface owns the hint because the server
+	// does not know its caller's command names.
+	cases := []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "missing session",
+			body: `{"title":"Authentication required","detail":"missing session","code":"UNAUTHENTICATED"}`,
+			want: `401 Authentication required: missing session (run "clier auth login")`,
+		},
+		{
+			name: "expired",
+			body: `{"title":"Authentication required","detail":"session expired","code":"UNAUTHENTICATED"}`,
+			want: `401 Authentication required: session expired (run "clier auth login")`,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			e := &Error{StatusCode: 401, Body: tc.body}
+			if got := e.Error(); got != tc.want {
+				t.Errorf("Error():\n got: %q\nwant: %q", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestClientErrorFormat_non401NoHint(t *testing.T) {
+	// 422 / 404 / 500 / etc must NOT get the auth-login hint — those have
+	// their own recovery paths. Sanity guard against future drift if the
+	// 401 branch is generalised.
+	body := `{"title":"Invalid argument","detail":"sort: must be one of …","code":"INVALID_ARGUMENT"}`
+	e := &Error{StatusCode: 422, Body: body}
+	got := e.Error()
+	if got != `422 Invalid argument: sort: must be one of …` {
+		t.Errorf("422 must not get auth-login hint, got %q", got)
 	}
 }

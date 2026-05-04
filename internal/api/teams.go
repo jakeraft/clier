@@ -95,12 +95,17 @@ type PageMeta struct {
 // ListTeamsQuery is the optional filter / pagination set for list calls.
 // Empty fields are omitted from the query string. `Sort` enum values are
 // validated server-side against the 4-enum set (ADR-0013 §5.3).
+//
+// PageSize is *int so the CLI can forward an explicit 0 / negative the
+// user passed (server rejects with 422) without conflating it with the
+// "parameter omitted" sentinel (nil = use server default). The previous
+// `int` shape silently dropped 0 / negative on the way out.
 type ListTeamsQuery struct {
 	Namespace string
 	AgentType string
 	Sort      string
 	Q         string
-	PageSize  int
+	PageSize  *int
 	PageToken string
 }
 
@@ -120,8 +125,11 @@ func (c *Client) ListTeams(q ListTeamsQuery) (*ListTeamsResponse, error) {
 	if q.Q != "" {
 		v.Set("q", q.Q)
 	}
-	if q.PageSize > 0 {
-		v.Set("page_size", strconv.Itoa(q.PageSize))
+	if q.PageSize != nil {
+		// Forward 0 / negative verbatim — the server validates the lower
+		// bound and emits 422. Dropping them client-side would mask the
+		// user's input as the omit sentinel.
+		v.Set("page_size", strconv.Itoa(*q.PageSize))
 	}
 	if q.PageToken != "" {
 		v.Set("page_token", q.PageToken)

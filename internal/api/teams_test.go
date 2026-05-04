@@ -67,7 +67,7 @@ func TestClientListTeams_composesQueryAndDecodes(t *testing.T) {
 		AgentType: "claude",
 		Sort:      "stars_desc",
 		Q:         "front end",
-		PageSize:  20,
+		PageSize:  intPtrAPI(20),
 		PageToken: "cursor-1",
 	})
 	if err != nil {
@@ -198,5 +198,42 @@ func TestClientUnstarTeam_deletesStarPath(t *testing.T) {
 	}
 	if rec.method != http.MethodDelete || rec.path != "/api/v1/teams/alice/frontend/star" {
 		t.Errorf("request line: %s %s", rec.method, rec.path)
+	}
+}
+
+func intPtrAPI(v int) *int { return &v }
+
+func TestClientListTeams_explicitZeroForwardedToServer(t *testing.T) {
+	// page_size=0 must hit the wire as `?page_size=0` so the server can
+	// return 422. Earlier `if q.PageSize > 0` dropped 0 / negative on
+	// the way out, masking user input as the omit sentinel.
+	srv, rec := newServer(t, http.StatusOK, `{"data":[],"meta":{"has_next":false,"next_cursor":""}}`)
+	zero := 0
+	if _, err := New(srv.URL, "").ListTeams(ListTeamsQuery{PageSize: &zero}); err != nil {
+		t.Fatalf("ListTeams: %v", err)
+	}
+	if rec.rawQuery != "page_size=0" {
+		t.Errorf("explicit 0 must reach the wire, got query %q", rec.rawQuery)
+	}
+}
+
+func TestClientListTeams_negativeForwardedToServer(t *testing.T) {
+	srv, rec := newServer(t, http.StatusOK, `{"data":[],"meta":{"has_next":false,"next_cursor":""}}`)
+	neg := -5
+	if _, err := New(srv.URL, "").ListTeams(ListTeamsQuery{PageSize: &neg}); err != nil {
+		t.Fatalf("ListTeams: %v", err)
+	}
+	if rec.rawQuery != "page_size=-5" {
+		t.Errorf("negative must reach the wire, got query %q", rec.rawQuery)
+	}
+}
+
+func TestClientListTeams_nilPageSizeOmitsQuery(t *testing.T) {
+	srv, rec := newServer(t, http.StatusOK, `{"data":[],"meta":{"has_next":false,"next_cursor":""}}`)
+	if _, err := New(srv.URL, "").ListTeams(ListTeamsQuery{}); err != nil {
+		t.Fatalf("ListTeams: %v", err)
+	}
+	if rec.rawQuery != "" {
+		t.Errorf("nil page_size should produce no query param, got %q", rec.rawQuery)
 	}
 }

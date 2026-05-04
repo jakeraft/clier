@@ -18,7 +18,12 @@ const (
 )
 
 // ErrRunNotFound is returned when no run plan exists for the given runID.
-var ErrRunNotFound = errors.New("run not found")
+// The message embeds the recovery hint because every caller (run view /
+// stop / tell / attach) needs the same next action: list known runs to
+// pick a valid id. Putting it in the sentinel keeps the user-visible
+// surface uniform without forcing every cmd to wrap separately
+// (qa-20260504192453, errors.run-not-found-no-next-action — Trust 3).
+var ErrRunNotFound = errors.New(`run not found in ~/.clier/runs (try "clier run list")`)
 
 // Plan is everything `clier run` needs to drive a started session — what
 // was cloned, where it lives, and what's been said to whom. Mirrors the
