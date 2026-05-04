@@ -180,19 +180,25 @@ func TestClientAuthDeviceStartRoundtrip(t *testing.T) {
 }
 
 func TestClientErrorFormat_problemRendersHumanLine(t *testing.T) {
-	body := `{"type":"urn:problem:invalid-argument","title":"Invalid argument","status":422,"code":"INVALID_ARGUMENT","detail":"sort: must be one of …","errors":[{"field":"sort","detail":"must be one of stars_desc, stars_asc, updated_desc, updated_asc"}]}`
+	// Server is the SSOT for the human-readable line — detail already
+	// covers per-field violations (composed from errors[] server-side).
+	// CLI just surfaces "<status> <title>: <detail>" with no extra
+	// composition, keeping the seam between server and CLI clean.
+	body := `{"type":"urn:problem:invalid-argument","title":"Invalid argument","status":422,"code":"INVALID_ARGUMENT","detail":"sort: must be one of stars_desc, stars_asc, updated_desc, updated_asc","errors":[{"field":"sort","detail":"must be one of stars_desc, stars_asc, updated_desc, updated_asc"}]}`
 	e := &Error{StatusCode: 422, Body: body}
 
 	got := e.Error()
-	want := `422 Invalid argument: sort: must be one of … (sort: must be one of stars_desc, stars_asc, updated_desc, updated_asc)`
+	want := `422 Invalid argument: sort: must be one of stars_desc, stars_asc, updated_desc, updated_asc`
 	if got != want {
 		t.Errorf("Error():\n got: %q\nwant: %q", got, want)
 	}
 	if e.Code() != "INVALID_ARGUMENT" {
 		t.Errorf("Code(): %q", e.Code())
 	}
-	if e.Raw() != body {
-		t.Errorf("Raw() should preserve full envelope, got %q", e.Raw())
+	// Raw envelope preserved on the public Body field for callers that
+	// want to inspect errors[] / instance / type — e.g. behind --verbose.
+	if e.Body != body {
+		t.Errorf("Body should preserve full envelope verbatim, got %q", e.Body)
 	}
 }
 
