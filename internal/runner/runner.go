@@ -264,8 +264,8 @@ func (r *Runner) Tell(runID string, fromAgent *string, toAgent string, content s
 }
 
 // Stop kills the tmux session, marks the plan as stopped, and frees the
-// disk used by cloned mounts and protocol files. The run plan json stays
-// on disk so `clier run view` keeps working post-stop.
+// disk used by per-agent clones and protocol files. The run plan json
+// stays on disk so `clier run view` keeps working post-stop.
 func (r *Runner) Stop(runID string) error {
 	plan, err := r.store.Load(runID)
 	if err != nil {
