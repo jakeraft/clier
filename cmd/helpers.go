@@ -109,10 +109,19 @@ func requireOneArg(label string) cobra.PositionalArgs {
 	}
 }
 
-// readContent returns content from arg[0] or stdin (when empty/missing).
+// readContent returns the message content from arg[0] or, when arg[0] is
+// missing or "-", from stdin. Both paths apply the same emptiness check
+// so callers like `clier run tell --run X --to Y ""` fail with a precise
+// "message content is empty" before any downstream lookup (the previous
+// implementation only trimmed the stdin path, so an empty arg fell
+// through to runner.Tell and surfaced as a misleading "run not found").
 func readContent(args []string) (string, error) {
 	if len(args) > 0 && args[0] != "-" {
-		return args[0], nil
+		content := strings.TrimSpace(args[0])
+		if content == "" {
+			return "", errors.New("message content is empty")
+		}
+		return content, nil
 	}
 	b, err := io.ReadAll(os.Stdin)
 	if err != nil {

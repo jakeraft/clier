@@ -39,3 +39,25 @@ func TestRequireOneArg_oneArgPasses(t *testing.T) {
 		t.Errorf("single arg should pass, got %v", err)
 	}
 }
+
+func TestReadContent_emptyArgRejected(t *testing.T) {
+	if _, err := readContent([]string{""}); err == nil {
+		t.Fatal("empty arg must reject before any downstream lookup")
+	}
+}
+
+func TestReadContent_whitespaceOnlyArgRejected(t *testing.T) {
+	if _, err := readContent([]string{"   \t\n  "}); err == nil {
+		t.Fatal("whitespace-only arg must reject (same contract as stdin path)")
+	}
+}
+
+func TestReadContent_nonEmptyArgPasses(t *testing.T) {
+	got, err := readContent([]string{"hello"})
+	if err != nil {
+		t.Fatalf("non-empty arg should pass: %v", err)
+	}
+	if got != "hello" {
+		t.Errorf("content: got %q want %q", got, "hello")
+	}
+}
