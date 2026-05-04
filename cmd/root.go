@@ -36,8 +36,11 @@ Get started:
   clier run stop <run-id>                   Tear the run down
   clier open dashboard                      Open the web UI
 
-Output is JSON on stdout for every successful command. Errors print a
-single line on stderr and exit non-zero.`
+Output is JSON on stdout for every successful command. Errors print on
+stderr starting with "error: " and exit non-zero. Server errors are a
+single summary line ("<status> <title>: <detail>"); client-side
+validation (missing arguments, unknown commands) may follow with a
+usage hint or "did you mean" suggestion on subsequent lines.`
 
 // SetVersion configures the --version string. Called from main.go so the
 // build pipeline can stamp it.
