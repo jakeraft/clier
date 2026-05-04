@@ -77,7 +77,7 @@ func newTeamGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <namespace/name>",
 		Short: "Show one team by natural key",
-		Args:  cobra.ExactArgs(1),
+		Args:  requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {
@@ -114,7 +114,7 @@ func newTeamCreateCmd() *cobra.Command {
 The server-default protocol template is auto-injected at create time.
 Edit the rendered protocol later via 'clier team update --protocol-file'
 (future) or the dashboard.`,
-		Args: cobra.ExactArgs(1),
+		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {
@@ -178,7 +178,7 @@ Only the flags you pass are sent — omitted fields stay unchanged.
 Immutable fields (namespace, name, agent_type) cannot be patched.
 
 For complex updates use --patch-json with a literal merge-patch body.`,
-		Args: cobra.ExactArgs(1),
+		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {
@@ -216,7 +216,7 @@ func newTeamDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <namespace/name>",
 		Short: "Delete a team (204 on success)",
-		Args:  cobra.ExactArgs(1),
+		Args:  requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {
@@ -242,7 +242,7 @@ func newTeamStarCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "star <namespace/name>",
 		Short: "Star a team (idempotent)",
-		Args:  cobra.ExactArgs(1),
+		Args:  requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {
@@ -268,7 +268,7 @@ func newTeamUnstarCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "unstar <namespace/name>",
 		Short: "Remove the star (idempotent)",
-		Args:  cobra.ExactArgs(1),
+		Args:  requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {

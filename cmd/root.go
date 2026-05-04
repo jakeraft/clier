@@ -20,13 +20,14 @@ var rootCmd = &cobra.Command{
 
 const rootLong = `clier is a thin tmux harness for AI coding agent teams.
 
-It mints a RunManifest from clier-server (POST /runs), clones each agent
-into a per-run scratch dir, drops the rendered protocol markdown for
-file-based vendors, and launches one tmux window per agent. Protocol
-substitute and vendor wrapper args are composed server-side — the CLI
-is vendor-blind (ADR-0002).
+It asks clier-server for a run manifest, clones each agent's repo into
+a per-run scratch dir, drops the agent's rendered protocol markdown,
+and launches one tmux window per agent. The vendor-specific launch
+flags are composed server-side, so adding a new agent vendor never
+requires a new CLI release.
 
 Get started:
+  clier tutorial                            Walk through your first run
   clier auth login                          Log in via GitHub device flow
   clier team list                           Browse the catalog
   clier run start <namespace/name>          Launch a team in tmux
@@ -34,7 +35,6 @@ Get started:
   clier run tell --run <id> --to <agent>    Message an agent
   clier run stop <run-id>                   Tear the run down
   clier open dashboard                      Open the web UI
-  clier tutorial                            Walk through your first run
 
 Output is JSON on stdout for every successful command. Errors print a
 single line on stderr and exit non-zero.`

@@ -15,6 +15,7 @@ import (
 	"github.com/jakeraft/clier/internal/runner"
 	"github.com/jakeraft/clier/internal/runplan"
 	"github.com/jakeraft/clier/internal/tmux"
+	"github.com/spf13/cobra"
 )
 
 // emit writes a value as compact JSON to w, followed by a newline.
@@ -88,6 +89,24 @@ func splitTeamID(raw string) (namespace, name string, err error) {
 		return "", "", fmt.Errorf("invalid team ID %q (expected namespace/name)", raw)
 	}
 	return raw[:i], raw[i+1:], nil
+}
+
+// requireOneArg is a cobra.Args validator that takes the place of
+// cobra.ExactArgs(1) so the missing/extra argument message matches the
+// rest of the CLI's tone. cobra.ExactArgs emits "accepts 1 arg(s),
+// received 0" which reads like an internal API trace; the human-friendly
+// label name lets us write "<run-id> is required" or similar.
+func requireOneArg(label string) cobra.PositionalArgs {
+	return func(cmd *cobra.Command, args []string) error {
+		switch len(args) {
+		case 0:
+			return fmt.Errorf("%s is required\n\nUsage:\n  %s", label, cmd.UseLine())
+		case 1:
+			return nil
+		default:
+			return fmt.Errorf("expected exactly one %s, got %d\n\nUsage:\n  %s", label, len(args), cmd.UseLine())
+		}
+	}
 }
 
 // readContent returns content from arg[0] or stdin (when empty/missing).

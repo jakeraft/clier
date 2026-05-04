@@ -178,3 +178,50 @@ func TestClientAuthDeviceStartRoundtrip(t *testing.T) {
 		t.Errorf("unexpected response: %+v", got)
 	}
 }
+
+func TestClientErrorFormat_problemRendersHumanLine(t *testing.T) {
+	body := `{"type":"urn:problem:invalid-argument","title":"Invalid argument","status":422,"code":"INVALID_ARGUMENT","detail":"sort: must be one of …","errors":[{"field":"sort","detail":"must be one of stars_desc, stars_asc, updated_desc, updated_asc"}]}`
+	e := &Error{StatusCode: 422, Body: body}
+
+	got := e.Error()
+	want := `422 Invalid argument: sort: must be one of … (sort: must be one of stars_desc, stars_asc, updated_desc, updated_asc)`
+	if got != want {
+		t.Errorf("Error():\n got: %q\nwant: %q", got, want)
+	}
+	if e.Code() != "INVALID_ARGUMENT" {
+		t.Errorf("Code(): %q", e.Code())
+	}
+	if e.Raw() != body {
+		t.Errorf("Raw() should preserve full envelope, got %q", e.Raw())
+	}
+}
+
+func TestClientErrorFormat_nonProblemFallsBackToRaw(t *testing.T) {
+	e := &Error{StatusCode: 500, Body: "upstream broken"}
+	got := e.Error()
+	want := `server returned 500: upstream broken`
+	if got != want {
+		t.Errorf("Error():\n got: %q\nwant: %q", got, want)
+	}
+}
+
+func TestClientErrorFormat_emptyJsonBodyFallsBackToStatusText(t *testing.T) {
+	// Valid JSON but no ProblemDetails fields — must not render an empty
+	// summary like "500 :". Falls back to the raw body so info is kept.
+	e := &Error{StatusCode: 500, Body: "{}"}
+	got := e.Error()
+	want := `server returned 500: {}`
+	if got != want {
+		t.Errorf("Error():\n got: %q\nwant: %q", got, want)
+	}
+}
+
+func TestClientErrorFormat_problemWithoutTitleUsesStatusText(t *testing.T) {
+	body := `{"detail":"missing session","code":"UNAUTHENTICATED"}`
+	e := &Error{StatusCode: 401, Body: body}
+	got := e.Error()
+	want := `401 Unauthorized: missing session`
+	if got != want {
+		t.Errorf("Error():\n got: %q\nwant: %q", got, want)
+	}
+}

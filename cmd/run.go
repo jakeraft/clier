@@ -32,7 +32,7 @@ func newRunStartCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "start <namespace/name>",
 		Short: "Mint a run, clone the team, and launch in tmux",
-		Args:  cobra.ExactArgs(1),
+		Args:  requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {
@@ -97,7 +97,7 @@ func newRunAttachCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "attach <run-id>",
 		Short: "Attach to the tmux session",
-		Args:  cobra.ExactArgs(1),
+		Args:  requireOneArg("<run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			run, err := newRunner()
 			if err != nil {
@@ -118,7 +118,7 @@ func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "stop <run-id>",
 		Short: "Kill the tmux session and free clones",
-		Args:  cobra.ExactArgs(1),
+		Args:  requireOneArg("<run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			run, err := newRunner()
 			if err != nil {
@@ -161,7 +161,7 @@ func newRunViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view <run-id>",
 		Short: "Show full run state",
-		Args:  cobra.ExactArgs(1),
+		Args:  requireOneArg("<run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			run, err := newRunner()
 			if err != nil {

@@ -32,36 +32,102 @@ func New(baseURL, token string) *Client {
 	}
 }
 
-// Error wraps a non-2xx response. Body is the raw server payload — typically
-// a Problem+JSON document. The CLI surfaces it verbatim instead of
-// translating reasons locally (server is the SSOT for error wording).
+// Error wraps a non-2xx response. Body is the raw server payload —
+// typically a Problem+JSON document — preserved for callers that want to
+// inspect the full envelope (e.g. validation error tables). The default
+// Error() rendering is the human-readable summary, not the raw JSON, so
+// stderr stays scannable.
 type Error struct {
 	StatusCode int
 	Body       string
 }
 
+// Error renders one human-readable line: "<status> <title>: <detail>".
+// Falls back to the raw body when the payload isn't ProblemDetails so we
+// never lose information. Per-field validation errors get appended in
+// parentheses so the user sees what to fix without re-reading the JSON.
 func (e *Error) Error() string {
-	return fmt.Sprintf("server returned %d: %s", e.StatusCode, e.Body)
+	p, ok := e.problem()
+	if !ok {
+		return fmt.Sprintf("server returned %d: %s", e.StatusCode, e.Body)
+	}
+	title := p.Title
+	if title == "" {
+		title = http.StatusText(e.StatusCode)
+		if title == "" {
+			title = fmt.Sprintf("HTTP %d", e.StatusCode)
+		}
+	}
+	out := fmt.Sprintf("%d %s", e.StatusCode, title)
+	if p.Detail != "" {
+		out += ": " + p.Detail
+	}
+	if len(p.Errors) > 0 {
+		fields := make([]string, 0, len(p.Errors))
+		for _, fe := range p.Errors {
+			if fe.Field != "" {
+				fields = append(fields, fmt.Sprintf("%s: %s", fe.Field, fe.Detail))
+			} else {
+				fields = append(fields, fe.Detail)
+			}
+		}
+		out += " (" + strings.Join(fields, "; ") + ")"
+	}
+	return out
 }
 
-// problem is the subset of RFC 7807 the CLI needs for branching (e.g. retry
-// on FAILED_PRECONDITION during device-flow polling). Other fields are
-// preserved in Body for display.
+// problem mirrors the RFC 9457 fields the CLI consumes. `Errors` is the
+// per-field validation slice the server emits for 422 responses.
 type problem struct {
-	Code   string `json:"code"`
+	Type   string         `json:"type"`
+	Title  string         `json:"title"`
+	Status int            `json:"status"`
+	Code   string         `json:"code"`
+	Detail string         `json:"detail"`
+	Errors []problemField `json:"errors"`
+}
+
+type problemField struct {
+	Field  string `json:"field"`
 	Detail string `json:"detail"`
 }
 
+func (e *Error) problem() (problem, bool) {
+	var p problem
+	if err := json.Unmarshal([]byte(e.Body), &p); err != nil {
+		return problem{}, false
+	}
+	// A non-ProblemDetails JSON body (e.g. {"foo":1}) parses without
+	// error but yields zero-value fields. Treat as not-a-problem so the
+	// caller falls back to raw body.
+	if p.Title == "" && p.Detail == "" && p.Code == "" && len(p.Errors) == 0 {
+		return problem{}, false
+	}
+	return p, true
+}
+
 // Code returns the structured Problem code if the body parses as one.
+// Used for branching on transient conditions (e.g. FAILED_PRECONDITION
+// during device-flow polling).
 func (e *Error) Code() string {
 	if e == nil {
 		return ""
 	}
-	var p problem
-	if err := json.Unmarshal([]byte(e.Body), &p); err != nil {
+	p, ok := e.problem()
+	if !ok {
 		return ""
 	}
 	return p.Code
+}
+
+// Raw returns the unmodified server response body. Useful when the
+// caller wants to dump the full ProblemDetails envelope (e.g. behind
+// a `--verbose` flag) instead of the summary line.
+func (e *Error) Raw() string {
+	if e == nil {
+		return ""
+	}
+	return e.Body
 }
 
 func (c *Client) do(method, path string, body any, result any) error {

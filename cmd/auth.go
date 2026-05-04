@@ -31,6 +31,11 @@ func newAuthLoginCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "login",
 		Short: "Log in via GitHub device flow",
+		Long: `Log in via the GitHub device flow.
+
+Login is only required to author teams (team create / update / delete)
+or to star (team star / unstar). Browsing the catalog (team list /
+team get) and starting a public run (run start) work anonymously.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := loadConfig()
 			if err != nil {
@@ -86,6 +91,15 @@ func newAuthStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Show login status",
+		Long: `Print the current login status as JSON.
+
+Fields:
+  logged_in   true when the persisted session is still valid
+  login       last GitHub login known to the CLI (may be set even when
+              logged_in is false, signalling an expired session)
+  reason      "session_expired" when the persisted token was rejected
+              by the server; absent on a clean logged-out state
+  server_url  configured CLIER_SERVER_URL`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := loadConfig()
 			if err != nil {
