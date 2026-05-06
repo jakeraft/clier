@@ -1,0 +1,50 @@
+version: 2
+
+builds:
+  - main: .
+    binary: clier
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.channel=release
+      - -X main.commit={{.ShortCommit}}
+
+archives:
+  - formats: ["tar.gz"]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+homebrew_casks:
+  - name: clier
+    repository:
+      owner: jakeraft
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    directory: Casks
+    homepage: "https://github.com/jakeraft/clier"
+    description: "Harness multi-agent teams with a native CLI."
+    license: "MIT"
+    url:
+      verified: github.com/jakeraft/clier
+    dependencies:
+      - formula: tmux
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/clier"]
+          end
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^style:"
+      - "^chore:"

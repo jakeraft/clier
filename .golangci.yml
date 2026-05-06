@@ -1,0 +1,14 @@
+version: "2"
+
+linters:
+  enable:
+    - errorlint
+    - unconvert
+    - unparam
+    - misspell
+    - nilerr
+    - perfsprint
+    - modernize
+
+issues:
+  max-same-issues: 0
