@@ -30,6 +30,7 @@ func newAuthLoginCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "login",
 		Short: "Log in via GitHub device flow",
+		Args:  cobra.NoArgs,
 		Long: `Log in via the GitHub device flow.
 
 Login is only required to author teams (team create / update / delete)
@@ -79,6 +80,7 @@ func newAuthLogoutCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "logout",
 		Short: "Revoke the current session",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			client, cfg, err := newAPIClient()
 			if err != nil {
@@ -108,6 +110,7 @@ func newAuthStatusCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
 		Short: "Show login status",
+		Args:  cobra.NoArgs,
 		Long: `Print the current login status as JSON.
 
 Fields:

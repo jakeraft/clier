@@ -28,6 +28,7 @@ func newOpenDashboardCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "dashboard",
 		Short: "Open the dashboard URL in your default browser",
+		Args:  cobra.NoArgs,
 		Long: `Open the configured dashboard URL with the OS-native browser
 launcher.
 

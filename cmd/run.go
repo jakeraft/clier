@@ -20,6 +20,7 @@ func newRunCmd() *cobra.Command {
 		newRunStartCmd(),
 		newRunTellCmd(),
 		newRunAttachCmd(),
+		newRunCaptureCmd(),
 		newRunStopCmd(),
 		newRunListCmd(),
 		newRunViewCmd(),
@@ -113,6 +114,51 @@ func newRunAttachCmd() *cobra.Command {
 	return cmd
 }
 
+func newRunCaptureCmd() *cobra.Command {
+	var agentFlag string
+	var linesFlag int
+	cmd := &cobra.Command{
+		Use:   "capture <run-id>",
+		Short: "Snapshot the current tmux pane(s) for an agent (issue #52)",
+		Long: `Print the live tmux pane buffer for one or every agent in
+the run as JSON. Non-interactive companion to ` + "`run attach`" + ` —
+the way to verify what landed in the agent terminal after
+` + "`clier run tell`" + ` without having to attach the user's TTY.
+
+By default every agent in the run is captured. ` + "`--agent`" + ` narrows
+to a single agent; ` + "`--lines N`" + ` includes the most recent N
+scrollback lines (omit / 0 = visible area only).`,
+		Args: requireOneArg("<run-id>"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			run, err := newRunner()
+			if err != nil {
+				return err
+			}
+			var agentPtr *string
+			if agentFlag != "" {
+				agentPtr = &agentFlag
+			}
+			items, err := run.Capture(args[0], agentPtr, linesFlag)
+			if err != nil {
+				return err
+			}
+			out := make([]map[string]any, len(items))
+			for i, it := range items {
+				out[i] = map[string]any{
+					"agent_id":    it.AgentID,
+					"window":      it.Window,
+					"captured_at": it.CapturedAt,
+					"content":     it.Content,
+				}
+			}
+			return emit(cmd.OutOrStdout(), map[string]any{"data": out})
+		},
+	}
+	cmd.Flags().StringVar(&agentFlag, "agent", "", "Capture only this agent's pane (defaults to every agent)")
+	cmd.Flags().IntVar(&linesFlag, "lines", 0, "Include this many trailing scrollback lines (0 = visible area only)")
+	return cmd
+}
+
 func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "stop <run-id>",
@@ -138,6 +184,7 @@ func newRunListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List runs (newest first)",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			run, err := newRunner()
 			if err != nil {

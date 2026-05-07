@@ -364,6 +364,61 @@ func (r *Runner) Stop(runID string) error {
 	return r.store.PurgeRun(plan)
 }
 
+// CaptureItem is one agent's pane snapshot.
+type CaptureItem struct {
+	AgentID    string    `json:"agent_id"`
+	Window     int       `json:"window"`
+	CapturedAt time.Time `json:"captured_at"`
+	Content    string    `json:"content"`
+}
+
+// Capture snapshots the current tmux pane buffer for one or every
+// agent in the run. Non-interactive — `clier run tell` plus `clier
+// run capture` lets a caller drive the agent without ever attaching,
+// which is the main reason it exists (issue #52). When agentID is
+// nil every agent is captured in BFS order; otherwise only the
+// matching agent is returned. lines == 0 captures the visible area
+// only; positive values request that many trailing lines from the
+// scrollback buffer.
+func (r *Runner) Capture(runID string, agentID *string, lines int) ([]CaptureItem, error) {
+	plan, err := r.store.Load(runID)
+	if err != nil {
+		return nil, err
+	}
+	if plan.Status == runplan.StatusStopped {
+		return nil, runplan.ErrRunStopped
+	}
+	alive, err := r.tmux.HasSession(plan.SessionName)
+	if err != nil {
+		return nil, fmt.Errorf("inspect tmux session: %w", err)
+	}
+	if !alive {
+		return nil, &tmux.ErrSessionGone{Session: plan.SessionName}
+	}
+	targets := plan.Agents
+	if agentID != nil && *agentID != "" {
+		agent, ok := plan.FindAgent(*agentID)
+		if !ok {
+			return nil, fmt.Errorf("%w: %s", ErrAgentNotInRun, *agentID)
+		}
+		targets = []runplan.Agent{*agent}
+	}
+	out := make([]CaptureItem, 0, len(targets))
+	for _, agent := range targets {
+		content, err := r.tmux.CapturePane(plan.SessionName, agent.Window, lines)
+		if err != nil {
+			return nil, fmt.Errorf("capture pane for %s: %w", agent.ID, err)
+		}
+		out = append(out, CaptureItem{
+			AgentID:    agent.ID,
+			Window:     agent.Window,
+			CapturedAt: r.now(),
+			Content:    content,
+		})
+	}
+	return out, nil
+}
+
 // Attach hands control of stdin/stdout/stderr to a tmux attach. When
 // agentID is non-nil, the matching window is selected first.
 func (r *Runner) Attach(runID string, agentID *string) error {

@@ -24,6 +24,12 @@ type Tmux interface {
 	KillSession(session string) error
 	PaneTitle(session string, windowIdx int) (string, error)
 	HasSession(session string) (bool, error)
+	// CapturePane returns a snapshot of the agent pane's visible
+	// scrollback. lines == 0 means "the visible area only"; positive
+	// values request that many trailing lines from history. Used by
+	// `clier run capture` to give callers a non-interactive read of
+	// what landed in the pane after `run tell`.
+	CapturePane(session string, windowIdx int, lines int) (string, error)
 }
 
 // ErrNoTTY is returned by Attach when stdin is not an interactive terminal.
@@ -152,6 +158,25 @@ func (r *Real) KillSession(session string) error {
 func (r *Real) PaneTitle(session string, windowIdx int) (string, error) {
 	target := session + ":" + strconv.Itoa(windowIdx)
 	out, err := r.run("display-message", "-p", "-t", target, "#{pane_title}")
+	if err != nil {
+		return "", wrapSessionGone(session, err)
+	}
+	return out, nil
+}
+
+// CapturePane snapshots the pane's visible buffer (and optional
+// trailing scrollback). lines == 0 captures only the visible area;
+// positive values request that many lines from history (`tmux
+// capture-pane -S -<lines>`). The `-p` flag prints to stdout and
+// `-J` joins wrapped lines so the result is the literal characters
+// the user would see, not tmux's wrap-injected continuations.
+func (r *Real) CapturePane(session string, windowIdx, lines int) (string, error) {
+	target := session + ":" + strconv.Itoa(windowIdx)
+	args := []string{"capture-pane", "-p", "-J", "-t", target}
+	if lines > 0 {
+		args = append(args, "-S", "-"+strconv.Itoa(lines))
+	}
+	out, err := r.run(args...)
 	if err != nil {
 		return "", wrapSessionGone(session, err)
 	}

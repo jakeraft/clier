@@ -10,186 +10,60 @@ func newTutorialCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tutorial",
 		Short: "Walk through your first multi-agent run",
-		Long: `Walk through clier end-to-end with the canned hello-clier ↔
-hello-codex team pair (jakeraft/hello-clier).
+		Args:  cobra.NoArgs,
+		Long: `clier tutorial — the shortest path to a working run.
+Five minutes, end to end.
 
-The team you start with:
-
-  jakeraft/hello-clier (root, Claude)
-  └── jakeraft/hello-codex (child, Codex)
-
-Both repos are public on GitHub. The server sends the CLI a manifest
-describing each agent (what to clone, what protocol markdown to drop,
-how to launch in tmux), and the CLI executes that manifest verbatim.
-
-Browsing the catalog (team list / team get) and starting a run
-(run start) work without logging in — public repos are reachable
-anonymously. Login is only required to author teams (team create /
-update / delete) and to star (team star / unstar).
+This page is a flow only. Per-command flags, error shapes, and the
+full command surface live in 'clier --help' and 'clier <command>
+--help' — those pages are the source of truth, this tutorial does
+not restate them.
 
 ================================================================
-Phase 1 — Try the canned team
+The flow
 ================================================================
 
-Step 1. (Optional) Log in
+(optional) clier auth login
+   Browsing the catalog and starting a run work without a session.
+   Log in only when you want to author teams in your own namespace
+   or star teams.
 
-  clier auth login
+1. clier team list
+   Browse the catalog. The demo team is jakeraft/hello-clier.
 
-  Authenticates with GitHub via device flow. Skip this for now if you
-  only want to browse and run public teams.
+2. clier run start jakeraft/hello-clier
+   Note the run_id printed on stdout — every following step takes
+   that id.
 
-Step 2. Open the dashboard for context
+3. clier run tell --run <run-id> --to jakeraft.hello-clier <<'EOF'
+   Greet your peer and tell me what you learned.
+   EOF
 
-  clier open dashboard
+   *Give the agent its first task.* Without 'tell' the agent just
+   sits there — clier never injects a task on its own. Every run
+   starts idle and waits for you.
 
-  Opens the configured dashboard URL. The default is baked at build
-  time; override per-invocation with CLIER_DASHBOARD_URL or check the
-  active URL with 'clier version'. The web UI is the canonical
-  surface for browsing the team catalog and previewing each team's
-  run manifest.
+4. clier run capture <run-id>
+   Read what landed in the agent's pane after the tell — JSON, no
+   tmux attach required. Pair this with 'tell' to drive the agent
+   without an interactive terminal.
 
-Step 3. Browse the catalog from the CLI
+5. clier run attach <run-id>
+   When you do want to watch live, attach. Detach with Ctrl-b d.
 
-  clier team list --sort stars_desc
-  clier team get jakeraft/hello-clier
-
-  list defaults to sort=stars_desc (Popular). Add --q <substring>
-  for substring search, --namespace <ns> to scope, --page-token
-  <cursor> to paginate.
-
-Step 4. Start the team
-
-  clier run start jakeraft/hello-clier
-
-  The server returns a fresh run_id; the CLI clones both repos,
-  writes the protocol file for hello-clier (claude reads it via
-  --append-system-prompt-file), and launches a tmux window per
-  agent. Note the run_id printed on stdout.
-
-  codex's first launch shows a "Do you trust this directory?"
-  dialog; the runner auto-presses "1" so you do not have to attach
-  for it.
-
-Step 5. Ask the root agent to greet the peer
-
-  clier run tell --run <run-id> --to jakeraft.hello-clier <<'EOF'
-  Greet hello-codex and report back what you learned.
-  EOF
-
-  The agent IDs are workspace-flat slugs (namespace.team) — the
-  protocol markdown the server emitted at run start already embeds
-  the fully-qualified clier run tell line for every peer, so the
-  agent can copy/paste it verbatim.
-
-Step 6. Watch live, then detach
-
-  clier run attach <run-id>
-
-  Watch both agents in real time. Detach with Ctrl-b d to leave them
-  running.
-
-  --agent jakeraft.hello-codex selects a specific window first.
-
-Step 7. Inspect the local plan
-
-  clier run list
-  clier run view <run-id>
-
-  All run state lives in ~/.clier/runs/<run-id>/run.json. list and
-  view never call the server.
-
-Step 8. Stop the run
-
-  clier run stop <run-id>
-
-  Sends each agent's exit command, kills the tmux session, then
-  removes the entire ~/.clier/runs/<run-id>/ directory — clones,
-  protocols/, and run.json. Stop is final; clier run list and
-  clier run view only surface live runs.
-
-================================================================
-Phase 2 — Make it your own
-================================================================
-
-Once Phase 1 works, register your own team that points at your own
-repo. clier never edits the repo — your repo is the source of truth
-for content. The server holds composition only (team metadata plus
-the protocol markdown template).
-
-Step 9. Create a team in your namespace
-
-  clier team create <yourns>/my-agent \
-    --agent-type claude \
-    --command 'claude --setting-sources project --strict-mcp-config --dangerously-skip-permissions' \
-    --git-repo-url https://github.com/<yourns>/my-agent \
-    --description 'My first multi-agent team'
-
-  Pass --subteam <ns/name> repeatedly to attach existing teams as
-  subteams (the server walks the graph at run start).
-
-Step 10. Tweak the team
-
-  clier team update <yourns>/my-agent --description 'Updated copy'
-
-  Only the flags you pass are sent (JSON Merge Patch). Use
-  --patch-json '{"subteams":[{"namespace":"x","name":"y"}]}' for
-  complex bodies. Immutable fields (namespace / name / agent_type)
-  cannot be patched — use delete + create.
-
-Step 11. Star teams you want to find later
-
-  clier team star jakeraft/hello-clier
-  clier team list --sort stars_desc
-
-  Stars are caller-aware — they show up only when you are logged in.
-
-Step 12. Run your team
-
-  clier run start <yourns>/my-agent
-
-  Same flow as Step 4. Iterate by editing your repo, committing /
-  pushing, then re-running — clier-server clones at HEAD of the
-  default branch (main) on every mint, so each run sees your
-  latest commit.
-
-================================================================
-Error semantics
-================================================================
-
-Successful commands print one JSON object on stdout and exit 0.
-Errors print one line on stderr starting with "error: " and exit
-non-zero. The exit code is binary — parse stdout for JSON success,
-stderr for human-readable error context.
-
-The shapes you will hit:
-
-  * Unknown command — "error: unknown command \"X\" for \"clier Y\"".
-    Always exits 1. Use 'clier <command> --help' to discover the
-    real command surface.
-
-  * Missing required flag — "error: required flag(s) ... not set".
-    Each subcommand marks its required inputs in --help with a
-    "(required)" suffix.
-
-  * Invalid argument (422) — server validation failure surfaced as
-    "error: <status> <title>: <detail>". Multiple field violations
-    in the same body surface in one response (multi-field
-    aggregation), so fixing one field does not hide the next.
-
-  * Unauthenticated (401) — "error: 401 Authentication required:
-    <detail>". The operator establishes the session before running
-    commands that need one.
-
-  * Not found (404) — typo on namespace/name or the resource is gone.
-
-  * Network failure — connection refused / timeout from the server;
-    bubbles up as the underlying http error wrapped on stderr.
+6. clier run stop <run-id>
+   Tear it down. tmux session, clones, run.json — all gone.
 
 ================================================================
 Going further
 ================================================================
 
-Use 'clier <command> --help' for details on each command.`,
+Author your own team:    clier team create --help
+Whole command surface:   clier --help
+
+Errors print on stderr starting with 'error: ' and exit non-zero;
+success commands print one JSON object on stdout. Every command's
+--help documents its own flags and the violations it can surface.`,
 	}
 	cmd.RunE = func(c *cobra.Command, _ []string) error {
 		return c.Help()

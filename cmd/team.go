@@ -46,6 +46,12 @@ func newTeamListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List teams (cursor pagination, default sort=stars_desc)",
+		// `list` takes no positional args — namespace filter is the
+		// `--namespace` flag, not a path-style positional. Without
+		// NoArgs cobra would silently accept `clier team list jakeraft`
+		// and hand back the full unfiltered catalog (looks filtered to
+		// the caller, isn't).
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			client, _, err := newAPIClient()
 			if err != nil {

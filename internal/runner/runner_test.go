@@ -2,6 +2,7 @@ package runner
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -82,6 +83,11 @@ func (t *fakeTmux) PaneTitle(session string, idx int) (string, error) {
 }
 
 func (t *fakeTmux) HasSession(session string) (bool, error) { return true, nil }
+
+func (t *fakeTmux) CapturePane(session string, idx int, lines int) (string, error) {
+	t.ops = append(t.ops, tmuxOp{kind: "capture", target: session, value: fmt.Sprintf("idx=%d lines=%d", idx, lines)})
+	return fmt.Sprintf("captured pane %s:%d", session, idx), nil
+}
 
 func soloAgentManifest(runID, id string) *api.RunManifest {
 	return &api.RunManifest{
