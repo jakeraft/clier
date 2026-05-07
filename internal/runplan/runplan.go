@@ -20,6 +20,12 @@ const (
 // ErrRunNotFound is returned when no run plan exists for the given runID.
 var ErrRunNotFound = errors.New("run not found in ~/.clier/runs")
 
+// ErrRunStopped is returned by tell/attach when the addressed run has
+// been stopped (status flipped + run dir purged). Surfaces a clean
+// rejection instead of a generic "not found" so the caller knows the
+// run existed but is no longer live.
+var ErrRunStopped = errors.New("run has been stopped")
+
 // Plan is everything `clier run` needs to drive a started session — what
 // was cloned, where it lives, and what's been said to whom. Mirrors the
 // agent-grouped RunManifest (ADR-0002 §2) so post-stop introspection
@@ -108,16 +114,40 @@ func (s *Store) RunDir(runID string) string {
 	return filepath.Join(s.root, runID)
 }
 
-// Save writes run.json under the plan's RunDir, creating it if missing.
-func (s *Store) Save(plan *Plan) error {
+// Create writes run.json for a fresh run, creating the run dir. Use
+// once per `clier run start`.
+func (s *Store) Create(plan *Plan) error {
 	if err := os.MkdirAll(plan.RunDir, 0o755); err != nil {
 		return fmt.Errorf("create run dir: %w", err)
 	}
+	return s.write(plan)
+}
+
+// Update rewrites run.json for an existing run — refusing if the run
+// dir is missing. This is the ordering hinge that closes the
+// stop ↔ tell race: once Stop runs PurgeRun, an in-flight Tell that
+// reaches Update finds the dir gone and returns ErrRunStopped instead
+// of MkdirAll-resurrecting a half-stopped layout. Tell, AppendMessage,
+// MarkStopped+Save all go through Update.
+func (s *Store) Update(plan *Plan) error {
+	if _, err := os.Stat(plan.RunDir); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ErrRunStopped
+		}
+		return fmt.Errorf("stat run dir: %w", err)
+	}
+	return s.write(plan)
+}
+
+// write performs the actual marshal+write. 0o600 — the body of run.json
+// can carry agent protocol templates and message history; restrict to
+// the user that owns the run dir.
+func (s *Store) write(plan *Plan) error {
 	data, err := json.MarshalIndent(plan, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal plan: %w", err)
 	}
-	return os.WriteFile(filepath.Join(plan.RunDir, planFileName), data, 0o644)
+	return os.WriteFile(filepath.Join(plan.RunDir, planFileName), data, 0o600)
 }
 
 // Load reads run.json for the given runID. ErrRunNotFound when absent.

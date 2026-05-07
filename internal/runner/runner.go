@@ -33,6 +33,30 @@ func (e *ErrReadyTimeout) Error() string {
 // boots in <5s on a warm cache, <20s cold.
 const readyDeadline = 60 * time.Second
 
+// safeJoinUnderRunDir joins a server-supplied relative path onto the
+// run dir and rejects anything that escapes (`..`, absolute paths,
+// resolved location outside runDir). The server is the trusted source
+// of paths in v1, but defense-in-depth keeps a compromised / spoofed
+// server response from writing outside `~/.clier/runs/<run_id>/`.
+func safeJoinUnderRunDir(runDir, rel string) (string, error) {
+	if rel == "" {
+		return runDir, nil
+	}
+	cleanRel := filepath.Clean(filepath.FromSlash(rel))
+	if filepath.IsAbs(cleanRel) {
+		return "", fmt.Errorf("absolute path rejected: %q", rel)
+	}
+	// filepath.Clean leaves leading "../" intact, which lets us catch
+	// escapes by checking the cleaned join against the runDir prefix.
+	joined := filepath.Clean(filepath.Join(runDir, cleanRel))
+	cleanRunDir := filepath.Clean(runDir)
+	if joined != cleanRunDir &&
+		!strings.HasPrefix(joined, cleanRunDir+string(os.PathSeparator)) {
+		return "", fmt.Errorf("path escapes run dir: %q", rel)
+	}
+	return joined, nil
+}
+
 // RunsAPI is the narrow port the runner uses on the api package — only
 // MintRun is needed. Defined here so tests can swap in a fake.
 type RunsAPI interface {
@@ -99,9 +123,16 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 		if success {
 			return
 		}
-		// Roll back partial tmux + filesystem state so a retry starts clean.
-		_ = r.tmux.KillSession(sessionName)
-		_ = os.RemoveAll(runDir)
+		// Roll back partial tmux + filesystem state so a retry starts
+		// clean. Rollback failures are best-effort but loud — a wedged
+		// tmux session or undeletable run dir would otherwise leave
+		// debris that the next `run start` attempt cannot clear.
+		if err := r.tmux.KillSession(sessionName); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: rollback kill-session failed for %s: %s\n", sessionName, err)
+		}
+		if err := os.RemoveAll(runDir); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: rollback remove run dir failed for %s: %s\n", runDir, err)
+		}
 	}()
 
 	// 1. Materialize per-agent prepare items (ADR-0002 §6 layout). Order:
@@ -117,16 +148,24 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 		if spec.Prepare.Protocol == nil {
 			continue
 		}
-		protoPath := filepath.Join(runDir, filepath.FromSlash(spec.Prepare.Protocol.Dest))
+		protoPath, err := safeJoinUnderRunDir(runDir, spec.Prepare.Protocol.Dest)
+		if err != nil {
+			return nil, fmt.Errorf("protocol path for %s: %w", spec.ID, err)
+		}
 		if err := os.MkdirAll(filepath.Dir(protoPath), 0o755); err != nil {
 			return nil, fmt.Errorf("create protocol dir for %s: %w", spec.ID, err)
 		}
-		if err := os.WriteFile(protoPath, []byte(spec.Prepare.Protocol.Content), 0o644); err != nil {
+		// 0o600 — the protocol body and any embedded message history
+		// can leak agent context on a shared host; restrict to owner.
+		if err := os.WriteFile(protoPath, []byte(spec.Prepare.Protocol.Content), 0o600); err != nil {
 			return nil, fmt.Errorf("write protocol for %s: %w", spec.ID, err)
 		}
 	}
 	for _, spec := range manifest.Agents {
-		dest := filepath.Join(runDir, filepath.FromSlash(spec.Prepare.Git.Dest))
+		dest, err := safeJoinUnderRunDir(runDir, spec.Prepare.Git.Dest)
+		if err != nil {
+			return nil, fmt.Errorf("git dest for %s: %w", spec.ID, err)
+		}
 		if err := r.git.Clone(spec.Prepare.Git.RepoURL, dest); err != nil {
 			return nil, fmt.Errorf("clone for %s: %w", spec.ID, err)
 		}
@@ -146,9 +185,17 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 	// 2. Open tmux session and one window per agent. agent's cwd =
 	//    git.dest [+ "/" + git.subpath] joined onto runDir.
 	for i, spec := range manifest.Agents {
-		absCwd := filepath.Join(runDir, filepath.FromSlash(spec.Prepare.Git.Dest))
+		absCwd, err := safeJoinUnderRunDir(runDir, spec.Prepare.Git.Dest)
+		if err != nil {
+			return nil, fmt.Errorf("cwd path for %s: %w", spec.ID, err)
+		}
 		if spec.Prepare.Git.Subpath != "" {
-			absCwd = filepath.Join(absCwd, filepath.FromSlash(spec.Prepare.Git.Subpath))
+			absCwd, err = safeJoinUnderRunDir(runDir,
+				filepath.Join(filepath.FromSlash(spec.Prepare.Git.Dest),
+					filepath.FromSlash(spec.Prepare.Git.Subpath)))
+			if err != nil {
+				return nil, fmt.Errorf("subpath cwd for %s: %w", spec.ID, err)
+			}
 		}
 		var windowIdx int
 		var werr error
@@ -216,7 +263,7 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 		}
 	}
 
-	if err := r.store.Save(plan); err != nil {
+	if err := r.store.Create(plan); err != nil {
 		return nil, fmt.Errorf("save run plan: %w", err)
 	}
 	success = true
@@ -235,6 +282,9 @@ func (r *Runner) Tell(runID string, fromAgent *string, toAgent string, content s
 	plan, err := r.store.Load(runID)
 	if err != nil {
 		return err
+	}
+	if plan.Status == runplan.StatusStopped {
+		return runplan.ErrRunStopped
 	}
 	if plan.Status != runplan.StatusRunning {
 		return fmt.Errorf("run %s is not active (status=%s)", runID, plan.Status)
@@ -267,16 +317,29 @@ func (r *Runner) Tell(runID string, fromAgent *string, toAgent string, content s
 		return fmt.Errorf("deliver message: %w", err)
 	}
 	plan.AppendMessage(fromAgent, toAgent, text)
-	return r.store.Save(plan)
+	return r.store.Update(plan)
 }
 
-// Stop kills the tmux session, marks the plan as stopped, and frees the
-// disk used by per-agent clones and protocol files. The run plan json
-// stays on disk so `clier run view` keeps working post-stop.
+// Stop kills the tmux session and frees the disk used by per-agent
+// clones, protocol files, and run.json itself. The flow has a single
+// race-closing hinge: status flips to "stopped" + Update *first*, so an
+// in-flight Tell that reaches Update concurrent with the PurgeRun
+// either sees the stopped status (Load before flip) and returns
+// ErrRunStopped, or finds the run dir gone (Load after flip but
+// Update after purge) and bubbles ErrRunStopped from Update. Either
+// way the partial Save can no longer resurrect a half-stopped layout.
 func (r *Runner) Stop(runID string) error {
 	plan, err := r.store.Load(runID)
 	if err != nil {
 		return err
+	}
+	if plan.Status == runplan.StatusStopped {
+		// Idempotent — purge any leftover dir and return success.
+		return r.store.PurgeRun(plan)
+	}
+	plan.MarkStopped()
+	if err := r.store.Update(plan); err != nil {
+		return fmt.Errorf("flip run to stopped: %w", err)
 	}
 	r.gracefulExit(plan)
 	if err := r.tmux.KillSession(plan.SessionName); err != nil {
@@ -333,12 +396,20 @@ func (r *Runner) waitReady(sessionName string, agent runplan.Agent) error {
 	return &ErrReadyTimeout{AgentID: agent.ID, Timeout: readyDeadline}
 }
 
+// gracefulExit sends each vendor's exit keyword (e.g. claude `/exit`) so
+// the agent can flush state before tmux kills the session. Send failures
+// are logged to stderr but do not abort Stop — the kill-session that
+// follows is unconditional, and a wedged pane is exactly the case
+// gracefulExit cannot handle anyway. Surfacing the warning lets the
+// operator see when graceful drainage was bypassed.
 func (r *Runner) gracefulExit(plan *runplan.Plan) {
 	for _, agent := range plan.Agents {
 		profile := profileFor(agent.AgentType)
 		if profile.exitCommand == "" {
 			continue
 		}
-		_ = r.tmux.SendLine(plan.SessionName, agent.Window, profile.exitCommand)
+		if err := r.tmux.SendLine(plan.SessionName, agent.Window, profile.exitCommand); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: graceful exit failed for %s: %s\n", agent.ID, err)
+		}
 	}
 }

@@ -36,7 +36,7 @@ func TestStoreSaveLoadRoundtrip(t *testing.T) {
 		StartedAt: time.Now().UTC().Truncate(time.Second),
 	}
 
-	if err := store.Save(plan); err != nil {
+	if err := store.Create(plan); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	loaded, err := store.Load("test-run")
@@ -67,10 +67,10 @@ func TestStoreListNewestFirst(t *testing.T) {
 	older := time.Now().Add(-1 * time.Hour)
 	newer := time.Now()
 
-	if err := store.Save(&Plan{RunID: "older", RunDir: store.RunDir("older"), StartedAt: older}); err != nil {
+	if err := store.Create(&Plan{RunID: "older", RunDir: store.RunDir("older"), StartedAt: older}); err != nil {
 		t.Fatalf("Save older: %v", err)
 	}
-	if err := store.Save(&Plan{RunID: "newer", RunDir: store.RunDir("newer"), StartedAt: newer}); err != nil {
+	if err := store.Create(&Plan{RunID: "newer", RunDir: store.RunDir("newer"), StartedAt: newer}); err != nil {
 		t.Fatalf("Save newer: %v", err)
 	}
 
@@ -103,7 +103,7 @@ func TestPurgeRunRemovesRunDir(t *testing.T) {
 			},
 		},
 	}
-	if err := store.Save(plan); err != nil {
+	if err := store.Create(plan); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	// Drop a fake clone tree + protocol file.
