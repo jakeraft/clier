@@ -81,6 +81,11 @@ func newAuthLogoutCmd() *cobra.Command {
 		Use:   "logout",
 		Short: "Revoke the current session",
 		Args:  cobra.NoArgs,
+		Long: `Revoke the persisted session.
+
+Best-effort server revoke + local credential delete. The local
+credential is always deleted, even if the server-side revoke fails —
+the user is fully logged out either way. Idempotent.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			client, cfg, err := newAPIClient()
 			if err != nil {
@@ -111,15 +116,10 @@ func newAuthStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show login status",
 		Args:  cobra.NoArgs,
-		Long: `Print the current login status as JSON.
-
-Fields:
-  logged_in   true when the persisted session is still valid
-  login       last GitHub login known to the CLI (may be set even when
-              logged_in is false, signalling an expired session)
-  reason      "session_expired" when the server reports the persisted
-              token as no longer valid; absent on a clean logged-out state
-  server_url  configured CLIER_SERVER_URL`,
+		Long: `Show whether a session is active and which login it
+belongs to. The server is consulted — an expired token surfaces
+distinctly from a clean logged-out state, so a script can tell
+"never logged in" apart from "session aged out".`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := loadConfig()
 			if err != nil {

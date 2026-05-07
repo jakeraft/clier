@@ -34,28 +34,19 @@ var rootCmd = &cobra.Command{
 
 const rootLong = `clier is a thin tmux harness for AI coding agent teams.
 
-It asks clier-server for a run manifest, clones each agent's repo into
-a per-run scratch dir, drops the agent's rendered protocol markdown,
-and launches one tmux window per agent. The vendor-specific launch
-flags are composed server-side, so adding a new agent vendor never
-requires a new CLI release.
+It asks clier-server for a run manifest, clones each agent's repo
+into a per-run scratch dir, drops the agent's rendered protocol
+markdown, and launches one tmux window per agent. Vendor-specific
+launch flags are composed server-side — adding a new agent vendor
+never requires a CLI release.
 
-Get started:
-  clier tutorial                            Walk through your first run
-  clier auth login                          Log in via GitHub device flow
-  clier team list                           Browse the catalog
-  clier run start <namespace/name>          Launch a team in tmux
-  clier run attach <run-id>                 Watch and intervene in real time
-  clier run tell --run <id> --to <agent>    Message an agent
-  clier run stop <run-id>                   Tear the run down
-  clier open dashboard                      Open the web UI
+First run:  clier tutorial
+Per command: clier <command> --help
 
-Output is JSON on stdout for every successful command. Errors print on
-stderr starting with "error: " and exit non-zero. Server errors are a
-single summary line ("<status> <title>: <detail>"); client-side
-validation (missing arguments, unknown commands) follows the same
-single-line shape. Use 'clier <command> --help' to discover every
-command and flag.`
+Successful commands print one JSON object on stdout and exit 0.
+Errors print one line on stderr starting with "error: " and exit
+non-zero — the same single-line shape across server validation,
+client-side validation, and unknown commands.`
 
 // buildInfo holds the ldflags-stamped identity of this binary. Surfaced
 // via `--version` (cobra default) and `version` (machine-readable JSON
@@ -115,7 +106,13 @@ func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print the build identity (binary, channel, server URL)",
-		Args:  cobra.NoArgs,
+		Long: `Print which binary you are talking to: version,
+channel (prod / dev), short commit, server URL, dashboard URL.
+
+Use this when a behaviour does not match expectations — the channel
+and server URL identify whether you are hitting prod or a local
+'make install-dev' build.`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := config.Default()
 			if err != nil {

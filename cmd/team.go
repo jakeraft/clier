@@ -46,6 +46,17 @@ func newTeamListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List teams (cursor pagination, default sort=stars_desc)",
+		Long: `Browse the team catalog. Public read — works without a session.
+
+Flags (all optional):
+  --namespace <ns>     scope to one owner (cross-namespace by default)
+  --agent-type <kind>  filter by "claude" or "codex"
+  --sort <key>         stars_desc (default) | stars_asc | updated_desc | updated_asc
+  --q <substring>      substring search on name + description (≤200 chars)
+  --page-size <n>      1..100, default 20
+  --page-token <c>     opaque cursor from the previous page's meta.next_cursor
+
+When authenticated, caller-aware fields (your own stars) populate.`,
 		// `list` takes no positional args — namespace filter is the
 		// `--namespace` flag, not a path-style positional. Without
 		// NoArgs cobra would silently accept `clier team list jakeraft`
@@ -92,7 +103,11 @@ func newTeamGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <namespace/name>",
 		Short: "Show one team by natural key",
-		Args:  requireOneArg("<namespace/name>"),
+		Long: `Read a single team by natural key (namespace + name).
+
+Public read — works without a session. When authenticated, your
+own stars populate the response.`,
+		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {
@@ -123,12 +138,23 @@ func newTeamCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create <namespace/name>",
 		Short: "Register a new team in your namespace",
-		Long: `Register a new team. The actor must own the target namespace
-(ADR-0005 §3.1) — typically your own GitHub login.
+		Long: `Register a new team in your own namespace. Owner-only —
+the namespace must match your own login.
 
-The server-default protocol template is auto-injected at create time.
-Edit the rendered protocol later via 'clier team update --protocol-file'
-(future) or the dashboard.`,
+Required flags:
+  --agent-type <kind>    "claude" or "codex"
+  --command <line>       command line the agent runs inside its checkout
+  --git-repo-url <url>   https://github.com/{owner}/{repo} (HTTPS only)
+
+Optional flags:
+  --description <text>   free-form
+  --git-subpath <path>   repo-relative cwd offset ("" = repo root)
+  --subteam <ns/name>    attach an existing team as a subteam
+                         (repeat for several)
+
+The server-default protocol template is auto-injected; tweak it
+later with 'team update --patch-json' or revert with
+'team reset-protocol'.`,
 		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
@@ -192,11 +218,24 @@ func newTeamUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <namespace/name>",
 		Short: "Patch a team (RFC 7396 JSON Merge Patch)",
-		Long: `Update mutable team fields via JSON Merge Patch (RFC 7396).
-Only the flags you pass are sent — omitted fields stay unchanged.
-Immutable fields (namespace, name, agent_type) cannot be patched.
+		Long: `Patch mutable team fields. Owner-only.
 
-For complex updates use --patch-json with a literal merge-patch body.`,
+Only the flags you pass are sent on the wire — omitted fields stay
+unchanged. Immutable fields (namespace, name, agent_type) cannot
+be patched. Restoring protocol to the default is a separate
+action — 'team reset-protocol' (PATCH cannot express it).
+
+Flags (all optional, at least one required):
+  --description <text>   replace description
+  --command <line>       replace vendor command line
+  --git-repo-url <url>   replace GitHub HTTPS URL
+  --git-subpath <path>   replace repo-relative subpath ("" = repo root)
+  --subteam <ns/name>    replace subteam list (repeat for several;
+                         pass with no values to clear)
+  --patch-json <body>    raw JSON Merge Patch — overrides the
+                         per-field flags above. Use for complex
+                         multi-key bodies the typed flags can't
+                         express.`,
 		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
@@ -236,13 +275,12 @@ func newTeamResetProtocolCmd() *cobra.Command {
 		Use:   "reset-protocol <namespace/name>",
 		Short: "Reset a team's protocol to the server-default template",
 		Long: `Overwrite the team's protocol column with the server-default
-template. The default template is the same one Create injects when the
-caller omits ` + "`protocol`" + `. PATCH cannot express "reset" because
-the wire null policy rejects ` + "`{\"protocol\": null}`" + ` and a
-sentinel value would be a magic string — this action endpoint keeps
-the intent explicit.
+template. Owner-only.
 
-Returns the full Team envelope reflecting the new state.`,
+Same template Create injects when --protocol is omitted. PATCH
+cannot express "reset" — 'protocol: null' is rejected by the wire
+policy and a sentinel value would be a magic string. This action
+endpoint keeps the intent explicit.`,
 		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
@@ -265,8 +303,13 @@ Returns the full Team envelope reflecting the new state.`,
 func newTeamDeleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "delete <namespace/name>",
-		Short: "Delete a team (204 on success)",
-		Args:  requireOneArg("<namespace/name>"),
+		Short: "Delete a team",
+		Long: `Delete a team. Owner-only.
+
+Subteam links and stars cascade automatically. A team that is
+referenced as a subteam by another team cannot be deleted directly —
+the referencing team must drop the link first.`,
+		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {
@@ -292,7 +335,12 @@ func newTeamStarCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "star <namespace/name>",
 		Short: "Star a team (idempotent)",
-		Args:  requireOneArg("<namespace/name>"),
+		Long: `Star a team — bookmark it under your namespace.
+
+Idempotent: starring an already-starred team is a no-op. Stars
+are caller-aware — only your own stars surface in your reads.
+Requires a session.`,
+		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {
@@ -318,7 +366,11 @@ func newTeamUnstarCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "unstar <namespace/name>",
 		Short: "Remove the star (idempotent)",
-		Args:  requireOneArg("<namespace/name>"),
+		Long: `Remove your star from a team.
+
+Idempotent: unstarring an unstarred team is a no-op. Requires
+a session.`,
+		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {

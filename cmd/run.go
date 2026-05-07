@@ -32,7 +32,17 @@ func newRunStartCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "start <namespace/name>",
 		Short: "Mint a run, clone the team, and launch in tmux",
-		Args:  requireOneArg("<namespace/name>"),
+		Long: `Mint a fresh run for the given team. Public — works
+without a session.
+
+The server walks the subteam graph, the CLI clones each agent's
+repo into a per-run scratch dir under ~/.clier/runs/<run_id>/,
+drops the rendered protocol markdown, and launches one tmux
+window per agent.
+
+The agents start *idle* — they do nothing until you send a task
+with 'clier run tell'.`,
+		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
 			if err != nil {
@@ -58,9 +68,19 @@ func newRunTellCmd() *cobra.Command {
 		Short: "Send a message to an agent",
 		Long: `Send a message to an agent in a running tmux session.
 
-The protocol markdown the server emits at run start already embeds the
-fully-qualified ` + "`clier run tell --run <run-id> --to <peer>`" + ` invocation, so an
-agent inside the run can copy/paste that line verbatim.`,
+Required flags:
+  --run <id>           run-id from 'run start'
+  --to  <agent-id>     workspace-flat slug (namespace.name)
+
+Optional flags:
+  --from <agent-id>    sender slug — when present the recipient sees
+                       a "[Message from <sender>]" prefix; lets agents
+                       attribute peer messages.
+
+Content can be passed as a positional arg (single line) or piped
+on stdin (multi-line). The protocol markdown the server emits at
+run start already embeds a fully-qualified 'clier run tell' line
+for every peer so an agent inside the run can copy/paste it.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := readContent(args)
@@ -97,7 +117,14 @@ func newRunAttachCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "attach <run-id>",
 		Short: "Attach to the tmux session",
-		Args:  requireOneArg("<run-id>"),
+		Long: `Hand control of the terminal to tmux. Detach with Ctrl-b d.
+
+Optional flag:
+  --agent <id>   select that agent's window before attaching
+
+Requires an interactive TTY. For non-TTY contexts (CI, scripted
+QA) use 'clier run capture' to snapshot pane contents instead.`,
+		Args: requireOneArg("<run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			run, err := newRunner()
 			if err != nil {
@@ -119,15 +146,15 @@ func newRunCaptureCmd() *cobra.Command {
 	var linesFlag int
 	cmd := &cobra.Command{
 		Use:   "capture <run-id>",
-		Short: "Snapshot the current tmux pane(s) for an agent (issue #52)",
-		Long: `Print the live tmux pane buffer for one or every agent in
-the run as JSON. Non-interactive companion to ` + "`run attach`" + ` —
-the way to verify what landed in the agent terminal after
-` + "`clier run tell`" + ` without having to attach the user's TTY.
+		Short: "Snapshot the current tmux pane(s) for an agent",
+		Long: `Read the live tmux pane buffer without attaching. Useful
+when 'run tell' is followed by an automated check, or whenever a
+TTY is unavailable (CI, scripted QA, headless agents).
 
-By default every agent in the run is captured. ` + "`--agent`" + ` narrows
-to a single agent; ` + "`--lines N`" + ` includes the most recent N
-scrollback lines (omit / 0 = visible area only).`,
+Optional flags:
+  --agent <id>   capture only this agent's pane (default: every agent)
+  --lines <n>    include this many trailing scrollback lines
+                 (0 = visible area only)`,
 		Args: requireOneArg("<run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			run, err := newRunner()
@@ -163,7 +190,14 @@ func newRunStopCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "stop <run-id>",
 		Short: "Kill the tmux session and free clones",
-		Args:  requireOneArg("<run-id>"),
+		Long: `Tear down a run. Sends each agent's exit command, kills
+the tmux session, and removes the entire ~/.clier/runs/<run-id>/
+directory — clones, protocol files, and run.json all gone.
+
+Stop is final and idempotent: running it on an already-stopped run
+just clears any leftover dir. Once stopped, 'run list' and
+'run view' no longer surface that run.`,
+		Args: requireOneArg("<run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			run, err := newRunner()
 			if err != nil {
@@ -184,7 +218,11 @@ func newRunListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
 		Short: "List runs (newest first)",
-		Args:  cobra.NoArgs,
+		Long: `List every live run on this machine, newest first.
+
+Local-only — reads ~/.clier/runs/, never calls the server. Stopped
+runs do not appear (their dirs are removed).`,
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			run, err := newRunner()
 			if err != nil {
@@ -213,7 +251,12 @@ func newRunViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "view <run-id>",
 		Short: "Show full run state",
-		Args:  requireOneArg("<run-id>"),
+		Long: `Show the persisted plan for a live run — agents, windows,
+recorded messages, started_at.
+
+Local-only — reads ~/.clier/runs/<run-id>/run.json, never calls
+the server. For live pane contents use 'run capture' instead.`,
+		Args: requireOneArg("<run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			run, err := newRunner()
 			if err != nil {

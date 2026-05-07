@@ -29,12 +29,11 @@ func newOpenDashboardCmd() *cobra.Command {
 		Use:   "dashboard",
 		Short: "Open the dashboard URL in your default browser",
 		Args:  cobra.NoArgs,
-		Long: `Open the configured dashboard URL with the OS-native browser
-launcher.
+		Long: `Open the configured dashboard URL with the OS-native
+browser launcher.
 
-The default URL is baked at build time. Override per-invocation
-with the CLIER_DASHBOARD_URL environment variable. Run
-` + "`clier version`" + ` to see the active URL.`,
+The default URL is baked at build time. Override per-process with
+the CLIER_DASHBOARD_URL environment variable.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := loadConfig()
 			if err != nil {
