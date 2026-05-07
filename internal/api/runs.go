@@ -54,5 +54,5 @@ type AgentRun struct {
 // if the caller is logged in (server ignores it for mint).
 func (c *Client) MintRun(namespace, name string) (*RunManifest, error) {
 	var m RunManifest
-	return &m, c.do("POST", "/api/v1/teams/"+namespace+"/"+name+"/runs", nil, &m)
+	return &m, c.do("POST", teamPath(namespace, name)+"/runs", nil, &m)
 }

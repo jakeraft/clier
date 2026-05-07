@@ -86,17 +86,19 @@ func SetBuildInfo(version, channel, commit string) {
 func init() {
 	rootCmd.AddCommand(newVersionCmd())
 
-	// Disable cobra's auto-generated `help` subcommand. Discovery is the
-	// `--help` flag's job — every command honors it. A second surface
-	// (`clier help auth`) would print the same output via two paths and,
-	// for unknown commands, print to stdout + exit 0 — breaking the
-	// CLI's "errors on stderr, prefix `error:`, non-zero exit" contract.
+	// Discovery is the `--help` flag's job — every command honors it.
+	// A second surface (`clier help auth`) would print the same output
+	// via two paths and, for unknown commands, exit 0 with stdout —
+	// breaking the CLI's "errors on stderr, prefix `error:`, non-zero
+	// exit" contract.
 	//
-	// Cobra's help template lists any command literally named "help" in
-	// the visible command list even when Hidden is set, so the override
-	// uses an unreachable Use value to stay out of `clier --help` while
-	// still capturing `clier help <anything>` and emitting the unknown-
-	// command error.
+	// cobra has no `DisableHelpCommand` flag through v1.10; the only
+	// way to suppress the auto-`help` subcommand is to override it.
+	// cobra's help template still lists any command literally named
+	// `help` in the visible command list, even when Hidden is set, so
+	// we use an unreachable Use value to stay out of `clier --help`
+	// while still capturing `clier help <anything>` to emit the
+	// unknown-command error.
 	rootCmd.SetHelpCommand(&cobra.Command{
 		Use:    "_disabled-help",
 		Hidden: true,

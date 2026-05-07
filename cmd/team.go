@@ -26,6 +26,7 @@ func newTeamCmd() *cobra.Command {
 		newTeamGetCmd(),
 		newTeamCreateCmd(),
 		newTeamUpdateCmd(),
+		newTeamResetProtocolCmd(),
 		newTeamDeleteCmd(),
 		newTeamStarCmd(),
 		newTeamUnstarCmd(),
@@ -222,6 +223,37 @@ For complex updates use --patch-json with a literal merge-patch body.`,
 	cmd.Flags().StringSliceVar(&subteamRefs, "subteam", nil, "Replace subteam list with these (namespace/name); repeatable, pass with no values to clear")
 	cmd.Flags().StringVar(&patchJSON, "patch-json", "", "Raw JSON Merge Patch body (overrides per-field flags)")
 	return cmd
+}
+
+func newTeamResetProtocolCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "reset-protocol <namespace/name>",
+		Short: "Reset a team's protocol to the server-default template",
+		Long: `Overwrite the team's protocol column with the server-default
+template. The default template is the same one Create injects when the
+caller omits ` + "`protocol`" + `. PATCH cannot express "reset" because
+the wire null policy rejects ` + "`{\"protocol\": null}`" + ` and a
+sentinel value would be a magic string — this action endpoint keeps
+the intent explicit.
+
+Returns the full Team envelope reflecting the new state.`,
+		Args: requireOneArg("<namespace/name>"),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ns, name, err := splitTeamID(args[0])
+			if err != nil {
+				return err
+			}
+			client, _, err := newAPIClient()
+			if err != nil {
+				return err
+			}
+			team, err := client.ResetTeamProtocol(ns, name)
+			if err != nil {
+				return err
+			}
+			return emit(cmd.OutOrStdout(), team)
+		},
+	}
 }
 
 func newTeamDeleteCmd() *cobra.Command {

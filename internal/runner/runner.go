@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -382,8 +383,16 @@ func (r *Runner) waitReady(sessionName string, agent runplan.Agent) error {
 	if profile.readyMarker == "" {
 		return nil
 	}
-	deadline := time.Now().Add(readyDeadline)
-	for time.Now().Before(deadline) {
+	// context.WithTimeout is monotonic-clock backed and cancellable, so
+	// laptop sleep / NTP jumps don't break the deadline (a `time.Now()`
+	// loop trips on monotonic stalls during system suspend), and a
+	// caller Ctrl-C cancels the wait without leaving an orphan poll.
+	ctx, cancel := context.WithTimeout(context.Background(), readyDeadline)
+	defer cancel()
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	for {
 		title, err := r.tmux.PaneTitle(sessionName, agent.Window)
 		if err != nil {
 			return fmt.Errorf("inspect pane title for %s: %w", agent.ID, err)
@@ -391,9 +400,12 @@ func (r *Runner) waitReady(sessionName string, agent runplan.Agent) error {
 		if strings.Contains(title, profile.readyMarker) {
 			return nil
 		}
-		time.Sleep(500 * time.Millisecond)
+		select {
+		case <-ctx.Done():
+			return &ErrReadyTimeout{AgentID: agent.ID, Timeout: readyDeadline}
+		case <-ticker.C:
+		}
 	}
-	return &ErrReadyTimeout{AgentID: agent.ID, Timeout: readyDeadline}
 }
 
 // gracefulExit sends each vendor's exit keyword (e.g. claude `/exit`) so

@@ -142,10 +142,19 @@ func (c *Client) ListTeams(q ListTeamsQuery) (*ListTeamsResponse, error) {
 	return &r, c.do("GET", path, nil, &r)
 }
 
+// teamPath builds /api/v1/teams/{ns}/{name} with proper percent-
+// encoding on each segment. The server validates namespace/name to a
+// safe charset, but escaping client-side keeps a future regex
+// loosening (or a server bug that lets a stray `/` through) from
+// silently turning one path segment into two.
+func teamPath(namespace, name string) string {
+	return "/api/v1/teams/" + url.PathEscape(namespace) + "/" + url.PathEscape(name)
+}
+
 // GetTeam calls GET /api/v1/teams/{ns}/{name}. Public endpoint.
 func (c *Client) GetTeam(namespace, name string) (*Team, error) {
 	var t Team
-	return &t, c.do("GET", "/api/v1/teams/"+namespace+"/"+name, nil, &t)
+	return &t, c.do("GET", teamPath(namespace, name), nil, &t)
 }
 
 // CreateTeam calls POST /api/v1/teams. Requires session + ownership
@@ -161,23 +170,31 @@ func (c *Client) CreateTeam(req CreateTeamRequest) (*Team, error) {
 // agent_type) are excluded from the request schema server-side.
 func (c *Client) UpdateTeam(namespace, name string, patch map[string]any) (*Team, error) {
 	var t Team
-	return &t, c.do("PATCH", "/api/v1/teams/"+namespace+"/"+name, patch, &t)
+	return &t, c.do("PATCH", teamPath(namespace, name), patch, &t)
+}
+
+// ResetTeamProtocol calls POST /api/v1/teams/{ns}/{name}:reset-protocol.
+// Resets the protocol column to the server-default template; returns
+// the full Team envelope reflecting the new state.
+func (c *Client) ResetTeamProtocol(namespace, name string) (*Team, error) {
+	var t Team
+	return &t, c.do("POST", teamPath(namespace, name)+":reset-protocol", nil, &t)
 }
 
 // DeleteTeam calls DELETE /api/v1/teams/{ns}/{name}. Returns 204 on
 // success.
 func (c *Client) DeleteTeam(namespace, name string) error {
-	return c.do("DELETE", "/api/v1/teams/"+namespace+"/"+name, nil, nil)
+	return c.do("DELETE", teamPath(namespace, name), nil, nil)
 }
 
 // StarTeam calls PUT /api/v1/teams/{ns}/{name}/star. Idempotent set —
 // the response Team envelope reflects the new star state.
 func (c *Client) StarTeam(namespace, name string) error {
-	return c.do("PUT", "/api/v1/teams/"+namespace+"/"+name+"/star", nil, nil)
+	return c.do("PUT", teamPath(namespace, name)+"/star", nil, nil)
 }
 
 // UnstarTeam calls DELETE /api/v1/teams/{ns}/{name}/star. Idempotent
 // unset.
 func (c *Client) UnstarTeam(namespace, name string) error {
-	return c.do("DELETE", "/api/v1/teams/"+namespace+"/"+name+"/star", nil, nil)
+	return c.do("DELETE", teamPath(namespace, name)+"/star", nil, nil)
 }
