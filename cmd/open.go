@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 
@@ -67,8 +68,15 @@ func openBrowser(url string) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("launch browser: %w", err)
 	}
-	// Detach — we don't wait for the browser process to exit. The CLI
-	// returns immediately after the launcher has spawned the URL handler.
-	go func() { _ = cmd.Wait() }()
+	// Detach — the CLI returns immediately after the launcher has
+	// spawned the URL handler. Reap the child in the background so the
+	// process table stays clean; surface a non-zero exit (no handler,
+	// permission denied, …) on stderr because the user already moved on
+	// and never sees a return value.
+	go func() {
+		if werr := cmd.Wait(); werr != nil {
+			fmt.Fprintf(os.Stderr, "warning: browser launcher exited with: %s\n", werr)
+		}
+	}()
 	return nil
 }

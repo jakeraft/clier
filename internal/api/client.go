@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -130,11 +131,26 @@ func (c *Client) do(method, path string, body any, result any) error {
 	if err != nil {
 		return fmt.Errorf("call %s %s: %w", method, path, err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer func() {
+		// Best-effort close — if the response body cannot be drained,
+		// the next request through this client.http.Do will surface
+		// the same transport problem; surface it to stderr in the
+		// meantime so the failure is not silent.
+		if cerr := resp.Body.Close(); cerr != nil {
+			fmt.Fprintf(os.Stderr, "warning: close response body for %s %s: %s\n", method, path, cerr)
+		}
+	}()
 
 	if resp.StatusCode >= 400 {
-		raw, _ := io.ReadAll(resp.Body)
-		return &Error{StatusCode: resp.StatusCode, Body: strings.TrimSpace(string(raw))}
+		raw, readErr := io.ReadAll(resp.Body)
+		body := strings.TrimSpace(string(raw))
+		if readErr != nil {
+			// A non-2xx with an unreadable body is still a real
+			// error — surface the read failure inline so the caller
+			// does not see an empty `Body` and lose the cause.
+			body = fmt.Sprintf("<read error: %s>", readErr)
+		}
+		return &Error{StatusCode: resp.StatusCode, Body: body}
 	}
 	if result != nil && resp.StatusCode != http.StatusNoContent {
 		if err := json.NewDecoder(resp.Body).Decode(result); err != nil {

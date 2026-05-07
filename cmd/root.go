@@ -9,11 +9,12 @@ import (
 	"github.com/jakeraft/clier/internal/config"
 )
 
-// The binary name is always `clier` — dev vs release is a value of the
-// `channel` build variable (see version --json), not a separate binary
-// identity. A machine carries one `clier` at a time (brew for release,
-// `make install-local` for dev); the user picks which install path is
-// active and the binary is interchangeable from the agent's POV.
+// The binary name is always `clier` — prod vs dev is a value of the
+// `channel` build variable (see `clier version`), not a separate
+// binary identity. A machine carries one `clier` at a time (brew for
+// prod, `make install-dev` for dev); the user picks which install
+// path is active and the binary is interchangeable from the agent's
+// POV.
 //
 // DisableSuggestions turns off cobra's default "Did you mean ..." typo
 // surface — the CLI does not coach users; `clier --help` is the single
@@ -60,17 +61,21 @@ command and flag.`
 // via `--version` (cobra default) and `version` (machine-readable JSON
 // for any automation that wants to confirm channel / version / server
 // URL — the CLI does not assume a specific consumer).
+//
+// Channel vocabulary: prod (the default for every unmarked install
+// path — `go install`, brew install, GoReleaser) and dev (only set
+// by `make install-dev`, which also points the URLs at localhost).
+// An unstamped binary therefore identifies as prod, matching what
+// users will actually download.
 var buildInfo = struct {
 	Version string
 	Channel string
 	Commit  string
-}{Version: "dev", Channel: "release"}
+}{Version: "dev", Channel: "prod"}
 
 // SetBuildInfo is called from main.go so the build pipeline can stamp
-// version / channel / commit. Channel marks which install path produced
-// the binary ("release" for brew / source / `go install`, "local" for
-// `make install-local`); the value surfaces through `clier version`
-// for any consumer that needs to confirm what binary it is talking to.
+// version / channel / commit. The default values above keep prod as
+// the unmarked behaviour; only `make install-dev` flips channel=dev.
 func SetBuildInfo(version, channel, commit string) {
 	buildInfo.Version = version
 	buildInfo.Channel = channel

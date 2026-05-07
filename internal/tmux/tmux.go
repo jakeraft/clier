@@ -93,9 +93,20 @@ func (r *Real) NewWindow(session, name, cwd string) (int, error) {
 
 func (r *Real) SendLine(session string, windowIdx int, line string) error {
 	target := session + ":" + strconv.Itoa(windowIdx)
-	// Best-effort copy-mode escape so send-keys lands in the prompt even if
-	// the pane is currently scrolled into copy-mode.
-	_, _ = r.run("copy-mode", "-q", "-t", target)
+	// Best-effort copy-mode escape so send-keys lands in the prompt even
+	// if the pane is currently scrolled into copy-mode. The `-q` flag
+	// silences a "not in copy-mode" complaint when there is nothing to
+	// escape — that's the normal case and not a failure. A *session
+	// gone* error here is real, though, and is propagated so we do not
+	// keep going only to land the keystrokes on a phantom target.
+	if _, err := r.run("copy-mode", "-q", "-t", target); err != nil {
+		var gone *ErrSessionGone
+		if wrapped := wrapSessionGone(session, err); errors.As(wrapped, &gone) {
+			return wrapped
+		}
+		// Any other copy-mode complaint (mostly "not in copy-mode") is
+		// expected — fall through to the actual send-keys.
+	}
 
 	if _, err := r.run("send-keys", "-l", "-t", target, line); err != nil {
 		return wrapSessionGone(session, err)
