@@ -35,13 +35,20 @@ The flow
    Note the run_id printed on stdout — every following step takes
    that id.
 
+   This step *only* spins up the tmux session, clones repos, and
+   parks each agent at its TUI prompt. The agents are idle until
+   step 3 hands them a task. Do not stop here and expect work —
+   nothing has been asked of them yet.
+
 3. clier run tell --run <run-id> --to jakeraft.hello-clier <<'EOF'
    Greet your peer and tell me what you learned.
    EOF
 
-   *Give the agent its first task.* Without 'tell' the agent just
-   sits there — clier never injects a task on its own. Every run
-   starts idle and waits for you.
+   *This is the step that actually starts work.* clier never
+   injects a task on its own — without 'tell' the agent in step 2
+   just sits at its prompt forever. Every run begins idle; the
+   first 'tell' is what kicks it off. Re-send 'tell' any time you
+   want to steer the agent further.
 
 4. clier run capture <run-id>
    Read what landed in the agent's pane after the tell — JSON, no
