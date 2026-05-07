@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -244,14 +243,16 @@ Flags (all optional, at least one required):
 			if err != nil {
 				return err
 			}
-			if len(patch) == 0 {
-				return errors.New("no fields to update")
-			}
 			client, _, err := newAPIClient()
 			if err != nil {
 				return err
 			}
-			team, err := client.UpdateTeam(ns, name, patch)
+			var team *api.Team
+			if patch.raw != nil {
+				team, err = client.UpdateTeamRaw(ns, name, patch.raw)
+			} else {
+				team, err = client.UpdateTeam(ns, name, patch.fields)
+			}
 			if err != nil {
 				return err
 			}
@@ -409,6 +410,16 @@ func parseSubteamRefs(raw []string) ([]api.TeamKey, error) {
 	return out, nil
 }
 
+// teamPatch is the oneof result of buildTeamPatch — either a typed
+// per-field map or the literal --patch-json bytes. Exactly one of the
+// two is populated. Empty-body / shape / unknown-key validation lives
+// on the server; this struct just carries whichever form the caller
+// chose.
+type teamPatch struct {
+	fields map[string]any
+	raw    []byte
+}
+
 // buildTeamPatch composes the merge-patch body. --patch-json is an
 // escape hatch — when set, it must be the only patch source. Mixing
 // it with per-field flags used to silently discard the per-field
@@ -417,49 +428,50 @@ func parseSubteamRefs(raw []string) ([]api.TeamKey, error) {
 // passed the flag — distinguishing "unchanged" from "set to empty
 // string" requires the pointer wrap (cobra's StringVar conflates
 // both).
+//
+// --patch-json is forwarded as raw bytes (no client-side unmarshal).
+// shape errors land as 400 Malformed request from the server's parser
+// with a precise json offset — more accurate than any CLI sanity
+// check, and free of the duplicate-validation drift footgun.
+//
+// Empty result (no per-field flag passed) is also forwarded — the
+// server rejects the no-op {} with 422 so the agent does not mistake
+// silent acceptance for a successful patch.
 func buildTeamPatch(description, command, gitRepoURL, gitSubpath *string,
-	subteamRefs []string, subteamsActive bool, patchJSON string) (map[string]any, error) {
+	subteamRefs []string, subteamsActive bool, patchJSON string) (teamPatch, error) {
 	if patchJSON != "" {
 		if description != nil || command != nil || gitRepoURL != nil ||
 			gitSubpath != nil || subteamsActive {
-			return nil, errors.New("--patch-json and per-field flags are mutually exclusive; pass exactly one")
+			return teamPatch{}, errors.New("--patch-json and per-field flags are mutually exclusive; pass exactly one")
 		}
-		var raw map[string]any
-		if err := json.Unmarshal([]byte(patchJSON), &raw); err != nil {
-			preview := patchJSON
-			if len(preview) > 32 {
-				preview = preview[:32] + "..."
-			}
-			return nil, fmt.Errorf("--patch-json: expected a JSON object, got: %s", preview)
-		}
-		return raw, nil
+		return teamPatch{raw: []byte(patchJSON)}, nil
 	}
-	patch := map[string]any{}
+	fields := map[string]any{}
 	if description != nil {
-		patch["description"] = *description
+		fields["description"] = *description
 	}
 	if command != nil {
-		patch["command"] = *command
+		fields["command"] = *command
 	}
 	if gitRepoURL != nil {
-		patch["git_repo_url"] = *gitRepoURL
+		fields["git_repo_url"] = *gitRepoURL
 	}
 	if gitSubpath != nil {
-		patch["git_subpath"] = *gitSubpath
+		fields["git_subpath"] = *gitSubpath
 	}
 	if subteamsActive {
 		subs, err := parseSubteamRefs(subteamRefs)
 		if err != nil {
-			return nil, err
+			return teamPatch{}, err
 		}
 		// Server expects []TeamKey; nil → empty slice so the patch
 		// signals "clear all subteams" rather than "leave unchanged".
 		if subs == nil {
 			subs = []api.TeamKey{}
 		}
-		patch["subteams"] = subs
+		fields["subteams"] = subs
 	}
-	return patch, nil
+	return teamPatch{fields: fields}, nil
 }
 
 // optStringFlag is a pflag.Value that captures whether the user passed the

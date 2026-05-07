@@ -110,7 +110,17 @@ func (e *Error) Code() string {
 
 func (c *Client) do(method, path string, body any, result any) error {
 	var bodyReader io.Reader
-	if body != nil {
+	switch v := body.(type) {
+	case nil:
+		// no body
+	case []byte:
+		// raw bypass — caller has the literal payload (e.g. --patch-json
+		// pass-through) and wants the server's parser to be the only
+		// validator. shape errors land as 400 Malformed request with a
+		// precise json offset, which is more informative than any
+		// CLI-side sanity check.
+		bodyReader = bytes.NewReader(v)
+	default:
 		b, err := json.Marshal(body)
 		if err != nil {
 			return fmt.Errorf("marshal body: %w", err)

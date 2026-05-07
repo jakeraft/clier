@@ -46,8 +46,11 @@ func TestBuildTeamPatch_perFieldPointers(t *testing.T) {
 			if err != nil {
 				t.Fatalf("buildTeamPatch: %v", err)
 			}
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("got %+v want %+v", got, tc.want)
+			if got.raw != nil {
+				t.Fatalf("raw path should be nil for per-field, got %q", got.raw)
+			}
+			if !reflect.DeepEqual(got.fields, tc.want) {
+				t.Errorf("got %+v want %+v", got.fields, tc.want)
 			}
 		})
 	}
@@ -59,8 +62,8 @@ func TestBuildTeamPatch_subteamsClearVsAdd(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, present := got["subteams"]; present {
-			t.Errorf("subteams should be absent when --subteam not passed: %+v", got)
+		if _, present := got.fields["subteams"]; present {
+			t.Errorf("subteams should be absent when --subteam not passed: %+v", got.fields)
 		}
 	})
 	t.Run("flag passed empty clears", func(t *testing.T) {
@@ -68,9 +71,9 @@ func TestBuildTeamPatch_subteamsClearVsAdd(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		subs, ok := got["subteams"].([]api.TeamKey)
+		subs, ok := got.fields["subteams"].([]api.TeamKey)
 		if !ok {
-			t.Fatalf("subteams should be []api.TeamKey, got %T", got["subteams"])
+			t.Fatalf("subteams should be []api.TeamKey, got %T", got.fields["subteams"])
 		}
 		if len(subs) != 0 {
 			t.Errorf("expected empty slice (clear semantic), got %+v", subs)
@@ -81,7 +84,7 @@ func TestBuildTeamPatch_subteamsClearVsAdd(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		subs := got["subteams"].([]api.TeamKey)
+		subs := got.fields["subteams"].([]api.TeamKey)
 		want := []api.TeamKey{{Namespace: "alice", Name: "x"}, {Namespace: "bob", Name: "y"}}
 		if !reflect.DeepEqual(subs, want) {
 			t.Errorf("got %+v want %+v", subs, want)
@@ -95,22 +98,22 @@ func TestBuildTeamPatch_subteamsClearVsAdd(t *testing.T) {
 	})
 }
 
-func TestBuildTeamPatch_patchJsonAlone(t *testing.T) {
-	// --patch-json is the escape hatch for complex merge patch bodies
-	// (e.g. nested object semantics flag composition cannot express).
-	// Verify it passes through untouched when no per-field flags are
-	// also set; the mutex case is covered by the next test.
-	got, err := buildTeamPatch(nil, nil, nil, nil, nil, false,
-		`{"description":"from-json","subteams":[{"namespace":"x","name":"y"}]}`)
+func TestBuildTeamPatch_patchJsonRawPassthrough(t *testing.T) {
+	// --patch-json is the escape hatch — bytes are forwarded untouched
+	// to the server's parser. CLI-side unmarshal would be a duplicate
+	// validation that drifts from the server's spec; shape errors land
+	// as 400 Malformed request from the server with a precise json
+	// offset.
+	literal := `{"description":"from-json","subteams":[{"namespace":"x","name":"y"}]}`
+	got, err := buildTeamPatch(nil, nil, nil, nil, nil, false, literal)
 	if err != nil {
 		t.Fatalf("buildTeamPatch: %v", err)
 	}
-	if got["description"] != "from-json" {
-		t.Errorf("--patch-json body did not pass through, got %+v", got)
+	if got.fields != nil {
+		t.Errorf("fields should be nil when --patch-json set, got %+v", got.fields)
 	}
-	subs, ok := got["subteams"].([]any)
-	if !ok || len(subs) != 1 {
-		t.Errorf("subteams should be the JSON-decoded array (any), got %T %+v", got["subteams"], got["subteams"])
+	if string(got.raw) != literal {
+		t.Errorf("raw mismatch:\ngot  %q\nwant %q", got.raw, literal)
 	}
 }
 
@@ -120,11 +123,5 @@ func TestBuildTeamPatch_patchJsonAndFlagsMutex(t *testing.T) {
 	if _, err := buildTeamPatch(strPtr("from-flag"), nil, nil, nil, nil, false,
 		`{"description":"from-json"}`); err == nil {
 		t.Fatal("expected mutex error when --patch-json + per-field flag both present")
-	}
-}
-
-func TestBuildTeamPatch_invalidPatchJson(t *testing.T) {
-	if _, err := buildTeamPatch(nil, nil, nil, nil, nil, false, "{not json"); err == nil {
-		t.Fatal("expected error for malformed --patch-json")
 	}
 }

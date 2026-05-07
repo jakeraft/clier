@@ -173,6 +173,16 @@ func (c *Client) UpdateTeam(namespace, name string, patch map[string]any) (*Team
 	return &t, c.do("PATCH", teamPath(namespace, name), patch, &t)
 }
 
+// UpdateTeamRaw is the thin pass-through variant for `--patch-json` —
+// the literal bytes go on the wire untouched so the server's JSON
+// parser produces the authoritative shape error (Malformed request
+// with precise offset). Avoids the duplicate-validation footgun of a
+// CLI-side sanity check that drifts away from the server's spec.
+func (c *Client) UpdateTeamRaw(namespace, name string, body []byte) (*Team, error) {
+	var t Team
+	return &t, c.do("PATCH", teamPath(namespace, name), body, &t)
+}
+
 // ResetTeamProtocol calls POST /api/v1/teams/{ns}/{name}/reset-protocol.
 // Resets the protocol column to the server-default template; returns
 // the full Team envelope reflecting the new state. The path uses a
