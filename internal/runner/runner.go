@@ -344,13 +344,25 @@ func (r *Runner) Tell(runID string, fromAgent *string, toAgent string, content s
 // ErrRunStopped, or finds the run dir gone (Load after flip but
 // Update after purge) and bubbles ErrRunStopped from Update. Either
 // way the partial Save can no longer resurrect a half-stopped layout.
+//
+// Stop is idempotent: calling it on a run that has already been
+// stopped (run dir purged → Load returns ErrRunNotFound) is a
+// no-op success. "stop" semantically means "this run should not
+// exist anymore"; both "I just stopped it" and "it was already
+// gone" satisfy that. The success of an unknown run-id (typo) is
+// the same shape as a re-stop — that is acceptable because
+// `clier run list` is the discovery surface; `stop` is not.
 func (r *Runner) Stop(runID string) error {
 	plan, err := r.store.Load(runID)
 	if err != nil {
+		if errors.Is(err, runplan.ErrRunNotFound) {
+			return nil
+		}
 		return err
 	}
 	if plan.Status == runplan.StatusStopped {
-		// Idempotent — purge any leftover dir and return success.
+		// Status already flipped (e.g. partial stop, reboot mid-flow):
+		// finish the cleanup without re-running the kill/exit chain.
 		return r.store.PurgeRun(plan)
 	}
 	plan.MarkStopped()
