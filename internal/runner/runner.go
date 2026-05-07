@@ -36,12 +36,27 @@ const readyDeadline = 60 * time.Second
 
 // safeJoinUnderRunDir joins a server-supplied relative path onto the
 // run dir and rejects anything that escapes (`..`, absolute paths,
-// resolved location outside runDir). The server is the trusted source
-// of paths in v1, but defense-in-depth keeps a compromised / spoofed
-// server response from writing outside `~/.clier/runs/<run_id>/`.
+// NUL bytes, resolved location outside runDir, empty runDir). The
+// server is the trusted source of paths in v1, but defense-in-depth
+// keeps a compromised / spoofed server response from writing outside
+// `~/.clier/runs/<run_id>/`.
 func safeJoinUnderRunDir(runDir, rel string) (string, error) {
+	if runDir == "" {
+		// A blank base would let `filepath.Clean(rel)` resolve to a
+		// path the prefix check is no longer evaluating — the helper
+		// has no safe answer for "anchor anywhere".
+		return "", fmt.Errorf("runDir must not be empty")
+	}
+	if strings.ContainsRune(rel, 0) {
+		// NUL truncates strings on most C-backed filesystems and on
+		// some Go syscalls. `filepath.Clean` does not strip it, so a
+		// `"safe\x00/../etc/passwd"` value would survive cleaning and
+		// be opened as `safe` while actually pointing at `/etc/passwd`
+		// downstream.
+		return "", fmt.Errorf("path contains NUL byte: %q", rel)
+	}
 	if rel == "" {
-		return runDir, nil
+		return filepath.Clean(runDir), nil
 	}
 	cleanRel := filepath.Clean(filepath.FromSlash(rel))
 	if filepath.IsAbs(cleanRel) {

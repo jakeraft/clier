@@ -173,12 +173,15 @@ func (c *Client) UpdateTeam(namespace, name string, patch map[string]any) (*Team
 	return &t, c.do("PATCH", teamPath(namespace, name), patch, &t)
 }
 
-// ResetTeamProtocol calls POST /api/v1/teams/{ns}/{name}:reset-protocol.
+// ResetTeamProtocol calls POST /api/v1/teams/{ns}/{name}/reset-protocol.
 // Resets the protocol column to the server-default template; returns
-// the full Team envelope reflecting the new state.
+// the full Team envelope reflecting the new state. The path uses a
+// sub-segment verb instead of a `:verb` suffix because Echo (and
+// many path-routers) treat `:` inside a segment as a parameter
+// terminator.
 func (c *Client) ResetTeamProtocol(namespace, name string) (*Team, error) {
 	var t Team
-	return &t, c.do("POST", teamPath(namespace, name)+":reset-protocol", nil, &t)
+	return &t, c.do("POST", teamPath(namespace, name)+"/reset-protocol", nil, &t)
 }
 
 // DeleteTeam calls DELETE /api/v1/teams/{ns}/{name}. Returns 204 on
