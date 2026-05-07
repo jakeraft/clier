@@ -95,22 +95,31 @@ func TestBuildTeamPatch_subteamsClearVsAdd(t *testing.T) {
 	})
 }
 
-func TestBuildTeamPatch_patchJsonEscapeHatchWins(t *testing.T) {
-	// When --patch-json is set the per-field flags are ignored entirely so
-	// operators have a single deterministic body when they need a complex
-	// merge patch (e.g. nested object semantics that flag composition cannot
-	// express). Verifies that the per-field "description" does NOT leak.
-	got, err := buildTeamPatch(strPtr("ignored"), nil, nil, nil, nil, false,
+func TestBuildTeamPatch_patchJsonAlone(t *testing.T) {
+	// --patch-json is the escape hatch for complex merge patch bodies
+	// (e.g. nested object semantics flag composition cannot express).
+	// Verify it passes through untouched when no per-field flags are
+	// also set; the mutex case is covered by the next test.
+	got, err := buildTeamPatch(nil, nil, nil, nil, nil, false,
 		`{"description":"from-json","subteams":[{"namespace":"x","name":"y"}]}`)
 	if err != nil {
 		t.Fatalf("buildTeamPatch: %v", err)
 	}
 	if got["description"] != "from-json" {
-		t.Errorf("--patch-json should override per-field flags, got %+v", got)
+		t.Errorf("--patch-json body did not pass through, got %+v", got)
 	}
 	subs, ok := got["subteams"].([]any)
 	if !ok || len(subs) != 1 {
 		t.Errorf("subteams should be the JSON-decoded array (any), got %T %+v", got["subteams"], got["subteams"])
+	}
+}
+
+func TestBuildTeamPatch_patchJsonAndFlagsMutex(t *testing.T) {
+	// Mixing --patch-json with per-field flags used to silently
+	// discard the per-field values; now it's rejected loudly.
+	if _, err := buildTeamPatch(strPtr("from-flag"), nil, nil, nil, nil, false,
+		`{"description":"from-json"}`); err == nil {
+		t.Fatal("expected mutex error when --patch-json + per-field flag both present")
 	}
 }
 

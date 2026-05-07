@@ -82,11 +82,11 @@ func newRunner() (*runner.Runner, error) {
 func splitTeamID(raw string) (namespace, name string, err error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
-		return "", "", errors.New("team ID is required (format: namespace/name)")
+		return "", "", errors.New("team ID is required")
 	}
 	i := strings.Index(raw, "/")
 	if i <= 0 || i >= len(raw)-1 {
-		return "", "", fmt.Errorf("invalid team ID %q (expected namespace/name)", raw)
+		return "", "", fmt.Errorf("invalid team ID %q", raw)
 	}
 	return raw[:i], raw[i+1:], nil
 }
@@ -131,11 +131,22 @@ func requireOneArg(label string) cobra.PositionalArgs {
 // readContent returns the message content from arg[0] or, when arg[0] is
 // missing or "-", from stdin. Both paths apply the same emptiness check
 // so callers like `clier run tell --run X --to Y ""` fail with a precise
-// "message content is empty" before any downstream lookup (the previous
-// implementation only trimmed the stdin path, so an empty arg fell
-// through to runner.Tell and surfaced as a misleading "run not found").
+// "message content is empty" before any downstream lookup.
+//
+// Passing a positional arg AND piping data on stdin at the same time is
+// rejected — the previous implementation silently picked the positional
+// and discarded the stdin payload, which was a Trust 3 silent fallback.
+// Pass exactly one source.
 func readContent(args []string) (string, error) {
-	if len(args) > 0 && args[0] != "-" {
+	hasPositional := len(args) > 0 && args[0] != "-"
+	stdinHasData, err := stdinHasPipedData()
+	if err != nil {
+		return "", err
+	}
+	if hasPositional && stdinHasData {
+		return "", errors.New("ambiguous content: positional arg and stdin pipe both present; pass exactly one")
+	}
+	if hasPositional {
 		content := strings.TrimSpace(args[0])
 		if content == "" {
 			return "", errors.New("message content is empty")
@@ -151,4 +162,16 @@ func readContent(args []string) (string, error) {
 		return "", errors.New("message content is empty")
 	}
 	return content, nil
+}
+
+// stdinHasPipedData reports whether stdin is connected to a pipe or
+// redirection (i.e. a non-tty source with data). Returns false when
+// stdin is the controlling terminal so the caller doesn't block
+// waiting for input that will never arrive.
+func stdinHasPipedData() (bool, error) {
+	info, err := os.Stdin.Stat()
+	if err != nil {
+		return false, err
+	}
+	return (info.Mode() & os.ModeCharDevice) == 0, nil
 }

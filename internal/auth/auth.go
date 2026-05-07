@@ -104,5 +104,5 @@ func Login(client *api.Client, credentialsPath string, notify func(LoginPrompt))
 		return nil, fmt.Errorf("complete device flow: %w", err)
 	}
 
-	return nil, errors.New("authentication timed out — re-run `clier auth login`")
+	return nil, errors.New("authentication timed out")
 }

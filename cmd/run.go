@@ -80,9 +80,8 @@ Optional flags:
                        attribute peer messages.
 
 Content can be passed as a positional arg (single line) or piped
-on stdin (multi-line). The protocol markdown the server emits at
-run start already embeds a fully-qualified 'clier run tell' line
-for every peer so an agent inside the run can copy/paste it.`,
+on stdin (multi-line) — pass exactly one of the two. Both at the
+same time is rejected.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			content, err := readContent(args)
@@ -124,8 +123,7 @@ func newRunAttachCmd() *cobra.Command {
 Optional flag:
   --agent <id>   select that agent's window before attaching
 
-Requires an interactive TTY. For non-TTY contexts (CI, scripted
-QA) use 'clier run capture' to snapshot pane contents instead.`,
+Requires an interactive TTY.`,
 		Args: requireOneArg("<run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			run, err := newRunner()
@@ -155,8 +153,7 @@ TTY is unavailable (CI, scripted QA, headless agents).
 
 Optional flags:
   --agent <id>   capture only this agent's pane (default: every agent)
-  --lines <n>    include this many trailing scrollback lines
-                 (0 = visible area only)`,
+  --lines <n>    include this many trailing scrollback lines`,
 		Args: requireOneArg("<run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// out-of-range bounds must be loud and named — `team list

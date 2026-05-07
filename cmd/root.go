@@ -107,11 +107,7 @@ func newVersionCmd() *cobra.Command {
 		Use:   "version",
 		Short: "Print the build identity (binary, channel, server URL)",
 		Long: `Print which binary you are talking to: version,
-channel (prod / dev), short commit, server URL, dashboard URL.
-
-Use this when a behaviour does not match expectations — the channel
-and server URL identify whether you are hitting prod or a local
-'make install-dev' build.`,
+channel (prod / dev), short commit, server URL, dashboard URL.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg, err := config.Default()

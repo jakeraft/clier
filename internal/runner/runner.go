@@ -30,7 +30,7 @@ func (e *ErrReadyTimeout) Error() string {
 	return fmt.Sprintf("agent %s did not become ready within %s", e.AgentID, e.Timeout)
 }
 
-// readyDeadline is the per-agent TUI ready timeout. Claude Code typically
+// readyDeadline is the per-agent TUI ready timeout. claude typically
 // boots in <5s on a warm cache, <20s cold.
 const readyDeadline = 60 * time.Second
 

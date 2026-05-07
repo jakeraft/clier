@@ -152,9 +152,7 @@ Optional flags:
   --subteam <ns/name>    attach an existing team as a subteam
                          (repeat for several)
 
-The server-default protocol template is auto-injected; tweak it
-later with 'team update --patch-json' or revert with
-'team reset-protocol'.`,
+The server-default protocol template is auto-injected on create.`,
 		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
@@ -222,8 +220,7 @@ func newTeamUpdateCmd() *cobra.Command {
 
 Only the flags you pass are sent on the wire — omitted fields stay
 unchanged. Immutable fields (namespace, name, agent_type) cannot
-be patched. Restoring protocol to the default is a separate
-action — 'team reset-protocol' (PATCH cannot express it).
+be patched.
 
 Flags (all optional, at least one required):
   --description <text>   replace description
@@ -248,7 +245,7 @@ Flags (all optional, at least one required):
 				return err
 			}
 			if len(patch) == 0 {
-				return errors.New("no fields to update — pass at least one --description / --command / --git-repo-url / --git-subpath / --subteam / --patch-json")
+				return errors.New("no fields to update")
 			}
 			client, _, err := newAPIClient()
 			if err != nil {
@@ -307,8 +304,7 @@ func newTeamDeleteCmd() *cobra.Command {
 		Long: `Delete a team. Owner-only.
 
 Subteam links and stars cascade automatically. A team that is
-referenced as a subteam by another team cannot be deleted directly —
-the referencing team must drop the link first.`,
+referenced as a subteam by another team cannot be deleted.`,
 		Args: requireOneArg("<namespace/name>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ns, name, err := splitTeamID(args[0])
@@ -413,14 +409,21 @@ func parseSubteamRefs(raw []string) ([]api.TeamKey, error) {
 	return out, nil
 }
 
-// buildTeamPatch composes the merge-patch body. --patch-json wins entirely
-// when set (escape hatch); otherwise per-field flags are merged in. Each
-// optional pointer is only included when the user actually passed the flag
-// — distinguishing "unchanged" from "set to empty string" requires the
-// pointer wrap (cobra's StringVar conflates both).
+// buildTeamPatch composes the merge-patch body. --patch-json is an
+// escape hatch — when set, it must be the only patch source. Mixing
+// it with per-field flags used to silently discard the per-field
+// values; now it's rejected loudly so the caller sees the conflict.
+// Each optional pointer is only included when the user actually
+// passed the flag — distinguishing "unchanged" from "set to empty
+// string" requires the pointer wrap (cobra's StringVar conflates
+// both).
 func buildTeamPatch(description, command, gitRepoURL, gitSubpath *string,
 	subteamRefs []string, subteamsActive bool, patchJSON string) (map[string]any, error) {
 	if patchJSON != "" {
+		if description != nil || command != nil || gitRepoURL != nil ||
+			gitSubpath != nil || subteamsActive {
+			return nil, errors.New("--patch-json and per-field flags are mutually exclusive; pass exactly one")
+		}
 		var raw map[string]any
 		if err := json.Unmarshal([]byte(patchJSON), &raw); err != nil {
 			preview := patchJSON

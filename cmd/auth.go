@@ -52,7 +52,7 @@ flow. Use 'clier auth logout' first to switch accounts.`,
 			// device flow with no warning.
 			if creds, err := loadCredentials(cfg.CredentialsPath); err == nil && creds != nil {
 				if ns, err := api.New(cfg.ServerURL, creds.Token).AuthMe(); err == nil {
-					fmt.Fprintf(os.Stderr, "note: already logged in as %s; run 'clier auth logout' first to switch accounts\n", ns.Name)
+					fmt.Fprintf(os.Stderr, "note: already logged in as %s\n", ns.Name)
 					return emit(cmd.OutOrStdout(), map[string]any{"login": ns.Name})
 				}
 				// Persisted token rejected — fall through to a fresh
