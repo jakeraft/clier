@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"errors"
+
 	"github.com/jakeraft/clier/internal/runplan"
 	"github.com/spf13/cobra"
 )
@@ -157,6 +159,13 @@ Optional flags:
                  (0 = visible area only)`,
 		Args: requireOneArg("<run-id>"),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// out-of-range bounds must be loud and named — `team list
+			// --page-size -1` already rejects with the same shape;
+			// silently accepting `--lines -1` made the surface
+			// inconsistent (qa-checklist Trust 3).
+			if linesFlag < 0 {
+				return errors.New("invalid argument: --lines must be >= 0")
+			}
 			run, err := newRunner()
 			if err != nil {
 				return err
