@@ -370,8 +370,13 @@ func (r *Runner) Stop(runID string) error {
 		return fmt.Errorf("flip run to stopped: %w", err)
 	}
 	r.gracefulExit(plan)
+	// KillSession failures must not block the dir purge — that's the
+	// "final and idempotent" promise. A wedged tmux daemon or missing
+	// `tmux` binary should not leave behind a half-stopped run dir
+	// the user has to clean up by hand. Surface the failure on stderr
+	// so the operator notices, then continue to PurgeRun.
 	if err := r.tmux.KillSession(plan.SessionName); err != nil {
-		return fmt.Errorf("kill tmux session: %w", err)
+		fmt.Fprintf(os.Stderr, "warning: kill tmux session %s failed: %s\n", plan.SessionName, err)
 	}
 	return r.store.PurgeRun(plan)
 }
@@ -433,10 +438,18 @@ func (r *Runner) Capture(runID string, agentID *string, lines int) ([]CaptureIte
 
 // Attach hands control of stdin/stdout/stderr to a tmux attach. When
 // agentID is non-nil, the matching window is selected first.
+//
+// Stopped runs are rejected with ErrRunStopped so a partial-stop
+// (Update committed but PurgeRun didn't finish) doesn't fall through
+// to a tmux session that no longer exists. Mirrors the Tell / Capture
+// guards — every live-state op rejects stopped uniformly.
 func (r *Runner) Attach(runID string, agentID *string) error {
 	plan, err := r.store.Load(runID)
 	if err != nil {
 		return err
+	}
+	if plan.Status == runplan.StatusStopped {
+		return runplan.ErrRunStopped
 	}
 	var windowIdx *int
 	if agentID != nil && *agentID != "" {
@@ -450,9 +463,23 @@ func (r *Runner) Attach(runID string, agentID *string) error {
 	return r.tmux.Attach(plan.SessionName, windowIdx)
 }
 
-// List returns every persisted run, newest-first.
+// List returns every persisted run, newest-first. Stopped runs whose
+// PurgeRun didn't complete (rare, only when KillSession or RemoveAll
+// failed mid-flow) are filtered out so the catalog `run list` shows
+// matches the help promise — only live runs surface.
 func (r *Runner) List() ([]*runplan.Plan, error) {
-	return r.store.List()
+	plans, err := r.store.List()
+	if err != nil {
+		return nil, err
+	}
+	live := plans[:0]
+	for _, p := range plans {
+		if p.Status == runplan.StatusStopped {
+			continue
+		}
+		live = append(live, p)
+	}
+	return live, nil
 }
 
 // View returns a single run by id.

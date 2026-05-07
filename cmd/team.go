@@ -231,7 +231,7 @@ Flags (all optional, at least one required):
   --git-repo-url <url>   replace GitHub HTTPS URL
   --git-subpath <path>   replace repo-relative subpath ("" = repo root)
   --subteam <ns/name>    replace subteam list (repeat for several;
-                         pass with no values to clear)
+                         pass --subteam "" to clear)
   --patch-json <body>    raw JSON Merge Patch — overrides the
                          per-field flags above. Use for complex
                          multi-key bodies the typed flags can't
@@ -265,7 +265,7 @@ Flags (all optional, at least one required):
 	cmd.Flags().Var(cmdFlag, "command", "New vendor command line")
 	cmd.Flags().Var(repoFlag, "git-repo-url", "New GitHub HTTPS URL")
 	cmd.Flags().Var(pathFlag, "git-subpath", "New repo-relative subpath (empty string = repo root)")
-	cmd.Flags().StringSliceVar(&subteamRefs, "subteam", nil, "Replace subteam list with these (namespace/name); repeatable, pass with no values to clear")
+	cmd.Flags().StringSliceVar(&subteamRefs, "subteam", nil, `Replace subteam list with these (namespace/name); repeatable, pass --subteam "" to clear`)
 	cmd.Flags().StringVar(&patchJSON, "patch-json", "", "Raw JSON Merge Patch body (overrides per-field flags)")
 	return cmd
 }

@@ -85,7 +85,11 @@ func newAuthLogoutCmd() *cobra.Command {
 
 Best-effort server revoke + local credential delete. The local
 credential is always deleted, even if the server-side revoke fails —
-the user is fully logged out either way. Idempotent.`,
+the user is fully logged out either way.
+
+Idempotent on a healthy environment: safe to run when no session
+exists. Note that a malformed CLIER_SERVER_URL prevents logout
+because the loader still wants a valid config — fix the env first.`,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			client, cfg, err := newAPIClient()
 			if err != nil {
