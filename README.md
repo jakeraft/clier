@@ -48,6 +48,7 @@ clier team list                             Browse the catalog (sort/q/cursor)
 clier team get <namespace/name>             Show one team
 clier team create <namespace/name>          Register a new team
 clier team update <namespace/name>          Patch a team (RFC 7396 merge patch)
+clier team reset-protocol <namespace/name>  Reset protocol to the default template
 clier team delete <namespace/name>          Delete a team
 clier team star <namespace/name>            Star (idempotent)
 clier team unstar <namespace/name>          Unstar (idempotent)
@@ -114,12 +115,20 @@ retrospect (ADR-0004 §4).
 
 ## Configuration
 
-Defaults work against a local `make dev` server. Override with env:
+Defaults point at the prod server (`https://www.clier.jakeraft.com`).
+Install the dev binary with `make install-dev` to swap in localhost
+URLs (`channel=dev`, `http://localhost:8080` server,
+`http://localhost:5173` dashboard) for local QA. Override per-process
+with env:
 
 ```bash
 CLIER_SERVER_URL=https://clier.example.com
 CLIER_DASHBOARD_URL=https://clier.example.com
 ```
+
+`http://` is rejected for non-loopback hosts so the bearer session
+token never crosses the wire in plaintext; `localhost`, `127.0.0.1`,
+and `[::1]` are the only http exceptions.
 
 Credentials live at `~/.clier/credentials.json` (mode `0600`).
 
