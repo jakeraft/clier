@@ -51,7 +51,7 @@ func safeJoinUnderRunDir(runDir, rel string) (string, error) {
 		// A blank base would let `filepath.Clean(rel)` resolve to a
 		// path the prefix check is no longer evaluating — the helper
 		// has no safe answer for "anchor anywhere".
-		return "", fmt.Errorf("runDir must not be empty")
+		return "", errors.New("runDir must not be empty")
 	}
 	if strings.ContainsRune(rel, 0) {
 		// NUL truncates strings on most C-backed filesystems and on
