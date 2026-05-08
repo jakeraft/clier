@@ -275,4 +275,3 @@ the server. For live pane contents use 'run capture' instead.`,
 		},
 	}
 }
-

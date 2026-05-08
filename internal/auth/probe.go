@@ -24,10 +24,10 @@ type SessionProbe struct {
 // 묻는다. 서버 envelope 의 `code` 슬러그를 분기 기준으로 써서 raw status
 // code 매직을 피한다.
 //
-// - 200: (true, ns.Name, "")
-// - 401 + code=UNAUTHENTICATED: (false, persistedLogin, "session_expired")
-// - 그 외 오류: 그대로 caller 에 surface (network 실패 / 서버 다운 등 —
-//   사용자가 무엇을 해야 할지가 다른 문제)
+//   - 200: (true, ns.Name, "")
+//   - 401 + code=UNAUTHENTICATED: (false, persistedLogin, "session_expired")
+//   - 그 외 오류: 그대로 caller 에 surface (network 실패 / 서버 다운 등 —
+//     사용자가 무엇을 해야 할지가 다른 문제)
 //
 // status / login fast-path 양쪽이 같은 helper 를 호출해 raw status code
 // 매직과 client 인스턴스 재생성이 한 자리로 모이게 한다.
