@@ -390,16 +390,28 @@ a session.`,
 }
 
 // parseSubteamRefs converts ["ns/name", "ns2/name2"] into TeamKey slice.
-// Empty input returns nil so the API client omits the field entirely.
+//
+// `--subteam ""` 한 개 단독은 *clear sentinel* — pflag StringSlice 가
+// "비우려면 어떤 값이 있어야 하나" 를 자체 표현하지 못해 cmd 차원에서
+// 약속한 cmd-only 의미. 이 분기로 빈 슬라이스 ([]TeamKey{}) 를 돌려주면
+// buildTeamPatch 가 `subteams: []` 를 wire 에 실어 server 가 "subteam
+// 전부 제거" 로 처리한다.
+//
+// 그 외 *빈 ref 섞임* (예: `--subteam alice/x --subteam ""`) 은 silent
+// skip 하지 않고 loud reject — silent precedence 패턴이 ambiguous 입력을
+// 조용히 swallow 하지 않도록.
 func parseSubteamRefs(raw []string) ([]api.TeamKey, error) {
 	if len(raw) == 0 {
 		return nil, nil
+	}
+	if len(raw) == 1 && strings.TrimSpace(raw[0]) == "" {
+		return []api.TeamKey{}, nil
 	}
 	out := make([]api.TeamKey, 0, len(raw))
 	for _, ref := range raw {
 		ref = strings.TrimSpace(ref)
 		if ref == "" {
-			continue
+			return nil, errors.New(`subteam ref must not be empty (pass --subteam "" alone to clear all subteams)`)
 		}
 		ns, name, err := splitTeamID(ref)
 		if err != nil {

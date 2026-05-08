@@ -30,12 +30,18 @@ func (c *Client) AuthDeviceStart() (*DeviceAuthorization, error) {
 	return &r, c.do("POST", "/api/v1/auth/device/start", nil, &r)
 }
 
+// DeviceCompleteRequest is the wire body of POST /auth/device/complete.
+// Typed (not inline map) so api/ 의 모든 wire body 가 같은 mirror 패턴을
+// 따름.
+type DeviceCompleteRequest struct {
+	DeviceCode string `json:"device_code"`
+}
+
 // AuthDeviceComplete polls once for token issuance. The server returns 412
 // (FAILED_PRECONDITION) while the user has not yet confirmed.
 func (c *Client) AuthDeviceComplete(deviceCode string) (*SessionResponse, error) {
 	var r SessionResponse
-	body := map[string]string{"device_code": deviceCode}
-	return &r, c.do("POST", "/api/v1/auth/device/complete", body, &r)
+	return &r, c.do("POST", "/api/v1/auth/device/complete", DeviceCompleteRequest{DeviceCode: deviceCode}, &r)
 }
 
 // AuthMe returns the namespace bound to the current session.

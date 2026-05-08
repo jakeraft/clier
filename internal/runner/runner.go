@@ -19,6 +19,12 @@ import (
 // does not contain. Surfaced verbatim — no message catalog.
 var ErrAgentNotInRun = errors.New("agent not found in run")
 
+// ErrSessionGone 은 runner 가 "live tmux 세션이 미리 사라졌다" 를 표현하는
+// 자기 어휘 sentinel — driver (tmux) 의 ErrSessionGone 을 runner 가 외부에서
+// new 해 던지지 않도록. tmux 패키지가 자기 명령에서 같은 카테고리를
+// 발견하면 거기서 driver 어휘로 던지고, runner 는 자기 어휘로 wrap.
+var ErrSessionGone = errors.New("tmux session no longer exists")
+
 // ErrReadyTimeout signals an agent's TUI did not surface its ready marker
 // before the deadline.
 type ErrReadyTimeout struct {
@@ -314,7 +320,7 @@ func (r *Runner) Tell(runID string, fromAgent *string, toAgent string, content s
 		return fmt.Errorf("inspect tmux session: %w", err)
 	}
 	if !alive {
-		return &tmux.ErrSessionGone{Session: plan.SessionName}
+		return fmt.Errorf("%w: %s", ErrSessionGone, plan.SessionName)
 	}
 	agent, ok := plan.FindAgent(toAgent)
 	if !ok {
@@ -325,10 +331,10 @@ func (r *Runner) Tell(runID string, fromAgent *string, toAgent string, content s
 			return fmt.Errorf("%w: %s", ErrAgentNotInRun, *fromAgent)
 		}
 	}
+	// content 의 empty 검사는 cmd/helpers.readContent 가 SSOT — 여기까지
+	// 도달했다는 건 caller (cmd 또는 다른 runner method) 가 이미 통과한
+	// 상태. runner 안의 dead branch 였던 자리는 제거.
 	text := strings.TrimSpace(content)
-	if text == "" {
-		return errors.New("message content is empty")
-	}
 	delivery := text
 	if fromAgent != nil && *fromAgent != "" {
 		delivery = fmt.Sprintf("[Message from %s] %s", *fromAgent, text)
