@@ -27,11 +27,13 @@ type AgentPrepare struct {
 }
 
 // GitPrepare names the external repo the CLI clones plus the cwd offset
-// inside it.
+// inside it. Cwd is the server-composed run_dir-relative cwd — CLI joins
+// it with the run dir to get the absolute cwd, no client-side composition.
 type GitPrepare struct {
 	RepoURL string `json:"repo_url"`
 	Subpath string `json:"subpath"`
 	Dest    string `json:"dest"`
+	Cwd     string `json:"cwd"`
 }
 
 // ProtocolPrepare carries the rendered markdown the CLI writes verbatim

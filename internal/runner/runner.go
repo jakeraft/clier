@@ -204,20 +204,14 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 		Messages:    []runplan.Message{}, // empty surfaces as [], never nil
 	}
 
-	// 2. Open tmux session and one window per agent. agent's cwd =
-	//    git.dest [+ "/" + git.subpath] joined onto runDir.
+	// 2. Open tmux session and one window per agent. server emits the
+	//    run_dir-relative cwd (`prepare.git.cwd`), the CLI just joins it
+	//    with the run dir to get the absolute cwd — no client-side
+	//    composition formula to drift away from the server's.
 	for i, spec := range manifest.Agents {
-		absCwd, err := safeJoinUnderRunDir(runDir, spec.Prepare.Git.Dest)
+		absCwd, err := safeJoinUnderRunDir(runDir, filepath.FromSlash(spec.Prepare.Git.Cwd))
 		if err != nil {
 			return nil, fmt.Errorf("cwd path for %s: %w", spec.ID, err)
-		}
-		if spec.Prepare.Git.Subpath != "" {
-			absCwd, err = safeJoinUnderRunDir(runDir,
-				filepath.Join(filepath.FromSlash(spec.Prepare.Git.Dest),
-					filepath.FromSlash(spec.Prepare.Git.Subpath)))
-			if err != nil {
-				return nil, fmt.Errorf("subpath cwd for %s: %w", spec.ID, err)
-			}
 		}
 		var windowIdx int
 		var werr error

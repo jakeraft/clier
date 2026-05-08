@@ -100,6 +100,7 @@ func soloAgentManifest(runID, id string) *api.RunManifest {
 						RepoURL: "https://github.com/" + id,
 						Subpath: "",
 						Dest:    id,
+						Cwd:     id,
 					},
 					Protocol: &api.ProtocolPrepare{
 						Content: "# Team Protocol\n\nrendered body for " + id,
@@ -242,6 +243,7 @@ func TestStartHappyPath_codexNilProtocol(t *testing.T) {
 				Git: api.GitPrepare{
 					RepoURL: "https://github.com/jakeraft/hello-codex",
 					Dest:    "jakeraft.hello-codex",
+					Cwd:     "jakeraft.hello-codex",
 				},
 				// Protocol intentionally nil — codex inlines the
 				// protocol via run.args, so the manifest carries no
