@@ -79,6 +79,50 @@ type Message struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// SessionNameFor 는 runID 로부터 tmux session 이름을 만든다 — runner /
+// dashboard / 외부 deeplink 가 모두 이 함수를 통과해야 명명 규약이 한 자리
+// SSOT 에 산다. "clier-" prefix 가 runner.Start 의 1줄에만 박혀 있던 자리를
+// 명시 함수로 끌어올린다 (audit Z HIGH).
+func SessionNameFor(runID string) string {
+	return "clier-" + runID
+}
+
+// StartView 는 `run start` 응답의 표면 모양 — agent 의 즉시-사용 정보
+// (id/window/abs_cwd) 만 들고 있고 retrospection 용 필드는 view 로 미룬다.
+// cmd/run 이 직접 변형하지 않고 plan 자신이 owner 가 되어 SSOT 한 자리에 둔다.
+func (p *Plan) StartView() map[string]any {
+	agents := make([]map[string]any, 0, len(p.Agents))
+	for _, a := range p.Agents {
+		agents = append(agents, map[string]any{
+			"id":      a.ID,
+			"window":  a.Window,
+			"abs_cwd": a.AbsCwd,
+		})
+	}
+	return map[string]any{
+		"run_id":       p.RunID,
+		"session_name": p.SessionName,
+		"run_dir":      p.RunDir,
+		"namespace":    p.Namespace,
+		"team_name":    p.TeamName,
+		"agents":       agents,
+	}
+}
+
+// ListView 는 `run list` 의 *행* 모양 — 카운트 + 상태/시간 + 키. 한 list
+// 응답의 항목으로 펼쳐지므로 *데이터를 더 깎은* projection.
+func (p *Plan) ListView() map[string]any {
+	return map[string]any{
+		"run_id":       p.RunID,
+		"session_name": p.SessionName,
+		"namespace":    p.Namespace,
+		"team_name":    p.TeamName,
+		"status":       p.Status,
+		"started_at":   p.StartedAt,
+		"agent_count":  len(p.Agents),
+	}
+}
+
 // FindAgent returns the agent with the given ID, if any.
 func (p *Plan) FindAgent(agentID string) (*Agent, bool) {
 	for i := range p.Agents {

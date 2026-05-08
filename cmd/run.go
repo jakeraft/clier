@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 
-	"github.com/jakeraft/clier/internal/runplan"
 	"github.com/spf13/cobra"
 )
 
@@ -58,7 +57,7 @@ with 'clier run tell'.`,
 			if err != nil {
 				return err
 			}
-			return emit(cmd.OutOrStdout(), startResponse(plan))
+			return emit(cmd.OutOrStdout(), plan.StartView())
 		},
 	}
 }
@@ -240,7 +239,7 @@ runs do not appear (their dirs are removed).`,
 			}
 			items := make([]map[string]any, 0, len(plans))
 			for _, p := range plans {
-				items = append(items, summary(p))
+				items = append(items, p.ListView())
 			}
 			// run list is a CLI-local query with no pagination — every
 			// known run is in the response. team list ships {data, meta}
@@ -277,33 +276,3 @@ the server. For live pane contents use 'run capture' instead.`,
 	}
 }
 
-func startResponse(plan *runplan.Plan) map[string]any {
-	agents := make([]map[string]any, 0, len(plan.Agents))
-	for _, a := range plan.Agents {
-		agents = append(agents, map[string]any{
-			"id":      a.ID,
-			"window":  a.Window,
-			"abs_cwd": a.AbsCwd,
-		})
-	}
-	return map[string]any{
-		"run_id":       plan.RunID,
-		"session_name": plan.SessionName,
-		"run_dir":      plan.RunDir,
-		"namespace":    plan.Namespace,
-		"team_name":    plan.TeamName,
-		"agents":       agents,
-	}
-}
-
-func summary(p *runplan.Plan) map[string]any {
-	return map[string]any{
-		"run_id":       p.RunID,
-		"session_name": p.SessionName,
-		"namespace":    p.Namespace,
-		"team_name":    p.TeamName,
-		"status":       p.Status,
-		"started_at":   p.StartedAt,
-		"agent_count":  len(p.Agents),
-	}
-}

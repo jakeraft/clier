@@ -131,7 +131,7 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 	}
 
 	runID := manifest.RunID
-	sessionName := "clier-" + runID
+	sessionName := runplan.SessionNameFor(runID)
 	runDir := r.store.RunDir(runID)
 
 	success := false
