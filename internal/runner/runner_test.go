@@ -110,6 +110,9 @@ func soloAgentManifest(runID, id string) *api.RunManifest {
 					AgentType: "claude",
 					Command:   "claude --setting-sources project",
 					Args:      []string{"--append-system-prompt-file", "../protocols/" + id + ".md"},
+					// Server-side TUI hints — claude has a readiness
+					// marker and graceful exit but no trust prompt.
+					TUI: api.AgentTUI{ReadyMarker: "Claude", ExitCommand: "/exit"},
 				},
 			},
 		},
@@ -248,6 +251,9 @@ func TestStartHappyPath_codexNilProtocol(t *testing.T) {
 				AgentType: "codex",
 				Command:   "codex --dangerously-bypass-approvals-and-sandbox",
 				Args:      []string{"-c", "developer_instructions='''<rendered>'''"},
+				// Server-side TUI hints — codex needs the trust prompt
+				// auto-dismissed with "1".
+				TUI: api.AgentTUI{ExitCommand: "/exit", TrustResponse: "1"},
 			},
 		}},
 	}

@@ -57,6 +57,18 @@ type Agent struct {
 	Command      string   `json:"command"`
 	Args         []string `json:"args"`
 	AgentType    string   `json:"agent_type"`
+	// TUI hints originate from the server's manifest. Persisted so
+	// stop/tell/attach can use them without re-fetching the manifest.
+	TUI AgentTUI `json:"tui"`
+}
+
+// AgentTUI mirrors the server-emitted vendor TUI hints (api.AgentTUI).
+// Persisted alongside the agent so the runner can issue graceful exit
+// or readiness probes without re-derivation.
+type AgentTUI struct {
+	ReadyMarker   string `json:"ready_marker"`
+	ExitCommand   string `json:"exit_command"`
+	TrustResponse string `json:"trust_response"`
 }
 
 // Message records a tell delivery — useful for `clier run view` audit.

@@ -42,11 +42,24 @@ type ProtocolPrepare struct {
 }
 
 // AgentRun is the tmux launch context. The CLI sends Command + Args
-// (per-item shell-escaped) as a single send-keys.
+// (per-item shell-escaped) as a single send-keys. TUI carries the
+// vendor-specific TUI hints the server resolves so the CLI doesn't
+// hardcode per-vendor behaviour (ADR-0002 §8).
 type AgentRun struct {
 	AgentType string   `json:"agent_type"`
 	Command   string   `json:"command"`
 	Args      []string `json:"args"`
+	TUI       AgentTUI `json:"tui"`
+}
+
+// AgentTUI mirrors the server-resolved TUI hints. Empty string is the
+// "skip" sentinel for any of the three: empty ReadyMarker means
+// "considered ready immediately", empty ExitCommand means "kill-only
+// teardown", empty TrustResponse means "no trust prompt".
+type AgentTUI struct {
+	ReadyMarker   string `json:"ready_marker"`
+	ExitCommand   string `json:"exit_command"`
+	TrustResponse string `json:"trust_response"`
 }
 
 // MintRun calls POST /api/v1/teams/{ns}/{name}/runs (ADR-0002 §1).

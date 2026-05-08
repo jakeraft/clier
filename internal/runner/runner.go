@@ -238,6 +238,11 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 			Command:      spec.Run.Command,
 			Args:         append([]string{}, spec.Run.Args...),
 			AgentType:    spec.Run.AgentType,
+			TUI: runplan.AgentTUI{
+				ReadyMarker:   spec.Run.TUI.ReadyMarker,
+				ExitCommand:   spec.Run.TUI.ExitCommand,
+				TrustResponse: spec.Run.TUI.TrustResponse,
+			},
 		})
 	}
 
@@ -257,8 +262,7 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 	//    Claude has no trust gate so its profile leaves trustResponse
 	//    blank.
 	for _, agent := range plan.Agents {
-		profile := profileFor(agent.AgentType)
-		if profile.trustResponse == "" {
+		if agent.TUI.TrustResponse == "" {
 			continue
 		}
 		// Brief pause so the prompt has time to render before we send
@@ -268,7 +272,7 @@ func (r *Runner) Start(namespace, name string) (*runplan.Plan, error) {
 		// startup (cold node/npm boot routinely exceeds 2s on a fresh
 		// machine boot).
 		time.Sleep(3 * time.Second)
-		if err := r.tmux.SendLine(sessionName, agent.Window, profile.trustResponse); err != nil {
+		if err := r.tmux.SendLine(sessionName, agent.Window, agent.TUI.TrustResponse); err != nil {
 			return nil, fmt.Errorf("auto-trust %s: %w", agent.ID, err)
 		}
 	}
@@ -488,8 +492,7 @@ func (r *Runner) View(runID string) (*runplan.Plan, error) {
 }
 
 func (r *Runner) waitReady(sessionName string, agent runplan.Agent) error {
-	profile := profileFor(agent.AgentType)
-	if profile.readyMarker == "" {
+	if agent.TUI.ReadyMarker == "" {
 		return nil
 	}
 	// context.WithTimeout is monotonic-clock backed and cancellable, so
@@ -506,7 +509,7 @@ func (r *Runner) waitReady(sessionName string, agent runplan.Agent) error {
 		if err != nil {
 			return fmt.Errorf("inspect pane title for %s: %w", agent.ID, err)
 		}
-		if strings.Contains(title, profile.readyMarker) {
+		if strings.Contains(title, agent.TUI.ReadyMarker) {
 			return nil
 		}
 		select {
@@ -525,11 +528,10 @@ func (r *Runner) waitReady(sessionName string, agent runplan.Agent) error {
 // operator see when graceful drainage was bypassed.
 func (r *Runner) gracefulExit(plan *runplan.Plan) {
 	for _, agent := range plan.Agents {
-		profile := profileFor(agent.AgentType)
-		if profile.exitCommand == "" {
+		if agent.TUI.ExitCommand == "" {
 			continue
 		}
-		if err := r.tmux.SendLine(plan.SessionName, agent.Window, profile.exitCommand); err != nil {
+		if err := r.tmux.SendLine(plan.SessionName, agent.Window, agent.TUI.ExitCommand); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: graceful exit failed for %s: %s\n", agent.ID, err)
 		}
 	}
