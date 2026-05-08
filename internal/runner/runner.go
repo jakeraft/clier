@@ -85,12 +85,24 @@ type RunsAPI interface {
 	MintRun(namespace, name string) (*api.RunManifest, error)
 }
 
+// PlanStore 은 runner 가 runplan 패키지에 의존하는 좁은 port — Deps 의
+// 다른 collaborators (api/git/tmux) 가 모두 interface 인 패턴 일관. 향후
+// 단위 테스트가 in-memory 구현을 끼울 수 있게.
+type PlanStore interface {
+	RunDir(runID string) string
+	Create(plan *runplan.Plan) error
+	Update(plan *runplan.Plan) error
+	Load(runID string) (*runplan.Plan, error)
+	List() ([]*runplan.Plan, error)
+	PurgeRun(plan *runplan.Plan) error
+}
+
 // Deps wires the runner with its collaborators. All four are required.
 type Deps struct {
 	API   RunsAPI
 	Git   git.Git
 	Tmux  tmux.Tmux
-	Store *runplan.Store
+	Store PlanStore
 }
 
 // Runner orchestrates the thin tmux flow: mint → write protocols → clone
@@ -99,7 +111,7 @@ type Runner struct {
 	api   RunsAPI
 	git   git.Git
 	tmux  tmux.Tmux
-	store *runplan.Store
+	store PlanStore
 	now   func() time.Time
 }
 
