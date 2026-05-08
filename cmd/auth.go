@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -46,18 +45,17 @@ flow. Use 'clier auth logout' first to switch accounts.`,
 				return err
 			}
 			// Already-logged-in fast path: validate the persisted session
-			// against the server. If it is still valid, no-op with a
-			// stderr note + the current login on stdout. Without this
-			// check `auth login` while logged-in would start a fresh
-			// device flow with no warning.
+			// via auth.ProbeSession. If the server agrees the session is
+			// live, no-op with a stderr note + login on stdout. Probe
+			// failures (UNAUTHENTICATED 또는 transport) fall through to
+			// a fresh device flow — Login replaces the stale credential
+			// on success.
 			if creds, err := loadCredentials(cfg.CredentialsPath); err == nil && creds != nil {
-				if ns, err := api.New(cfg.ServerURL, creds.Token).AuthMe(); err == nil {
-					fmt.Fprintf(os.Stderr, "note: already logged in as %s\n", ns.Name)
-					return emit(cmd.OutOrStdout(), map[string]any{"login": ns.Name})
+				probe, perr := auth.ProbeSession(api.New(cfg.ServerURL, creds.Token), creds.Login)
+				if perr == nil && probe.LoggedIn {
+					fmt.Fprintf(os.Stderr, "note: already logged in as %s\n", probe.Login)
+					return emit(cmd.OutOrStdout(), map[string]any{"login": probe.Login})
 				}
-				// Persisted token rejected — fall through to a fresh
-				// device flow. The downstream Login call replaces the
-				// stale credential file on success.
 			}
 			// Public endpoint — no token needed for device flow.
 			client := api.New(cfg.ServerURL, "")
@@ -136,16 +134,11 @@ distinctly from a clean logged-out state, so a script can tell
 			if creds == nil {
 				return emit(cmd.OutOrStdout(), authStatus(cfg, false, "", ""))
 			}
-			client := api.New(cfg.ServerURL, creds.Token)
-			ns, err := client.AuthMe()
+			probe, err := auth.ProbeSession(api.New(cfg.ServerURL, creds.Token), creds.Login)
 			if err != nil {
-				var apiErr *api.Error
-				if errors.As(err, &apiErr) && apiErr.StatusCode == 401 {
-					return emit(cmd.OutOrStdout(), authStatus(cfg, false, creds.Login, "session_expired"))
-				}
 				return err
 			}
-			return emit(cmd.OutOrStdout(), authStatus(cfg, true, ns.Name, ""))
+			return emit(cmd.OutOrStdout(), authStatus(cfg, probe.LoggedIn, probe.Login, probe.Reason))
 		},
 	}
 }
